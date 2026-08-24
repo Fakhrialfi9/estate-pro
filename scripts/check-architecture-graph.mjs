@@ -166,7 +166,7 @@ for (const [source, dependencies] of graph) {
     }
 
     const targetRelative = path.relative(SRC_ROOT, target).split(path.sep);
-    const targetIsPublicModuleEntry =
+    const targetIsPublicModule =
       targetRelative.length === 2 &&
       targetRelative[0] === 'modules' &&
       targetRelative[1] === `${targetModule}.module.ts`;

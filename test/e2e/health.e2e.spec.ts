@@ -55,7 +55,7 @@ describe('application health (e2e)', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.body.status).toBe('ok');
+    expect(response.body).toHaveProperty('status', 'ok');
     expect(JSON.stringify(response.body)).not.toMatch(
       /password|secret|mysql:\/\//i,
     );

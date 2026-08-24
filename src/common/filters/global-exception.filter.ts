@@ -31,6 +31,17 @@ interface ExpressPayloadError {
   type?: string;
 }
 
+const HTTP_STATUS = {
+  BAD_REQUEST: Number(HttpStatus.BAD_REQUEST),
+  UNAUTHORIZED: Number(HttpStatus.UNAUTHORIZED),
+  FORBIDDEN: Number(HttpStatus.FORBIDDEN),
+  NOT_FOUND: Number(HttpStatus.NOT_FOUND),
+  CONFLICT: Number(HttpStatus.CONFLICT),
+  PAYLOAD_TOO_LARGE: Number(HttpStatus.PAYLOAD_TOO_LARGE),
+  SERVICE_UNAVAILABLE: Number(HttpStatus.SERVICE_UNAVAILABLE),
+  INTERNAL_SERVER_ERROR: Number(HttpStatus.INTERNAL_SERVER_ERROR),
+} as const;
+
 const isErrorBody = (body: object): body is ErrorBody => {
   const candidate: Record<string, unknown> = Object.fromEntries(
     Object.entries(body),
@@ -76,16 +87,16 @@ const isExpressPayloadError = (
 const getPrismaStatus = (code: string): number => {
   switch (code) {
     case 'P2002':
-      return HttpStatus.CONFLICT;
+      return HTTP_STATUS.CONFLICT;
     case 'P2003':
     case 'P2014':
-      return HttpStatus.BAD_REQUEST;
+      return HTTP_STATUS.BAD_REQUEST;
     case 'P2025':
-      return HttpStatus.NOT_FOUND;
+      return HTTP_STATUS.NOT_FOUND;
     case 'P2024':
-      return HttpStatus.SERVICE_UNAVAILABLE;
+      return HTTP_STATUS.SERVICE_UNAVAILABLE;
     default:
-      return HttpStatus.INTERNAL_SERVER_ERROR;
+      return HTTP_STATUS.INTERNAL_SERVER_ERROR;
   }
 };
 
@@ -120,7 +131,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request = host.switchToHttp().getRequest<Request>();
     const result = this.buildResponse(exception, request);
 
-    if (result.statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (result.statusCode >= HTTP_STATUS.INTERNAL_SERVER_ERROR) {
       this.logException(exception, result, request, response);
     }
 
@@ -170,7 +181,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof DomainException) {
       return {
-        statusCode: HttpStatus.BAD_REQUEST,
+        statusCode: HTTP_STATUS.BAD_REQUEST,
         code: exception.code,
         message: exception.message,
         path: request.path,
@@ -180,7 +191,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof ApplicationException) {
       return {
-        statusCode: HttpStatus.BAD_REQUEST,
+        statusCode: HTTP_STATUS.BAD_REQUEST,
         code: exception.code,
         message: exception.message,
         path: request.path,
@@ -190,7 +201,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof InfrastructureException) {
       return {
-        statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: HTTP_STATUS.SERVICE_UNAVAILABLE,
         code: exception.code,
         message: 'A required infrastructure service is unavailable.',
         path: request.path,
@@ -213,8 +224,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     if (isExpressPayloadError(exception)) {
       const statusCode =
         exception.type === 'entity.too.large'
-          ? HttpStatus.PAYLOAD_TOO_LARGE
-          : HttpStatus.BAD_REQUEST;
+          ? HTTP_STATUS.PAYLOAD_TOO_LARGE
+          : HTTP_STATUS.BAD_REQUEST;
 
       return {
         statusCode,
@@ -248,7 +259,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     return {
-      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
       code: 'INTERNAL_SERVER_ERROR',
       message: 'Internal server error.',
       path: request.path,
@@ -268,7 +279,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       return {
         code: this.defaultHttpCode(statusCode),
         message:
-          statusCode >= HttpStatus.INTERNAL_SERVER_ERROR
+          statusCode >= HTTP_STATUS.INTERNAL_SERVER_ERROR
             ? 'Internal server error.'
             : 'Request failed.',
       };
@@ -298,27 +309,27 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       return message;
     }
 
-    return statusCode >= HttpStatus.INTERNAL_SERVER_ERROR
+    return statusCode >= HTTP_STATUS.INTERNAL_SERVER_ERROR
       ? 'Internal server error.'
       : 'Request failed.';
   }
 
   private defaultHttpCode(statusCode: number): string {
     switch (statusCode) {
-      case HttpStatus.BAD_REQUEST:
+      case HTTP_STATUS.BAD_REQUEST:
         return 'BAD_REQUEST';
-      case HttpStatus.UNAUTHORIZED:
+      case HTTP_STATUS.UNAUTHORIZED:
         return 'UNAUTHORIZED';
-      case HttpStatus.FORBIDDEN:
+      case HTTP_STATUS.FORBIDDEN:
         return 'FORBIDDEN';
-      case HttpStatus.NOT_FOUND:
+      case HTTP_STATUS.NOT_FOUND:
         return 'NOT_FOUND';
-      case HttpStatus.CONFLICT:
+      case HTTP_STATUS.CONFLICT:
         return 'CONFLICT';
-      case HttpStatus.PAYLOAD_TOO_LARGE:
+      case HTTP_STATUS.PAYLOAD_TOO_LARGE:
         return 'PAYLOAD_TOO_LARGE';
       default:
-        return statusCode >= HttpStatus.INTERNAL_SERVER_ERROR
+        return statusCode >= HTTP_STATUS.INTERNAL_SERVER_ERROR
           ? 'INTERNAL_SERVER_ERROR'
           : `HTTP_${statusCode}`;
     }

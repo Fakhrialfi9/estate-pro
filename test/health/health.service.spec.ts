@@ -5,20 +5,20 @@ import { HealthService } from '../../src/modules/health/health.service.js';
 
 describe('HealthService', () => {
   it('reports liveness without touching the database', () => {
-    const databaseHealth: HealthDependency = { check: vi.fn() };
+    const check = vi.fn();
+    const databaseHealth: HealthDependency = { check };
     const service = new HealthService(databaseHealth);
 
     expect(service.liveness()).toEqual({
       status: 'ok',
       checks: { application: { status: 'up' } },
     });
-    expect(databaseHealth.check).not.toHaveBeenCalled();
+    expect(check).not.toHaveBeenCalled();
   });
 
   it('reports readiness when the database is healthy', async () => {
-    const databaseHealth: HealthDependency = {
-      check: vi.fn().mockResolvedValue(undefined),
-    };
+    const check = vi.fn().mockResolvedValue(undefined);
+    const databaseHealth: HealthDependency = { check };
     const service = new HealthService(databaseHealth);
 
     await expect(service.readiness()).resolves.toEqual({
@@ -31,9 +31,8 @@ describe('HealthService', () => {
   });
 
   it('reports a machine-readable failure when the database is unavailable', async () => {
-    const databaseHealth: HealthDependency = {
-      check: vi.fn().mockRejectedValue(new Error('database unavailable')),
-    };
+    const check = vi.fn().mockRejectedValue(new Error('database unavailable'));
+    const databaseHealth: HealthDependency = { check };
     const service = new HealthService(databaseHealth);
 
     await expect(service.readiness()).resolves.toEqual({

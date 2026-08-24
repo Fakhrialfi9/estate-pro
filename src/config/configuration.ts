@@ -127,7 +127,7 @@ export const configurationValidationSchema = Joi.object({
     .when('NODE_ENV', {
       is: Joi.valid('staging', 'production'),
       then: Joi.required(),
-      otherwise: Joi.default('http://localhost:3000'),
+      otherwise: Joi.string().trim().default('http://localhost:3000'),
     }),
   SECURITY_RATE_LIMIT_TTL: Joi.number()
     .integer()

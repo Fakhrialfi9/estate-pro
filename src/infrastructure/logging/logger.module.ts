@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule as NestPinoLoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { trace } from '@opentelemetry/api';
 
 import { SENSITIVE_LOG_PATHS } from '../../common/constants/security.constants.js';
@@ -15,7 +16,7 @@ import { getConfiguredLogLevel } from './logger.config.js';
         formatters: {
           level: (label: string) => ({ level: label }),
         },
-        genReqId: (req, res) => {
+        genReqId: (req: IncomingMessage, res: ServerResponse) => {
           const incoming = req.headers['x-request-id'];
           const requestId =
             typeof incoming === 'string' &&
@@ -28,7 +29,7 @@ import { getConfiguredLogLevel } from './logger.config.js';
           res.setHeader('X-Request-Id', requestId);
           return requestId;
         },
-        customProps: (req) => {
+        customProps: (req: IncomingMessage) => {
           const spanContext = trace.getActiveSpan()?.spanContext();
 
           return {
@@ -41,18 +42,22 @@ import { getConfiguredLogLevel } from './logger.config.js';
           };
         },
         serializers: {
-          req: (req) => ({
+          req: (req: IncomingMessage) => ({
             id: req.id,
             method: req.method,
             url: req.url,
             userAgent: req.headers['user-agent'],
             remoteAddress: req.socket.remoteAddress,
           }),
-          res: (res) => ({
+          res: (res: ServerResponse) => ({
             statusCode: res.statusCode,
           }),
         },
-        customLogLevel: (req, res, err) => {
+        customLogLevel: (
+          _req: IncomingMessage,
+          res: ServerResponse,
+          err?: Error,
+        ) => {
           if (err || res.statusCode >= 500) {
             return 'error';
           }
@@ -62,7 +67,7 @@ import { getConfiguredLogLevel } from './logger.config.js';
           return 'info';
         },
         autoLogging: {
-          ignore: (req) => req.url?.includes('/health/') ?? false,
+          ignore: (req: IncomingMessage) => req.url?.includes('/health/') ?? false,
         },
         redact: {
           paths: [...SENSITIVE_LOG_PATHS],
