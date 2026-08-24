@@ -33,6 +33,9 @@ const environmentSecret = Joi.string()
     'your-secret-here',
     '<production-secret>',
     '<production-jwt-secret>',
+    '<development-jwt-secret-min-32-chars>',
+    '<set-in-secret-manager>',
+    'replace-with-a-random-32-plus-character-secret',
   );
 
 const optionalSecret = Joi.string()
@@ -81,7 +84,19 @@ export const configurationValidationSchema = Joi.object({
   JWT_SECRET: Joi.alternatives().conditional('NODE_ENV', {
     is: Joi.valid('staging', 'production'),
     then: environmentSecret,
-    otherwise: Joi.string().min(32).required(),
+    otherwise: Joi.string()
+      .trim()
+      .min(32)
+      .required()
+      .invalid(
+        'changeme',
+        'change-me',
+        'your-secret',
+        'your-secret-here',
+        '<development-jwt-secret-min-32-chars>',
+        '<set-in-secret-manager>',
+        'replace-with-a-random-32-plus-character-secret',
+      ),
   }),
   JWT_EXPIRES_IN: Joi.string().trim().min(1).default('15m'),
   JWT_ISSUER: Joi.string().trim().min(1).max(200).default('estate-pro-api'),
