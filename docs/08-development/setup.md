@@ -88,19 +88,22 @@ npm run build
 npm run start:prod
 ```
 
-## 6. Quality checks
+## 6. Quality and architecture checks
 
 ```bash
 npm run format:check
 npm run lint
 npm run typecheck
 npm run check:architecture
-npm test
-npm run test:coverage
+npm run test:unit
+npm run test:integration
 npm run test:e2e
 npm run test:security
+npm run test:coverage
 npm run build
 ```
+
+`check:architecture` validates the TypeScript source dependency graph, including circular dependency detection and cross-module internal import rules, in addition to the repository's explicit boundary checks.
 
 The database-dependent checks require a valid database configuration where the tested code path needs it.
 

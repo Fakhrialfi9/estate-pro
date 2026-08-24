@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document describes the architecture that is actually present in `main` at Step 121–140. Empty/scaffolded modules are documented as scaffolds; they are not described as implemented business capabilities.
+This document describes the architecture actually present in `main` for the Step 121–140 scope. Empty/scaffolded modules are documented as scaffolds; they are not described as implemented business capabilities.
 
 ## Runtime boundary
 
@@ -42,11 +42,13 @@ Composition root -> all concrete implementations
 
 A lower-level layer must not reach upward into a business module's internal implementation. Infrastructure details are kept outside the domain boundary.
 
+The repository includes `scripts/check-architecture-graph.mjs`, invoked by `npm run check:architecture`, to inspect the TypeScript source import graph. It fails on circular dependencies and on cross-module imports that bypass another module's public module entry point.
+
 ## Domain isolation
 
 Domain code must remain framework and persistence independent. It must not import Prisma, NestJS infrastructure packages, MariaDB, Pino, or OpenTelemetry.
 
-At the time of this audit, the business-domain directories are scaffolds and contain no implemented domain objects. Therefore there is no domain-to-infrastructure import to leak.
+At the time of this audit, the business-domain directories are scaffolds and contain no domain-to-infrastructure import to leak.
 
 ## Application layer
 
@@ -72,7 +74,7 @@ HTTP transport concerns belong in controllers/presentation: parsing requests, DT
 
 Current module roots include `auth`, `content`, `crm`, `health`, `permissions`, `property`, `roles`, `sales`, `services`, `system`, and `users`.
 
-Business modules use explicit internal boundaries. Cross-module access must target a public application contract/provider, not another module's internal repository, domain implementation, or Prisma model.
+Business modules use explicit internal boundaries. Cross-module access must target the public module entry point or a deliberately exposed application contract/provider, not another module's internal repository, domain implementation, or Prisma model. The architecture graph checker rejects relative cross-module imports that bypass the target module entry point.
 
 Several business modules are currently scaffolds. Their existence does not imply that their CRUD/use cases are implemented.
 
@@ -80,7 +82,7 @@ Several business modules are currently scaffolds. Their existence does not imply
 
 The only approved location for direct Prisma integration is the infrastructure database boundary. Database credentials/configuration enter through `src/config` and are consumed by infrastructure.
 
-No controller, domain object, or application use case should construct or query `PrismaClient` directly.
+No controller, domain object, application use case, or other non-infrastructure source should construct or query `PrismaClient` directly. The architecture checker enforces the absence of Prisma references outside `src/infrastructure`.
 
 ## Configuration
 
@@ -92,16 +94,16 @@ Logging is configured through `nestjs-pino`; request IDs and OpenTelemetry trace
 
 ## Testing boundary
 
-Tests are separated under `test/unit`, `test/integration`, `test/e2e`, `test/security`, `test/health`, and `test/observability`. Test commands are defined by `package.json`; documentation must only reference those scripts.
+Tests are separated under `test/unit`, `test/integration`, `test/e2e`, `test/security`, `test/health`, and `test/observability`. Test commands are defined by `package.json`; documentation references only those scripts.
 
 ## Architecture invariants
 
-1. No circular module dependency.
+1. No circular module/source dependency.
 2. Domain has no infrastructure/framework dependency.
 3. Common code has no business-domain dependency.
 4. Cross-module dependencies are explicit and minimal.
 5. Prisma is an infrastructure detail.
-6. Controllers do not contain business logic.
+6. Controllers do not contain persistence/business implementation logic.
 7. Business operations belong in application/use-case code.
 8. Persistence details do not leak through domain/application contracts.
 9. Do not introduce `forwardRef()` to hide a cycle; remove the architectural cycle instead.

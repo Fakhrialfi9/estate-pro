@@ -6,14 +6,14 @@ Testing commands below are taken from the current `package.json`. No undocumente
 
 | Layer | Command | Purpose |
 |---|---|---|
-| Default suite | `npm test` | Runs Vitest with Prisma generation first |
+| Default suite | `npm test` | Runs the default Vitest suite with Prisma generation first |
 | Unit | `npm run test:unit` | Unit suite using `vitest.config.ts` |
-| Integration | No dedicated npm script currently exists | Integration tests are stored under `test/integration`; use the repository's Vitest configuration when running them directly until a dedicated script is introduced |
+| Integration | `npm run test:integration` | Integration suite using `vitest.integration.config.ts` |
 | E2E | `npm run test:e2e` | Runs `vitest.e2e.config.ts` |
 | Security | `npm run test:security` | Runs `vitest.security.config.ts` |
 | Coverage | `npm run test:coverage` | Default Vitest suite with V8 coverage |
 | E2E coverage | `npm run test:coverage:e2e` | E2E suite with coverage |
-| All named suites | `npm run test:all` | Unit + E2E + security |
+| All named suites | `npm run test:all` | Unit + integration + E2E + security |
 
 ## Supporting checks
 
@@ -22,12 +22,17 @@ npm run format:check
 npm run lint
 npm run typecheck
 npm run check:architecture
+npm test
+npm run test:coverage
+npm run test:integration
+npm run test:e2e
+npm run test:security
 npm run build
 npm run prisma:generate
 npm run prisma:status
 ```
 
-`typecheck`, `test`, coverage commands, and build generate the Prisma client as part of their existing scripts where applicable.
+`typecheck`, test/coverage commands, and build generate the Prisma client as part of their existing scripts where applicable.
 
 ## Test organization
 
@@ -44,7 +49,9 @@ Integration/E2E tests that exercise persistence require a valid test database co
 
 ## Architecture regression tests
 
-`npm run check:architecture` performs a dependency-boundary static check without introducing an additional architecture-analysis dependency. It verifies the high-risk forbidden imports and flags `forwardRef()` usage for review.
+`npm run check:architecture` performs a dependency-boundary static check without introducing an additional architecture-analysis dependency. It now validates the source import graph for circular dependencies and illegal cross-module internal imports, then verifies the high-risk forbidden imports for domain, common, Prisma, presentation, and application boundaries.
+
+The architecture checker intentionally fails on `forwardRef()` only when such a cycle-hiding pattern is present in the source graph; architectural cycles must be removed rather than masked.
 
 ## Coverage
 

@@ -20,20 +20,22 @@ A module may contain fewer layers while it is still a scaffold. Do not add empty
 | Module | Responsibility | Current state | Allowed dependency direction |
 |---|---|---|---|
 | Auth | Authentication-related application services and security behavior | Implemented foundation; password hashing service exists | presentation -> application; infrastructure adapters may support application contracts |
-| Property | Property/real-estate business domain | Scaffold | internal layers only; public application contract for consumers |
-| Sales | Sales/transaction business domain | Scaffold | internal layers only; public application contract for consumers |
-| Services | Service/catalog business domain | Scaffold | internal layers only; public application contract for consumers |
-| Content | Content management domain | Scaffold | internal layers only; public application contract for consumers |
-| CRM | Customer relationship domain | Scaffold | internal layers only; public application contract for consumers |
-| Users | User-management domain | Scaffold | internal layers only; public application contract for consumers |
-| Roles | Role-management domain | Scaffold | internal layers only; public application contract for consumers |
-| Permissions | Permission-management domain | Scaffold | internal layers only; public application contract for consumers |
+| Property | Property/real-estate business domain | Scaffold | internal layers only; public module/application contract for consumers |
+| Sales | Sales/transaction business domain | Scaffold | internal layers only; public module/application contract for consumers |
+| Services | Service/catalog business domain | Scaffold | internal layers only; public module/application contract for consumers |
+| Content | Content management domain | Scaffold | internal layers only; public module/application contract for consumers |
+| CRM | Customer relationship domain | Scaffold | internal layers only; public module/application contract for consumers |
+| Users | User-management domain | Scaffold | internal layers only; public module/application contract for consumers |
+| Roles | Role-management domain | Scaffold | internal layers only; public module/application contract for consumers |
+| Permissions | Permission-management domain | Scaffold | internal layers only; public module/application contract for consumers |
 | System | System-level functionality | Scaffold | system concerns only; no business-domain internals |
 | Health | Health endpoints/checks | Implemented infrastructure-facing module | health contract -> infrastructure checks |
 
 ## Public boundary rule
 
 A module exposes only what another module genuinely needs. Prefer an application service/use-case or explicit contract/provider over importing an internal file from another module.
+
+The architecture graph check enforces this at the source level: a module may reference another module's public `<module>.module.ts` entry point, but it may not reach into that module's `application`, `domain`, `infrastructure`, or `presentation` internals.
 
 Forbidden examples:
 
