@@ -44,7 +44,8 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  const helmetOptions = configService.getOrThrow<HelmetOptions>('security.helmet');
+  const helmetOptions =
+    configService.getOrThrow<HelmetOptions>('security.helmet');
   app.use(helmet(helmetOptions));
 
   app.enableCors({
@@ -65,7 +66,9 @@ async function bootstrap(): Promise<void> {
 
   app.use(
     compression({
-      threshold: configService.getOrThrow<string>('security.compression.threshold'),
+      threshold: configService.getOrThrow<string>(
+        'security.compression.threshold',
+      ),
     }),
   );
 

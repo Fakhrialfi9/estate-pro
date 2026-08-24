@@ -18,7 +18,9 @@ export default registerAs('observability', () => {
     metrics: {
       enabled: process.env.OTEL_METRICS_ENABLED !== 'false',
       exporter: process.env.OTEL_METRICS_EXPORTER ?? 'otlp',
-      exportIntervalMs: Number(process.env.OTEL_METRIC_EXPORT_INTERVAL ?? 60000),
+      exportIntervalMs: Number(
+        process.env.OTEL_METRIC_EXPORT_INTERVAL ?? 60000,
+      ),
     },
     otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
   };

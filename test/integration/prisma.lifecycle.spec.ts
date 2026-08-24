@@ -23,7 +23,9 @@ describe('PrismaService lifecycle', () => {
 
     const service = new PrismaService(configService);
     const connect = vi.spyOn(service, '$connect').mockResolvedValue(undefined);
-    const disconnect = vi.spyOn(service, '$disconnect').mockResolvedValue(undefined);
+    const disconnect = vi
+      .spyOn(service, '$disconnect')
+      .mockResolvedValue(undefined);
 
     await service.onModuleInit();
     await service.onModuleDestroy();

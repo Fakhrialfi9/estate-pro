@@ -1,9 +1,4 @@
-import {
-  Catch,
-  HttpException,
-  HttpStatus,
-  Injectable,
-} from '@nestjs/common';
+import { Catch, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { Request, Response } from 'express';
@@ -49,7 +44,9 @@ const isErrorBody = (body: object): body is ErrorBody => {
   );
 };
 
-const isPrismaLikeError = (exception: unknown): exception is PrismaLikeError => {
+const isPrismaLikeError = (
+  exception: unknown,
+): exception is PrismaLikeError => {
   if (!(exception instanceof Error)) {
     return false;
   }
@@ -138,7 +135,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   ): void {
     const spanContext = trace.getActiveSpan()?.spanContext();
     const requestIdHeader = response.getHeader('X-Request-Id');
-    const requestId = typeof requestIdHeader === 'string' ? requestIdHeader : undefined;
+    const requestId =
+      typeof requestIdHeader === 'string' ? requestIdHeader : undefined;
     const error = exception instanceof Error ? exception : undefined;
     const includeStack =
       this.configService.getOrThrow<string>('app.environment') !== 'production';
@@ -164,7 +162,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     );
   }
 
-  private buildResponse(exception: unknown, request: Request): ApiErrorResponse {
+  private buildResponse(
+    exception: unknown,
+    request: Request,
+  ): ApiErrorResponse {
     const timestamp = new Date().toISOString();
 
     if (exception instanceof DomainException) {
@@ -266,9 +267,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     if (!isErrorBody(body)) {
       return {
         code: this.defaultHttpCode(statusCode),
-        message: statusCode >= HttpStatus.INTERNAL_SERVER_ERROR
-          ? 'Internal server error.'
-          : 'Request failed.',
+        message:
+          statusCode >= HttpStatus.INTERNAL_SERVER_ERROR
+            ? 'Internal server error.'
+            : 'Request failed.',
       };
     }
 

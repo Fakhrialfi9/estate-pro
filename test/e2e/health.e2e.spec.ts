@@ -38,7 +38,9 @@ describe('application health (e2e)', () => {
   });
 
   it('serves liveness over HTTP', async () => {
-    const response = await request(app.getHttpServer()).get('/api/v1/health/live');
+    const response = await request(app.getHttpServer()).get(
+      '/api/v1/health/live',
+    );
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
@@ -48,10 +50,14 @@ describe('application health (e2e)', () => {
   });
 
   it('serves readiness over HTTP without exposing infrastructure details', async () => {
-    const response = await request(app.getHttpServer()).get('/api/v1/health/ready');
+    const response = await request(app.getHttpServer()).get(
+      '/api/v1/health/ready',
+    );
 
     expect(response.status).toBe(200);
     expect(response.body.status).toBe('ok');
-    expect(JSON.stringify(response.body)).not.toMatch(/password|secret|mysql:\/\//i);
+    expect(JSON.stringify(response.body)).not.toMatch(
+      /password|secret|mysql:\/\//i,
+    );
   });
 });

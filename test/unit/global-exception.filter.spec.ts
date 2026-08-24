@@ -44,7 +44,9 @@ describe('GlobalExceptionFilter', () => {
 
     filter.catch(new Error('database password=secret'), host);
 
-    expect(response.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+    expect(response.status).toHaveBeenCalledWith(
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
     expect(response.json).toHaveBeenCalledWith(
       expect.objectContaining({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -65,7 +67,10 @@ describe('GlobalExceptionFilter', () => {
     const filter = new GlobalExceptionFilter();
     const { host, response } = createHost();
 
-    filter.catch(new PrismaClientKnownRequestError('duplicate database value'), host);
+    filter.catch(
+      new PrismaClientKnownRequestError('duplicate database value'),
+      host,
+    );
 
     expect(response.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
     expect(response.json).toHaveBeenCalledWith(

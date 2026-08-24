@@ -66,7 +66,9 @@ export const configurationValidationSchema = Joi.object({
   API_PREFIX: Joi.string().trim().min(1).default('api'),
   API_VERSION: Joi.string().trim().min(1).default('v1'),
 
-  DATABASE_URL: Joi.string().uri({ scheme: ['mysql'] }).required(),
+  DATABASE_URL: Joi.string()
+    .uri({ scheme: ['mysql'] })
+    .required(),
   DATABASE_HOST: Joi.string().trim().min(1).required(),
   DATABASE_PORT: Joi.number().integer().min(1).max(65535).default(3306),
   DATABASE_NAME: Joi.string().trim().min(1).required(),
@@ -100,10 +102,12 @@ export const configurationValidationSchema = Joi.object({
   }),
   JWT_EXPIRES_IN: Joi.string().trim().min(1).default('15m'),
   JWT_ISSUER: Joi.string().trim().min(1).max(200).default('estate-pro-api'),
-  JWT_AUDIENCE: Joi.string().trim().min(1).max(200).default('estate-pro-client'),
-  JWT_ALGORITHM: Joi.string()
-    .valid('HS256', 'HS384', 'HS512')
-    .default('HS256'),
+  JWT_AUDIENCE: Joi.string()
+    .trim()
+    .min(1)
+    .max(200)
+    .default('estate-pro-client'),
+  JWT_ALGORITHM: Joi.string().valid('HS256', 'HS384', 'HS512').default('HS256'),
   TWO_FACTOR_ENCRYPTION_KEY: Joi.alternatives().conditional('NODE_ENV', {
     is: Joi.valid('staging', 'production'),
     then: optionalSecret,
@@ -141,10 +145,7 @@ export const configurationValidationSchema = Joi.object({
     .integer()
     .min(1024)
     .default(1048576),
-  SECURITY_TRUST_PROXY: Joi.string()
-    .trim()
-    .min(1)
-    .invalid('true', 'false'),
+  SECURITY_TRUST_PROXY: Joi.string().trim().min(1).invalid('true', 'false'),
   SECURITY_CSP_ENABLED: Joi.boolean()
     .truthy('true')
     .falsy('false')
@@ -166,7 +167,12 @@ export const configurationValidationSchema = Joi.object({
     .default(true),
   OTEL_TRACES_EXPORTER: traceExporter.default('otlp'),
   OTEL_TRACES_SAMPLER: Joi.string()
-    .valid('always_on', 'always_off', 'traceidratio', 'parentbased_traceidratio')
+    .valid(
+      'always_on',
+      'always_off',
+      'traceidratio',
+      'parentbased_traceidratio',
+    )
     .default('parentbased_traceidratio'),
   OTEL_TRACES_SAMPLER_ARG: Joi.number().min(0).max(1).default(0.1),
   OTEL_METRICS_ENABLED: Joi.boolean()
@@ -175,8 +181,5 @@ export const configurationValidationSchema = Joi.object({
     .default(true),
   OTEL_METRICS_EXPORTER: metricsExporter.default('otlp'),
   OTEL_EXPORTER_OTLP_ENDPOINT: Joi.string().uri().optional(),
-  OTEL_METRIC_EXPORT_INTERVAL: Joi.number()
-    .integer()
-    .min(1000)
-    .default(60000),
+  OTEL_METRIC_EXPORT_INTERVAL: Joi.number().integer().min(1000).default(60000),
 });
