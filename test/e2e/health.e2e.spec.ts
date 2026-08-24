@@ -11,6 +11,8 @@ describe('application health (e2e)', () => {
   let app: NestExpressApplication;
 
   beforeAll(async () => {
+    process.env.APP_PORT = '3001';
+
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     })
