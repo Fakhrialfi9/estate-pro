@@ -13,11 +13,18 @@ import { getConfiguredLogLevel } from './logger.config.js';
       pinoHttp: {
         level: getConfiguredLogLevel(),
         messageKey: 'message',
+
+        wrapSerializers: false,
+
         formatters: {
-          level: (label: string) => ({ level: label }),
+          level: (label: string) => ({
+            level: label,
+          }),
         },
+
         genReqId: (req: IncomingMessage, res: ServerResponse) => {
           const incoming = req.headers['x-request-id'];
+
           const requestId =
             typeof incoming === 'string' &&
             incoming.length > 0 &&
@@ -27,8 +34,10 @@ import { getConfiguredLogLevel } from './logger.config.js';
               : randomUUID();
 
           res.setHeader('X-Request-Id', requestId);
+
           return requestId;
         },
+
         customProps: (req: IncomingMessage) => {
           const spanContext = trace.getActiveSpan()?.spanContext();
 
@@ -37,10 +46,14 @@ import { getConfiguredLogLevel } from './logger.config.js';
             environment: process.env.NODE_ENV ?? 'development',
             requestId: req.id,
             ...(spanContext?.traceId
-              ? { traceId: spanContext.traceId, spanId: spanContext.spanId }
+              ? {
+                  traceId: spanContext.traceId,
+                  spanId: spanContext.spanId,
+                }
               : {}),
           };
         },
+
         serializers: {
           req: (req: IncomingMessage) => ({
             id: req.id,
@@ -49,10 +62,12 @@ import { getConfiguredLogLevel } from './logger.config.js';
             userAgent: req.headers['user-agent'],
             remoteAddress: req.socket.remoteAddress,
           }),
+
           res: (res: ServerResponse) => ({
             statusCode: res.statusCode,
           }),
         },
+
         customLogLevel: (
           _req: IncomingMessage,
           res: ServerResponse,
@@ -61,15 +76,19 @@ import { getConfiguredLogLevel } from './logger.config.js';
           if (err || res.statusCode >= 500) {
             return 'error';
           }
+
           if (res.statusCode >= 400) {
             return 'warn';
           }
+
           return 'info';
         },
+
         autoLogging: {
           ignore: (req: IncomingMessage) =>
             req.url?.includes('/health/') ?? false,
         },
+
         redact: {
           paths: [...SENSITIVE_LOG_PATHS],
           remove: true,
@@ -77,6 +96,7 @@ import { getConfiguredLogLevel } from './logger.config.js';
       },
     }),
   ],
+
   exports: [NestPinoLoggerModule],
 })
 export class LoggingModule {}
