@@ -8,11 +8,18 @@ import { getApplicationMetadata } from '../../config/app.config.js';
 const metadata = getApplicationMetadata();
 const tracingEnabled = process.env.OTEL_TRACING_ENABLED !== 'false';
 const metricsEnabled = process.env.OTEL_METRICS_ENABLED !== 'false';
-
 const samplingRatio = Number(process.env.OTEL_TRACES_SAMPLER_ARG ?? 0.1);
 
 if (!Number.isFinite(samplingRatio) || samplingRatio < 0 || samplingRatio > 1) {
-  throw new Error('OTEL_TRACES_SAMPLER_ARG must be a number between 0 and 1.');
+  process.stderr.write(
+    JSON.stringify({
+      level: 'error',
+      timestamp: new Date().toISOString(),
+      service: metadata.name,
+      environment: metadata.environment,
+      message: 'Invalid OpenTelemetry sampling ratio.',
+    }) + '\n',
+  );
 }
 
 export const telemetryEnabled = tracingEnabled || metricsEnabled;
@@ -64,3 +71,7 @@ export const shutdownTelemetry = async (): Promise<void> => {
   await telemetrySdk.shutdown();
   telemetryStarted = false;
 };
+
+// This module is imported before NestJS application modules so instrumentation can patch
+// Node dependencies before application bootstrap begins.
+startTelemetry();

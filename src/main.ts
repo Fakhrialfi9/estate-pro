@@ -10,11 +10,8 @@ import type { HelmetOptions } from 'helmet';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module.js';
-import { startTelemetry } from './infrastructure/observability/telemetry.js';
 
 async function bootstrap(): Promise<void> {
-  startTelemetry();
-
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
     bufferLogs: true,
