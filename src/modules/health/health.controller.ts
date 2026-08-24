@@ -10,18 +10,19 @@ import type { Response } from 'express';
 
 import { HealthService } from './health.service.js';
 
-@SkipThrottle()
 @Controller({ path: 'health', version: '1' })
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get('live')
+  @SkipThrottle({ default: true })
   @HttpCode(HttpStatus.OK)
   liveness(): ReturnType<HealthService['liveness']> {
     return this.healthService.liveness();
   }
 
   @Get('ready')
+  @SkipThrottle({ default: true })
   readiness(
     @Res({ passthrough: true }) response: Response,
   ): Promise<Awaited<ReturnType<HealthService['readiness']>>> {
