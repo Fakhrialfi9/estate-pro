@@ -1,5 +1,4 @@
 import { Test } from '@nestjs/testing';
-import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -23,7 +22,7 @@ describe('application health (e2e)', () => {
       })
       .compile();
 
-    app = await NestFactory.create<NestExpressApplication>(moduleRef, {
+    app = moduleRef.createNestApplication<NestExpressApplication>({
       bodyParser: false,
       bufferLogs: true,
     });
