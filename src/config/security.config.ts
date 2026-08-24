@@ -2,19 +2,20 @@ import { registerAs } from '@nestjs/config';
 
 export default registerAs('security', () => ({
   helmet: {
-    enabled: true,
     contentSecurityPolicy: process.env.NODE_ENV === 'production',
-    frameguard: 'deny',
+    frameguard: { action: 'deny' as const },
     noSniff: true,
-    referrerPolicy: 'no-referrer',
+    referrerPolicy: { policy: 'no-referrer' as const },
     hsts: {
-      enabled: process.env.NODE_ENV === 'production',
       maxAge: 31536000,
       includeSubDomains: true,
       preload: true,
     },
   },
   bodyLimit: process.env.SECURITY_BODY_LIMIT ?? '1mb',
+  compression: {
+    threshold: process.env.SECURITY_COMPRESSION_THRESHOLD ?? '1kb',
+  },
   trustProxy: process.env.SECURITY_TRUST_PROXY,
   grpc: {
     maxMessageBytes: Number(
