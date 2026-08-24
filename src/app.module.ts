@@ -6,11 +6,13 @@ import {
   configuration,
   configurationValidationSchema,
 } from './config/configuration.js';
+import { DatabaseModule } from './infrastructure/database/database.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      cache: true,
       load: configuration,
       validationSchema: configurationValidationSchema,
       validationOptions: {
@@ -18,6 +20,7 @@ import {
         allowUnknown: true,
       },
     }),
+    DatabaseModule,
   ],
   controllers: [AppController],
 })

@@ -23,6 +23,7 @@ tsconfig.build.tsbuildinfo
 # =============================================================================
 
 generated/
+src/generated/prisma/
 
 # =============================================================================
 # Test & Coverage
@@ -91,7 +92,7 @@ docker-compose.override.yml
 docker-compose.local.yml
 
 # =============================================================================
-# Certificates & Secrets
+# Certificates, Secrets & Credentials
 # =============================================================================
 
 *.pem
@@ -99,6 +100,9 @@ docker-compose.local.yml
 *.crt
 *.p12
 *.pfx
+*.secret
+secrets/
+credentials/
 
 # =============================================================================
 # Node Diagnostic Reports
@@ -167,6 +171,3 @@ Thumbs.db
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
-/src/generated/prisma
-
-/src/generated/prisma
