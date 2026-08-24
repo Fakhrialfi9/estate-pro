@@ -45,9 +45,7 @@ describe('application health (e2e)', () => {
   it('serves liveness over HTTP', async () => {
     expect(httpApplication).toBeDefined();
 
-    const response = await request(httpApplication!).get(
-      '/api/v1/health/live',
-    );
+    const response = await request(httpApplication!).get('/api/v1/health/live');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
