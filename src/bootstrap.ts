@@ -18,9 +18,13 @@ export const configureApplication = (app: NestExpressApplication): void => {
   }
 
   app.setGlobalPrefix(configService.getOrThrow<string>('api.prefix'));
+
+  const configuredApiVersion = configService.getOrThrow<string>('api.version');
+  const apiVersion = configuredApiVersion.replace(/^v/i, '');
+
   app.enableVersioning({
     type: VersioningType.URI,
-    defaultVersion: configService.getOrThrow<string>('api.version'),
+    defaultVersion: apiVersion,
   });
 
   app.useGlobalPipes(
