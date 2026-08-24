@@ -1,29 +1,19 @@
-import { createRequire } from 'node:module';
-
-import type * as ThrottlerPackage from '@nestjs/throttler';
+import * as ThrottlerPackage from '@nestjs/throttler';
 
 type ThrottlerExports = typeof ThrottlerPackage;
 
-const require = createRequire(import.meta.url);
-
 const loadThrottlerPackage = (): ThrottlerExports => {
-  const loaded = require('@nestjs/throttler') as unknown;
-
-  if (typeof loaded !== 'object' || loaded === null) {
-    throw new TypeError('Failed to load @nestjs/throttler as a CommonJS module.');
-  }
-
-  const exports = loaded as Record<string, unknown>;
+  const loaded = ThrottlerPackage as unknown as Record<string, unknown>;
 
   if (
-    typeof exports.ThrottlerModule !== 'function' ||
-    typeof exports.ThrottlerGuard !== 'function' ||
-    typeof exports.SkipThrottle !== 'function'
+    typeof loaded.ThrottlerModule !== 'function' ||
+    typeof loaded.ThrottlerGuard !== 'function' ||
+    typeof loaded.SkipThrottle !== 'function'
   ) {
     throw new TypeError('Invalid @nestjs/throttler runtime exports.');
   }
 
-  return loaded as ThrottlerExports;
+  return ThrottlerPackage;
 };
 
 const throttler = loadThrottlerPackage();
