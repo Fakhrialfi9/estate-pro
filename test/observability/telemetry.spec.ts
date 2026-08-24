@@ -1,7 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import { getApplicationMetadata } from '../../src/config/app.config.js';
-import { telemetryEnabled, telemetrySdk } from '../../src/infrastructure/observability/telemetry.js';
+import {
+  shutdownTelemetry,
+  telemetryEnabled,
+  telemetrySdk,
+} from '../../src/infrastructure/observability/telemetry.js';
+
+afterAll(async () => {
+  await shutdownTelemetry();
+});
 
 describe('OpenTelemetry bootstrap', () => {
   it('derives a stable service resource identity from application configuration', () => {
@@ -12,7 +20,7 @@ describe('OpenTelemetry bootstrap', () => {
     expect(metadata.environment).toBeTypeOf('string');
   });
 
-  it('creates an SDK only when telemetry is enabled', () => {
+  it('creates an SDK when telemetry is enabled by default', () => {
     expect(telemetryEnabled).toBe(true);
     expect(telemetrySdk).toBeDefined();
   });
