@@ -22,9 +22,9 @@ if find src/common -type f -name '*.ts' -print0 | xargs -0 -r grep -REn "modules
   fail 'common layer imports a business module'
 fi
 
-# Prisma is an infrastructure concern.
+# Prisma is an infrastructure concern and must not leak into module code.
 if find src/modules -type f -name '*.ts' -print0 | xargs -0 -r grep -REn "@prisma/client|PrismaClient|PrismaService" >/dev/null; then
-  fail 'business modules directly reference Prisma'
+  fail 'module layer directly references Prisma; keep database access behind infrastructure services or repository abstractions'
 fi
 
 # Presentation must not access Prisma directly.
