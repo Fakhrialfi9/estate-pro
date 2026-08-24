@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import type { ExecutionContext } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
@@ -14,7 +15,11 @@ import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { LoggingModule } from './infrastructure/logging/logger.module.js';
 import { ObservabilityModule } from './infrastructure/observability/observability.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { HealthController } from './modules/health/health.controller.js';
 import { HealthModule } from './modules/health/health.module.js';
+
+const shouldSkipThrottling = (context: ExecutionContext): boolean =>
+  context.getClass() === HealthController;
 
 @Module({
   imports: [
@@ -40,6 +45,7 @@ import { HealthModule } from './modules/health/health.module.js';
             limit: configService.getOrThrow<number>('rateLimit.limit'),
           },
         ],
+        skipIf: shouldSkipThrottling,
       }),
     }),
     AuthModule,
