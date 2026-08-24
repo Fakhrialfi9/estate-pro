@@ -47,7 +47,7 @@ describe('application health (e2e)', () => {
 
     const response = await request(httpApplication!).get('/api/v1/health/live');
 
-    expect(response.status).toBe(200);
+    expect(response.status, JSON.stringify({ body: response.body, text: response.text, headers: response.headers })).toBe(200);
     expect(response.body).toEqual({
       status: 'ok',
       checks: {
@@ -61,11 +61,9 @@ describe('application health (e2e)', () => {
   it('serves readiness over HTTP without exposing infrastructure details', async () => {
     expect(httpApplication).toBeDefined();
 
-    const response = await request(httpApplication!).get(
-      '/api/v1/health/ready',
-    );
+    const response = await request(httpApplication!).get('/api/v1/health/ready');
 
-    expect(response.status).toBe(200);
+    expect(response.status, JSON.stringify({ body: response.body, text: response.text, headers: response.headers })).toBe(200);
     expect(response.body).toHaveProperty('status', 'ok');
     expect(JSON.stringify(response.body)).not.toMatch(
       /password|secret|mysql:\/\//i,
