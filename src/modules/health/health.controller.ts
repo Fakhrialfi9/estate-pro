@@ -1,5 +1,4 @@
 import { Controller, Get, HttpCode, HttpStatus, Res } from '@nestjs/common';
-import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 
 import { HealthService } from './health.service.js';
@@ -9,14 +8,12 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get('live')
-  @SkipThrottle({ default: true })
   @HttpCode(HttpStatus.OK)
   liveness(): ReturnType<HealthService['liveness']> {
     return this.healthService.liveness();
   }
 
   @Get('ready')
-  @SkipThrottle({ default: true })
   readiness(
     @Res({ passthrough: true }) response: Response,
   ): Promise<Awaited<ReturnType<HealthService['readiness']>>> {
