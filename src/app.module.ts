@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
-import { RateLimitGuard } from './common/guards/rate-limit.guard.js';
 import {
   configuration,
   configurationValidationSchema,
@@ -53,7 +52,7 @@ import { HealthModule } from './modules/health/health.module.js';
     AppService,
     {
       provide: APP_GUARD,
-      useClass: RateLimitGuard,
+      useClass: ThrottlerGuard,
     },
     {
       provide: APP_FILTER,
