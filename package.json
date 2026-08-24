@@ -24,6 +24,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/src/main.js",
+    "check:runtime": "bash scripts/check-runtime.sh",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "prisma generate && tsc --noEmit",

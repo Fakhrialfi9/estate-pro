@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
-import { DatabaseHealthService } from '../../infrastructure/database/database-health.service.js';
+import {
+  DATABASE_HEALTH_CHECK,
+  type HealthDependency,
+} from './health.dependencies.js';
 
 export interface HealthCheck {
   status: 'up' | 'down';
@@ -16,7 +19,10 @@ export interface HealthResponse {
 
 @Injectable()
 export class HealthService {
-  constructor(private readonly databaseHealth: DatabaseHealthService) {}
+  constructor(
+    @Inject(DATABASE_HEALTH_CHECK)
+    private readonly databaseHealth: HealthDependency,
+  ) {}
 
   liveness(): HealthResponse {
     return {

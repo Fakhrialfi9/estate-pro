@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { HealthDependency } from '../../src/modules/health/health.dependencies.js';
 import { HealthService } from '../../src/modules/health/health.service.js';
 
 describe('HealthService', () => {
   it('reports liveness without touching the database', () => {
-    const databaseHealth = { check: vi.fn() };
-    const service = new HealthService(databaseHealth as never);
+    const databaseHealth: HealthDependency = { check: vi.fn() };
+    const service = new HealthService(databaseHealth);
 
     expect(service.liveness()).toEqual({
       status: 'ok',
@@ -15,8 +16,10 @@ describe('HealthService', () => {
   });
 
   it('reports readiness when the database is healthy', async () => {
-    const databaseHealth = { check: vi.fn().mockResolvedValue(undefined) };
-    const service = new HealthService(databaseHealth as never);
+    const databaseHealth: HealthDependency = {
+      check: vi.fn().mockResolvedValue(undefined),
+    };
+    const service = new HealthService(databaseHealth);
 
     await expect(service.readiness()).resolves.toEqual({
       status: 'ok',
@@ -28,10 +31,10 @@ describe('HealthService', () => {
   });
 
   it('reports a machine-readable failure when the database is unavailable', async () => {
-    const databaseHealth = {
+    const databaseHealth: HealthDependency = {
       check: vi.fn().mockRejectedValue(new Error('database unavailable')),
     };
-    const service = new HealthService(databaseHealth as never);
+    const service = new HealthService(databaseHealth);
 
     await expect(service.readiness()).resolves.toEqual({
       status: 'error',

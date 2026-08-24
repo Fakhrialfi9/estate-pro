@@ -8,19 +8,17 @@ import { getApplicationMetadata } from '../../config/app.config.js';
 const metadata = getApplicationMetadata();
 const tracingEnabled = process.env.OTEL_TRACING_ENABLED !== 'false';
 const metricsEnabled = process.env.OTEL_METRICS_ENABLED !== 'false';
-const samplingRatio = Number(process.env.OTEL_TRACES_SAMPLER_ARG ?? 0.1);
 
-if (!Number.isFinite(samplingRatio) || samplingRatio < 0 || samplingRatio > 1) {
-  process.stderr.write(
-    JSON.stringify({
-      level: 'error',
-      timestamp: new Date().toISOString(),
-      service: metadata.name,
-      environment: metadata.environment,
-      message: 'Invalid OpenTelemetry sampling ratio.',
-    }) + '\n',
-  );
-}
+const configuredSamplingRatio = Number(process.env.OTEL_TRACES_SAMPLER_ARG ?? 0.1);
+const samplingRatio =
+  Number.isFinite(configuredSamplingRatio) && configuredSamplingRatio >= 0 && configuredSamplingRatio <= 1
+    ? configuredSamplingRatio
+    : 0.1;
+
+// The NodeSDK reads OTEL_TRACES_SAMPLER/OTEL_TRACES_SAMPLER_ARG and
+// OTEL_METRICS_EXPORTER from the environment. Normalize an invalid ratio before
+// SDK initialization so telemetry itself can never make process startup fail.
+process.env.OTEL_TRACES_SAMPLER_ARG = String(samplingRatio);
 
 export const telemetryEnabled = tracingEnabled || metricsEnabled;
 
@@ -68,8 +66,26 @@ export const shutdownTelemetry = async (): Promise<void> => {
     return;
   }
 
-  await telemetrySdk.shutdown();
-  telemetryStarted = false;
+  try {
+    await telemetrySdk.shutdown();
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown telemetry shutdown error.';
+    process.stderr.write(
+      JSON.stringify({
+        level: 'error',
+        timestamp: new Date().toISOString(),
+        service: metadata.name,
+        environment: metadata.environment,
+        message: 'OpenTelemetry shutdown failed; application shutdown will continue.',
+        error: {
+          type: error instanceof Error ? error.name : 'UnknownError',
+          message,
+        },
+      }) + '\n',
+    );
+  } finally {
+    telemetryStarted = false;
+  }
 };
 
 // This module is imported before NestJS application modules so instrumentation can patch
