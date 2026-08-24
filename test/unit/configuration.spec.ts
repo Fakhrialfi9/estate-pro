@@ -29,7 +29,9 @@ describe('configurationValidationSchema', () => {
   });
 
   it('rejects missing required environment values', () => {
-    const { JWT_SECRET: _jwtSecret, ...missingSecret } = validEnvironment;
+    const missingSecret = { ...validEnvironment };
+    delete missingSecret.JWT_SECRET;
+
     const result = configurationValidationSchema.validate(missingSecret);
 
     expect(result.error).toBeDefined();
