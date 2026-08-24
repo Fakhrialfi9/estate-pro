@@ -15,6 +15,11 @@ printf 'Checking architecture boundaries in %s\n' "$PROJECT_ROOT"
 [ -f scripts/check-architecture-graph.mjs ] || fail 'architecture graph checker is missing'
 node scripts/check-architecture-graph.mjs || fail 'dependency graph validation failed'
 
+# A cycle must be fixed at the dependency level, not hidden with forwardRef().
+if grep -RIn --include='*.ts' 'forwardRef[[:space:]]*(' src >/dev/null 2>&1; then
+  fail 'forwardRef() detected; review module graph instead of masking a cycle'
+fi
+
 # Domain must not know framework, persistence, or operational infrastructure.
 if grep -REn --include='*.ts' "@prisma/|@nestjs/|mariadb|typeorm|pino|@opentelemetry/" src/modules/*/domain >/dev/null 2>&1; then
   fail 'domain layer imports infrastructure/framework dependencies'
