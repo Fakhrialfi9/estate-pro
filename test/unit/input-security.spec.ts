@@ -2,10 +2,11 @@ import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { IsString, MaxLength } from 'class-validator';
 
 class InputDto {
-  @IsString()
-  @MaxLength(100)
   name!: string;
 }
+
+IsString()(InputDto.prototype, 'name');
+MaxLength(100)(InputDto.prototype, 'name');
 
 describe('HTTP input security baseline', () => {
   const pipe = new ValidationPipe({
