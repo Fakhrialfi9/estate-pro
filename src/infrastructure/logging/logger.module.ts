@@ -67,7 +67,8 @@ import { getConfiguredLogLevel } from './logger.config.js';
           return 'info';
         },
         autoLogging: {
-          ignore: (req: IncomingMessage) => req.url?.includes('/health/') ?? false,
+          ignore: (req: IncomingMessage) =>
+            req.url?.includes('/health/') ?? false,
         },
         redact: {
           paths: [...SENSITIVE_LOG_PATHS],
