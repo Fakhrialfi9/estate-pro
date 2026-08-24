@@ -14,6 +14,7 @@ Testing commands below are taken from the current `package.json`. No undocumente
 | Coverage | `npm run test:coverage` | Default Vitest suite with V8 coverage |
 | E2E coverage | `npm run test:coverage:e2e` | E2E suite with coverage |
 | All named suites | `npm run test:all` | Unit + integration + E2E + security |
+| Compiled runtime | `npm run check:runtime` | Starts `dist/src/main.js` and verifies the versioned liveness endpoint |
 
 ## Supporting checks
 
@@ -28,6 +29,7 @@ npm run test:integration
 npm run test:e2e
 npm run test:security
 npm run build
+npm run check:runtime
 npm run prisma:generate
 npm run prisma:status
 ```
@@ -45,7 +47,7 @@ npm run prisma:status
 
 ## Database tests
 
-Integration/E2E tests that exercise persistence require a valid test database configuration. Use isolated test data and never point automated tests at production.
+Integration/E2E tests that exercise persistence require a valid test database configuration. Use isolated test data and never point automated tests at production. Health E2E tests override the Prisma provider so the HTTP contract can be verified without requiring a live database.
 
 ## Architecture regression tests
 
@@ -56,6 +58,14 @@ The architecture checker intentionally fails on `forwardRef()` only when such a 
 ## Coverage
 
 Coverage is produced by `@vitest/coverage-v8`. Use `npm run test:coverage` for the default suite and `npm run test:coverage:e2e` for E2E coverage.
+
+## Runtime validation
+
+`npm run check:runtime` validates the compiled application rather than only TypeScript compilation. It starts `dist/src/main.js` with deterministic test configuration, probes `/api/v1/health/live`, and always terminates the child process.
+
+## Continuous validation
+
+`.github/workflows/estate-pro-validation.yml` runs on `main` pushes and manually. It covers install, Prisma generation, formatting, lint, typecheck, architecture, unit/integration/E2E/security tests, coverage, production build, and compiled runtime validation.
 
 ## No test cheating
 

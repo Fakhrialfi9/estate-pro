@@ -56,11 +56,11 @@ Use typed/domain/application errors where appropriate and map them to transport 
 
 ## Logging
 
-Use the existing Pino/Nest logging setup. Do not log secrets, passwords, tokens, database credentials, or encryption keys. Preserve centralized redaction.
+Use the existing `src/infrastructure/logging/LoggingModule` backed by Pino/NestJS Pino. Keep request correlation, status-aware levels, and centralized redaction intact. Do not log secrets, passwords, tokens, database credentials, or encryption keys.
 
 ## Tests
 
-Name tests around observable behavior. Keep unit tests isolated and use integration/E2E tests where boundaries matter. Never weaken assertions to make an implementation pass.
+Name tests around observable behavior. Keep unit tests isolated and use integration/E2E tests where boundaries matter. Never weaken assertions to make an implementation pass. The compiled runtime smoke test must exercise `dist/src/main.js`.
 
 ## Formatting and linting
 

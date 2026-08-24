@@ -12,6 +12,8 @@ NestJS / Express bootstrap
   |
   +--> security middleware / request ID / rate limiting
   |
+  +--> Pino request logging / redaction
+  |
   v
 Controller / presentation
   |
@@ -89,19 +91,19 @@ The filter is registered globally by `AppModule`.
 
 ## Logging flow
 
-Requests are handled by Pino HTTP logging. Request IDs are accepted only within the configured validation constraints or generated locally. Sensitive paths are redacted before log output. OpenTelemetry trace/span identifiers are attached when an active span exists.
+Requests are handled by the infrastructure `LoggingModule` using Pino HTTP logging. Request IDs are accepted only within the configured validation constraints or generated locally. Sensitive paths are redacted before log output. HTTP status determines log level, and OpenTelemetry trace/span identifiers are attached when an active span exists. Health requests are intentionally excluded from automatic request logging to reduce operational noise.
 
 ## Tracing and metrics
 
-OpenTelemetry is initialized before application imports. Exporters and sampling are controlled by environment configuration. Local examples keep exporters disabled unless a collector is intentionally configured.
+OpenTelemetry is initialized before application imports. Service identity is derived from application configuration, sampler/exporter settings are controlled through standard `OTEL_*` environment variables, and metrics/tracing can be disabled for deterministic test/runtime probes.
 
 ## Health flow
 
-Health endpoints/checks are isolated in the Health module. Health request auto-logging is ignored by the HTTP logger to avoid noisy operational logs.
+Health endpoints/checks are isolated in the Health module. Liveness only proves that the process is serving; readiness verifies the database dependency through the `HealthDependency` contract and maps dependency failure to HTTP 503 without exposing infrastructure details.
 
 ## Database flow
 
-Only infrastructure owns direct Prisma access. Domain/application code must depend on repository contracts rather than Prisma client/model types.
+Only infrastructure owns direct Prisma access. Domain/application code must depend on repository contracts rather than Prisma client/model types. Health uses the same principle through its narrow database-check contract.
 
 ## Test flow
 
@@ -114,4 +116,4 @@ Tests are organized by concern rather than mixed into production modules:
 - `test/health`
 - `test/observability`
 
-The actual commands are defined in `package.json` and documented in `testing.md`.
+The actual commands are defined in `package.json` and documented in `testing.md`. `npm run check:runtime` validates the compiled application by probing the versioned liveness endpoint.

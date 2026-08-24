@@ -29,7 +29,7 @@ A module may contain fewer layers while it is still a scaffold. Do not add empty
 | Roles | Role-management domain | Scaffold | internal layers only; public module/application contract for consumers |
 | Permissions | Permission-management domain | Scaffold | internal layers only; public module/application contract for consumers |
 | System | System-level functionality | Scaffold | system concerns only; no business-domain internals |
-| Health | Health endpoints/checks | Implemented infrastructure-facing module | health contract -> infrastructure checks |
+| Health | Health endpoints/checks | Implemented infrastructure-facing module | health contract -> infrastructure check adapter |
 
 ## Public boundary rule
 
@@ -52,9 +52,15 @@ Valid cross-module collaboration should be explicit in the owning module's publi
 
 A business module must not expose Prisma types as part of its application/domain API. Concrete Prisma repositories belong in infrastructure and implement an inner-layer abstraction.
 
+## Cross-boundary adapters
+
+Health follows dependency inversion for its database check: `HealthService` consumes the small `HealthDependency` contract, while `HealthModule` binds that contract to the infrastructure-owned `DatabaseHealthService`. This keeps the health application behavior independent of Prisma implementation details.
+
+Logging and observability are infrastructure modules. `AppModule` composes them but business modules do not import their internals.
+
 ## Composition root
 
-`src/app.module.ts` is the composition root. It wires global configuration, throttling, Auth, Database, Health, and Observability modules. Business-module registration should remain explicit when those modules become active.
+`src/app.module.ts` is the composition root. It wires global configuration, structured logging, throttling, Auth, Database, Health, and Observability modules. Business-module registration should remain explicit when those modules become active.
 
 ## Scaffold rule
 

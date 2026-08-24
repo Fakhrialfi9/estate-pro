@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document describes the architecture actually present in `main` for the Step 121–140 scope. Empty/scaffolded modules are documented as scaffolds; they are not described as implemented business capabilities.
+This document describes the architecture actually present in `main` for the Step 71–140 scope. Empty/scaffolded business modules are documented as scaffolds; they are not described as implemented business capabilities.
 
 ## Runtime boundary
 
@@ -14,21 +14,23 @@ HTTP / Express / NestJS bootstrap
   |
   +--> global validation / versioning / security middleware
   |
+  +--> structured request logging / correlation ID
+  |
   +--> Controller / presentation (where implemented)
   |
   +--> Application services / use cases (where implemented)
   |
-  +--> Domain (currently scaffolded for the business modules)
+  +--> Domain (currently scaffolded for most business modules)
   |
   +--> Infrastructure adapters
          |
          +--> Prisma / MariaDB
-         +--> logging / Pino
+         +--> Pino / NestJS logging
          +--> OpenTelemetry
          +--> health infrastructure
 ```
 
-`AppModule` composes configuration, logging, throttling, authentication, database, health, and observability. The business modules are separated under `src/modules/*` with `application`, `domain`, `infrastructure`, and `presentation` boundaries where applicable.
+`AppModule` composes configuration, the dedicated `LoggingModule`, throttling, authentication, database, health, and observability. The business modules are separated under `src/modules/*` with `application`, `domain`, `infrastructure`, and `presentation` boundaries where applicable.
 
 ## Dependency direction
 
@@ -48,7 +50,7 @@ The repository includes `scripts/check-architecture-graph.mjs`, invoked by `npm 
 
 Domain code must remain framework and persistence independent. It must not import Prisma, NestJS infrastructure packages, MariaDB, Pino, or OpenTelemetry.
 
-At the time of this audit, the business-domain directories are scaffolds and contain no domain-to-infrastructure import to leak.
+At the time of this implementation, the business-domain directories are scaffolds and contain no domain-to-infrastructure import to leak.
 
 ## Application layer
 
@@ -56,12 +58,14 @@ Application code owns business-operation orchestration and use cases. It may coo
 
 The current Auth module contains an application-level password hashing service. This is an application service rather than a domain entity/value object; it is intentionally not documented as a complete authentication use-case implementation.
 
+Health uses a narrow application contract (`HealthDependency`) and binds the concrete database health adapter in the module composition root. This keeps the health service independent from Prisma infrastructure details.
+
 ## Infrastructure
 
 `src/infrastructure` contains concrete technical concerns:
 
 - database and Prisma integration
-- logging
+- structured HTTP logging through Pino/NestJS Pino
 - OpenTelemetry observability
 
 Prisma is located under `src/infrastructure/database/prisma`. The application and domain layers must consume abstractions rather than Prisma model types.
@@ -88,13 +92,17 @@ No controller, domain object, application use case, or other non-infrastructure 
 
 Configuration is centralized in `src/config/configuration.ts` and its focused config files. Joi validates environment variables during application bootstrap. Secrets are supplied through the environment and are never documented with real values.
 
+## Logging
+
+`src/infrastructure/logging/logger.module.ts` owns the Pino/NestJS Pino integration. It emits structured request logs with service/environment/request identifiers, HTTP metadata, status-aware levels, and OpenTelemetry trace/span IDs when available. Sensitive request/response paths are centrally redacted from `src/common/constants/security.constants.ts`.
+
 ## Observability and health
 
-Logging is configured through `nestjs-pino`; request IDs and OpenTelemetry trace identifiers are included when available. OpenTelemetry is initialized before application imports. Health and observability are composed as infrastructure/application modules by `AppModule`.
+OpenTelemetry is initialized before application imports. Service name/version/environment and sampler/exporter settings are environment-driven, and shutdown failures are isolated from application shutdown. Health is isolated in `HealthModule` with separate liveness and readiness semantics; readiness checks the infrastructure database adapter and returns only machine-readable status information.
 
 ## Testing boundary
 
-Tests are separated under `test/unit`, `test/integration`, `test/e2e`, `test/security`, `test/health`, and `test/observability`. Test commands are defined by `package.json`; documentation references only those scripts.
+Tests are separated under `test/unit`, `test/integration`, `test/e2e`, `test/security`, `test/health`, and `test/observability`. Test commands are defined by `package.json`; compiled runtime validation is provided by `npm run check:runtime`. GitHub Actions runs the repository quality gate on `main` pushes.
 
 ## Architecture invariants
 
@@ -107,3 +115,4 @@ Tests are separated under `test/unit`, `test/integration`, `test/e2e`, `test/sec
 7. Business operations belong in application/use-case code.
 8. Persistence details do not leak through domain/application contracts.
 9. Do not introduce `forwardRef()` to hide a cycle; remove the architectural cycle instead.
+10. Runtime validation must exercise the compiled `dist` output, not only TypeScript compilation.

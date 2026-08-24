@@ -6,6 +6,7 @@
 - npm 11.18.0 (the repository declares `packageManager = npm@11.18.0`).
 - A reachable MariaDB/MySQL-compatible database for runtime/database tests.
 - Git.
+- `curl` for the compiled runtime probe.
 
 ## 1. Clone
 
@@ -88,6 +89,13 @@ npm run build
 npm run start:prod
 ```
 
+Compiled runtime smoke validation:
+
+```bash
+npm run build
+npm run check:runtime
+```
+
 ## 6. Quality and architecture checks
 
 ```bash
@@ -101,6 +109,7 @@ npm run test:e2e
 npm run test:security
 npm run test:coverage
 npm run build
+npm run check:runtime
 ```
 
 `check:architecture` validates the TypeScript source dependency graph, including circular dependency detection and cross-module internal import rules, in addition to the repository's explicit boundary checks.

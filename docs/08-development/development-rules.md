@@ -53,7 +53,8 @@ This document is the guardrail for developers and AI agents working on Estate Pr
 ## Testing
 
 - Run the smallest relevant test set while iterating.
-- Before completion, run the repository's available lint, formatting, typecheck, unit, integration, E2E, security, coverage, build, and Prisma validation commands.
+- Before completion, run the repository's available lint, formatting, typecheck, unit, integration, E2E, security, coverage, build, compiled-runtime, and Prisma validation commands.
+- `npm run check:runtime` is the source-of-truth smoke test for the compiled `dist` runtime.
 - Never use `.skip`, `.only`, `.todo`, disabled lint/type checks, deleted tests, or weakened assertions to obtain a green result.
 - Fix root causes.
 
@@ -73,6 +74,7 @@ Documentation is a contract. Do not document architecture, endpoints, modules, s
 - Destructive scripts use explicit whitelists of generated/development artifacts.
 - Never delete source, configuration, migrations, documentation, `.git`, or lockfiles as a side effect of cleanup.
 - Avoid absolute machine-specific paths.
+- Runtime smoke scripts must clean up child processes and temporary files on success and failure.
 
 ## AI slop prevention
 
