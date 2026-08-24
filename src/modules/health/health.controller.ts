@@ -21,9 +21,7 @@ export class HealthController {
   ): Promise<Awaited<ReturnType<HealthService['readiness']>>> {
     return this.healthService.readiness().then((result) => {
       response.status(
-        result.status === 'ok'
-          ? HttpStatus.OK
-          : HttpStatus.SERVICE_UNAVAILABLE,
+        result.status === 'ok' ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE,
       );
       return result;
     });
