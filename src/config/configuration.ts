@@ -22,9 +22,34 @@ export const configuration = [
   securityConfig,
 ];
 
+const environmentSecret = Joi.string()
+  .trim()
+  .min(32)
+  .required()
+  .invalid(
+    'changeme',
+    'change-me',
+    'your-secret',
+    'your-secret-here',
+    '<production-secret>',
+    '<production-jwt-secret>',
+  );
+
+const optionalSecret = Joi.string()
+  .trim()
+  .min(32)
+  .invalid(
+    'changeme',
+    'change-me',
+    'your-secret',
+    'your-secret-here',
+    '<production-secret>',
+    '<production-2fa-key-min-32-chars>',
+  );
+
 export const configurationValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
-    .valid('development', 'test', 'production')
+    .valid('development', 'test', 'staging', 'production')
     .default('development'),
   APP_NAME: Joi.string().trim().min(1).max(100).default('estate-pro-api'),
   APP_VERSION: Joi.string().trim().min(1).max(50),
@@ -48,31 +73,66 @@ export const configurationValidationSchema = Joi.object({
   DATABASE_ACQUIRE_TIMEOUT_MS: Joi.number().integer().min(1).default(10000),
   DATABASE_POOL_IDLE_TIMEOUT_SEC: Joi.number().integer().min(1).default(300),
 
-  JWT_SECRET: Joi.string().min(32).required(),
+  JWT_SECRET: Joi.alternatives().conditional('NODE_ENV', {
+    is: Joi.valid('staging', 'production'),
+    then: environmentSecret,
+    otherwise: Joi.string().min(32).required(),
+  }),
   JWT_EXPIRES_IN: Joi.string().trim().min(1).default('15m'),
   JWT_ISSUER: Joi.string().trim().min(1).max(200).default('estate-pro-api'),
   JWT_AUDIENCE: Joi.string().trim().min(1).max(200).default('estate-pro-client'),
   JWT_ALGORITHM: Joi.string()
     .valid('HS256', 'HS384', 'HS512')
     .default('HS256'),
-  TWO_FACTOR_ENCRYPTION_KEY: Joi.string().min(32),
+  TWO_FACTOR_ENCRYPTION_KEY: Joi.alternatives().conditional('NODE_ENV', {
+    is: Joi.valid('staging', 'production'),
+    then: optionalSecret,
+    otherwise: Joi.string().min(32).optional(),
+  }),
+
+  AUTH_ARGON2_MEMORY_COST: Joi.number()
+    .integer()
+    .min(19456)
+    .max(1048576)
+    .default(19456),
+  AUTH_ARGON2_TIME_COST: Joi.number().integer().min(2).max(10).default(2),
+  AUTH_ARGON2_PARALLELISM: Joi.number().integer().min(1).max(4).default(1),
 
   SECURITY_CORS_ORIGINS: Joi.string()
     .trim()
     .when('NODE_ENV', {
-      is: 'production',
+      is: Joi.valid('staging', 'production'),
       then: Joi.required(),
       otherwise: Joi.default('http://localhost:3000'),
     }),
-  SECURITY_RATE_LIMIT_TTL: Joi.number().integer().min(1).default(60000),
-  SECURITY_RATE_LIMIT_MAX: Joi.number().integer().min(1).default(100),
+  SECURITY_RATE_LIMIT_TTL: Joi.number()
+    .integer()
+    .min(1000)
+    .max(3600000)
+    .default(60000),
+  SECURITY_RATE_LIMIT_MAX: Joi.number()
+    .integer()
+    .min(1)
+    .max(10000)
+    .default(100),
   SECURITY_BODY_LIMIT: Joi.string().trim().min(1).default('1mb'),
   SECURITY_COMPRESSION_THRESHOLD: Joi.string().trim().min(1).default('1kb'),
   SECURITY_GRPC_MAX_MESSAGE_BYTES: Joi.number()
     .integer()
     .min(1024)
     .default(1048576),
-  SECURITY_TRUST_PROXY: Joi.string().trim().min(1),
+  SECURITY_TRUST_PROXY: Joi.string()
+    .trim()
+    .min(1)
+    .invalid('true', 'false'),
+  SECURITY_CSP_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(false),
+  SECURITY_HSTS_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(false),
 
   LOG_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
   LOG_LEVEL: Joi.string()

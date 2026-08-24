@@ -2,6 +2,7 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { Logger } from 'nestjs-pino';
 import compression from 'compression';
 import type { HelmetOptions } from 'helmet';
 import helmet from 'helmet';
@@ -12,10 +13,17 @@ import { AppModule } from './app.module.js';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
+    bufferLogs: true,
   });
   const configService = app.get(ConfigService);
 
+  app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
+
+  const trustProxy = configService.get<string | false>('security.trustProxy');
+  if (trustProxy !== false) {
+    app.set('trust proxy', trustProxy);
+  }
 
   app.setGlobalPrefix(configService.getOrThrow<string>('api.prefix'));
   app.enableVersioning({
@@ -28,6 +36,7 @@ async function bootstrap(): Promise<void> {
       transform: true,
       whitelist: true,
       forbidNonWhitelisted: true,
+      forbidUnknownValues: true,
       transformOptions: {
         enableImplicitConversion: false,
       },

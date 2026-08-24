@@ -1,6 +1,15 @@
-import { Catch, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import {
+  Catch,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { Request, Response } from 'express';
+
+import { ApplicationException } from '../exceptions/application.exception.js';
+import { DomainException } from '../exceptions/domain.exception.js';
+import { InfrastructureException } from '../exceptions/infrastructure.exception.js';
 
 interface ErrorBody {
   code?: unknown;
@@ -19,6 +28,24 @@ interface PrismaLikeError {
   code: string;
 }
 
+interface ExpressPayloadError {
+  status: number;
+  type?: string;
+}
+
+const isErrorBody = (body: object): body is ErrorBody => {
+  const candidate: Record<string, unknown> = Object.fromEntries(
+    Object.entries(body),
+  );
+
+  return (
+    (!('code' in candidate) || typeof candidate.code === 'string') &&
+    (!('message' in candidate) ||
+      typeof candidate.message === 'string' ||
+      Array.isArray(candidate.message))
+  );
+};
+
 const isPrismaLikeError = (exception: unknown): exception is PrismaLikeError => {
   if (!(exception instanceof Error)) {
     return false;
@@ -28,6 +55,21 @@ const isPrismaLikeError = (exception: unknown): exception is PrismaLikeError => 
     exception.constructor.name === 'PrismaClientKnownRequestError' &&
     'code' in exception &&
     typeof exception.code === 'string'
+  );
+};
+
+const isExpressPayloadError = (
+  exception: unknown,
+): exception is ExpressPayloadError => {
+  if (typeof exception !== 'object' || exception === null) {
+    return false;
+  }
+
+  const candidate = Object.fromEntries(Object.entries(exception));
+  return (
+    typeof candidate.status === 'number' &&
+    (candidate.type === 'entity.parse.failed' ||
+      candidate.type === 'entity.too.large')
   );
 };
 
@@ -84,6 +126,36 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   private buildResponse(exception: unknown, request: Request): ApiErrorResponse {
     const timestamp = new Date().toISOString();
 
+    if (exception instanceof DomainException) {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        code: exception.code,
+        message: exception.message,
+        path: request.originalUrl,
+        timestamp,
+      };
+    }
+
+    if (exception instanceof ApplicationException) {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        code: exception.code,
+        message: exception.message,
+        path: request.originalUrl,
+        timestamp,
+      };
+    }
+
+    if (exception instanceof InfrastructureException) {
+      return {
+        statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+        code: exception.code,
+        message: 'A required infrastructure service is unavailable.',
+        path: request.originalUrl,
+        timestamp,
+      };
+    }
+
     if (isPrismaLikeError(exception)) {
       const statusCode = getPrismaStatus(exception.code);
 
@@ -91,6 +163,27 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         statusCode,
         code: `DATABASE_${exception.code}`,
         message: getPrismaMessage(exception.code),
+        path: request.originalUrl,
+        timestamp,
+      };
+    }
+
+    if (isExpressPayloadError(exception)) {
+      const statusCode =
+        exception.type === 'entity.too.large'
+          ? HttpStatus.PAYLOAD_TOO_LARGE
+          : HttpStatus.BAD_REQUEST;
+
+      return {
+        statusCode,
+        code:
+          exception.type === 'entity.too.large'
+            ? 'PAYLOAD_TOO_LARGE'
+            : 'INVALID_JSON',
+        message:
+          exception.type === 'entity.too.large'
+            ? 'Request payload is too large.'
+            : 'Request body contains invalid JSON.',
         path: request.originalUrl,
         timestamp,
       };
@@ -129,20 +222,32 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       return { code: this.defaultHttpCode(statusCode), message: body };
     }
 
-    const candidate = body as ErrorBody;
-    const message = candidate.message;
+    if (!isErrorBody(body)) {
+      return {
+        code: this.defaultHttpCode(statusCode),
+        message: statusCode >= HttpStatus.INTERNAL_SERVER_ERROR
+          ? 'Internal server error.'
+          : 'Request failed.',
+      };
+    }
 
     return {
       code:
-        typeof candidate.code === 'string'
-          ? candidate.code
+        typeof body.code === 'string'
+          ? body.code
           : this.defaultHttpCode(statusCode),
-      message: this.normalizeMessage(message, statusCode),
+      message: this.normalizeMessage(body.message, statusCode),
     };
   }
 
-  private normalizeMessage(message: unknown, statusCode: number): string | string[] {
-    if (Array.isArray(message) && message.every((item) => typeof item === 'string')) {
+  private normalizeMessage(
+    message: unknown,
+    statusCode: number,
+  ): string | string[] {
+    if (
+      Array.isArray(message) &&
+      message.every((item) => typeof item === 'string')
+    ) {
       return message;
     }
 
@@ -167,6 +272,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         return 'NOT_FOUND';
       case HttpStatus.CONFLICT:
         return 'CONFLICT';
+      case HttpStatus.PAYLOAD_TOO_LARGE:
+        return 'PAYLOAD_TOO_LARGE';
       default:
         return statusCode >= HttpStatus.INTERNAL_SERVER_ERROR
           ? 'INTERNAL_SERVER_ERROR'

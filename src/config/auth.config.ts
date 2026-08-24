@@ -8,6 +8,11 @@ export default registerAs('auth', () => ({
     audience: process.env.JWT_AUDIENCE ?? 'estate-pro-client',
     algorithm: process.env.JWT_ALGORITHM ?? 'HS256',
   },
+  passwordHashing: {
+    memoryCost: Number(process.env.AUTH_ARGON2_MEMORY_COST ?? 19456),
+    timeCost: Number(process.env.AUTH_ARGON2_TIME_COST ?? 2),
+    parallelism: Number(process.env.AUTH_ARGON2_PARALLELISM ?? 1),
+  },
   twoFactor: {
     encryptionKey: process.env.TWO_FACTOR_ENCRYPTION_KEY,
   },
