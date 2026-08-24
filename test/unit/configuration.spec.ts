@@ -29,8 +29,9 @@ describe('configurationValidationSchema', () => {
   });
 
   it('rejects missing required environment values', () => {
-    const missingSecret = { ...validEnvironment };
-    delete missingSecret.JWT_SECRET;
+    const missingSecret = Object.fromEntries(
+      Object.entries(validEnvironment).filter(([key]) => key !== 'JWT_SECRET'),
+    );
 
     const result = configurationValidationSchema.validate(missingSecret);
 
