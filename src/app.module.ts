@@ -30,6 +30,15 @@ import { HealthModule } from './modules/health/health.module.js';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
+        skipIf: (context) => {
+          const request = context
+            .switchToHttp()
+            .getRequest<{ path?: string }>();
+
+          return request.path?.startsWith('/api/v1/health/') ?? false;
+        },
+        getTracker: (request) =>
+          request.ip ?? request.socket?.remoteAddress ?? 'unknown',
         throttlers: [
           {
             ttl: configService.getOrThrow<number>('rateLimit.ttl'),
