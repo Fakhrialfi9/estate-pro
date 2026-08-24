@@ -1,16 +1,19 @@
 import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DatabaseHealthService } from '../../infrastructure/database/database-health.service.js';
+import { DATABASE_HEALTH_CHECK } from './health.dependencies.js';
 import { HealthService } from './health.service.js';
 
 const createService = async (check: ReturnType<typeof vi.fn>) => {
   const module = await Test.createTestingModule({
-    providers: [HealthService, DatabaseHealthService],
-  })
-    .overrideProvider(DatabaseHealthService)
-    .useValue({ check })
-    .compile();
+    providers: [
+      HealthService,
+      {
+        provide: DATABASE_HEALTH_CHECK,
+        useValue: { check },
+      },
+    ],
+  }).compile();
 
   return module.get(HealthService);
 };
