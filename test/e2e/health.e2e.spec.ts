@@ -1,0 +1,53 @@
+import { Test } from '@nestjs/testing';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { NestFactory } from '@nestjs/core';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { AppModule } from '../../src/app.module.js';
+import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
+
+describe('application health (e2e)', () => {
+  let app: NestExpressApplication;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideProvider(PrismaService)
+      .useValue({
+        $queryRaw: vi.fn().mockResolvedValue([{ 1: 1 }]),
+        $connect: vi.fn().mockResolvedValue(undefined),
+        $disconnect: vi.fn().mockResolvedValue(undefined),
+      })
+      .compile();
+
+    app = await NestFactory.create<NestExpressApplication>(moduleRef, {
+      bufferLogs: true,
+    });
+    app.setGlobalPrefix('api');
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('serves liveness over HTTP', async () => {
+    const response = await request(app.getHttpServer()).get('/api/v1/health/live');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      status: 'ok',
+      checks: { application: { status: 'up' } },
+    });
+  });
+
+  it('serves readiness over HTTP without exposing infrastructure details', async () => {
+    const response = await request(app.getHttpServer()).get('/api/v1/health/ready');
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('ok');
+    expect(JSON.stringify(response.body)).not.toMatch(/password|secret|mysql:\/\//i);
+  });
+});
