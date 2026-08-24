@@ -1,19 +1,20 @@
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import type { HelmetOptions } from 'helmet';
 import helmet from 'helmet';
+import { Logger } from 'nestjs-pino';
 
-export const configureApplication = (app: INestApplication): void => {
+export const configureApplication = (app: NestExpressApplication): void => {
   const configService = app.get(ConfigService);
 
-  app.useLogger(app.get('Logger'));
+  app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
 
   const trustProxy = configService.get<string | false>('security.trustProxy');
   if (trustProxy !== false) {
-    app.getHttpAdapter().getInstance().set('trust proxy', trustProxy);
+    app.set('trust proxy', trustProxy);
   }
 
   app.setGlobalPrefix(configService.getOrThrow<string>('api.prefix'));
@@ -64,7 +65,7 @@ export const configureApplication = (app: INestApplication): void => {
 };
 
 export const getApplicationAddress = (
-  app: INestApplication,
+  app: NestExpressApplication,
 ): { host: string; port: number } => {
   const configService = app.get(ConfigService);
 
