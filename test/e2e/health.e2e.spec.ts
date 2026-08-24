@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import type { Application } from 'express';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -9,6 +10,7 @@ import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.s
 
 describe('application health (e2e)', () => {
   let app: NestExpressApplication | undefined;
+  let httpApplication: Application | undefined;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -26,8 +28,13 @@ describe('application health (e2e)', () => {
       bodyParser: false,
       bufferLogs: true,
     });
+
     configureApplication(app);
     await app.init();
+
+    httpApplication = app
+      .getHttpAdapter()
+      .getInstance<Application>();
   });
 
   afterAll(async () => {
@@ -37,19 +44,27 @@ describe('application health (e2e)', () => {
   });
 
   it('serves liveness over HTTP', async () => {
-    const response = await request(app!.getHttpServer()).get(
+    expect(httpApplication).toBeDefined();
+
+    const response = await request(httpApplication!).get(
       '/api/v1/health/live',
     );
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       status: 'ok',
-      checks: { application: { status: 'up' } },
+      checks: {
+        application: {
+          status: 'up',
+        },
+      },
     });
   });
 
   it('serves readiness over HTTP without exposing infrastructure details', async () => {
-    const response = await request(app!.getHttpServer()).get(
+    expect(httpApplication).toBeDefined();
+
+    const response = await request(httpApplication!).get(
       '/api/v1/health/ready',
     );
 
