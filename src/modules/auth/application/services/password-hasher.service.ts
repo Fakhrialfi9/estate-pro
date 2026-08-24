@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import argon2 from 'argon2';
+import * as argon2 from 'argon2';
 
 interface PasswordHashingConfig {
   memoryCost: number;
@@ -13,11 +13,13 @@ export class PasswordHasherService {
   constructor(private readonly configService: ConfigService) {}
 
   async hash(password: string): Promise<string> {
+    const config = this.getConfig();
+
     return argon2.hash(password, {
       type: argon2.argon2id,
-      memoryCost: this.getConfig().memoryCost,
-      timeCost: this.getConfig().timeCost,
-      parallelism: this.getConfig().parallelism,
+      memoryCost: config.memoryCost,
+      timeCost: config.timeCost,
+      parallelism: config.parallelism,
     });
   }
 
