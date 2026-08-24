@@ -1,13 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import type { ExecutionContext } from '@nestjs/common';
-import type { Request } from 'express';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
+import { RateLimitGuard } from './common/guards/rate-limit.guard.js';
 import {
   configuration,
   configurationValidationSchema,
@@ -17,23 +16,6 @@ import { LoggingModule } from './infrastructure/logging/logger.module.js';
 import { ObservabilityModule } from './infrastructure/observability/observability.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
-
-const isHealthRoute = (
-  context: ExecutionContext,
-  apiPrefix: string,
-  apiVersion: string,
-): boolean => {
-  if (context.getType() !== 'http') {
-    return false;
-  }
-
-  const request = context.switchToHttp().getRequest<Request>();
-  const normalizedPrefix = apiPrefix.replace(/^\/+|\/+$/g, '');
-  const normalizedVersion = apiVersion.replace(/^v/i, '');
-  const healthPrefix = `/${normalizedPrefix}/v${normalizedVersion}/health/`;
-
-  return request.path.startsWith(healthPrefix);
-};
 
 @Module({
   imports: [
@@ -51,22 +33,15 @@ const isHealthRoute = (
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const apiPrefix = configService.getOrThrow<string>('api.prefix');
-        const apiVersion = configService.getOrThrow<string>('api.version');
-
-        return {
-          throttlers: [
-            {
-              name: 'default',
-              ttl: configService.getOrThrow<number>('rateLimit.ttl'),
-              limit: configService.getOrThrow<number>('rateLimit.limit'),
-              skipIf: (context: ExecutionContext): boolean =>
-                isHealthRoute(context, apiPrefix, apiVersion),
-            },
-          ],
-        };
-      },
+      useFactory: (configService: ConfigService) => ({
+        throttlers: [
+          {
+            name: 'default',
+            ttl: configService.getOrThrow<number>('rateLimit.ttl'),
+            limit: configService.getOrThrow<number>('rateLimit.limit'),
+          },
+        ],
+      }),
     }),
     AuthModule,
     DatabaseModule,
@@ -78,7 +53,7 @@ const isHealthRoute = (
     AppService,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: RateLimitGuard,
     },
     {
       provide: APP_FILTER,
