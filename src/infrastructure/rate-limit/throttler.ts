@@ -16,8 +16,7 @@ const loadThrottlerPackage = (): ThrottlerExports => {
   const exports = loaded as Record<string, unknown>;
 
   if (
-    typeof exports.ThrottlerModule !== 'object' ||
-    exports.ThrottlerModule === null ||
+    typeof exports.ThrottlerModule !== 'function' ||
     typeof exports.ThrottlerGuard !== 'function' ||
     typeof exports.SkipThrottle !== 'function'
   ) {
