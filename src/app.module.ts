@@ -1,23 +1,17 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
-import {
-  configuration,
-  configurationValidationSchema,
-} from './config/configuration.js';
-import { AuthModule } from './modules/auth/auth.module.js';
-import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
-import { HealthModule } from './modules/health/health.module.js';
-import { ObservabilityModule } from './infrastructure/observability/observability.module.js';
+import { configuration, configurationValidationSchema } from './config/configuration.js';
+import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { LoggingModule } from './infrastructure/logging/logger.module.js';
-import {
-  ThrottlerGuard,
-  ThrottlerModule,
-} from './infrastructure/rate-limit/throttler.js';
+import { ObservabilityModule } from './infrastructure/observability/observability.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
+import { HealthModule } from './modules/health/health.module.js';
 
 @Module({
   imports: [
