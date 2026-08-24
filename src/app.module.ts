@@ -4,6 +4,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
 import {
   configuration,
   configurationValidationSchema,
@@ -47,6 +48,7 @@ import { LoggingModule } from './infrastructure/logging/logger.module.js';
   ],
   controllers: [AppController],
   providers: [
+    AppService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
