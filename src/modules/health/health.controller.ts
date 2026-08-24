@@ -3,8 +3,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Res,
-  Version,
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
@@ -12,8 +10,7 @@ import type { Response } from 'express';
 import { HealthService } from './health.service.js';
 
 @SkipThrottle({ default: true })
-@Version('1')
-@Controller('health')
+@Controller({ path: 'health', version: '1' })
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
