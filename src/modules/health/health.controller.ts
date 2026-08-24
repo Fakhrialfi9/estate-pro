@@ -10,7 +10,7 @@ import type { Response } from 'express';
 
 import { HealthService } from './health.service.js';
 
-@SkipThrottle({ default: true })
+@SkipThrottle()
 @Controller({ path: 'health', version: '1' })
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
