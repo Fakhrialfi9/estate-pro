@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
-import { NestExpressApplication } from '@nestjs/platform-express';
+import { VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -26,6 +27,10 @@ describe('application health (e2e)', () => {
       bufferLogs: true,
     });
     app.setGlobalPrefix('api');
+    app.enableVersioning({
+      type: VersioningType.URI,
+      defaultVersion: 'v1',
+    });
     await app.init();
   });
 
