@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -15,6 +14,10 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter.
 import { HealthModule } from './modules/health/health.module.js';
 import { ObservabilityModule } from './infrastructure/observability/observability.module.js';
 import { LoggingModule } from './infrastructure/logging/logger.module.js';
+import {
+  ThrottlerGuard,
+  ThrottlerModule,
+} from './infrastructure/rate-limit/throttler.js';
 
 @Module({
   imports: [
