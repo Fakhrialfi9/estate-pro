@@ -1,39 +1,30 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-echo "🧹 Cleaning NestJS project..."
+PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
 
-echo "➡ Removing build files..."
-rm -rf dist
+printf 'Hard cleaning generated/development artifacts from %s\n' "$PROJECT_ROOT"
 
-echo "➡ Removing test coverage..."
-rm -rf coverage
+# Explicit whitelist. Never delete source, configuration, documentation, migrations, .git, or lockfiles.
+TARGETS=(
+  dist
+  coverage
+  .nestjs
+  logs
+  node_modules/.cache
+  node_modules
+)
 
-echo "➡ Removing logs..."
-rm -rf logs
-rm -rf *.log
+for target in "${TARGETS[@]}"; do
+  if [ -e "$target" ] || [ -L "$target" ]; then
+    printf 'Removing %s\n' "$target"
+    rm -rf -- "$target"
+  fi
+done
 
-echo "➡ Removing Nest cache..."
-rm -rf .nestjs
+find . -type f -name '*.tsbuildinfo' -delete
 
-echo "➡ Removing TypeScript cache..."
-find . -name "*.tsbuildinfo" -delete
-
-echo "➡ Removing node cache..."
-rm -rf node_modules/.cache
-
-echo "➡ Cleaning npm cache..."
-npm cache clean --force
-
-echo "➡ Removing node_modules..."
-rm -rf node_modules
-
-echo "➡ Removing lock file..."
-rm -f package-lock.json
-
-echo "➡ Reinstalling dependencies..."
-npm install
-
-echo ""
-echo "✅ NestJS cleanup completed!"
+printf '\nHard clean completed.\n'
+printf 'package-lock.json was intentionally preserved. Run npm ci to reinstall dependencies.\n'

@@ -1,53 +1,59 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-echo "🚀 Starting NestJS fresh install..."
+PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
 
-echo ""
-echo "➡ Removing build artifacts..."
-rm -rf dist
-rm -rf coverage
-rm -rf .nestjs
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    printf 'Missing required command: %s\n' "$1" >&2
+    exit 1
+  }
+}
 
-echo ""
-echo "➡ Removing TypeScript cache..."
-find . -name "*.tsbuildinfo" -delete
+require_command node
+require_command npm
+require_command bash
 
-echo ""
-echo "➡ Removing node_modules..."
-rm -rf node_modules
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+if [ "$NODE_MAJOR" != "22" ]; then
+  printf 'Node.js 22.x is required; detected %s.\n' "$(node --version)" >&2
+  exit 1
+fi
 
-echo ""
-echo "➡ Cleaning npm cache..."
-npm cache verify
+NPM_VERSION="$(npm --version)"
+case "$NPM_VERSION" in
+  11.*) ;;
+  *) printf 'npm 11.x is required by package.json; detected %s.\n' "$NPM_VERSION" >&2; exit 1 ;;
+esac
 
-echo ""
-echo "➡ Installing dependencies from lock file..."
+[ -f package.json ] || { printf 'package.json not found.\n' >&2; exit 1; }
+[ -f package-lock.json ] || { printf 'package-lock.json is required for a reproducible fresh install.\n' >&2; exit 1; }
+
+printf 'Starting Estate Pro fresh install in %s\n' "$PROJECT_ROOT"
+
+# Only generated/development artifacts are removed. Source, config, docs and lockfile remain untouched.
+rm -rf -- dist coverage .nestjs
+find . -type f -name '*.tsbuildinfo' -delete
+rm -rf -- node_modules
+
+printf 'Installing dependencies from package-lock.json...\n'
 npm ci
 
-echo ""
-echo "➡ Generating Prisma client (if Prisma exists)..."
-if [ -d "prisma" ]; then
-  npx prisma generate
+if [ -d prisma ]; then
+  printf 'Generating Prisma client...\n'
+  npm run prisma:generate
 fi
 
-echo ""
-echo "➡ Checking environment file..."
-
-if [ ! -f ".env" ]; then
-  if [ -f ".env.example" ]; then
-    cp .env.example .env
-    echo "✅ Created .env from .env.example"
+if [ ! -f .env ]; then
+  if [ -f .env.example ]; then
+    cp -- .env.example .env
+    printf 'Created .env from .env.example. Replace placeholders before starting the application.\n'
   else
-    echo "⚠️ No .env.example found, skipping..."
+    printf 'Warning: .env.example is not present; create .env manually.\n' >&2
   fi
-else
-  echo "✅ .env already exists, skipping..."
 fi
 
-echo ""
-echo "🎉 Fresh install completed!"
-echo ""
-echo "Next steps:"
-echo "  npm run start:dev"
+printf '\nFresh install completed.\n'
+printf 'Next: configure .env, then run npm run start:dev.\n'
