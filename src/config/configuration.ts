@@ -67,6 +67,7 @@ export const configurationValidationSchema = Joi.object({
   SECURITY_RATE_LIMIT_TTL: Joi.number().integer().min(1).default(60000),
   SECURITY_RATE_LIMIT_MAX: Joi.number().integer().min(1).default(100),
   SECURITY_BODY_LIMIT: Joi.string().trim().min(1).default('1mb'),
+  SECURITY_COMPRESSION_THRESHOLD: Joi.string().trim().min(1).default('1kb'),
   SECURITY_GRPC_MAX_MESSAGE_BYTES: Joi.number()
     .integer()
     .min(1024)
