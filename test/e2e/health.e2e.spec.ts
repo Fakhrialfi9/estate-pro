@@ -1,6 +1,5 @@
-import { Test } from '@nestjs/testing';
 import { VersioningType } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -23,9 +22,7 @@ describe('application health (e2e)', () => {
       })
       .compile();
 
-    app = await NestFactory.create<NestExpressApplication>(moduleRef, {
-      bufferLogs: true,
-    });
+    app = moduleRef.createNestApplication<NestExpressApplication>();
     app.setGlobalPrefix('api');
     app.enableVersioning({
       type: VersioningType.URI,
