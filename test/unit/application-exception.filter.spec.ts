@@ -1,15 +1,28 @@
 import { HttpStatus } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PinoLogger } from 'nestjs-pino';
 
 import { ApplicationException } from '../../src/common/exceptions/application.exception.js';
 import { GlobalExceptionFilter } from '../../src/common/filters/global-exception.filter.js';
+
+const createLogger = (): PinoLogger => {
+  const logger = Object.create(PinoLogger.prototype) as PinoLogger;
+  logger.setContext = vi.fn();
+  logger.error = vi.fn();
+  return logger;
+};
+
+const createConfig = (): ConfigService =>
+  new ConfigService({ app: { environment: 'test' } });
 
 describe('GlobalExceptionFilter application boundaries', () => {
   const createHost = () => {
     const response = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
+      getHeader: vi.fn(),
     };
-    const request = { originalUrl: '/api/v1/test' };
+    const request = { path: '/api/v1/test', method: 'POST' };
 
     return {
       host: {
@@ -22,8 +35,11 @@ describe('GlobalExceptionFilter application boundaries', () => {
     };
   };
 
+  const createFilter = (): GlobalExceptionFilter =>
+    new GlobalExceptionFilter(createLogger(), createConfig());
+
   it('maps application exceptions without exposing internal details', () => {
-    const filter = new GlobalExceptionFilter();
+    const filter = createFilter();
     const { host, response } = createHost();
 
     filter.catch(
@@ -45,7 +61,7 @@ describe('GlobalExceptionFilter application boundaries', () => {
   });
 
   it('maps malformed JSON and oversized payload parser errors safely', () => {
-    const filter = new GlobalExceptionFilter();
+    const filter = createFilter();
     const { host, response } = createHost();
 
     filter.catch(
