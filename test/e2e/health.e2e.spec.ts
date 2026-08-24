@@ -1,10 +1,11 @@
-import { VersioningType } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AppModule } from '../../src/app.module.js';
+import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 
 describe('application health (e2e)', () => {
@@ -22,12 +23,11 @@ describe('application health (e2e)', () => {
       })
       .compile();
 
-    app = moduleRef.createNestApplication<NestExpressApplication>();
-    app.setGlobalPrefix('api');
-    app.enableVersioning({
-      type: VersioningType.URI,
-      defaultVersion: 'v1',
+    app = await NestFactory.create<NestExpressApplication>(moduleRef, {
+      bodyParser: false,
+      bufferLogs: true,
     });
+    configureApplication(app);
     await app.init();
   });
 
