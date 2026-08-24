@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { PrismaService } from '../../infrastructure/database/prisma/prisma.service.js';
+import { DatabaseHealthService } from '../../infrastructure/database/database-health.service.js';
 
 export interface HealthCheck {
   status: 'up' | 'down';
@@ -16,7 +16,7 @@ export interface HealthResponse {
 
 @Injectable()
 export class HealthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly databaseHealth: DatabaseHealthService) {}
 
   liveness(): HealthResponse {
     return {
@@ -29,7 +29,7 @@ export class HealthService {
 
   async readiness(): Promise<HealthResponse> {
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
+      await this.databaseHealth.check();
 
       return {
         status: 'ok',
