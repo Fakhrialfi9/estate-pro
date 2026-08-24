@@ -33,11 +33,12 @@
     "test": "prisma generate && vitest run",
     "test:watch": "prisma generate && vitest",
     "test:unit": "prisma generate && vitest run --config vitest.config.ts",
+    "test:integration": "prisma generate && vitest run --config vitest.integration.config.ts",
     "test:e2e": "prisma generate && vitest run --config vitest.e2e.config.ts",
     "test:security": "prisma generate && vitest run --config vitest.security.config.ts",
     "test:coverage": "prisma generate && vitest run --coverage",
     "test:coverage:e2e": "prisma generate && vitest run --config vitest.e2e.config.ts --coverage",
-    "test:all": "npm run test:unit && npm run test:e2e && npm run test:security",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:security",
     "check:fix": "npm run format && npm run lint:fix",
     "check:health": "npm run lint && npm run typecheck && npm run check:architecture && npm test && npm run format:check && npm run build",
     "check:fresh": "npm run clean && npm ci && npm run check:health"
@@ -94,8 +95,8 @@
     "prisma": "7.9.1",
     "supertest": "7.1.4",
     "ts-loader": "9.5.2",
-    "typescript": "5.7.3",
     "typescript-eslint": "8.20.0",
+    "typescript": "5.7.3",
     "vitest": "4.1.11"
   }
 }
