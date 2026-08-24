@@ -47,7 +47,7 @@ describe('application health (e2e)', () => {
 
     const response = await request(httpApplication!).get('/api/v1/health/live');
 
-    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.status).toBe(200);
     expect(response.body).toEqual({
       status: 'ok',
       checks: {
@@ -65,7 +65,7 @@ describe('application health (e2e)', () => {
       '/api/v1/health/ready',
     );
 
-    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('status', 'ok');
     expect(JSON.stringify(response.body)).not.toMatch(
       /password|secret|mysql:\/\//i,
