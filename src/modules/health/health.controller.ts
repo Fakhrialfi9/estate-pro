@@ -1,10 +1,18 @@
-import { Controller, Get, HttpCode, HttpStatus, Res } from '@nestjs/common';
-import { SkipThrottle } from '@nestjs/throttler';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Res,
+  SkipThrottle,
+  Version,
+} from '@nestjs/common';
 import type { Response } from 'express';
 
 import { HealthService } from './health.service.js';
 
-@SkipThrottle()
+@SkipThrottle({ default: true })
+@Version('1')
 @Controller('health')
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
