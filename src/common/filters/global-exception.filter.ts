@@ -2,10 +2,13 @@ import {
   Catch,
   HttpException,
   HttpStatus,
-  Logger,
+  Injectable,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { PinoLogger } from 'nestjs-pino';
+import { trace } from '@opentelemetry/api';
 
 import { ApplicationException } from '../exceptions/application.exception.js';
 import { DomainException } from '../exceptions/domain.exception.js';
@@ -106,8 +109,14 @@ const getPrismaMessage = (code: string): string => {
 };
 
 @Catch()
+@Injectable()
 export class GlobalExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(GlobalExceptionFilter.name);
+  constructor(
+    private readonly logger: PinoLogger,
+    private readonly configService: ConfigService,
+  ) {
+    this.logger.setContext(GlobalExceptionFilter.name);
+  }
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
@@ -115,12 +124,44 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const result = this.buildResponse(exception, request);
 
     if (result.statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
-      this.logger.error(
-        `Unhandled ${exception instanceof Error ? exception.constructor.name : 'exception'}`,
-      );
+      this.logException(exception, result, request, response);
     }
 
     response.status(result.statusCode).json(result);
+  }
+
+  private logException(
+    exception: unknown,
+    result: ApiErrorResponse,
+    request: Request,
+    response: Response,
+  ): void {
+    const spanContext = trace.getActiveSpan()?.spanContext();
+    const requestIdHeader = response.getHeader('X-Request-Id');
+    const requestId = typeof requestIdHeader === 'string' ? requestIdHeader : undefined;
+    const error = exception instanceof Error ? exception : undefined;
+    const includeStack =
+      this.configService.getOrThrow<string>('app.environment') !== 'production';
+
+    this.logger.error(
+      {
+        error: {
+          type: error?.constructor.name ?? 'UnknownError',
+          ...(error?.message ? { message: error.message } : {}),
+          ...(includeStack && error?.stack ? { stack: error.stack } : {}),
+        },
+        http: {
+          method: request.method,
+          path: request.path,
+          statusCode: result.statusCode,
+        },
+        ...(requestId ? { requestId } : {}),
+        ...(spanContext?.traceId
+          ? { traceId: spanContext.traceId, spanId: spanContext.spanId }
+          : {}),
+      },
+      'Unhandled application exception',
+    );
   }
 
   private buildResponse(exception: unknown, request: Request): ApiErrorResponse {
@@ -131,7 +172,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         statusCode: HttpStatus.BAD_REQUEST,
         code: exception.code,
         message: exception.message,
-        path: request.originalUrl,
+        path: request.path,
         timestamp,
       };
     }
@@ -141,7 +182,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         statusCode: HttpStatus.BAD_REQUEST,
         code: exception.code,
         message: exception.message,
-        path: request.originalUrl,
+        path: request.path,
         timestamp,
       };
     }
@@ -151,7 +192,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         statusCode: HttpStatus.SERVICE_UNAVAILABLE,
         code: exception.code,
         message: 'A required infrastructure service is unavailable.',
-        path: request.originalUrl,
+        path: request.path,
         timestamp,
       };
     }
@@ -163,7 +204,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         statusCode,
         code: `DATABASE_${exception.code}`,
         message: getPrismaMessage(exception.code),
-        path: request.originalUrl,
+        path: request.path,
         timestamp,
       };
     }
@@ -184,7 +225,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           exception.type === 'entity.too.large'
             ? 'Request payload is too large.'
             : 'Request body contains invalid JSON.',
-        path: request.originalUrl,
+        path: request.path,
         timestamp,
       };
     }
@@ -200,7 +241,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         statusCode,
         code: normalized.code,
         message: normalized.message,
-        path: request.originalUrl,
+        path: request.path,
         timestamp,
       };
     }
@@ -209,7 +250,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       code: 'INTERNAL_SERVER_ERROR',
       message: 'Internal server error.',
-      path: request.originalUrl,
+      path: request.path,
       timestamp,
     };
   }

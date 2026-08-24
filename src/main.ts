@@ -1,3 +1,5 @@
+import './infrastructure/observability/telemetry.js';
+
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -7,10 +9,12 @@ import compression from 'compression';
 import type { HelmetOptions } from 'helmet';
 import helmet from 'helmet';
 
-import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
 import { AppModule } from './app.module.js';
+import { startTelemetry } from './infrastructure/observability/telemetry.js';
 
 async function bootstrap(): Promise<void> {
+  startTelemetry();
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
     bufferLogs: true,
@@ -42,7 +46,6 @@ async function bootstrap(): Promise<void> {
       },
     }),
   );
-  app.useGlobalFilters(new GlobalExceptionFilter());
 
   const helmetOptions = configService.getOrThrow<HelmetOptions>('security.helmet');
   app.use(helmet(helmetOptions));

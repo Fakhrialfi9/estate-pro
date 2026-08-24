@@ -47,6 +47,11 @@ const optionalSecret = Joi.string()
     '<production-2fa-key-min-32-chars>',
   );
 
+const traceExporter = Joi.string().trim().valid('otlp', 'zipkin', 'none');
+const metricsExporter = Joi.string()
+  .trim()
+  .valid('otlp', 'prometheus', 'console', 'none');
+
 export const configurationValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'test', 'staging', 'production')
@@ -139,16 +144,22 @@ export const configurationValidationSchema = Joi.object({
     .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent')
     .default('info'),
 
-  OTEL_SERVICE_NAME: Joi.string().trim().min(1).default('estate-pro-api'),
+  OTEL_SERVICE_NAME: Joi.string().trim().min(1).max(100),
   OTEL_TRACING_ENABLED: Joi.boolean()
     .truthy('true')
     .falsy('false')
     .default(true),
+  OTEL_TRACES_EXPORTER: traceExporter.default('otlp'),
+  OTEL_TRACES_SAMPLER: Joi.string()
+    .valid('always_on', 'always_off', 'traceidratio', 'parentbased_traceidratio')
+    .default('parentbased_traceidratio'),
   OTEL_TRACES_SAMPLER_ARG: Joi.number().min(0).max(1).default(0.1),
   OTEL_METRICS_ENABLED: Joi.boolean()
     .truthy('true')
     .falsy('false')
     .default(true),
+  OTEL_METRICS_EXPORTER: metricsExporter.default('otlp'),
+  OTEL_EXPORTER_OTLP_ENDPOINT: Joi.string().uri().optional(),
   OTEL_METRIC_EXPORT_INTERVAL: Joi.number()
     .integer()
     .min(1000)

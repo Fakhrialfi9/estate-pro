@@ -8,6 +8,7 @@ export default defineConfig({
     exclude: [
       'node_modules/**',
       'dist/**',
+      'coverage/**',
       'test/e2e/**',
       'test/integration/**',
       'test/grpc/**',
@@ -16,7 +17,14 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
-      exclude: ['node_modules/', 'dist/', 'coverage/', 'test/', '**/*.d.ts'],
+      exclude: [
+        'node_modules/**',
+        'dist/**',
+        'coverage/**',
+        'test/**',
+        '**/*.d.ts',
+        '**/generated/**',
+      ],
     },
   },
 });
