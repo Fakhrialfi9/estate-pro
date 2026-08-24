@@ -41,13 +41,6 @@ describe('application health (e2e)', () => {
       '/api/v1/health/live',
     );
 
-    console.error('E2E LIVENESS DEBUG', {
-      status: response.status,
-      body: response.body,
-      text: response.text,
-      headers: response.headers,
-    });
-
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       status: 'ok',
@@ -59,13 +52,6 @@ describe('application health (e2e)', () => {
     const response = await request(app!.getHttpServer()).get(
       '/api/v1/health/ready',
     );
-
-    console.error('E2E READINESS DEBUG', {
-      status: response.status,
-      body: response.body,
-      text: response.text,
-      headers: response.headers,
-    });
 
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('status', 'ok');
