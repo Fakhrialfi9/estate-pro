@@ -32,31 +32,15 @@ import { HealthModule } from './modules/health/health.module.js';
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const apiPrefix = configService.getOrThrow<string>('api.prefix');
-        const apiVersion = configService
-          .getOrThrow<string>('api.version')
-          .replace(/^v/i, '');
-        const healthPathPrefix = `/${apiPrefix}/${apiVersion}/health/`;
-
-        return {
-          skipIf: (context) => {
-            const request = context
-              .switchToHttp()
-              .getRequest<{ originalUrl?: string }>();
-            const path = request.originalUrl?.split('?')[0];
-
-            return path?.startsWith(healthPathPrefix) ?? false;
+      useFactory: (configService: ConfigService) => ({
+        throttlers: [
+          {
+            name: 'default',
+            ttl: configService.getOrThrow<number>('rateLimit.ttl'),
+            limit: configService.getOrThrow<number>('rateLimit.limit'),
           },
-          throttlers: [
-            {
-              name: 'default',
-              ttl: configService.getOrThrow<number>('rateLimit.ttl'),
-              limit: configService.getOrThrow<number>('rateLimit.limit'),
-            },
-          ],
-        };
-      },
+        ],
+      }),
     }),
     AuthModule,
     DatabaseModule,
