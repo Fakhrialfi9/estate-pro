@@ -1,7 +1,13 @@
-import { Controller, Get, HttpCode, HttpStatus, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Res,
+} from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 
-import { SkipThrottle } from '../../infrastructure/rate-limit/throttler.js';
 import { HealthService } from './health.service.js';
 
 @Controller({ path: 'health', version: '1' })
