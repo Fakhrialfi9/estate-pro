@@ -1,13 +1,29 @@
 import { BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PinoLogger } from 'nestjs-pino';
 
 import { GlobalExceptionFilter } from '../../src/common/filters/global-exception.filter.js';
+
+const createLogger = (): PinoLogger => {
+  const logger = Object.create(PinoLogger.prototype) as PinoLogger;
+  logger.setContext = vi.fn();
+  logger.error = vi.fn();
+  return logger;
+};
+
+const createConfig = (): ConfigService =>
+  new ConfigService({ app: { environment: 'test' } });
+
+const createFilter = (): GlobalExceptionFilter =>
+  new GlobalExceptionFilter(createLogger(), createConfig());
 
 const createHost = (requestUrl = '/api/v1/test') => {
   const response = {
     status: vi.fn().mockReturnThis(),
     json: vi.fn(),
+    getHeader: vi.fn(),
   };
-  const request = { originalUrl: requestUrl };
+  const request = { path: requestUrl, method: 'GET' };
 
   return {
     host: {
@@ -22,7 +38,7 @@ const createHost = (requestUrl = '/api/v1/test') => {
 
 describe('GlobalExceptionFilter', () => {
   it('normalizes HttpException responses', () => {
-    const filter = new GlobalExceptionFilter();
+    const filter = createFilter();
     const { host, response } = createHost();
 
     filter.catch(new BadRequestException('Invalid request.'), host);
@@ -39,7 +55,7 @@ describe('GlobalExceptionFilter', () => {
   });
 
   it('does not expose unknown exception details', () => {
-    const filter = new GlobalExceptionFilter();
+    const filter = createFilter();
     const { host, response } = createHost();
 
     filter.catch(new Error('database password=secret'), host);
@@ -64,7 +80,7 @@ describe('GlobalExceptionFilter', () => {
       code = 'P2002';
     }
 
-    const filter = new GlobalExceptionFilter();
+    const filter = createFilter();
     const { host, response } = createHost();
 
     filter.catch(
@@ -83,7 +99,7 @@ describe('GlobalExceptionFilter', () => {
   });
 
   it('preserves safe structured application error codes', () => {
-    const filter = new GlobalExceptionFilter();
+    const filter = createFilter();
     const { host, response } = createHost();
 
     filter.catch(
