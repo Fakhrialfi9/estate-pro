@@ -8,11 +8,9 @@ import { AppModule } from '../../src/app.module.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 
 describe('application health (e2e)', () => {
-  let app: NestExpressApplication;
+  let app: NestExpressApplication | undefined;
 
   beforeAll(async () => {
-    process.env.APP_PORT = '3001';
-
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -34,11 +32,13 @@ describe('application health (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   it('serves liveness over HTTP', async () => {
-    const response = await request(app.getHttpServer()).get(
+    const response = await request(app!.getHttpServer()).get(
       '/api/v1/health/live',
     );
 
@@ -50,7 +50,7 @@ describe('application health (e2e)', () => {
   });
 
   it('serves readiness over HTTP without exposing infrastructure details', async () => {
-    const response = await request(app.getHttpServer()).get(
+    const response = await request(app!.getHttpServer()).get(
       '/api/v1/health/ready',
     );
 
