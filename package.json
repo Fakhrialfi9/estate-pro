@@ -37,6 +37,7 @@
     "test:integration": "prisma generate && vitest run --config vitest.integration.config.ts",
     "test:e2e": "prisma generate && vitest run --config vitest.e2e.config.ts",
     "test:security": "prisma generate && vitest run --config vitest.security.config.ts",
+    "test:security:baseline": "bash scripts/security-test.sh",
     "test:coverage": "prisma generate && vitest run --coverage",
     "test:coverage:e2e": "prisma generate && vitest run --config vitest.e2e.config.ts --coverage",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:security",

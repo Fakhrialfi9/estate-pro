@@ -11,6 +11,7 @@ Testing commands below are taken from the current `package.json`. No undocumente
 | Integration | `npm run test:integration` | Integration suite using `vitest.integration.config.ts` |
 | E2E | `npm run test:e2e` | Runs `vitest.e2e.config.ts` |
 | Security | `npm run test:security` | Runs `vitest.security.config.ts` |
+| Security baseline | `npm run test:security:baseline` | Runs repository-level security configuration and secret-hygiene checks without requiring a running API |
 | Coverage | `npm run test:coverage` | Default Vitest suite with V8 coverage |
 | E2E coverage | `npm run test:coverage:e2e` | E2E suite with coverage |
 | All named suites | `npm run test:all` | Unit + integration + E2E + security |
@@ -24,6 +25,7 @@ npm run lint
 npm run typecheck
 npm run check:architecture
 npm test
+npm run test:security:baseline
 npm run test:coverage
 npm run test:integration
 npm run test:e2e
@@ -45,6 +47,12 @@ npm run prisma:status
 - `test/health`: health behavior.
 - `test/observability`: logging/telemetry behavior.
 
+## Security baseline
+
+`npm run test:security:baseline` is intentionally independent from the running application. It verifies the repository's actual security controls at their source boundaries: global validation configuration, Helmet, CORS, throttling, secret validation, sensitive-log redaction paths, and Git secret/artifact hygiene. It exits non-zero when a required control is missing or an environment/credential artifact is tracked.
+
+Runtime/API security behavior remains covered by the dedicated Vitest security suite and the compiled runtime validation.
+
 ## Database tests
 
 Integration/E2E tests that exercise persistence require a valid test database configuration. Use isolated test data and never point automated tests at production. Health E2E tests override the Prisma provider so the HTTP contract can be verified without requiring a live database.
@@ -65,7 +73,7 @@ Coverage is produced by `@vitest/coverage-v8`. Use `npm run test:coverage` for t
 
 ## Continuous validation
 
-`.github/workflows/estate-pro-validation.yml` runs on `main` pushes and manually. It covers install, Prisma generation, formatting, lint, typecheck, architecture, unit/integration/E2E/security tests, coverage, production build, and compiled runtime validation.
+`.github/workflows/estate-pro-validation.yml` runs on `main` pushes and manually. It covers install, Prisma generation, security baseline, formatting, lint, typecheck, architecture, unit/integration/E2E/security tests, coverage, production build, and compiled runtime validation.
 
 ## No test cheating
 

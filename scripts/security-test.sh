@@ -1,452 +1,107 @@
 #!/usr/bin/env bash
 
-set -u
+set -euo pipefail
 
-# ============================================================
-# Security Test Suite
-# NestJS API
-# ============================================================
-
-BASE_URL="${BASE_URL:-http://localhost:3000/api/v1}"
-COUNTRIES_URL="${BASE_URL}/countries"
-
-COOKIE_FILE="${COOKIE_FILE:-cookies.txt}"
+PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
 
 PASS=0
 FAIL=0
 
-# ============================================================
-# Helpers
-# ============================================================
-
-print_header() {
-  echo
-  echo "============================================================"
-  echo "$1"
-  echo "============================================================"
-}
-
 pass() {
-  echo "  [PASS] $1"
+  printf '[PASS] %s\n' "$1"
   PASS=$((PASS + 1))
 }
 
 fail() {
-  echo "  [FAIL] $1"
+  printf '[FAIL] %s\n' "$1" >&2
   FAIL=$((FAIL + 1))
 }
 
-assert_status() {
-  local description="$1"
-  local expected="$2"
-  local actual="$3"
-
-  if [[ "$actual" == "$expected" ]]; then
-    pass "${description} → HTTP ${actual}"
+require_file() {
+  local path="$1"
+  if [[ -f "$path" ]]; then
+    pass "required file exists: $path"
   else
-    fail "${description} → expected HTTP ${expected}, got HTTP ${actual}"
+    fail "required file is missing: $path"
   fi
 }
 
-cleanup() {
-  rm -f "${COOKIE_FILE}"
+require_text() {
+  local path="$1"
+  local pattern="$2"
+  local description="$3"
+
+  if grep -Eq "$pattern" "$path"; then
+    pass "$description"
+  else
+    fail "$description"
+  fi
 }
 
-trap cleanup EXIT
+printf 'Estate Pro security baseline\n'
+printf 'Project root: %s\n\n' "$PROJECT_ROOT"
 
-# ============================================================
-# Pre-flight
-# ============================================================
+require_file "src/main.ts"
+require_file "src/app.module.ts"
+require_file "src/config/configuration.ts"
+require_file "src/common/constants/security.constants.ts"
+require_file ".gitignore"
+require_file "package.json"
 
-print_header "Security Test Suite"
+require_text "src/main.ts" 'ValidationPipe' 'global validation pipe is configured'
+require_text "src/main.ts" 'whitelist: true' 'validation whitelist is enabled'
+require_text "src/main.ts" 'forbidNonWhitelisted: true' 'unknown properties are rejected'
+require_text "src/main.ts" 'forbidUnknownValues: true' 'unknown validation values are rejected'
+require_text "src/main.ts" 'helmet\(' 'Helmet security middleware is installed'
+require_text "src/main.ts" 'enableCors\(' 'CORS policy is configured explicitly'
 
-echo "Base URL : ${BASE_URL}"
-echo "Target   : ${COUNTRIES_URL}"
-echo
+require_text "src/app.module.ts" 'ThrottlerModule\.forRootAsync' 'rate limiting is configured'
+require_text "src/app.module.ts" 'APP_GUARD' 'global security guard registration exists'
+require_text "src/app.module.ts" 'ThrottlerGuard' 'global throttling guard is registered'
 
-if ! command -v curl >/dev/null 2>&1; then
-  echo "[ERROR] curl is not installed."
-  exit 1
-fi
+require_text "src/config/configuration.ts" 'JWT_SECRET' 'JWT secret is validated from environment'
+require_text "src/config/configuration.ts" 'min\(32\)' 'secret minimum length is enforced'
+require_text "src/config/configuration.ts" 'SECURITY_CSP_ENABLED' 'CSP configuration is environment controlled'
+require_text "src/config/configuration.ts" 'SECURITY_HSTS_ENABLED' 'HSTS configuration is environment controlled'
 
-if ! curl -s --connect-timeout 3 "${COUNTRIES_URL}" >/dev/null 2>&1; then
-  echo "[ERROR] API is not reachable at ${COUNTRIES_URL}"
-  echo
-  echo "Make sure NestJS is running first."
-  exit 1
-fi
+require_text "src/common/constants/security.constants.ts" 'authorization' 'authorization data is included in sensitive logging paths'
+require_text "src/common/constants/security.constants.ts" 'cookie' 'cookie data is included in sensitive logging paths'
+require_text "src/common/constants/security.constants.ts" 'password' 'password data is included in sensitive logging paths'
+require_text "src/common/constants/security.constants.ts" 'token' 'token data is included in sensitive logging paths'
 
-# ============================================================
-# 1. SQL Injection
-# ============================================================
+require_text ".gitignore" '^\.env$' 'dotenv files are ignored'
+require_text ".gitignore" '^node_modules/$' 'node_modules is ignored'
+require_text ".gitignore" '^dist/$' 'build output is ignored'
+require_text ".gitignore" '^coverage/$' 'coverage output is ignored'
 
-print_header "1. SQL Injection"
-
-SQL_INJECTION_STATUS=$(
-  curl -s \
-    -o /dev/null \
-    -w "%{http_code}" \
-    -X POST "${COUNTRIES_URL}" \
-    -H "Content-Type: application/json" \
-    -d '{"name":"1 OR 1=1"}'
-)
-
-assert_status \
-  "SQL Injection payload" \
-  "403" \
-  "${SQL_INJECTION_STATUS}"
-
-# ============================================================
-# 2. XSS via Query Parameter
-# ============================================================
-
-print_header "2. XSS via Query Parameter"
-
-XSS_QUERY_STATUS=$(
-  curl -s \
-    -o /dev/null \
-    -w "%{http_code}" \
-    --get "${COUNTRIES_URL}" \
-    --data-urlencode 'name=<script>alert(1)</script>'
-)
-
-assert_status \
-  "XSS query parameter" \
-  "403" \
-  "${XSS_QUERY_STATUS}"
-
-# ============================================================
-# 3. Path Traversal
-# ============================================================
-
-print_header "3. Path Traversal"
-
-PATH_TRAVERSAL_STATUS=$(
-  curl -s \
-    -o /dev/null \
-    -w "%{http_code}" \
-    --path-as-is \
-    "${COUNTRIES_URL}/../../../etc/passwd"
-)
-
-assert_status \
-  "Path Traversal payload" \
-  "403" \
-  "${PATH_TRAVERSAL_STATUS}"
-
-# ============================================================
-# 4. XSRF / CSRF Protection
-# ============================================================
-
-print_header "4. XSRF / CSRF Protection"
-
-rm -f "${COOKIE_FILE}"
-
-echo "  Getting CSRF token..."
-
-CSRF_RESPONSE_FILE="$(mktemp)"
-
-CSRF_STATUS=$(
-  curl -s \
-    -o "${CSRF_RESPONSE_FILE}" \
-    -w "%{http_code}" \
-    -c "${COOKIE_FILE}" \
-    "${BASE_URL}/auth/csrf"
-)
-
-assert_status \
-  "GET /auth/csrf" \
-  "200" \
-  "${CSRF_STATUS}"
-
-if [[ "${CSRF_STATUS}" == "200" ]]; then
-
-  CSRF_TOKEN=$(
-    python3 -c '
-import json
-import sys
-
-try:
-    with open(sys.argv[1], "r") as file:
-        data = json.load(file)
-
-    token = data.get("data", {}).get("csrfToken", "")
-
-    print(token)
-
-except Exception:
-    print("")
-' "${CSRF_RESPONSE_FILE}"
-  )
-
-else
-
-  CSRF_TOKEN=""
-
-fi
-
-rm -f "${CSRF_RESPONSE_FILE}"
-
-if [[ -n "${CSRF_TOKEN}" ]]; then
-
-  pass "GET /auth/csrf returns CSRF token"
-
-else
-
-  fail "GET /auth/csrf returns CSRF token"
-
-fi
-
-# ============================================================
-# 5. POST Without XSRF Header
-# ============================================================
-
-print_header "5. XSRF Request Without Header"
-
-XSRF_MISSING_HEADER_STATUS=$(
-  curl -s \
-    -o /dev/null \
-    -w "%{http_code}" \
-    -X POST "${COUNTRIES_URL}" \
-    -b "${COOKIE_FILE}" \
-    -H "Content-Type: application/json" \
-    -d '{"name":"Indonesia"}'
-)
-
-assert_status \
-  "POST without XSRF header" \
-  "403" \
-  "${XSRF_MISSING_HEADER_STATUS}"
-
-# ============================================================
-# 6. XSRF Request With Header
-# ============================================================
-
-print_header "6. XSRF Request With Header"
-
-TOKEN="${CSRF_TOKEN:-}"
-
-if [[ -z "${TOKEN}" ]]; then
-
-  fail "CSRF token is unavailable"
-
-else
-
-  pass "CSRF token extracted from /auth/csrf response"
-
-  XSRF_VALID_RESPONSE_FILE="$(mktemp)"
-
-  XSRF_VALID_STATUS=$(
-    curl -s \
-      -o "${XSRF_VALID_RESPONSE_FILE}" \
-      -w "%{http_code}" \
-      -X POST "${COUNTRIES_URL}" \
-      -b "${COOKIE_FILE}" \
-      -H "Content-Type: application/json" \
-      -H "x-xsrf-token: ${TOKEN}" \
-      -d '{
-        "code": "ZZ",
-        "iso2": "ZZ",
-        "iso3": "ZZZ"
-      }'
-  )
-
-  XSRF_VALID_RESPONSE=$(cat "${XSRF_VALID_RESPONSE_FILE}")
-
-  rm -f "${XSRF_VALID_RESPONSE_FILE}"
-
-  if [[ "${XSRF_VALID_STATUS}" != "403" ]]; then
-
-    pass "POST with valid XSRF header accepted by CSRF layer → HTTP ${XSRF_VALID_STATUS}"
-
+if command -v git >/dev/null 2>&1; then
+  if git check-ignore -q .env; then
+    pass '.env is ignored by Git'
   else
-
-    fail "POST with valid XSRF header was rejected by CSRF layer → HTTP 403"
-
-    echo
-    echo "  Response:"
-    echo "  ${XSRF_VALID_RESPONSE}"
-
+    fail '.env is not ignored by Git'
   fi
 
-fi
-
-# ============================================================
-# 7. Security Headers
-# ============================================================
-
-print_header "7. Security Headers"
-
-HEADERS=$(
-  curl -s \
-    -I \
-    "${COUNTRIES_URL}"
-)
-
-echo "${HEADERS}"
-
-echo
-
-if echo "${HEADERS}" | grep -qi "^x-content-type-options:"; then
-  pass "X-Content-Type-Options header exists"
-else
-  fail "X-Content-Type-Options header exists"
-fi
-
-if echo "${HEADERS}" | grep -qi "^x-frame-options:"; then
-  pass "X-Frame-Options header exists"
-else
-  fail "X-Frame-Options header exists"
-fi
-
-if echo "${HEADERS}" | grep -qi "^content-security-policy:"; then
-  pass "Content-Security-Policy header exists"
-else
-  fail "Content-Security-Policy header exists"
-fi
-
-# ============================================================
-# 8. XSS Payload in Request Body
-# ============================================================
-
-print_header "8. XSS Payload in Request Body"
-
-if [[ -z "${TOKEN}" ]]; then
-
-  fail "XSS body test skipped because XSRF token is unavailable"
-
-else
-
-  XSS_PAYLOAD='{
-    "code": "X9",
-    "name": "<script>alert(1)</script>",
-    "iso2": "X9",
-    "iso3": "X99"
-  }'
-
-  XSS_RESPONSE_FILE="$(mktemp)"
-
-  XSS_STATUS=$(
-    curl -s \
-      -o "${XSS_RESPONSE_FILE}" \
-      -w "%{http_code}" \
-      -X POST "${COUNTRIES_URL}" \
-      -b "${COOKIE_FILE}" \
-      -H "Content-Type: application/json" \
-      -H "x-xsrf-token: ${TOKEN}" \
-      -d "${XSS_PAYLOAD}"
-  )
-
-  XSS_BODY=$(cat "${XSS_RESPONSE_FILE}")
-
-  rm -f "${XSS_RESPONSE_FILE}"
-
-  echo "HTTP Status: ${XSS_STATUS}"
-
-  echo
-  echo "Response:"
-  echo "${XSS_BODY}"
-
-  echo
-
-  XSS_RAW_FOUND=$(
-    printf '%s' "${XSS_BODY}" |
-      python3 -c '
-import json
-import sys
-
-try:
-    data = json.load(sys.stdin)
-
-    raw_payload = "<script>alert(1)</script>"
-
-    response_text = json.dumps(data)
-
-    if raw_payload in response_text:
-        print("true")
-    else:
-        print("false")
-
-except Exception:
-    print("false")
-'
-  )
-
-  if [[ "${XSS_RAW_FOUND}" == "true" ]]; then
-
-    fail "XSS body payload is returned as raw executable markup"
-
+  tracked_secrets="$(git ls-files | grep -E '(^|/)(\.env($|\.)|.*\.(pem|key|p12|pfx|secret)$)' || true)"
+  if [[ -z "$tracked_secrets" ]]; then
+    pass 'no environment/credential artifacts are tracked'
   else
-
-    pass "XSS body payload is not returned as raw executable markup"
-
+    fail "tracked environment/credential artifacts detected: $tracked_secrets"
   fi
-
+else
+  fail 'git command is required for repository secret checks'
 fi
 
-# ============================================================
-# 9. Rate Limiting
-# ============================================================
-
-print_header "9. Rate Limiting"
-
-echo "  Sending 15 requests..."
-echo
-
-RATE_LIMIT_TRIGGERED=false
-RATE_LIMIT_FIRST_REQUEST=0
-
-for i in {1..15}; do
-
-  STATUS=$(
-    curl -s \
-      -o /dev/null \
-      -w "%{http_code}" \
-      "${COUNTRIES_URL}"
-  )
-
-  echo "  Request ${i}: HTTP ${STATUS}"
-
-  if [[ "${STATUS}" == "429" && "${RATE_LIMIT_TRIGGERED}" == false ]]; then
-    RATE_LIMIT_TRIGGERED=true
-    RATE_LIMIT_FIRST_REQUEST="${i}"
-  fi
-
-done
-
-echo
-
-if [[ "${RATE_LIMIT_TRIGGERED}" == true ]]; then
-
-  pass "Rate limiting triggered at request ${RATE_LIMIT_FIRST_REQUEST}"
-
+if grep -RInE 'JWT_SECRET\s*=\s*["'"']|DATABASE_PASSWORD\s*=\s*["'"']|Authorization:\s*Bearer\s+[A-Za-z0-9._-]{20,}' src --include='*.ts' >/dev/null 2>&1; then
+  fail 'possible hardcoded secret/credential assignment detected under src/'
 else
-
-  fail "Rate limiting was not triggered after 15 requests"
-
+  pass 'no obvious hardcoded secret/credential assignment detected under src/'
 fi
 
-# ============================================================
-# Summary
-# ============================================================
+printf '\nSummary: %d passed, %d failed\n' "$PASS" "$FAIL"
 
-print_header "Test Summary"
-
-TOTAL=$((PASS + FAIL))
-
-echo "Total : ${TOTAL}"
-echo "Pass  : ${PASS}"
-echo "Fail  : ${FAIL}"
-echo
-
-if [[ "${FAIL}" -eq 0 ]]; then
-
-  echo "ALL SECURITY TESTS PASSED."
-  exit 0
-
-else
-
-  echo "SECURITY TESTS FAILED."
+if [[ "$FAIL" -ne 0 ]]; then
   exit 1
-
 fi
+
+printf 'SECURITY BASELINE PASSED.\n'
