@@ -5,10 +5,11 @@ import { describe, expect, it } from 'vitest';
 import { SENSITIVE_LOG_PATHS } from '../../src/common/constants/security.constants.js';
 
 class InputDto {
-  @IsString()
-  @MaxLength(256)
   name!: string;
 }
+
+IsString()(InputDto.prototype, 'name');
+MaxLength(256)(InputDto.prototype, 'name');
 
 describe('security baseline', () => {
   it('rejects unknown properties through the same ValidationPipe policy used by bootstrap', async () => {
