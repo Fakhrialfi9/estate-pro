@@ -1,15 +1,15 @@
 import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PrismaService } from '../../infrastructure/database/prisma/prisma.service.js';
+import { DatabaseHealthService } from '../../infrastructure/database/database-health.service.js';
 import { HealthService } from './health.service.js';
 
-const createService = async (queryRaw: ReturnType<typeof vi.fn>) => {
+const createService = async (check: ReturnType<typeof vi.fn>) => {
   const module = await Test.createTestingModule({
-    providers: [HealthService, PrismaService],
+    providers: [HealthService, DatabaseHealthService],
   })
-    .overrideProvider(PrismaService)
-    .useValue({ $queryRaw: queryRaw })
+    .overrideProvider(DatabaseHealthService)
+    .useValue({ check })
     .compile();
 
   return module.get(HealthService);
@@ -17,8 +17,8 @@ const createService = async (queryRaw: ReturnType<typeof vi.fn>) => {
 
 describe('HealthService', () => {
   it('returns liveness without touching the database', async () => {
-    const queryRaw = vi.fn();
-    const service = await createService(queryRaw);
+    const check = vi.fn();
+    const service = await createService(check);
 
     expect(service.liveness()).toEqual({
       status: 'ok',
@@ -26,12 +26,12 @@ describe('HealthService', () => {
         application: { status: 'up' },
       },
     });
-    expect(queryRaw).not.toHaveBeenCalled();
+    expect(check).not.toHaveBeenCalled();
   });
 
   it('returns readiness when the database probe succeeds', async () => {
-    const queryRaw = vi.fn().mockResolvedValue([]);
-    const service = await createService(queryRaw);
+    const check = vi.fn().mockResolvedValue(undefined);
+    const service = await createService(check);
 
     await expect(service.readiness()).resolves.toEqual({
       status: 'ok',
@@ -40,12 +40,12 @@ describe('HealthService', () => {
         database: { status: 'up' },
       },
     });
-    expect(queryRaw).toHaveBeenCalledTimes(1);
+    expect(check).toHaveBeenCalledTimes(1);
   });
 
   it('returns a safe readiness failure when the database probe fails', async () => {
-    const queryRaw = vi.fn().mockRejectedValue(new Error('database unavailable'));
-    const service = await createService(queryRaw);
+    const check = vi.fn().mockRejectedValue(new Error('database unavailable'));
+    const service = await createService(check);
 
     await expect(service.readiness()).resolves.toEqual({
       status: 'error',
