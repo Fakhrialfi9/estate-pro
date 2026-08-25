@@ -3,8 +3,8 @@ import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
-import { PrismaClient } from './generated/prisma/client.js';
-import type { Prisma } from './generated/prisma/client.js';
+import { PrismaClient } from './generated/prisma/client.ts';
+import type { Prisma } from './generated/prisma/client.ts';
 import argon2 from 'argon2';
 
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? 'fakhrialfi9@example.com';
@@ -143,27 +143,50 @@ const PERMISSIONS: PermissionSeed[] = [
   },
 ];
 
-function createClient(): PrismaClient {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL is required to run the Prisma seed.');
-  }
-
-  const url = new URL(databaseUrl);
-  const adapter = new PrismaMariaDb({
-    host: url.hostname,
-    port: Number(url.port || 3306),
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: decodeURIComponent(url.pathname.replace(/^\//, '')),
-    connectionLimit: 5,
+function createAdapter(): PrismaMariaDb {
+  return new PrismaMariaDb({
+    host: process.env.DATABASE_HOST ?? '127.0.0.1',
+    port: Number(process.env.DATABASE_PORT ?? 3306),
+    user: process.env.DATABASE_USER ?? 'dev',
+    password: process.env.DATABASE_PASSWORD ?? 'dev123',
+    database: process.env.DATABASE_NAME ?? 'estate_pro',
+    connectionLimit: Number(process.env.DATABASE_POOL_CONNECTION_LIMIT ?? 10),
+    connectTimeout: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS ?? 5000),
   });
-
-  return new PrismaClient({ adapter });
 }
 
-async function upsertRole(db: DatabaseClient) {
-  return db.authorizationRole.upsert({
+async function upsertPermissions(
+  client: DatabaseClient,
+): Promise<Map<string, bigint>> {
+  const permissionIds = new Map<string, bigint>();
+
+  for (const permission of PERMISSIONS) {
+    const record = await client.authorizationPermission.upsert({
+      where: { code: permission.code },
+      update: {
+        name: permission.name,
+        module: permission.module,
+        domain: permission.domain,
+        action: permission.action,
+      },
+      create: {
+        uuid: randomUUID(),
+        name: permission.name,
+        code: permission.code,
+        module: permission.module,
+        domain: permission.domain,
+        action: permission.action,
+      },
+    });
+
+    permissionIds.set(permission.code, record.id);
+  }
+
+  return permissionIds;
+}
+
+async function upsertAdminRole(client: DatabaseClient): Promise<bigint> {
+  const role = await client.authorizationRole.upsert({
     where: { code: ADMIN_ROLE.code },
     update: {
       name: ADMIN_ROLE.name,
@@ -178,30 +201,42 @@ async function upsertRole(db: DatabaseClient) {
       isActive: true,
     },
   });
+
+  return role.id;
 }
 
-async function upsertPermissions(db: DatabaseClient) {
-  return Promise.all(
-    PERMISSIONS.map((permission) =>
-      db.authorizationPermission.upsert({
-        where: { code: permission.code },
-        update: {
-          name: permission.name,
-          module: permission.module,
-          domain: permission.domain,
-          action: permission.action,
+async function ensureRolePermissions(
+  client: DatabaseClient,
+  roleId: bigint,
+  permissionIds: Map<string, bigint>,
+): Promise<void> {
+  for (const permission of PERMISSIONS) {
+    const permissionId = permissionIds.get(permission.code);
+    if (permissionId === undefined) {
+      throw new Error(`Missing seeded permission: ${permission.code}`);
+    }
+
+    await client.authorizationRolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId,
+          permissionId,
         },
-        create: {
-          uuid: randomUUID(),
-          ...permission,
-        },
-      }),
-    ),
-  );
+      },
+      update: {},
+      create: {
+        roleId,
+        permissionId,
+      },
+    });
+  }
 }
 
-async function upsertAdminUser(db: DatabaseClient, passwordHash: string) {
-  const user = await db.authenticationUser.upsert({
+async function upsertAdminUser(
+  client: DatabaseClient,
+  passwordHash: string,
+): Promise<bigint> {
+  const user = await client.authenticationUser.upsert({
     where: { email: ADMIN_EMAIL },
     update: {
       username: ADMIN_USERNAME,
@@ -222,12 +257,11 @@ async function upsertAdminUser(db: DatabaseClient, passwordHash: string) {
     },
   });
 
-  await db.authenticationUserCredential.upsert({
+  await client.authenticationUserCredential.upsert({
     where: { userId: user.id },
     update: {
       passwordHash,
       passwordChangedAt: new Date(),
-      passwordExpiresAt: null,
     },
     create: {
       userId: user.id,
@@ -236,27 +270,50 @@ async function upsertAdminUser(db: DatabaseClient, passwordHash: string) {
     },
   });
 
-  await db.authenticationUserSecurity.upsert({
+  await client.authenticationUserSecurity.upsert({
     where: { userId: user.id },
     update: {
-      emailVerifiedAt: new Date(),
-      phoneVerifiedAt: new Date(),
       failedLoginAttempts: 0,
       lockedUntil: null,
     },
     create: {
       userId: user.id,
-      emailVerifiedAt: new Date(),
-      phoneVerifiedAt: new Date(),
       failedLoginAttempts: 0,
     },
   });
 
-  return user;
+  return user.id;
 }
 
-async function main(): Promise<void> {
-  const prisma = createClient();
+async function ensureUserRole(
+  client: DatabaseClient,
+  userId: bigint,
+  roleId: bigint,
+): Promise<void> {
+  await client.authorizationUserRole.upsert({
+    where: {
+      userId_roleId: {
+        userId,
+        roleId,
+      },
+    },
+    update: {
+      isActive: true,
+      revokedAt: null,
+    },
+    create: {
+      userId,
+      roleId,
+      isActive: true,
+      assignedBy: userId,
+      assignedAt: new Date(),
+    },
+  });
+}
+
+async function seed(): Promise<void> {
+  const adapter = createAdapter();
+  const prisma = new PrismaClient({ adapter });
 
   try {
     const passwordHash = await argon2.hash(ADMIN_PASSWORD, {
@@ -266,53 +323,18 @@ async function main(): Promise<void> {
       parallelism: Number(process.env.AUTH_ARGON2_PARALLELISM ?? 1),
     });
 
-    const admin = await prisma.$transaction(async (tx) => {
-      const role = await upsertRole(tx);
-      const permissions = await upsertPermissions(tx);
-      const user = await upsertAdminUser(tx, passwordHash);
-
-      await tx.authorizationRolePermission.createMany({
-        data: permissions.map((permission) => ({
-          roleId: role.id,
-          permissionId: permission.id,
-        })),
-        skipDuplicates: true,
-      });
-
-      await tx.authorizationUserRole.upsert({
-        where: {
-          userId_roleId: {
-            userId: user.id,
-            roleId: role.id,
-          },
-        },
-        update: {
-          isActive: true,
-          revokedAt: null,
-          assignedBy: user.id,
-          assignedAt: new Date(),
-        },
-        create: {
-          userId: user.id,
-          roleId: role.id,
-          isActive: true,
-          assignedBy: user.id,
-        },
-      });
-
-      return { user, role, permissions };
+    await prisma.$transaction(async (tx) => {
+      const permissionIds = await upsertPermissions(tx);
+      const roleId = await upsertAdminRole(tx);
+      await ensureRolePermissions(tx, roleId, permissionIds);
+      const userId = await upsertAdminUser(tx, passwordHash);
+      await ensureUserRole(tx, userId, roleId);
     });
 
-    console.log(`Seeded admin user: ${admin.user.email}`);
-    console.log(`Admin role: ${admin.role.code}`);
-    console.log(`Permissions assigned: ${admin.permissions.length}`);
-    console.log('Password: value from SEED_ADMIN_PASSWORD or development default.');
+    console.log(`Seeded admin account: ${ADMIN_EMAIL}`);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+await seed();
