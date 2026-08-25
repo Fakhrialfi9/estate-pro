@@ -1,5 +1,14 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 const FILTER_FIELDS = ['name', 'code', 'isActive', 'isSystem'] as const;
 const SORT_FIELDS = ['name', 'code', 'createdAt', 'updatedAt'] as const;

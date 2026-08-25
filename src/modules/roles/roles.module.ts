@@ -6,7 +6,10 @@ import { ROLE_REPOSITORY } from './domain/repositories/role.repository.js';
 import { RoleService } from './application/services/role.service.js';
 import { RoleAuthorizationPolicy } from './application/policies/role-authorization.policy.js';
 import { RolesController } from './presentation/roles.controller.js';
-import { RoleReadAccessGuard, RoleManageAccessGuard } from './security/role-management-access.guard.js';
+import {
+  RoleReadAccessGuard,
+  RoleManageAccessGuard,
+} from './security/role-management-access.guard.js';
 
 @Module({
   imports: [DatabaseModule, AuthModule],

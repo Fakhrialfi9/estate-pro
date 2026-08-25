@@ -43,12 +43,23 @@ export class PrismaSecurityAuditRepository implements SecurityAuditRepository {
 
   async record(event: SecurityAuditEvent): Promise<void> {
     const userId = event.userUuid
-      ? ((await this.users.findFirst({ where: { uuid: event.userUuid }, select: { id: true } }))?.id ?? null)
+      ? ((
+          await this.users.findFirst({
+            where: { uuid: event.userUuid },
+            select: { id: true },
+          })
+        )?.id ?? null)
       : null;
 
     let entityId: bigint | null = null;
     if (event.entityUuid && event.entityType === 'AuthorizationRole') {
-      entityId = (await this.roles.findFirst({ where: { uuid: event.entityUuid }, select: { id: true } }))?.id ?? null;
+      entityId =
+        (
+          await this.roles.findFirst({
+            where: { uuid: event.entityUuid },
+            select: { id: true },
+          })
+        )?.id ?? null;
     }
 
     const log = await this.auditLogs.create({

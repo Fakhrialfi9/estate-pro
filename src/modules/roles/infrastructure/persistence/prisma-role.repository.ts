@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
-import { normalizeRoleCode, normalizeRoleName, type RoleUpdate } from '../../domain/entities/role.entity.js';
+import {
+  normalizeRoleCode,
+  normalizeRoleName,
+  type RoleUpdate,
+} from '../../domain/entities/role.entity.js';
 import type {
   CreateRoleData,
   RoleFilterField,
@@ -11,7 +15,11 @@ import type {
   RoleSortField,
   RoleDependencyCount,
 } from '../../domain/repositories/role.repository.js';
-import { PrismaRoleMapper, type RolePersistenceData, type RolePersistenceRecord } from './prisma-role.mapper.js';
+import {
+  PrismaRoleMapper,
+  type RolePersistenceData,
+  type RolePersistenceRecord,
+} from './prisma-role.mapper.js';
 
 interface RoleWhere {
   uuid?: string;
@@ -24,13 +32,25 @@ interface RoleWhere {
 type RoleDelegate = {
   create(args: { data: RolePersistenceData }): Promise<RolePersistenceRecord>;
   findFirst(args: { where: RoleWhere }): Promise<RolePersistenceRecord | null>;
-  findMany(args: { where: RoleWhere; orderBy: Record<RoleSortField, 'asc' | 'desc'> | Record<string, 'asc' | 'desc'>; skip: number; take: number }): Promise<RolePersistenceRecord[]>;
+  findMany(args: {
+    where: RoleWhere;
+    orderBy:
+      | Record<RoleSortField, 'asc' | 'desc'>
+      | Record<string, 'asc' | 'desc'>;
+    skip: number;
+    take: number;
+  }): Promise<RolePersistenceRecord[]>;
   count(args: { where: RoleWhere }): Promise<number>;
-  update(args: { where: { uuid: string }; data: RolePersistenceData }): Promise<RolePersistenceRecord>;
+  update(args: {
+    where: { uuid: string };
+    data: RolePersistenceData;
+  }): Promise<RolePersistenceRecord>;
   delete(args: { where: { uuid: string } }): Promise<RolePersistenceRecord>;
 };
 
-type RelationDelegate = { count(args: { where: { roleId: bigint } }): Promise<number> };
+type RelationDelegate = {
+  count(args: { where: { roleId: bigint } }): Promise<number>;
+};
 
 type PrismaRoleClient = {
   authorizationRole: RoleDelegate;
@@ -64,8 +84,11 @@ export class PrismaRoleRepository implements RoleRepository {
       return PrismaRoleMapper.toDomain(record);
     } catch (error: unknown) {
       if ((error as { code?: string }).code === 'P2002') {
-        const target = String((error as { meta?: { target?: unknown } }).meta?.target ?? '');
-        if (target.includes('code')) throw new Error('RoleCodeAlreadyExistsError');
+        const target = String(
+          (error as { meta?: { target?: unknown } }).meta?.target ?? '',
+        );
+        if (target.includes('code'))
+          throw new Error('RoleCodeAlreadyExistsError');
         throw new Error('RoleAlreadyExistsError');
       }
       throw error;
@@ -78,7 +101,9 @@ export class PrismaRoleRepository implements RoleRepository {
   }
 
   async findByCode(code: string) {
-    const record = await this.roles.findFirst({ where: { code: normalizeRoleCode(code) } });
+    const record = await this.roles.findFirst({
+      where: { code: normalizeRoleCode(code) },
+    });
     return record ? PrismaRoleMapper.toDomain(record) : null;
   }
 
@@ -92,7 +117,12 @@ export class PrismaRoleRepository implements RoleRepository {
     const where: RoleWhere = {
       ...this.buildFilter(query.filterField, query.filterValue),
       ...(query.search
-        ? { OR: [{ name: { contains: query.search } }, { code: { contains: query.search } }] }
+        ? {
+            OR: [
+              { name: { contains: query.search } },
+              { code: { contains: query.search } },
+            ],
+          }
         : {}),
     };
 
@@ -106,20 +136,32 @@ export class PrismaRoleRepository implements RoleRepository {
       this.roles.count({ where }),
     ]);
 
-    return { items: records.map((record) => PrismaRoleMapper.toDomain(record)), total, page: query.page, limit: query.limit };
+    return {
+      items: records.map((record) => PrismaRoleMapper.toDomain(record)),
+      total,
+      page: query.page,
+      limit: query.limit,
+    };
   }
 
   async update(uuid: string, changes: RoleUpdate) {
     try {
       const data: RolePersistenceData = {
-        ...(changes.name !== undefined ? { name: normalizeRoleName(changes.name) } : {}),
-        ...(changes.description !== undefined ? { description: changes.description } : {}),
-        ...(changes.isActive !== undefined ? { isActive: changes.isActive } : {}),
+        ...(changes.name !== undefined
+          ? { name: normalizeRoleName(changes.name) }
+          : {}),
+        ...(changes.description !== undefined
+          ? { description: changes.description }
+          : {}),
+        ...(changes.isActive !== undefined
+          ? { isActive: changes.isActive }
+          : {}),
       };
       const record = await this.roles.update({ where: { uuid }, data });
       return PrismaRoleMapper.toDomain(record);
     } catch (error: unknown) {
-      if ((error as { code?: string }).code === 'P2002') throw new Error('RoleAlreadyExistsError');
+      if ((error as { code?: string }).code === 'P2002')
+        throw new Error('RoleAlreadyExistsError');
       throw error;
     }
   }
@@ -142,12 +184,19 @@ export class PrismaRoleRepository implements RoleRepository {
   private buildFilter(field?: RoleFilterField, value?: string): RoleWhere {
     if (!field || value === undefined) return {};
     switch (field) {
-      case 'name': return { name: normalizeRoleName(value) };
-      case 'code': return { code: normalizeRoleCode(value) };
-      case 'isActive': return { isActive: value.toLowerCase() === 'true' };
+      case 'name':
+        return { name: normalizeRoleName(value) };
+      case 'code':
+        return { code: normalizeRoleCode(value) };
+      case 'isActive':
+        return { isActive: value.toLowerCase() === 'true' };
       case 'isSystem': {
         const code = normalizeRoleCode(value);
-        return { code: ['admin', 'owner', 'super-admin', 'system'].includes(code) ? code : '__not_protected__' };
+        return {
+          code: ['admin', 'owner', 'super-admin', 'system'].includes(code)
+            ? code
+            : '__not_protected__',
+        };
       }
     }
   }

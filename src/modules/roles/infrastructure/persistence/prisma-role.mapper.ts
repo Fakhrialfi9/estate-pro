@@ -27,7 +27,9 @@ export const PrismaRoleMapper = {
       isActive: record.isActive,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
-      isSystem: ['admin', 'owner', 'super-admin', 'system'].includes(record.code),
+      isSystem: ['admin', 'owner', 'super-admin', 'system'].includes(
+        record.code,
+      ),
     });
   },
   toPersistence(data: RolePersistenceData): RolePersistenceData {
