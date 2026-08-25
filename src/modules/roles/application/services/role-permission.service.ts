@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PermissionsModule } from '../../../permissions/permissions.module.js';
 import type { PermissionRepository } from '../../../permissions/permissions.module.js';
 import {
   PERMISSION_REPOSITORY,
