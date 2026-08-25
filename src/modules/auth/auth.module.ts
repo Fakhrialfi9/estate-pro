@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import type { SignOptions } from 'jsonwebtoken';
+import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { PasswordHashingModule } from './password-hashing.module.js';
 import { LoginService } from './application/services/login.service.js';
@@ -31,6 +32,7 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
 @Module({
   imports: [
     ConfigModule,
+    DatabaseModule,
     UsersModule,
     PasswordHashingModule,
     JwtModule.registerAsync({
