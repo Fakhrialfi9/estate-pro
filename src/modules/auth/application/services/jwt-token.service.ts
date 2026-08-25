@@ -14,8 +14,9 @@ export interface AccessTokenClaims {
 }
 
 type SupportedAlgorithm = 'HS256' | 'HS384' | 'HS512';
-
 type TokenPayload = AccessTokenClaims;
+
+type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
 
 @Injectable()
 export class JwtTokenService {
@@ -61,10 +62,9 @@ export class JwtTokenService {
   }
 
   private getSignOptions(): SignOptions {
+    const expiresIn = this.config.getOrThrow<string>('auth.jwt.expiresIn');
     return {
-      expiresIn: this.config.getOrThrow<string>(
-        'auth.jwt.expiresIn',
-      ) as SignOptions['expiresIn'],
+      expiresIn: expiresIn as RequiredExpiresIn,
       issuer: this.getIssuer(),
       audience: this.getAudience(),
       algorithm: this.getAlgorithm(),
