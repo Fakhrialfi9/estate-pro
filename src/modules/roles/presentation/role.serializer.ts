@@ -1,7 +1,7 @@
 import type { RoleEntity } from '../domain/entities/role.entity.js';
 
 export interface RoleResponse {
-  id: string;
+  uuid: string;
   name: string;
   code: string;
   description: string | null;
@@ -11,10 +11,20 @@ export interface RoleResponse {
   updatedAt: string;
 }
 
+export interface RoleListResponse {
+  items: RoleResponse[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    pageCount: number;
+  };
+}
+
 export const RoleSerializer = {
   one(role: RoleEntity): RoleResponse {
     return {
-      id: role.uuid,
+      uuid: role.uuid,
       name: role.name,
       code: role.code,
       description: role.description,
@@ -24,9 +34,15 @@ export const RoleSerializer = {
       updatedAt: role.updatedAt.toISOString(),
     };
   },
-  list(items: RoleEntity[], total: number, page: number, limit: number) {
+
+  list(
+    items: RoleEntity[],
+    total: number,
+    page: number,
+    limit: number,
+  ): RoleListResponse {
     return {
-      data: items.map((role) => RoleSerializer.one(role)),
+      items: items.map((role) => RoleSerializer.one(role)),
       meta: { total, page, limit, pageCount: Math.ceil(total / limit) },
     };
   },
