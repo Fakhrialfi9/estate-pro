@@ -123,10 +123,12 @@ const makeLogin = (passwordValid = true, account = user()) => {
     revoke: vi.fn(),
   } as unknown as AuthenticationSessionRepository;
   const auditEvents: SecurityAuditEvent[] = [];
-  const auditRecord = vi.fn((event: SecurityAuditEvent): Promise<void> => {
-    auditEvents.push(event);
-    return Promise.resolve();
-  });
+  const auditRecord = vi.fn(
+    (event: SecurityAuditEvent): Promise<void> => {
+      auditEvents.push(event);
+      return Promise.resolve();
+    },
+  );
   const audit: SecurityAuditRepository = {
     record: auditRecord,
   };
@@ -167,7 +169,8 @@ describe('authentication security steps 102-106', () => {
     });
     expect(result?.accessToken).toBe('signed.jwt.token');
     expect(result?.tokenType).toBe('Bearer');
-    expect(ctx.sessions.create).toHaveBeenCalledOnce();
+    const createMock = vi.mocked(ctx.sessions.create);
+    expect(createMock).toHaveBeenCalledOnce();
     expect((await ctx.security.getState('u-1')).failedLoginAttempts).toBe(0);
     expect(ctx.auditEvents[0]?.action).toBe('LOGIN_SUCCESS');
     expect(JSON.stringify(ctx.auditEvents)).not.toContain('argon2-hash');
