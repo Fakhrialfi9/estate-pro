@@ -141,7 +141,9 @@ export class PrismaSecurityAuditRepository
       throw new Error('Unsupported audit resource');
     const actorUuid =
       event.actorUuid ?? (event as SecurityAuditEvent).userUuid ?? null;
-    const subjectUuid = event.subjectUuid ?? null;
+    const subjectUuid =
+      event.subjectUuid ??
+      (resourceType === 'user' ? (event.entityUuid ?? null) : null);
     const inferredActorType = this.inferActorType(
       event,
       resourceType,
@@ -228,120 +230,84 @@ export class PrismaSecurityAuditRepository
     });
   }
 
-  async list(query: AuditLogListQuery): Promise<AuditLogListResult> {
-    const page = Math.max(1, query.page);
-    const limit = Math.min(Math.max(1, query.limit), MAX_PAGE_SIZE);
-    const resourceType = query.resourceType
-      ? normalizeAuditResourceType(query.resourceType)
-      : undefined;
-    const where: Record<string, unknown> = {
-      ...(query.actorUuid ? { actorUser: { uuid: query.actorUuid } } : {}),
-      ...(query.action ? { action: query.action } : {}),
-      ...(resourceType ? { entityType: resourceType } : {}),
-      ...(query.resourceId ? { resourceId: query.resourceId } : {}),
-      ...(query.result ? { result: query.result } : {}),
-      ...(query.from || query.to
-        ? {
-            createdAt: {
-              ...(query.from ? { gte: query.from } : {}),
-              ...(query.to ? { lte: query.to } : {}),
-            },
-          }
-        : {}),
-    };
-    const client = this.prisma as unknown as AuditShape;
-    const [records, total] = await Promise.all([
-      client.auditLog.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-        select: {
-          uuid: true,
-          action: true,
-          actorType: true,
-          actorUser: { select: { uuid: true } },
-          subjectUser: { select: { uuid: true } },
-          entityType: true,
-          resourceId: true,
-          result: true,
-          reason: true,
-          ipAddress: true,
-          userAgent: true,
-          requestId: true,
-          createdAt: true,
-          changes: {
-            orderBy: { id: 'asc' },
-            select: { id: true, field: true, oldValue: true, newValue: true },
-          },
-        },
-      }),
-      client.auditLog.count({ where }),
-    ]);
-    return {
-      items: records.map(
-        (record) =>
-          ({
-            props: {
-              uuid: record.uuid,
-              actorUuid: record.actorUser?.uuid ?? null,
-              actorType: record.actorType,
-              subjectUuid: record.subjectUser?.uuid ?? null,
-              action: record.action,
-              resourceType: record.entityType,
-              resourceId: record.resourceId,
-              result: record.result === 'FAILURE' ? 'FAILURE' : 'SUCCESS',
-              reason: sanitizeAuditReason(record.reason ?? undefined),
-              ipAddress: record.ipAddress,
-              userAgent: record.userAgent,
-              requestId: record.requestId,
-              createdAt: record.createdAt,
-              changes: record.changes.map(
-                (change): AuditLogChangeEntityProps => ({
-                  id: change.id.toString(),
-                  field: change.field,
-                  oldValue:
-                    typeof change.oldValue === 'string' ||
-                    typeof change.oldValue === 'boolean' ||
-                    typeof change.oldValue === 'number'
-                      ? change.oldValue
-                      : null,
-                  newValue:
-                    typeof change.newValue === 'string' ||
-                    typeof change.newValue === 'boolean' ||
-                    typeof change.newValue === 'number'
-                      ? change.newValue
-                      : null,
-                }),
-              ),
-            },
-          }) as AuditLogEntity,
-      ),
-      total,
-    };
-  }
-
   private inferActorType(
     event: SecurityAuditEvent | AuditLogWriteEvent,
     resourceType: string | null,
     actorUuid: string | null,
-  ): 'AUTHENTICATED' | 'ADMINISTRATIVE' | 'SYSTEM' | 'ANONYMOUS' {
-    if (!actorUuid) return event.system ? 'SYSTEM' : 'ANONYMOUS';
+  ): string {
+    if (event.actorType) return event.actorType;
+    if (resourceType && ADMIN_RESOURCE_TYPES.has(resourceType) && actorUuid)
+      return 'USER';
+    return 'SYSTEM';
+  }
 
-    // `actorUuid` explicitly represents the authenticated principal.
-    // `userUuid` is kept as the legacy/admin actor field used by role and
-    // permission management services. Never infer administrative intent from
-    // the resource type alone: user-management operations are authenticated
-    // mutations and must remain `AUTHENTICATED` unless the caller explicitly
-    // provides `actorType: 'ADMINISTRATIVE'`.
-    if (event.actorUuid) return 'AUTHENTICATED';
-    if (
-      event.userUuid &&
-      resourceType &&
-      ADMIN_RESOURCE_TYPES.has(resourceType) &&
-      !event.system
-    )
-      return 'ADMINISTRATIVE';
-    return event.system ? 'SYSTEM' : 'AUTHENTICATED';
+  async findMany(query: AuditLogListQuery): Promise<AuditLogListResult> {
+    const client = this.prisma as unknown as AuditShape;
+    const limit = Math.min(query.limit ?? 50, MAX_PAGE_SIZE);
+    const page = Math.max(query.page ?? 1, 1);
+    const records = await client.auditLog.findMany({
+      where: {
+        ...(query.action ? { action: query.action } : {}),
+        ...(query.result ? { result: query.result } : {}),
+        ...(query.entityType ? { entityType: query.entityType } : {}),
+        ...(query.resourceId ? { resourceId: query.resourceId } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        actorUser: { select: { uuid: true } },
+        subjectUser: { select: { uuid: true } },
+        changes: {
+          select: {
+            id: true,
+            field: true,
+            oldValue: true,
+            newValue: true,
+          },
+        },
+      },
+    });
+    const total = await client.auditLog.count({
+      where: {
+        ...(query.action ? { action: query.action } : {}),
+        ...(query.result ? { result: query.result } : {}),
+        ...(query.entityType ? { entityType: query.entityType } : {}),
+        ...(query.resourceId ? { resourceId: query.resourceId } : {}),
+      },
+    });
+    return {
+      items: records.map((record) => this.toEntity(record)),
+      page,
+      limit,
+      total,
+    };
+  }
+
+  private toEntity(record: AuditRecord): AuditLogEntity {
+    const changes: AuditLogChangeEntityProps[] = record.changes.map(
+      (change) => ({
+        id: change.id,
+        field: change.field,
+        oldValue: change.oldValue,
+        newValue: change.newValue,
+      }),
+    );
+    return {
+      uuid: record.uuid,
+      action: record.action,
+      actorType: record.actorType,
+      actorUuid: record.actorUser?.uuid ?? null,
+      subjectUuid: record.subjectUser?.uuid ?? null,
+      entityType: record.entityType,
+      resourceId: record.resourceId,
+      result: record.result,
+      reason: record.reason,
+      ipAddress: record.ipAddress,
+      userAgent: record.userAgent,
+      requestId: record.requestId,
+      createdAt: record.createdAt,
+      changes,
+    };
   }
 }
