@@ -23,7 +23,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/src/main.js",
     "check:runtime": "bash scripts/check-runtime.sh",
-    "lint": "npm run typecheck && prisma generate && eslint .",
+    "lint": "prisma generate && eslint .",
     "lint:fix": "prisma generate && eslint . --fix",
     "typecheck": "prisma generate && tsc --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"src/modules/users/credentials\" \"test/**/*.ts\" --no-error-on-unmatched-pattern",
