@@ -7,8 +7,8 @@ ALTER TABLE `audit_logs`
   ADD COLUMN `resource_id` VARCHAR(100) NULL,
   ADD COLUMN `result` VARCHAR(16) NOT NULL DEFAULT 'SUCCESS',
   ADD COLUMN `reason` VARCHAR(100) NULL,
-  ADD INDEX `idx_audit_logs_actor_user_id` (`actor_user_id`),
-  ADD INDEX `idx_audit_logs_resource_id` (`resource_id`),
-  ADD INDEX `idx_audit_logs_result` (`result`),
-  ADD CONSTRAINT `fk_audit_logs_actor_user`
+  ADD INDEX `audit_logs_actor_user_id_idx` (`actor_user_id`),
+  ADD INDEX `audit_logs_resource_id_idx` (`resource_id`),
+  ADD INDEX `audit_logs_result_idx` (`result`),
+  ADD CONSTRAINT `audit_logs_actor_user_id_fkey`
     FOREIGN KEY (`actor_user_id`) REFERENCES `authentication_users` (`id`) ON UPDATE CASCADE ON DELETE SET NULL;
