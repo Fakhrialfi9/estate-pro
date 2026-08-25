@@ -3,6 +3,7 @@ import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthorizationGuard } from '../../src/common/security/authorization.guard.js';
 import {
+  AUTHORIZATION_PERMISSIONS_METADATA,
   RequirePermissions,
   RequirePermissionsAny,
   RequireRoles,
@@ -111,7 +112,7 @@ describe('AuthorizationGuard', () => {
   it('returns 401 when protected route has no authenticated identity', async () => {
     const handler = {};
     Reflect.defineMetadata(
-      'authorization:permissions',
+      AUTHORIZATION_PERMISSIONS_METADATA,
       { values: ['users:read'], match: 'AND' },
       handler,
     );
@@ -120,12 +121,12 @@ describe('AuthorizationGuard', () => {
     ).rejects.toThrow(UnauthorizedException);
   });
 
-  it('resolves authoritative roles and permissions and never trusts request role input', async () => {
+  it('resolves authoritative permissions and ignores spoofed request permissions', async () => {
     const handler = {};
-    RequirePermissions('users:read')(
-      handler as never,
-      'method' as never,
-      { value: () => undefined } as never,
+    Reflect.defineMetadata(
+      AUTHORIZATION_PERMISSIONS_METADATA,
+      { values: ['users:read'], match: 'AND' },
+      handler,
     );
     (authorization.resolve as ReturnType<typeof vi.fn>).mockResolvedValue(
       snapshot(['users:read'], ['user']),
@@ -138,41 +139,65 @@ describe('AuthorizationGuard', () => {
     expect(req.user?.permissions).toEqual(['users:read']);
   });
 
+  it('ignores spoofed userId from request input because identity comes from principal', async () => {
+    const handler = {};
+    Reflect.defineMetadata(
+      AUTHORIZATION_PERMISSIONS_METADATA,
+      { values: ['users:read'], match: 'AND' },
+      handler,
+    );
+    (authorization.resolve as ReturnType<typeof vi.fn>).mockResolvedValue(
+      snapshot(['users:read'], ['user']),
+    );
+    const req = request({
+      sub: '7e9d9c67-30a5-4d2c-a8df-70755f96ad35',
+      permissions: ['admin:all'],
+    }) as ReturnType<typeof request> & { body?: { userId: string } };
+    req.body = { userId: 'spoofed-user' };
+
+    await expect(guard.canActivate(context(req, handler))).resolves.toBe(true);
+    expect(authorization.resolve).toHaveBeenCalledWith(req.user?.sub);
+  });
+
   it('supports explicit role decorators and OR permission decorators', () => {
     const target: Record<string, unknown> = {};
-    expect(() =>
-      RequireRoles('admin')(
-        target as never,
-        'method' as never,
-        { value: () => undefined } as never,
-      ),
-    ).not.toThrow();
-    expect(() =>
-      RequireRolesAny('admin', 'auditor')(
-        target as never,
-        'method2' as never,
-        { value: () => undefined } as never,
-      ),
-    ).not.toThrow();
-    expect(() =>
-      RequirePermissionsAny('users:read', 'users:admin')(
-        target as never,
-        'method3' as never,
-        { value: () => undefined } as never,
-      ),
-    ).not.toThrow();
+    expect(() => RequireRoles('admin')).not.toThrow();
+    expect(() => RequireRolesAny('admin', 'auditor')).not.toThrow();
+    expect(() => RequirePermissionsAny('users:read', 'users:admin')).not.toThrow();
+    expect(() => RequirePermissions('users:read')).not.toThrow();
     expect(Public).toBeTypeOf('function');
+    expect(target).toBeDefined();
   });
 
   it('fails closed when resolution fails', async () => {
     const handler = {};
     Reflect.defineMetadata(
-      'authorization:permissions',
+      AUTHORIZATION_PERMISSIONS_METADATA,
       { values: ['users:read'], match: 'AND' },
       handler,
     );
     (authorization.resolve as ReturnType<typeof vi.fn>).mockRejectedValue(
       new Error('database unavailable'),
+    );
+    await expect(
+      guard.canActivate(context(request({ sub: 'u' }), handler)),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('denies unknown permission requirements', async () => {
+    const handler = {};
+    Reflect.defineMetadata(
+      AUTHORIZATION_PERMISSIONS_METADATA,
+      { values: ['unknown:permission'], match: 'AND' },
+      handler,
+    );
+    (authorization.resolve as ReturnType<typeof vi.fn>).mockResolvedValue(
+      snapshot(['users:read'], ['user']),
+    );
+    (authorization.assertPermissions as ReturnType<typeof vi.fn>).mockImplementation(
+      () => {
+        throw new ForbiddenException();
+      },
     );
     await expect(
       guard.canActivate(context(request({ sub: 'u' }), handler)),
