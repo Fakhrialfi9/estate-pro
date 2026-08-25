@@ -1,6 +1,5 @@
 import { ConfigService } from '@nestjs/config';
 import { describe, expect, it, vi } from 'vitest';
-import type { CredentialRepository } from '../../src/modules/users/domain/repositories/credential.repository.js';
 import { CredentialEntity } from '../../src/modules/users/credentials/domain/entities/credential.entity.js';
 import type { UserRepository } from '../../src/modules/users/domain/repositories/user.repository.js';
 import type { SecurityAuditRepository } from '../../src/modules/auth/domain/repositories/security-audit.repository.js';
@@ -15,13 +14,14 @@ import { TwoFactorService } from '../../src/modules/auth/application/services/tw
 
 const key = '01234567890123456789012345678901';
 
+type TestCredentialRepository = ConstructorParameters<typeof TwoFactorService>[4];
+
 function createHarness() {
   let enabled = false;
   let encryptedSecret = '';
   let lockedUntil: Date | null = null;
   let lastStep: bigint | null = null;
   let recoveryHashes: { id: bigint; codeHash: string; used: boolean }[] = [];
-  let challengeConsumed = false;
 
   const repository = {
     findByUserUuid: vi.fn(() =>
@@ -104,17 +104,13 @@ function createHarness() {
         userUuid: 'u1',
         challengeHash: 'hash',
         expiresAt: new Date(Date.now() + 300000),
-        consumedAt: challengeConsumed ? new Date() : null,
+        consumedAt: null,
         failedAttempts: 0,
         createdAt: new Date(),
       }),
     ),
     recordFailure: vi.fn(() => Promise.resolve()),
-    consume: vi.fn(() => {
-      if (challengeConsumed) return Promise.resolve(false);
-      challengeConsumed = true;
-      return Promise.resolve(true);
-    }),
+    consume: vi.fn(() => Promise.resolve(true)),
   };
 
   const hasher = {
@@ -151,7 +147,7 @@ function createHarness() {
     ),
   };
 
-  const credentials: CredentialRepository = {
+  const credentials: TestCredentialRepository = {
     create: () => Promise.reject(new Error('unused in 2FA unit test')),
     findByUserUuid: () =>
       Promise.resolve(

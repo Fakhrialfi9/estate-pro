@@ -12,8 +12,8 @@ CREATE TABLE `authentication_user_two_factor_recovery_codes` (
   `used_at` DATETIME NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `authentication_user_two_factor_recovery_codes_user_id_used_at_idx` (`user_id`, `used_at`),
-  CONSTRAINT `authentication_user_two_factor_recovery_codes_user_id_fkey`
+  KEY `auth_u2f_recovery_user_used_idx` (`user_id`, `used_at`),
+  CONSTRAINT `auth_u2f_recovery_user_fk`
     FOREIGN KEY (`user_id`) REFERENCES `authentication_users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -26,9 +26,9 @@ CREATE TABLE `authentication_user_two_factor_challenges` (
   `failed_attempts` INT UNSIGNED NOT NULL DEFAULT 0,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `authentication_user_two_factor_challenges_challenge_hash_key` (`challenge_hash`),
-  KEY `authentication_user_two_factor_challenges_user_id_expires_at_idx` (`user_id`, `expires_at`),
-  KEY `authentication_user_two_factor_challenges_consumed_at_idx` (`consumed_at`),
-  CONSTRAINT `authentication_user_two_factor_challenges_user_id_fkey`
+  UNIQUE KEY `auth_u2f_challenge_hash_key` (`challenge_hash`),
+  KEY `auth_u2f_challenge_user_exp_idx` (`user_id`, `expires_at`),
+  KEY `auth_u2f_challenge_consumed_idx` (`consumed_at`),
+  CONSTRAINT `auth_u2f_challenge_user_fk`
     FOREIGN KEY (`user_id`) REFERENCES `authentication_users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

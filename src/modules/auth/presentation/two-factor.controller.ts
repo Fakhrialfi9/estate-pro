@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Post,
   Req,
   UnauthorizedException,
@@ -36,6 +37,7 @@ const requestContext = (request: Request) => ({
 });
 
 @Controller('auth/2fa')
+@Header('Cache-Control', 'no-store')
 export class TwoFactorController {
   constructor(
     private readonly twoFactor: TwoFactorService,
