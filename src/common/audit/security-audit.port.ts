@@ -6,13 +6,13 @@ export interface SecurityAuditChange {
 
 export interface SecurityAuditEvent {
   action: string;
-  userUuid?: string;
-  entityType?: string;
-  entityUuid?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  requestId?: string;
-  changes?: readonly SecurityAuditChange[];
+  userUuid?: string | undefined;
+  entityType?: string | undefined;
+  entityUuid?: string | undefined;
+  ipAddress?: string | undefined;
+  userAgent?: string | undefined;
+  requestId?: string | undefined;
+  changes?: readonly SecurityAuditChange[] | undefined;
 }
 
 export interface SecurityAuditRepository {
