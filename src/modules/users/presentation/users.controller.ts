@@ -8,13 +8,19 @@ import {
   HttpCode,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { UserManagementAccessGuard } from '../security/user-management-access.guard.js';
 import { CreateUserDto } from '../application/dto/create-user.dto.js';
@@ -34,6 +40,8 @@ import type { UserAuditContext } from '../application/services/user-management.s
 import { serializeUser } from '../application/serializers/user.serializer.js';
 
 type AuthenticatedRequest = Request & { user?: { sub?: string } };
+
+const UUID_PIPE = new ParseUUIDPipe({ version: '4' });
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -140,12 +148,18 @@ export class UsersController {
   }
 
   @Get(':uuid')
+  @ApiParam({
+    name: 'uuid',
+    description: 'User UUID',
+    format: 'uuid',
+    required: true,
+  })
   @ApiOperation({
     summary: 'Get user',
     description:
       'A user may read their own record; other users require users:manage authorization.',
   })
-  async getByUuid(@Param('uuid') uuid: string) {
+  async getByUuid(@Param('uuid', UUID_PIPE) uuid: string) {
     try {
       return serializeUser(await this.users.getByUuid(uuid));
     } catch (error: unknown) {
@@ -154,6 +168,12 @@ export class UsersController {
   }
 
   @Patch(':uuid')
+  @ApiParam({
+    name: 'uuid',
+    description: 'User UUID',
+    format: 'uuid',
+    required: true,
+  })
   @ApiOperation({
     summary: 'Update user',
     description:
@@ -161,7 +181,7 @@ export class UsersController {
   })
   async update(
     @Req() request: AuthenticatedRequest,
-    @Param('uuid') uuid: string,
+    @Param('uuid', UUID_PIPE) uuid: string,
     @Body() dto: UpdateUserDto,
   ) {
     try {
@@ -186,6 +206,12 @@ export class UsersController {
 
   @Delete(':uuid')
   @HttpCode(204)
+  @ApiParam({
+    name: 'uuid',
+    description: 'User UUID',
+    format: 'uuid',
+    required: true,
+  })
   @ApiOperation({
     summary: 'Deactivate user',
     description:
@@ -193,7 +219,7 @@ export class UsersController {
   })
   async remove(
     @Req() request: AuthenticatedRequest,
-    @Param('uuid') uuid: string,
+    @Param('uuid', UUID_PIPE) uuid: string,
   ): Promise<void> {
     try {
       await this.users.remove(uuid, this.auditContext(request));
