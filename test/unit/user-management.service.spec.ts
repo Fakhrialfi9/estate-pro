@@ -9,6 +9,7 @@ import { UserManagementService } from '../../src/modules/users/application/servi
 import { UserEntity } from '../../src/modules/users/domain/entities/user.entity.js';
 import type { UserRepository } from '../../src/modules/users/domain/repositories/user.repository.js';
 
+const PASSWORD = 'Strong-Test-Password-123!';
 const makeUser = (
   overrides: Partial<ReturnType<UserEntity['toSnapshot']>> = {},
 ) =>
@@ -28,6 +29,7 @@ const makeUser = (
 
 const repo = () => {
   const create = vi.fn(() => Promise.resolve(makeUser()));
+  const createWithCredential = vi.fn(() => Promise.resolve(makeUser()));
   const findByUuid = vi.fn(() => Promise.resolve(null));
   const findByEmail = vi.fn(() => Promise.resolve(null));
   const findByUsername = vi.fn(() => Promise.resolve(null));
@@ -42,9 +44,13 @@ const repo = () => {
     revokeAllForSecurityEvent: vi.fn(() => Promise.resolve()),
   };
   const audit = { record: vi.fn(() => Promise.resolve()) };
+  const credentials = {
+    preparePasswordHash: vi.fn(() => Promise.resolve('argon2-hash')),
+  };
 
   const repository: UserRepository = {
     create,
+    createWithCredential,
     findByUuid,
     findByEmail,
     findByUsername,
@@ -59,8 +65,10 @@ const repo = () => {
     repository,
     sessions,
     audit,
+    credentials,
     mocks: {
       create,
+      createWithCredential,
       findByUuid,
       findByEmail,
       findByUsername,
@@ -74,53 +82,77 @@ const repo = () => {
 };
 
 describe('UserManagementService', () => {
-  it('creates a user from an allowed identity', async () => {
-    const { repository, mocks, sessions, audit } = repo();
+  it('creates a user with an Argon2 credential hash and never passes plaintext to persistence', async () => {
+    const { repository, mocks, sessions, audit, credentials } = repo();
     const service = new UserManagementService(
       repository,
       sessions as never,
       audit as never,
+      credentials as never,
     );
-    const result = await service.create({ email: ' JOHN@EXAMPLE.COM ' });
+    const result = await service.create(
+      { email: ' JOHN@EXAMPLE.COM ' },
+      { password: PASSWORD, confirmation: PASSWORD },
+    );
     expect(result.email).toBe('john@example.com');
-    expect(mocks.create).toHaveBeenCalledWith({
-      email: 'john@example.com',
-      username: null,
-      phone: null,
-      status: 'pending',
+    expect(credentials.preparePasswordHash).toHaveBeenCalledWith({
+      password: PASSWORD,
+      confirmation: PASSWORD,
     });
+    expect(mocks.createWithCredential).toHaveBeenCalledWith(
+      {
+        email: 'john@example.com',
+        username: null,
+        phone: null,
+        status: 'pending',
+      },
+      { passwordHash: 'argon2-hash' },
+    );
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it('rejects empty identity', async () => {
-    const { repository, sessions, audit } = repo();
+    const { repository, sessions, audit, credentials } = repo();
     const service = new UserManagementService(
       repository,
       sessions as never,
       audit as never,
+      credentials as never,
     );
-    await expect(service.create({})).rejects.toBeInstanceOf(InvalidUserError);
+    await expect(
+      service.create(
+        {},
+        { password: PASSWORD, confirmation: PASSWORD },
+      ),
+    ).rejects.toBeInstanceOf(InvalidUserError);
   });
 
-  it('rejects duplicate identity before persistence', async () => {
-    const { repository, mocks, sessions, audit } = repo();
+  it('rejects duplicate identity before password hashing and persistence', async () => {
+    const { repository, mocks, sessions, audit, credentials } = repo();
     mocks.findDuplicateIdentity.mockResolvedValue(makeUser());
     const service = new UserManagementService(
       repository,
       sessions as never,
       audit as never,
+      credentials as never,
     );
     await expect(
-      service.create({ email: 'john@example.com' }),
+      service.create(
+        { email: 'john@example.com' },
+        { password: PASSWORD, confirmation: PASSWORD },
+      ),
     ).rejects.toBeInstanceOf(DuplicateUserError);
-    expect(mocks.create).not.toHaveBeenCalled();
+    expect(credentials.preparePasswordHash).not.toHaveBeenCalled();
+    expect(mocks.createWithCredential).not.toHaveBeenCalled();
   });
 
   it('rejects updates to missing users', async () => {
-    const { repository, sessions, audit } = repo();
+    const { repository, sessions, audit, credentials } = repo();
     const service = new UserManagementService(
       repository,
       sessions as never,
       audit as never,
+      credentials as never,
     );
     await expect(
       service.update('550e8400-e29b-41d4-a716-446655440000', {
