@@ -25,6 +25,9 @@ import {
 } from '../../domain/repositories/role.repository.js';
 import {
   RoleAuthorizationPolicy,
+  ROLE_CREATE_PERMISSION,
+  ROLE_DELETE_PERMISSION,
+  ROLE_UPDATE_PERMISSION,
   type RoleActor,
 } from '../policies/role-authorization.policy.js';
 import {
@@ -55,7 +58,7 @@ export class RoleService {
     const name = normalizeRoleName(input.name);
     const code = normalizeRoleCode(input.code);
     this.validateInput(name, code);
-    this.policy.canManage(actor, isProtectedRoleCode(code));
+    this.policy.canManage(actor, ROLE_CREATE_PERMISSION, isProtectedRoleCode(code));
     if (await this.roles.findByName(name))
       throw new RoleAlreadyExistsException();
     if (await this.roles.findByCode(code))
@@ -103,7 +106,7 @@ export class RoleService {
   ): Promise<RoleEntity> {
     const role = await this.roles.findByUuid(uuid);
     if (!role) throw new RoleNotFoundException();
-    this.policy.canManage(actor, role.isSystem);
+    this.policy.canManage(actor, ROLE_UPDATE_PERMISSION, role.isSystem);
 
     if (changes.name !== undefined) {
       const name = normalizeRoleName(changes.name);
@@ -161,7 +164,7 @@ export class RoleService {
       throw new RoleDeleteNotAllowedException();
     }
 
-    this.policy.canManage(actor);
+    this.policy.canManage(actor, ROLE_DELETE_PERMISSION);
     const dependency = await this.roles.getDependencyCount(uuid);
     if (
       dependency.userAssignments > 0 ||
