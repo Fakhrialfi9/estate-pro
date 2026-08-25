@@ -66,7 +66,9 @@ export const configurationValidationSchema = Joi.object({
   API_PREFIX: Joi.string().trim().min(1).default('api'),
   API_VERSION: Joi.string().trim().min(1).default('v1'),
 
-  DATABASE_URL: Joi.string().uri({ scheme: ['mysql'] }).required(),
+  DATABASE_URL: Joi.string()
+    .uri({ scheme: ['mysql'] })
+    .required(),
   DATABASE_HOST: Joi.string().trim().min(1).required(),
   DATABASE_PORT: Joi.number().integer().min(1).max(65535).default(3306),
   DATABASE_NAME: Joi.string().trim().min(1).required(),

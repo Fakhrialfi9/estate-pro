@@ -29,10 +29,14 @@ import { PrismaSecurityAuditRepository } from '../../infrastructure/audit/prisma
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('auth.jwt.secret'),
         signOptions: {
-          expiresIn: config.getOrThrow<string>('auth.jwt.expiresIn') as `${number}${'s' | 'm' | 'h' | 'd'}`,
+          expiresIn: config.getOrThrow<string>(
+            'auth.jwt.expiresIn',
+          ) as `${number}${'s' | 'm' | 'h' | 'd'}`,
           issuer: config.getOrThrow<string>('auth.jwt.issuer'),
           audience: config.getOrThrow<string>('auth.jwt.audience'),
-          algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>('auth.jwt.algorithm'),
+          algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>(
+            'auth.jwt.algorithm',
+          ),
         },
       }),
     }),
