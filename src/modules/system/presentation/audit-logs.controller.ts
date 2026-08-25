@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/auth.module.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -21,6 +22,8 @@ import { AuditLogQueryDto } from './audit-log-query.dto.js';
 const AUDIT_READ_PERMISSION = 'audit:read';
 type AuditRequest = Request & { user?: { sub?: string } };
 
+@ApiTags('Audit')
+@ApiBearerAuth()
 @Controller({ path: 'system/audit-logs', version: '1' })
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class AuditLogsController {
@@ -33,10 +36,11 @@ export class AuditLogsController {
 
   @RequirePermissions(AUDIT_READ_PERMISSION)
   @Get()
+  @ApiOperation({ summary: 'Query audit logs', description: `Requires ${AUDIT_READ_PERMISSION}. Records are immutable; this endpoint only reads paginated, filtered audit data and records the audit access itself.` })
   async list(
     @Req() request: AuditRequest,
     @Query() query: AuditLogQueryDto,
-  ): Promise<unknown> {
+): Promise<unknown> {
     if (!request.user?.sub)
       throw new BadRequestException('Authenticated actor missing');
     const from = query.from ? new Date(query.from) : undefined;
