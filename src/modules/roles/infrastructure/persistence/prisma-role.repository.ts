@@ -88,10 +88,13 @@ export class PrismaRoleRepository implements RoleRepository {
       return PrismaRoleMapper.toDomain(record);
     } catch (error: unknown) {
       if ((error as { code?: string }).code === 'P2002') {
-        const target = String(
-          (error as { meta?: { target?: unknown } }).meta?.target ?? '',
-        );
-        if (target.includes('code'))
+        const target = (error as { meta?: { target?: unknown } }).meta?.target;
+        const targetFields = Array.isArray(target)
+          ? target.filter((value): value is string => typeof value === 'string')
+          : typeof target === 'string'
+            ? [target]
+            : [];
+        if (targetFields.includes('code'))
           throw new Error('RoleCodeAlreadyExistsError');
         throw new Error('RoleAlreadyExistsError');
       }
