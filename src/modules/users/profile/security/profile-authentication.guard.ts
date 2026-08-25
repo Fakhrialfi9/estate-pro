@@ -3,7 +3,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
-import { UserManagementService } from '../application/services/user-management.service.js';
+import { UserManagementService } from '../../../application/services/user-management.service.js';
 import type { AuthenticatedPrincipal } from '../application/types/authenticated-principal.js';
 
 export type AuthenticatedRequest = Request & { user?: AuthenticatedPrincipal };
