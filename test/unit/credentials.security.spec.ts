@@ -23,9 +23,8 @@ const passwordConfig = {
         ? 15
         : undefined,
 };
-const sessions: SessionSecurityPort = {
-  revokeAllForSecurityEvent: vi.fn().mockResolvedValue(0),
-};
+const revokeAllForSecurityEvent = vi.fn().mockResolvedValue(0);
+const sessions: SessionSecurityPort = { revokeAllForSecurityEvent };
 
 describe('credential security', () => {
   it('enforces a practical password policy and confirmation', () => {
@@ -142,7 +141,7 @@ describe('credential security', () => {
         confirmation: 'NewSecurePassword123',
       }),
     ).rejects.toBeInstanceOf(ConcurrentPasswordChangeError);
-    expect(sessions.revokeAllForSecurityEvent).not.toHaveBeenCalled();
+    expect(revokeAllForSecurityEvent).not.toHaveBeenCalled();
   });
 
   it('generates high-entropy reset tokens and persists only their digest', () => {
