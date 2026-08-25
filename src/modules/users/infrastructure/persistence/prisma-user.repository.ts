@@ -32,12 +32,24 @@ type UserWhere = {
   }>;
 };
 
+type SortField =
+  | 'uuid'
+  | 'username'
+  | 'email'
+  | 'phone'
+  | 'status'
+  | 'createdAt'
+  | 'updatedAt';
+type SortDirection = 'asc' | 'desc';
+
 type UserPersistenceDelegate = {
   create(args: { data: UserPersistenceData }): Promise<UserPersistenceRecord>;
   findFirst(args: { where: UserWhere }): Promise<UserPersistenceRecord | null>;
   findMany(args: {
     where: UserWhere;
-    orderBy: Record<string, 'asc' | 'desc'>;
+    orderBy:
+      | Record<string, SortDirection>
+      | Array<Record<string, SortDirection>>;
     skip: number;
     take: number;
   }): Promise<UserPersistenceRecord[]>;
@@ -50,6 +62,19 @@ type UserPersistenceDelegate = {
 
 type PrismaPersistenceClient = {
   authenticationUser: UserPersistenceDelegate;
+};
+
+const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_SEARCH_LENGTH = 100;
+const SORT_FIELDS: Readonly<Record<SortField, true>> = {
+  uuid: true,
+  username: true,
+  email: true,
+  phone: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
 };
 
 @Injectable()
@@ -142,15 +167,24 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   async list(query: UserListQuery): Promise<UserListResult> {
+    const page = Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
+    const limit = Number.isInteger(query.limit)
+      ? Math.min(Math.max(query.limit, 1), MAX_PAGE_SIZE)
+      : DEFAULT_PAGE_SIZE;
+    const sortBy = this.resolveSortField(query.sortBy);
+    const sortDirection: SortDirection =
+      query.sortDirection === 'desc' ? 'desc' : 'asc';
+    const search = query.search?.trim().slice(0, MAX_SEARCH_LENGTH);
+
     const where = {
       deletedAt: null,
       ...this.buildFilter(query.filterField, query.filterValue),
-      ...(query.search
+      ...(search
         ? {
             OR: [
-              { username: { contains: query.search } },
-              { email: { contains: query.search } },
-              { phone: { contains: query.search } },
+              { username: { contains: search } },
+              { email: { contains: search } },
+              { phone: { contains: search } },
             ],
           }
         : {}),
@@ -159,9 +193,9 @@ export class PrismaUserRepository implements UserRepository {
     const [records, total] = await Promise.all([
       this.users.findMany({
         where,
-        orderBy: { [query.sortBy]: query.sortDirection },
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
+        orderBy: [{ [sortBy]: sortDirection }, { uuid: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
       }),
       this.users.count({ where }),
     ]);
@@ -169,8 +203,8 @@ export class PrismaUserRepository implements UserRepository {
     return {
       items: records.map((record) => PrismaUserMapper.toDomain(record)),
       total,
-      page: query.page,
-      limit: query.limit,
+      page,
+      limit,
     };
   }
 
@@ -196,6 +230,10 @@ export class PrismaUserRepository implements UserRepository {
       where: { uuid },
       data: { deletedAt: new Date(), isActive: false, status: 'inactive' },
     });
+  }
+
+  private resolveSortField(value: string): SortField {
+    return value in SORT_FIELDS ? (value as SortField) : 'createdAt';
   }
 
   private buildFilter(field?: UserFilterField, value?: string): UserWhere {
