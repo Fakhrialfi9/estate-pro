@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Test } from '@nestjs/testing';
-import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import type { Response as SuperTestResponse } from 'supertest';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
 import { AppModule } from '../../src/app.module.js';
@@ -10,7 +11,12 @@ import { PasswordHasherService } from '../../src/modules/auth/application/servic
 import { JwtService } from '@nestjs/jwt';
 
 const PASSWORD = 'Strong-Test-Password-123!';
-let app: INestApplication;
+type UserResponse = { uuid: string; email: string; password?: string; passwordHash?: string };
+type UserListResponse = { items: Array<{ uuid: string }> };
+type ProfileResponse = { firstName: string; locale: string };
+type LoginResponse = { accessToken: string };
+
+let app: NestExpressApplication;
 let prisma: PrismaService;
 let hasher: PasswordHasherService;
 let jwt: JwtService;
@@ -18,6 +24,8 @@ let actorUuid = '';
 let targetUuid = '';
 
 const httpRequest = () => request(app.getHttpServer());
+const bodyOf = <T>(response: SuperTestResponse): T =>
+  response.body as unknown as T;
 const tokenFor = (sub: string, permissions: string[] = ['users:manage']) =>
   jwt.sign({ sub, sid: randomUUID(), permissions });
 
@@ -58,8 +66,8 @@ describe('User management E2E', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
-    app = moduleRef.createNestApplication();
-    configureApplication(app as Parameters<typeof configureApplication>[0]);
+    app = moduleRef.createNestApplication<NestExpressApplication>();
+    configureApplication(app);
     await app.init();
     prisma = app.get(PrismaService);
     hasher = app.get(PasswordHasherService);
@@ -89,9 +97,10 @@ describe('User management E2E', () => {
         email: `created-${randomUUID()}@example.com`,
       })
       .expect(201);
-    const uuid = create.body.uuid as string;
-    expect(create.body.password).toBeUndefined();
-    expect(create.body.passwordHash).toBeUndefined();
+    const createBody = bodyOf<UserResponse>(create);
+    const uuid = createBody.uuid;
+    expect(createBody.password).toBeUndefined();
+    expect(createBody.passwordHash).toBeUndefined();
 
     await httpRequest()
       .get(`/api/v1/users/${uuid}`)
@@ -99,13 +108,12 @@ describe('User management E2E', () => {
       .expect(200);
     const list = await httpRequest()
       .get(
-        `/api/v1/users?page=1&limit=20&search=${encodeURIComponent(create.body.email)}`,
+        `/api/v1/users?page=1&limit=20&search=${encodeURIComponent(createBody.email)}`,
       )
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
-    expect(
-      list.body.items.some((item: { uuid: string }) => item.uuid === uuid),
-    ).toBe(true);
+    const listBody = bodyOf<UserListResponse>(list);
+    expect(listBody.items.some((item) => item.uuid === uuid)).toBe(true);
 
     await httpRequest()
       .patch(`/api/v1/users/${uuid}`)
@@ -142,8 +150,9 @@ describe('User management E2E', () => {
       .get(`/api/v1/users/${targetUuid}/profile`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
-    expect(own.body.firstName).toBe('Target');
-    expect(own.body.locale).toBe('id-ID');
+    const ownBody = bodyOf<ProfileResponse>(own);
+    expect(ownBody.firstName).toBe('Target');
+    expect(ownBody.locale).toBe('id-ID');
 
     await httpRequest()
       .get(`/api/v1/users/${targetUuid}/profile`)
@@ -187,7 +196,9 @@ describe('User management E2E', () => {
       .post('/api/v1/auth/login')
       .send({ identifier: actor.email, password: 'Changed-Password-456!' })
       .expect(201);
-    expect(login.body.accessToken).toEqual(expect.any(String));
+    expect(bodyOf<LoginResponse>(login).accessToken).toEqual(
+      expect.any(String),
+    );
     expect(
       await prisma.authenticationUserCredential.count({
         where: { userId: actor.id },
