@@ -75,6 +75,7 @@ export class LoginService {
       (await this.users.findByEmail(identifier)) ??
       (await this.users.findByUsername(identifier));
     if (!user) {
+      await this.hasher.hash(command.password);
       await this.auditFailure(
         command,
         AUTH_FAILURE_REASONS.INVALID_CREDENTIALS,
