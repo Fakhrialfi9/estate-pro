@@ -4,13 +4,11 @@ import { AuthController } from '../../../src/modules/auth/presentation/auth.cont
 describe('AuthController', () => {
   it('delegates login and returns the real authentication response', async () => {
     const login = {
-      execute: vi
-        .fn()
-        .mockResolvedValue({
-          accessToken: 'token',
-          tokenType: 'Bearer',
-          expiresIn: 900,
-        }),
+      execute: vi.fn().mockResolvedValue({
+        accessToken: 'token',
+        tokenType: 'Bearer',
+        expiresIn: 900,
+      }),
     };
     const logout = { execute: vi.fn() };
     const users = { getByUuid: vi.fn() };
