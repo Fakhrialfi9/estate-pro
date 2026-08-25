@@ -94,7 +94,9 @@ describe('UserProfile domain and application', () => {
     const { service, repository } = createService();
     const expected = profile();
     repository.findByUserUuid.mockResolvedValueOnce(expected);
-    await expect(service.get({ sub: userUuid }, userUuid)).resolves.toBe(expected);
+    await expect(service.get({ sub: userUuid }, userUuid)).resolves.toBe(
+      expected,
+    );
   });
 
   it('handles profile not found', async () => {
