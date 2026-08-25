@@ -2,13 +2,24 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import type { UserUpdate } from '../../domain/entities/user.entity.js';
 import { UserEntity } from '../../domain/entities/user.entity.js';
-import { DuplicateUserError, InvalidUserError, UserNotFoundError } from '../../domain/errors/user.errors.js';
-import type { CreateUserData, UserListQuery, UserListResult, UserRepository } from '../../domain/repositories/user.repository.js';
+import {
+  DuplicateUserError,
+  InvalidUserError,
+  UserNotFoundError,
+} from '../../domain/errors/user.errors.js';
+import type {
+  CreateUserData,
+  UserListQuery,
+  UserListResult,
+  UserRepository,
+} from '../../domain/repositories/user.repository.js';
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository.js';
 
 @Injectable()
 export class UserManagementService {
-  constructor(@Inject(USER_REPOSITORY) private readonly users: UserRepository) {}
+  constructor(
+    @Inject(USER_REPOSITORY) private readonly users: UserRepository,
+  ) {}
 
   async create(data: CreateUserData): Promise<UserEntity> {
     const normalized: CreateUserData = {
@@ -28,7 +39,8 @@ export class UserManagementService {
     try {
       return await this.users.create(normalized);
     } catch (error: unknown) {
-      if ((error as { name?: string }).name === 'DuplicateUserError') throw error;
+      if ((error as { name?: string }).name === 'DuplicateUserError')
+        throw error;
       throw error;
     }
   }
@@ -60,16 +72,29 @@ export class UserManagementService {
     if (!existing) throw new UserNotFoundError();
 
     const normalized: UserUpdate = {
-      ...(changes.username !== undefined ? { username: this.normalizeNullable(changes.username) } : {}),
-      ...(changes.email !== undefined ? { email: this.normalizeNullable(changes.email)?.toLowerCase() ?? null } : {}),
-      ...(changes.phone !== undefined ? { phone: this.normalizeNullable(changes.phone) } : {}),
+      ...(changes.username !== undefined
+        ? { username: this.normalizeNullable(changes.username) }
+        : {}),
+      ...(changes.email !== undefined
+        ? {
+            email: this.normalizeNullable(changes.email)?.toLowerCase() ?? null,
+          }
+        : {}),
+      ...(changes.phone !== undefined
+        ? { phone: this.normalizeNullable(changes.phone) }
+        : {}),
       ...(changes.status !== undefined ? { status: changes.status } : {}),
       ...(changes.isActive !== undefined ? { isActive: changes.isActive } : {}),
     };
 
-    const nextUsername = normalized.username !== undefined ? normalized.username : existing.username;
-    const nextEmail = normalized.email !== undefined ? normalized.email : existing.email;
-    const nextPhone = normalized.phone !== undefined ? normalized.phone : existing.phone;
+    const nextUsername =
+      normalized.username !== undefined
+        ? normalized.username
+        : existing.username;
+    const nextEmail =
+      normalized.email !== undefined ? normalized.email : existing.email;
+    const nextPhone =
+      normalized.phone !== undefined ? normalized.phone : existing.phone;
     if (!nextUsername && !nextEmail && !nextPhone) {
       throw new InvalidUserError('At least one identity is required');
     }

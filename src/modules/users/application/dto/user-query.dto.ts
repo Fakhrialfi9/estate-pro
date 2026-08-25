@@ -1,5 +1,13 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class UserQueryDto {
   @IsOptional()
@@ -26,7 +34,15 @@ export class UserQueryDto {
   filterValue?: string;
 
   @IsOptional()
-  @IsIn(['uuid', 'username', 'email', 'phone', 'status', 'createdAt', 'updatedAt'])
+  @IsIn([
+    'uuid',
+    'username',
+    'email',
+    'phone',
+    'status',
+    'createdAt',
+    'updatedAt',
+  ])
   sortBy?: string;
 
   @IsOptional()

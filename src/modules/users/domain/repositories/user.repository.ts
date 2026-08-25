@@ -1,4 +1,8 @@
-import type { UserEntity, UserStatus, UserUpdate } from '../entities/user.entity.js';
+import type {
+  UserEntity,
+  UserStatus,
+  UserUpdate,
+} from '../entities/user.entity.js';
 
 export interface CreateUserData {
   username?: string | null;
@@ -7,8 +11,20 @@ export interface CreateUserData {
   status?: UserStatus;
 }
 
-export type UserFilterField = 'username' | 'email' | 'phone' | 'status' | 'isActive';
-export type UserSortField = 'uuid' | 'username' | 'email' | 'phone' | 'status' | 'createdAt' | 'updatedAt';
+export type UserFilterField =
+  | 'username'
+  | 'email'
+  | 'phone'
+  | 'status'
+  | 'isActive';
+export type UserSortField =
+  | 'uuid'
+  | 'username'
+  | 'email'
+  | 'phone'
+  | 'status'
+  | 'createdAt'
+  | 'updatedAt';
 
 export interface UserListQuery {
   page: number;
@@ -33,7 +49,10 @@ export interface UserRepository {
   findByEmail(email: string): Promise<UserEntity | null>;
   findByUsername(username: string): Promise<UserEntity | null>;
   findByPhone(phone: string): Promise<UserEntity | null>;
-  findDuplicateIdentity(data: CreateUserData, excludeUuid?: string): Promise<UserEntity | null>;
+  findDuplicateIdentity(
+    data: CreateUserData,
+    excludeUuid?: string,
+  ): Promise<UserEntity | null>;
   list(query: UserListQuery): Promise<UserListResult>;
   update(uuid: string, changes: UserUpdate): Promise<UserEntity>;
   softDelete(uuid: string): Promise<void>;

@@ -31,11 +31,14 @@ const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS authentication_users (
   INDEX idx_auth_users_active_deleted_at (is_active, deleted_at)
 ) ENGINE=InnoDB;`;
 
-const actorToken = (permissions: string[] = ['users:manage']) => jwt.sign({ sub: ACTOR_UUID, permissions });
+const actorToken = (permissions: string[] = ['users:manage']) =>
+  jwt.sign({ sub: ACTOR_UUID, permissions });
 
 describe('Users API', () => {
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
     prisma = app.get(PrismaService);
@@ -45,7 +48,14 @@ describe('Users API', () => {
 
   beforeEach(async () => {
     await prisma.authenticationUser.deleteMany();
-    await prisma.authenticationUser.create({ data: { uuid: ACTOR_UUID, email: 'actor@example.com', status: 'active', isActive: true } });
+    await prisma.authenticationUser.create({
+      data: {
+        uuid: ACTOR_UUID,
+        email: 'actor@example.com',
+        status: 'active',
+        isActive: true,
+      },
+    });
   });
 
   afterAll(async () => {
@@ -60,7 +70,11 @@ describe('Users API', () => {
     const create = await request(app.getHttpServer())
       .post('/api/v1/users')
       .set('Authorization', `Bearer ${actorToken()}`)
-      .send({ username: 'john', email: 'john@example.com', phone: '+62123456789' })
+      .send({
+        username: 'john',
+        email: 'john@example.com',
+        phone: '+62123456789',
+      })
       .expect(201);
 
     const uuid = create.body.uuid as string;
@@ -79,7 +93,13 @@ describe('Users API', () => {
     await request(app.getHttpServer())
       .get('/api/v1/users')
       .set('Authorization', `Bearer ${actorToken()}`)
-      .query({ page: 1, limit: 10, sortBy: 'createdAt', sortDirection: 'desc', search: 'john' })
+      .query({
+        page: 1,
+        limit: 10,
+        sortBy: 'createdAt',
+        sortDirection: 'desc',
+        search: 'john',
+      })
       .expect(200)
       .expect((response) => {
         expect(response.body.meta.total).toBe(1);
@@ -96,30 +116,56 @@ describe('Users API', () => {
         expect(response.body.isActive).toBe(false);
       });
 
-    await request(app.getHttpServer()).get(`/api/v1/users/${uuid}`).set('Authorization', `Bearer ${actorToken()}`).expect(200);
+    await request(app.getHttpServer())
+      .get(`/api/v1/users/${uuid}`)
+      .set('Authorization', `Bearer ${actorToken()}`)
+      .expect(200);
 
     await request(app.getHttpServer())
       .delete(`/api/v1/users/${uuid}`)
       .set('Authorization', `Bearer ${actorToken()}`)
       .expect(204);
 
-    const stored = await prisma.authenticationUser.findUnique({ where: { uuid } });
+    const stored = await prisma.authenticationUser.findUnique({
+      where: { uuid },
+    });
     expect(stored?.deletedAt).toBeTruthy();
     expect(stored?.isActive).toBe(false);
     expect(stored?.status).toBe('inactive');
 
-    await request(app.getHttpServer()).get(`/api/v1/users/${uuid}`).set('Authorization', `Bearer ${actorToken()}`).expect(404);
+    await request(app.getHttpServer())
+      .get(`/api/v1/users/${uuid}`)
+      .set('Authorization', `Bearer ${actorToken()}`)
+      .expect(404);
   });
 
   it('rejects duplicate identity', async () => {
     const auth = `Bearer ${actorToken()}`;
-    await request(app.getHttpServer()).post('/api/v1/users').set('Authorization', auth).send({ email: 'duplicate@example.com' }).expect(201);
-    await request(app.getHttpServer()).post('/api/v1/users').set('Authorization', auth).send({ email: 'duplicate@example.com' }).expect(409);
+    await request(app.getHttpServer())
+      .post('/api/v1/users')
+      .set('Authorization', auth)
+      .send({ email: 'duplicate@example.com' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post('/api/v1/users')
+      .set('Authorization', auth)
+      .send({ email: 'duplicate@example.com' })
+      .expect(409);
   });
 
   it('does not allow an authenticated user to read another user without management permission', async () => {
-    const create = await request(app.getHttpServer()).post('/api/v1/users').set('Authorization', `Bearer ${actorToken()}`).send({ email: 'other@example.com' }).expect(201);
-    const readOnlyToken = jwt.sign({ sub: ACTOR_UUID, permissions: ['users:read'] });
-    await request(app.getHttpServer()).get(`/api/v1/users/${create.body.uuid}`).set('Authorization', `Bearer ${readOnlyToken}`).expect(403);
+    const create = await request(app.getHttpServer())
+      .post('/api/v1/users')
+      .set('Authorization', `Bearer ${actorToken()}`)
+      .send({ email: 'other@example.com' })
+      .expect(201);
+    const readOnlyToken = jwt.sign({
+      sub: ACTOR_UUID,
+      permissions: ['users:read'],
+    });
+    await request(app.getHttpServer())
+      .get(`/api/v1/users/${create.body.uuid}`)
+      .set('Authorization', `Bearer ${readOnlyToken}`)
+      .expect(403);
   });
 });

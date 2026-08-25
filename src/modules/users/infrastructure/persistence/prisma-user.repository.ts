@@ -1,7 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
 
-import type { CreateUserData, UserFilterField, UserListQuery, UserListResult, UserRepository, UserSortField } from '../../domain/repositories/user.repository.js';
+import type {
+  CreateUserData,
+  UserFilterField,
+  UserListQuery,
+  UserListResult,
+  UserRepository,
+  UserSortField,
+} from '../../domain/repositories/user.repository.js';
 import type { UserUpdate } from '../../domain/entities/user.entity.js';
 import { PrismaUserMapper } from './prisma-user.mapper.js';
 
@@ -53,12 +60,28 @@ export class PrismaUserRepository implements UserRepository {
     return record ? PrismaUserMapper.toDomain(record) : null;
   }
 
-  async findDuplicateIdentity(data: CreateUserData | UserUpdate, excludeUuid?: string) {
+  async findDuplicateIdentity(
+    data: CreateUserData | UserUpdate,
+    excludeUuid?: string,
+  ) {
     const identities = [
-      data.username !== undefined && data.username !== null ? { username: data.username } : null,
-      data.email !== undefined && data.email !== null ? { email: data.email } : null,
-      data.phone !== undefined && data.phone !== null ? { phone: data.phone } : null,
-    ].filter((value): value is { username: string } | { email: string } | { phone: string } => value !== null);
+      data.username !== undefined && data.username !== null
+        ? { username: data.username }
+        : null,
+      data.email !== undefined && data.email !== null
+        ? { email: data.email }
+        : null,
+      data.phone !== undefined && data.phone !== null
+        ? { phone: data.phone }
+        : null,
+    ].filter(
+      (
+        value,
+      ): value is
+        | { username: string }
+        | { email: string }
+        | { phone: string } => value !== null,
+    );
 
     if (identities.length === 0) return null;
 
@@ -76,7 +99,7 @@ export class PrismaUserRepository implements UserRepository {
   async list(query: UserListQuery): Promise<UserListResult> {
     const where = {
       deletedAt: null,
-      ...(this.buildFilter(query.filterField, query.filterValue)),
+      ...this.buildFilter(query.filterField, query.filterValue),
       ...(query.search
         ? {
             OR: [
@@ -132,7 +155,8 @@ export class PrismaUserRepository implements UserRepository {
 
   private buildFilter(field?: UserFilterField, value?: string) {
     if (!field || value === undefined) return {};
-    if (field === 'isActive') return { isActive: value.toLowerCase() === 'true' };
+    if (field === 'isActive')
+      return { isActive: value.toLowerCase() === 'true' };
     return { [field as Exclude<UserFilterField, 'isActive'>]: value };
   }
 }

@@ -24,4 +24,5 @@ export const serializeUser = (user: UserEntity): UserResponse => ({
   updatedAt: user.updatedAt.toISOString(),
 });
 
-export const serializeUserList = (users: UserEntity[]) => users.map(serializeUser);
+export const serializeUserList = (users: UserEntity[]) =>
+  users.map(serializeUser);

@@ -74,11 +74,13 @@ export class UserEntity {
   }
 
   update(changes: UserUpdate): void {
-    if (changes.username !== undefined) this.snapshot.username = changes.username;
+    if (changes.username !== undefined)
+      this.snapshot.username = changes.username;
     if (changes.email !== undefined) this.snapshot.email = changes.email;
     if (changes.phone !== undefined) this.snapshot.phone = changes.phone;
     if (changes.status !== undefined) this.snapshot.status = changes.status;
-    if (changes.isActive !== undefined) this.snapshot.isActive = changes.isActive;
+    if (changes.isActive !== undefined)
+      this.snapshot.isActive = changes.isActive;
 
     UserEntity.validateSnapshot(this.snapshot);
   }
@@ -94,10 +96,18 @@ export class UserEntity {
   }
 
   private static validateSnapshot(snapshot: UserSnapshot): void {
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(snapshot.uuid)) {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        snapshot.uuid,
+      )
+    ) {
       throw new Error('Invalid user UUID');
     }
-    if (snapshot.username === null && snapshot.email === null && snapshot.phone === null) {
+    if (
+      snapshot.username === null &&
+      snapshot.email === null &&
+      snapshot.phone === null
+    ) {
       throw new Error('User requires at least one identity');
     }
     if (!snapshot.status.trim() || snapshot.status.length > 30) {

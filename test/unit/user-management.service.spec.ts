@@ -1,21 +1,41 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { DuplicateUserError, InvalidUserError, UserNotFoundError } from '../../src/modules/users/domain/errors/user.errors.js';
+import {
+  DuplicateUserError,
+  InvalidUserError,
+  UserNotFoundError,
+} from '../../src/modules/users/domain/errors/user.errors.js';
 import { UserManagementService } from '../../src/modules/users/application/services/user-management.service.js';
 import { UserEntity } from '../../src/modules/users/domain/entities/user.entity.js';
 import type { UserRepository } from '../../src/modules/users/domain/repositories/user.repository.js';
 
-const makeUser = (overrides: Partial<ReturnType<UserEntity['toSnapshot']>> = {}) => UserEntity.create({
-  uuid: '550e8400-e29b-41d4-a716-446655440000',
-  username: 'john', email: 'john@example.com', phone: null, status: 'pending', isActive: true,
-  isVerified: false, createdAt: new Date('2026-01-01T00:00:00.000Z'), updatedAt: new Date('2026-01-01T00:00:00.000Z'), deletedAt: null,
-  ...overrides,
-});
+const makeUser = (
+  overrides: Partial<ReturnType<UserEntity['toSnapshot']>> = {},
+) =>
+  UserEntity.create({
+    uuid: '550e8400-e29b-41d4-a716-446655440000',
+    username: 'john',
+    email: 'john@example.com',
+    phone: null,
+    status: 'pending',
+    isActive: true,
+    isVerified: false,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    deletedAt: null,
+    ...overrides,
+  });
 
 const repo = (): UserRepository => ({
-  create: vi.fn(async () => makeUser()), findByUuid: vi.fn(async () => null), findByEmail: vi.fn(async () => null),
-  findByUsername: vi.fn(async () => null), findByPhone: vi.fn(async () => null), findDuplicateIdentity: vi.fn(async () => null),
-  list: vi.fn(async () => ({ items: [], total: 0, page: 1, limit: 20 })), update: vi.fn(async () => makeUser()), softDelete: vi.fn(async () => undefined),
+  create: vi.fn(async () => makeUser()),
+  findByUuid: vi.fn(async () => null),
+  findByEmail: vi.fn(async () => null),
+  findByUsername: vi.fn(async () => null),
+  findByPhone: vi.fn(async () => null),
+  findDuplicateIdentity: vi.fn(async () => null),
+  list: vi.fn(async () => ({ items: [], total: 0, page: 1, limit: 20 })),
+  update: vi.fn(async () => makeUser()),
+  softDelete: vi.fn(async () => undefined),
 });
 
 describe('UserManagementService', () => {
@@ -24,7 +44,12 @@ describe('UserManagementService', () => {
     const service = new UserManagementService(repository);
     const result = await service.create({ email: ' JOHN@EXAMPLE.COM ' });
     expect(result.email).toBe('john@example.com');
-    expect(repository.create).toHaveBeenCalledWith({ email: 'john@example.com', username: null, phone: null, status: 'pending' });
+    expect(repository.create).toHaveBeenCalledWith({
+      email: 'john@example.com',
+      username: null,
+      phone: null,
+      status: 'pending',
+    });
   });
 
   it('rejects empty identity', async () => {
@@ -36,12 +61,18 @@ describe('UserManagementService', () => {
     const repository = repo();
     vi.mocked(repository.findDuplicateIdentity).mockResolvedValue(makeUser());
     const service = new UserManagementService(repository);
-    await expect(service.create({ email: 'john@example.com' })).rejects.toBeInstanceOf(DuplicateUserError);
+    await expect(
+      service.create({ email: 'john@example.com' }),
+    ).rejects.toBeInstanceOf(DuplicateUserError);
     expect(repository.create).not.toHaveBeenCalled();
   });
 
   it('rejects updates to missing users', async () => {
     const service = new UserManagementService(repo());
-    await expect(service.update('550e8400-e29b-41d4-a716-446655440000', { isActive: false })).rejects.toBeInstanceOf(UserNotFoundError);
+    await expect(
+      service.update('550e8400-e29b-41d4-a716-446655440000', {
+        isActive: false,
+      }),
+    ).rejects.toBeInstanceOf(UserNotFoundError);
   });
 });

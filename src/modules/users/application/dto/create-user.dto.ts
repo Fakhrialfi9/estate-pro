@@ -1,10 +1,19 @@
-import { IsEmail, IsOptional, IsString, IsUUID, MaxLength, ValidateIf } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateUserDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  @ValidateIf((o: CreateUserDto) => o.username !== undefined && o.username !== null)
+  @ValidateIf(
+    (o: CreateUserDto) => o.username !== undefined && o.username !== null,
+  )
   username?: string | null;
 
   @IsOptional()

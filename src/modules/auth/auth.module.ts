@@ -14,7 +14,9 @@ import { PasswordHasherService } from './application/services/password-hasher.se
         signOptions: {
           issuer: config.getOrThrow<string>('auth.jwt.issuer'),
           audience: config.getOrThrow<string>('auth.jwt.audience'),
-          algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>('auth.jwt.algorithm'),
+          algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>(
+            'auth.jwt.algorithm',
+          ),
         },
       }),
     }),
