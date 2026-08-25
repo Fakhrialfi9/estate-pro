@@ -38,6 +38,10 @@ import type {
 import { UserManagementService } from '../application/services/user-management.service.js';
 import type { UserAuditContext } from '../application/services/user-management.service.js';
 import { serializeUser } from '../application/serializers/user.serializer.js';
+import {
+  InvalidPasswordConfirmationError,
+  InvalidPasswordError,
+} from '../credentials/domain/errors/credential.errors.js';
 
 type AuthenticatedRequest = Request & { user?: { sub?: string } };
 
@@ -54,7 +58,7 @@ export class UsersController {
   @ApiOperation({
     summary: 'Create user',
     description:
-      'Requires users:manage authorization. Request fields are allowlisted by CreateUserDto.',
+      'Requires users:manage authorization. Password and passwordConfirmation are required and are never returned.',
   })
   async create(
     @Req() request: AuthenticatedRequest,
@@ -69,6 +73,10 @@ export class UsersController {
           ...(dto.status !== undefined
             ? { status: this.normalizeStatus(dto.status) }
             : {}),
+        },
+        {
+          password: dto.password,
+          confirmation: dto.passwordConfirmation,
         },
         this.auditContext(request),
       );
@@ -259,6 +267,10 @@ export class UsersController {
     )
       throw new ConflictException('User identity is already in use');
     if (error instanceof InvalidUserError)
+      throw new BadRequestException(error.message);
+    if (error instanceof InvalidPasswordConfirmationError)
+      throw new BadRequestException(error.message);
+    if (error instanceof InvalidPasswordError)
       throw new BadRequestException(error.message);
     throw error;
   }
