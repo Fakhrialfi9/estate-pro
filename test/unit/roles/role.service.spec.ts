@@ -66,7 +66,7 @@ describe('RoleService', () => {
   it('rejects regular users from creating roles', async () => {
     await expect(
       service.create(actor([]), { name: 'Sales', code: 'sales' }, {}),
-    ).rejects.toThrow('FORBIDDEN_ROLE_OPERATION');
+    ).rejects.toMatchObject({ code: 'FORBIDDEN_ROLE_OPERATION' });
   });
 
   it('rejects duplicate name and code', async () => {
