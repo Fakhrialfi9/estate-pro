@@ -38,6 +38,8 @@ const repo = () => {
   );
   const update = vi.fn(() => Promise.resolve(makeUser()));
   const softDelete = vi.fn(() => Promise.resolve(undefined));
+  const sessions = { revokeAllForSecurityEvent: vi.fn(() => Promise.resolve()) };
+  const audit = { record: vi.fn(() => Promise.resolve()) };
 
   const repository: UserRepository = {
     create,
@@ -53,6 +55,8 @@ const repo = () => {
 
   return {
     repository,
+    sessions,
+    audit,
     mocks: {
       create,
       findByUuid,
@@ -69,8 +73,12 @@ const repo = () => {
 
 describe('UserManagementService', () => {
   it('creates a user from an allowed identity', async () => {
-    const { repository, mocks } = repo();
-    const service = new UserManagementService(repository);
+    const { repository, mocks, sessions, audit } = repo();
+    const service = new UserManagementService(
+      repository,
+      sessions as never,
+      audit as never,
+    );
     const result = await service.create({ email: ' JOHN@EXAMPLE.COM ' });
     expect(result.email).toBe('john@example.com');
     expect(mocks.create).toHaveBeenCalledWith({
@@ -82,15 +90,23 @@ describe('UserManagementService', () => {
   });
 
   it('rejects empty identity', async () => {
-    const { repository } = repo();
-    const service = new UserManagementService(repository);
+    const { repository, sessions, audit } = repo();
+    const service = new UserManagementService(
+      repository,
+      sessions as never,
+      audit as never,
+    );
     await expect(service.create({})).rejects.toBeInstanceOf(InvalidUserError);
   });
 
   it('rejects duplicate identity before persistence', async () => {
-    const { repository, mocks } = repo();
+    const { repository, mocks, sessions, audit } = repo();
     mocks.findDuplicateIdentity.mockResolvedValue(makeUser());
-    const service = new UserManagementService(repository);
+    const service = new UserManagementService(
+      repository,
+      sessions as never,
+      audit as never,
+    );
     await expect(
       service.create({ email: 'john@example.com' }),
     ).rejects.toBeInstanceOf(DuplicateUserError);
@@ -98,8 +114,12 @@ describe('UserManagementService', () => {
   });
 
   it('rejects updates to missing users', async () => {
-    const { repository } = repo();
-    const service = new UserManagementService(repository);
+    const { repository, sessions, audit } = repo();
+    const service = new UserManagementService(
+      repository,
+      sessions as never,
+      audit as never,
+    );
     await expect(
       service.update('550e8400-e29b-41d4-a716-446655440000', {
         isActive: false,
