@@ -8,6 +8,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import {
@@ -41,6 +42,8 @@ const requestContext = (request: Request) => ({
     : {}),
 });
 
+@ApiTags('2FA')
+@ApiBearerAuth()
 @Controller('auth/2fa')
 export class TwoFactorController {
   constructor(
@@ -51,6 +54,7 @@ export class TwoFactorController {
   @Get()
   @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get 2FA status', description: 'Authenticated endpoint. Only enabled state is returned.' })
   async status(@Req() request: AuthenticatedRequest) {
     return { enabled: await this.twoFactor.isEnabled(request.user.sub) };
   }
@@ -59,6 +63,7 @@ export class TwoFactorController {
   @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: TWO_FACTOR_ENROLLMENT_RATE_LIMIT })
+  @ApiOperation({ summary: 'Start 2FA enrollment', description: 'Authenticated enrollment. Provisioning material is never logged and the secret is protected by the application service.' })
   async enrollment(@Req() request: AuthenticatedRequest) {
     return this.twoFactor.startEnrollment(
       request.user.sub,
@@ -70,6 +75,7 @@ export class TwoFactorController {
   @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: TWO_FACTOR_ENROLLMENT_RATE_LIMIT })
+  @ApiOperation({ summary: 'Verify 2FA enrollment', description: 'Requires a valid TOTP code; brute-force and rate-limit protections are enforced by the application service/configuration.' })
   async verifyEnrollment(
     @Req() request: AuthenticatedRequest,
     @Body() dto: VerifyEnrollmentDto,
@@ -84,6 +90,7 @@ export class TwoFactorController {
   @Post('verify')
   @Header('Cache-Control', 'no-store')
   @Throttle({ default: TWO_FACTOR_VERIFICATION_RATE_LIMIT })
+  @ApiOperation({ summary: 'Verify login 2FA', description: 'Public MFA challenge endpoint; the challenge token, TOTP/recovery verification and session issuance are handled by LoginService.' })
   async verify(@Body() dto: TwoFactorVerifyDto, @Req() request: Request) {
     const result = await this.login.executeMfa({
       challengeToken: dto.challengeToken,
@@ -101,6 +108,7 @@ export class TwoFactorController {
   @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: TWO_FACTOR_RECOVERY_REGENERATION_RATE_LIMIT })
+  @ApiOperation({ summary: 'Regenerate recovery codes', description: 'Authenticated re-authentication flow. Old recovery codes are invalidated by the application service.' })
   async regenerateRecoveryCodes(
     @Req() request: AuthenticatedRequest,
     @Body() dto: RegenerateRecoveryCodesDto,
@@ -117,6 +125,7 @@ export class TwoFactorController {
   @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: TWO_FACTOR_REAUTH_RATE_LIMIT })
+  @ApiOperation({ summary: 'Disable 2FA', description: 'Authenticated secure re-authentication flow; password/TOTP/recovery verification is enforced by TwoFactorService.' })
   async disable(
     @Req() request: AuthenticatedRequest,
     @Body() dto: DisableTwoFactorDto,
