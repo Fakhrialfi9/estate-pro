@@ -18,7 +18,7 @@ async function bootstrap(): Promise<void> {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Estate Pro API')
     .setDescription('Estate Pro HTTP API')
-    .setVersion(app.getUrl().includes('/v') ? '1.0.0' : '1.0.0')
+    .setVersion('1.0.0')
     .addBearerAuth(
       {
         type: 'http',
