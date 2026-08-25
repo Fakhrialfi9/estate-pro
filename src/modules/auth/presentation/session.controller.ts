@@ -8,6 +8,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import type { AccessTokenClaims } from '../application/services/jwt-token.service.js';
@@ -26,6 +27,8 @@ const requestContext = (request: Request) => ({
   requestId: request.get('x-request-id') ?? undefined,
 });
 
+@ApiTags('Sessions')
+@ApiBearerAuth()
 @Controller('auth/sessions')
 @UseGuards(JwtAuthGuard)
 @Throttle({ default: SECURITY_SESSION_RATE_LIMIT })
@@ -33,11 +36,13 @@ export class SessionController {
   constructor(private readonly sessions: SessionService) {}
 
   @Get()
+  @ApiOperation({ summary: 'List own sessions', description: 'Lists non-sensitive session metadata owned by the authenticated user.' })
   async list(@Req() request: AuthenticatedRequest) {
     return { data: await this.sessions.listOwn(request.user.sub) };
   }
 
   @Post('logout-all')
+  @ApiOperation({ summary: 'Revoke all own sessions', description: 'Revokes all sessions owned by the authenticated user.' })
   async logoutAll(@Req() request: AuthenticatedRequest) {
     const revokedCount = await this.sessions.logoutAll(
       request.user.sub,
@@ -47,6 +52,7 @@ export class SessionController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Revoke own session', description: 'Revokes a session owned by the authenticated user using its public session identifier.' })
   async revoke(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
     this.assertPublicSessionId(id);
     await this.sessions.revokeOwnSession(
@@ -64,6 +70,8 @@ export class SessionController {
   }
 }
 
+@ApiTags('Session Administration')
+@ApiBearerAuth()
 @Controller('admin/session-management')
 @UseGuards(JwtAuthGuard, SessionAdminGuard)
 @Throttle({ default: SECURITY_SESSION_RATE_LIMIT })
@@ -71,6 +79,7 @@ export class AdminSessionController {
   constructor(private readonly sessions: SessionService) {}
 
   @Post('users/:userUuid/sessions/:id/revoke')
+  @ApiOperation({ summary: 'Revoke another user session', description: 'Privileged session administration; authorization is enforced by SessionAdminGuard.' })
   async revoke(
     @Req() request: AuthenticatedRequest,
     @Param('userUuid') userUuid: string,
