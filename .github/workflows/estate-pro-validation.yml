@@ -12,6 +12,8 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test
     services:
       mariadb:
         image: mariadb:11.4
