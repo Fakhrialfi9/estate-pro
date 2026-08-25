@@ -66,7 +66,7 @@ const bodyOf = <T>(response: SuperTestResponse): T => response.body as T;
 const actorToken = (permissions: string[] = ['users:manage']) =>
   jwt.sign({ sub: actorUuid, sid: randomUUID(), permissions });
 const stringifyForAssertion = (value: unknown): string =>
-  JSON.stringify(value, (_, nestedValue) =>
+  JSON.stringify(value, (_key: string, nestedValue: unknown): unknown =>
     typeof nestedValue === 'bigint' ? nestedValue.toString() : nestedValue,
   );
 
