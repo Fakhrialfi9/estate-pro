@@ -31,8 +31,25 @@ let targetUuid = '';
 const httpRequest = () => request(app.getHttpServer());
 const bodyOf = <T>(response: SuperTestResponse): T =>
   response.body as unknown as T;
-const tokenFor = (sub: string, permissions: string[] = ['users:manage']) =>
-  jwt.sign({ sub, sid: randomUUID(), permissions });
+
+async function tokenFor(
+  sub: string,
+  permissions: string[] = ['users:manage'],
+): Promise<string> {
+  const user = await prisma.authenticationUser.findUniqueOrThrow({
+    where: { uuid: sub },
+    select: { id: true },
+  });
+  const sessionId = randomUUID();
+  await prisma.authenticationUserSession.create({
+    data: {
+      userId: user.id,
+      sessionId,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    },
+  });
+  return jwt.sign({ sub, sid: sessionId, permissions });
+}
 
 async function createUser(
   email: string,
@@ -93,7 +110,7 @@ describe('User management E2E', () => {
   });
 
   it('creates, reads, searches, updates and deactivates a user with database side effects', async () => {
-    const token = tokenFor(actorUuid);
+    const token = await tokenFor(actorUuid);
     const create = await httpRequest()
       .post('/api/v1/users')
       .set('Authorization', `Bearer ${token}`)
@@ -143,8 +160,8 @@ describe('User management E2E', () => {
   });
 
   it('enforces profile ownership and supports profile create/read/update', async () => {
-    const actorToken = tokenFor(actorUuid);
-    const ownerToken = tokenFor(targetUuid);
+    const actorToken = await tokenFor(actorUuid);
+    const ownerToken = await tokenFor(targetUuid);
     await httpRequest()
       .post(`/api/v1/users/${targetUuid}/profile`)
       .set('Authorization', `Bearer ${ownerToken}`)
@@ -179,7 +196,7 @@ describe('User management E2E', () => {
   });
 
   it('changes the current password, rejects the old credential, and accepts the new credential', async () => {
-    const token = tokenFor(actorUuid);
+    const token = await tokenFor(actorUuid);
     await httpRequest()
       .post('/api/v1/users/me/password')
       .set('Authorization', `Bearer ${token}`)
