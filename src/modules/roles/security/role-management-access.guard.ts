@@ -21,6 +21,21 @@ interface RoleClaims {
 }
 export type RoleAuthenticatedRequest = Request & { user?: RoleClaims };
 
+const normalizePermissionCode = (permission: string): string =>
+  permission.trim().replace(/:/g, '.');
+
+const hasPermission = (
+  permissions: readonly string[],
+  required: string,
+): boolean => {
+  const normalizedRequired = normalizePermissionCode(required);
+  return permissions.some(
+    (permission) =>
+      typeof permission === 'string' &&
+      normalizePermissionCode(permission) === normalizedRequired,
+  );
+};
+
 abstract class BaseRoleAccessGuard implements CanActivate {
   protected abstract readonly requiredPermission: string;
 
@@ -40,7 +55,7 @@ abstract class BaseRoleAccessGuard implements CanActivate {
     if (!snapshot) throw new UnauthorizedException();
     request.user.permissions = [...snapshot.permissionCodes];
 
-    if (!snapshot.permissionCodes.includes(this.requiredPermission)) {
+    if (!hasPermission(snapshot.permissionCodes, this.requiredPermission)) {
       throw new ForbiddenException();
     }
     return true;
@@ -70,10 +85,9 @@ export class RoleReadAccessGuard extends BaseRoleAccessGuard {
     if (!snapshot) throw new UnauthorizedException();
     request.user.permissions = [...snapshot.permissionCodes];
 
-    const permissionSet = new Set(snapshot.permissionCodes);
     if (
-      !permissionSet.has(ROLE_READ_PERMISSION) &&
-      !permissionSet.has(ROLE_MANAGE_PERMISSION)
+      !hasPermission(snapshot.permissionCodes, ROLE_READ_PERMISSION) &&
+      !hasPermission(snapshot.permissionCodes, ROLE_MANAGE_PERMISSION)
     ) {
       throw new ForbiddenException();
     }
