@@ -12,6 +12,13 @@ export class CredentialNotFoundError extends Error {
   }
 }
 
+export class ConcurrentPasswordChangeError extends Error {
+  constructor() {
+    super('Password was changed concurrently');
+    this.name = 'ConcurrentPasswordChangeError';
+  }
+}
+
 export class InvalidPasswordError extends Error {
   constructor(message = 'Invalid password') {
     super(message);
