@@ -30,9 +30,11 @@ import { AUTHENTICATION_SESSION_PORT } from '../../common/security/authenticatio
 import { SESSION_SECURITY_PORT } from '../../common/security/session-security.port.js';
 import { TWO_FACTOR_REPOSITORY } from './domain/repositories/two-factor.repository.js';
 import { TWO_FACTOR_RECOVERY_CODE_REPOSITORY } from './domain/repositories/two-factor-recovery-code.repository.js';
+import { TWO_FACTOR_ENROLLMENT_REPOSITORY } from './domain/repositories/two-factor-enrollment.repository.js';
 import { TWO_FACTOR_CHALLENGE_REPOSITORY } from './domain/repositories/two-factor-challenge.repository.js';
 import { PrismaTwoFactorRepository } from './infrastructure/persistence/prisma-two-factor.repository.js';
 import { PrismaTwoFactorRecoveryCodeRepository } from './infrastructure/persistence/prisma-two-factor-recovery-code.repository.js';
+import { PrismaTwoFactorEnrollmentRepository } from './infrastructure/persistence/prisma-two-factor-enrollment.repository.js';
 import { PrismaTwoFactorChallengeRepository } from './infrastructure/persistence/prisma-two-factor-challenge.repository.js';
 
 type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
@@ -91,6 +93,10 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
     {
       provide: TWO_FACTOR_RECOVERY_CODE_REPOSITORY,
       useClass: PrismaTwoFactorRecoveryCodeRepository,
+    },
+    {
+      provide: TWO_FACTOR_ENROLLMENT_REPOSITORY,
+      useClass: PrismaTwoFactorEnrollmentRepository,
     },
     {
       provide: TWO_FACTOR_CHALLENGE_REPOSITORY,
