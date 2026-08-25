@@ -272,7 +272,12 @@ describe('2FA security flow', () => {
     )!;
     const code = totp.generateCode(secret, totp.currentTimeStep());
     const enabled = await service.verifyEnrollment('u1', code);
-    expect(enabled.recoveryCodes).toHaveLength(3);
+    const enabledBody = enabled as unknown as {
+      enabled: boolean;
+      recoveryCodes: string[];
+    };
+    expect(enabledBody.enabled).toBe(true);
+    expect(enabledBody.recoveryCodes).toHaveLength(3);
     expect(enrollment.enableWithRecoveryCodes).toHaveBeenCalledWith(
       expect.objectContaining({
         userUuid: 'u1',
@@ -285,7 +290,7 @@ describe('2FA security flow', () => {
     const firstChallenge = await service.createLoginChallenge('u1');
     await service.verifyLoginChallenge({
       token: firstChallenge.token,
-      recoveryCode: enabled.recoveryCodes[0],
+      recoveryCode: enabledBody.recoveryCodes[0],
     });
     expect(recovery.markUsed).toHaveBeenCalled();
 
@@ -293,7 +298,7 @@ describe('2FA security flow', () => {
     await expect(
       service.verifyLoginChallenge({
         token: secondChallenge.token,
-        recoveryCode: enabled.recoveryCodes[0],
+        recoveryCode: enabledBody.recoveryCodes[0],
       }),
     ).rejects.toThrow();
   });
