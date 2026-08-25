@@ -1,8 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  PermissionNotFoundException,
-  SystemPermissionProtectedException,
-} from '../../../permissions/domain/errors/permission.errors.js';
+import { PermissionNotFoundException } from '../../../permissions/domain/errors/permission.errors.js';
 import type { PermissionEntity } from '../../../permissions/domain/entities/permission.entity.js';
 import {
   PERMISSION_REPOSITORY,
@@ -20,7 +17,6 @@ import {
 import {
   ForbiddenRoleOperationException,
   RoleNotFoundException,
-  SystemRoleProtectedException,
 } from '../../domain/errors/role.errors.js';
 import {
   RolePermissionAlreadyExistsException,
@@ -194,12 +190,7 @@ export class RolePermissionService {
   ): void {
     this.rolePolicy.canManage(actor, role.isSystem);
     if (permission.isSystem) {
-      try {
-        this.permissionPolicy.canManageProtected(actor);
-      } catch (error: unknown) {
-        if (error instanceof SystemPermissionProtectedException) throw error;
-        throw error;
-      }
+      this.permissionPolicy.canManageProtected(actor);
     }
   }
 
