@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from './generated/prisma/client.js';
+import type { Prisma } from './generated/prisma/client.js';
 import argon2 from 'argon2';
 
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? 'fakhrialfi9@example.com';
@@ -16,6 +17,8 @@ const ADMIN_ROLE = {
   code: 'ADMIN',
   description: 'Full administrative access for development and testing.',
 };
+
+type DatabaseClient = Prisma.TransactionClient;
 
 type PermissionSeed = {
   name: string;
@@ -159,8 +162,8 @@ function createClient(): PrismaClient {
   return new PrismaClient({ adapter });
 }
 
-async function upsertRole(prisma: PrismaClient) {
-  return prisma.authorizationRole.upsert({
+async function upsertRole(db: DatabaseClient) {
+  return db.authorizationRole.upsert({
     where: { code: ADMIN_ROLE.code },
     update: {
       name: ADMIN_ROLE.name,
@@ -177,10 +180,10 @@ async function upsertRole(prisma: PrismaClient) {
   });
 }
 
-async function upsertPermissions(prisma: PrismaClient) {
+async function upsertPermissions(db: DatabaseClient) {
   return Promise.all(
     PERMISSIONS.map((permission) =>
-      prisma.authorizationPermission.upsert({
+      db.authorizationPermission.upsert({
         where: { code: permission.code },
         update: {
           name: permission.name,
@@ -197,8 +200,8 @@ async function upsertPermissions(prisma: PrismaClient) {
   );
 }
 
-async function upsertAdminUser(prisma: PrismaClient, passwordHash: string) {
-  const user = await prisma.authenticationUser.upsert({
+async function upsertAdminUser(db: DatabaseClient, passwordHash: string) {
+  const user = await db.authenticationUser.upsert({
     where: { email: ADMIN_EMAIL },
     update: {
       username: ADMIN_USERNAME,
@@ -219,7 +222,7 @@ async function upsertAdminUser(prisma: PrismaClient, passwordHash: string) {
     },
   });
 
-  await prisma.authenticationUserCredential.upsert({
+  await db.authenticationUserCredential.upsert({
     where: { userId: user.id },
     update: {
       passwordHash,
@@ -233,7 +236,7 @@ async function upsertAdminUser(prisma: PrismaClient, passwordHash: string) {
     },
   });
 
-  await prisma.authenticationUserSecurity.upsert({
+  await db.authenticationUserSecurity.upsert({
     where: { userId: user.id },
     update: {
       emailVerifiedAt: new Date(),
