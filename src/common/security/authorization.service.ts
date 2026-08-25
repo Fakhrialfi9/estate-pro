@@ -10,6 +10,22 @@ export type AuthorizationMatch = 'AND' | 'OR';
 const normalizePermissionCode = (permission: string): string =>
   permission.trim().replace(/:/g, '.');
 
+const hasPermission = (
+  granted: ReadonlySet<string>,
+  required: string,
+): boolean => {
+  const normalizedRequired = normalizePermissionCode(required);
+  if (granted.has(normalizedRequired)) return true;
+
+  const separatorIndex = normalizedRequired.indexOf('.');
+  if (separatorIndex <= 0 || separatorIndex === normalizedRequired.length - 1) {
+    return false;
+  }
+
+  const domain = normalizedRequired.slice(0, separatorIndex);
+  return granted.has(`${domain}.manage`);
+};
+
 @Injectable()
 export class AuthorizationService {
   constructor(
@@ -34,11 +50,10 @@ export class AuthorizationService {
     const granted = new Set(
       snapshot.permissionCodes.map(normalizePermissionCode),
     );
-    const normalizedRequired = required.map(normalizePermissionCode);
     const allowed =
       match === 'AND'
-        ? normalizedRequired.every((permission) => granted.has(permission))
-        : normalizedRequired.some((permission) => granted.has(permission));
+        ? required.every((permission) => hasPermission(granted, permission))
+        : required.some((permission) => hasPermission(granted, permission));
 
     if (!allowed) throw new ForbiddenException();
   }
