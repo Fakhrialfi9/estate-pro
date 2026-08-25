@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Test } from '@nestjs/testing';
-import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import type { Response as SuperTestResponse } from 'supertest';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
 import { AppModule } from '../../src/app.module.js';
@@ -11,7 +12,25 @@ import { TotpService } from '../../src/modules/auth/application/services/totp.se
 import { JwtService } from '@nestjs/jwt';
 
 const PASSWORD = 'Strong-Test-Password-123!';
-let app: INestApplication;
+
+type AccessTokenResponse = { accessToken: string };
+type EnrollmentResponse = {
+  method: 'totp';
+  verificationRequired: boolean;
+  provisioningUri: string;
+};
+type EnrollmentEnabledResponse = {
+  enabled: boolean;
+  recoveryCodes: string[];
+};
+type MfaChallengeResponse = {
+  mfaRequired: boolean;
+  challengeToken: string;
+};
+type MfaCompletedResponse = { accessToken: string };
+type TwoFactorStatusResponse = { enabled: boolean };
+
+let app: NestExpressApplication;
 let prisma: PrismaService;
 let hasher: PasswordHasherService;
 let totp: TotpService;
@@ -19,6 +38,8 @@ let jwt: JwtService;
 let userUuid = '';
 
 const httpRequest = () => request(app.getHttpServer());
+const bodyOf = <T>(response: SuperTestResponse): T =>
+  response.body as unknown as T;
 
 async function cleanup(): Promise<void> {
   await prisma.auditLogChange.deleteMany();
@@ -54,8 +75,8 @@ describe('Two-factor and recovery E2E', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
-    app = moduleRef.createNestApplication();
-    configureApplication(app as Parameters<typeof configureApplication>[0]);
+    app = moduleRef.createNestApplication<NestExpressApplication>();
+    configureApplication(app);
     await app.init();
     prisma = app.get(PrismaService);
     hasher = app.get(PasswordHasherService);
@@ -81,16 +102,17 @@ describe('Two-factor and recovery E2E', () => {
       .post('/api/v1/auth/login')
       .send({ identifier: loginUser.email, password: PASSWORD })
       .expect(201);
-    const token = login.body.accessToken as string;
+    const token = bodyOf<AccessTokenResponse>(login).accessToken;
     expect(token).toEqual(expect.any(String));
 
     const enrollment = await httpRequest()
       .post('/api/v1/auth/2fa/enrollment')
       .set('Authorization', `Bearer ${token}`)
       .expect(201);
-    expect(enrollment.body.method).toBe('totp');
-    expect(enrollment.body.verificationRequired).toBe(true);
-    const uri = new URL(enrollment.body.provisioningUri as string);
+    const enrollmentBody = bodyOf<EnrollmentResponse>(enrollment);
+    expect(enrollmentBody.method).toBe('totp');
+    expect(enrollmentBody.verificationRequired).toBe(true);
+    const uri = new URL(enrollmentBody.provisioningUri);
     const secret = uri.searchParams.get('secret');
     expect(secret).toEqual(expect.any(String));
 
@@ -100,38 +122,43 @@ describe('Two-factor and recovery E2E', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ code })
       .expect(201);
-    expect(enabled.body.enabled).toBe(true);
-    expect(enabled.body.recoveryCodes).toHaveLength(10);
-    const recoveryCode = enabled.body.recoveryCodes[0] as string;
+    const enabledBody = bodyOf<EnrollmentEnabledResponse>(enabled);
+    expect(enabledBody.enabled).toBe(true);
+    expect(enabledBody.recoveryCodes).toHaveLength(10);
+    const recoveryCode = enabledBody.recoveryCodes[0];
     expect(recoveryCode).toMatch(/^[0-9a-f]{32}$/);
 
-    await httpRequest()
+    const status = await httpRequest()
       .get('/api/v1/auth/2fa')
       .set('Authorization', `Bearer ${token}`)
-      .expect(200)
-      .then((response) => expect(response.body.enabled).toBe(true));
+      .expect(200);
+    expect(bodyOf<TwoFactorStatusResponse>(status).enabled).toBe(true);
 
     const mfaLogin = await httpRequest()
       .post('/api/v1/auth/login')
       .send({ identifier: loginUser.email, password: PASSWORD })
       .expect(201);
-    expect(mfaLogin.body.mfaRequired).toBe(true);
-    expect(mfaLogin.body.challengeToken).toEqual(expect.any(String));
+    const mfaLoginBody = bodyOf<MfaChallengeResponse>(mfaLogin);
+    expect(mfaLoginBody.mfaRequired).toBe(true);
+    expect(mfaLoginBody.challengeToken).toEqual(expect.any(String));
 
     const completed = await httpRequest()
       .post('/api/v1/auth/2fa/verify')
-      .send({ challengeToken: mfaLogin.body.challengeToken, recoveryCode })
+      .send({ challengeToken: mfaLoginBody.challengeToken, recoveryCode })
       .expect(201);
-    expect(completed.body.accessToken).toEqual(expect.any(String));
+    expect(bodyOf<MfaCompletedResponse>(completed).accessToken).toEqual(
+      expect.any(String),
+    );
 
     const secondChallenge = await httpRequest()
       .post('/api/v1/auth/login')
       .send({ identifier: loginUser.email, password: PASSWORD })
       .expect(201);
+    const secondChallengeBody = bodyOf<MfaChallengeResponse>(secondChallenge);
     await httpRequest()
       .post('/api/v1/auth/2fa/verify')
       .send({
-        challengeToken: secondChallenge.body.challengeToken,
+        challengeToken: secondChallengeBody.challengeToken,
         recoveryCode,
       })
       .expect(401);
@@ -171,7 +198,7 @@ describe('Two-factor and recovery E2E', () => {
       .post('/api/v1/auth/login')
       .send({ identifier: loginUser.email, password: PASSWORD })
       .expect(201);
-    const token = login.body.accessToken as string;
+    const token = bodyOf<AccessTokenResponse>(login).accessToken;
     await httpRequest()
       .post('/api/v1/auth/2fa/enrollment')
       .set('Authorization', `Bearer ${token}`)
