@@ -45,6 +45,19 @@ function createHarness() {
     consume: vi.fn(() => Promise.resolve(true)),
   };
   let recoveryUsed = false;
+  const recovery = {
+    findUnused: vi.fn(() =>
+      Promise.resolve(
+        recoveryUsed ? [] : [{ id: 1n, codeHash: `hash:${RECOVERY_CODE}` }],
+      ),
+    ),
+    markUsed: vi.fn(() => {
+      if (recoveryUsed) return Promise.resolve(false);
+      recoveryUsed = true;
+      return Promise.resolve(true);
+    }),
+    replaceAll: vi.fn(),
+  };
   const repository = {
     findByUserUuid: vi.fn(() =>
       Promise.resolve({
@@ -65,19 +78,22 @@ function createHarness() {
     recordFailedVerification: vi.fn(() => Promise.resolve()),
     recordSuccessfulVerification: vi.fn(() => Promise.resolve(true)),
   };
-  const recovery = {
-    findUnused: vi.fn(() =>
-      Promise.resolve(
-        recoveryUsed ? [] : [{ id: 1n, codeHash: `hash:${RECOVERY_CODE}` }],
-      ),
-    ),
-    markUsed: vi.fn(() => {
-      if (recoveryUsed) return Promise.resolve(false);
-      recoveryUsed = true;
-      return Promise.resolve(true);
-    }),
-    replaceAll: vi.fn(),
+  const enrollment = {
+    createPending: vi.fn(),
+    enableWithRecoveryCodes: vi.fn(),
   };
+  const users = {
+    findByUuid: vi.fn(() =>
+      Promise.resolve({
+        uuid: USER_UUID,
+        email: 'user@example.com',
+        username: 'user',
+        status: 'active',
+        isAccessible: () => true,
+      }),
+    ),
+  };
+  const credentials = { findByUserUuid: vi.fn() };
   const jwt = {
     verifyMfaChallenge: vi.fn(() =>
       Promise.resolve({
@@ -95,24 +111,14 @@ function createHarness() {
       Promise.resolve(hash === `hash:${value}`),
     ),
   };
-  const users = {
-    findByUuid: vi.fn(() =>
-      Promise.resolve({
-        uuid: USER_UUID,
-        email: 'user@example.com',
-        username: 'user',
-        status: 'active',
-        isAccessible: () => true,
-      }),
-    ),
-  };
   const audit = { record: vi.fn(() => Promise.resolve()) };
   const service = new TwoFactorService(
     repository as never,
     recovery as never,
+    enrollment as never,
     challenges as never,
     users as never,
-    { findByUserUuid: vi.fn() } as never,
+    credentials as never,
     audit as never,
     crypto,
     new TotpService(),
