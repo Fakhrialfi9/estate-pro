@@ -4,7 +4,6 @@ import { AppModule } from '../../src/app.module.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 import { UserManagementService } from '../../src/modules/users/application/services/user-management.service.js';
 import { PasswordHasherService } from '../../src/modules/auth/application/services/password-hasher.service.js';
-import { CredentialService } from '../../src/modules/users/credentials/application/services/credential.service.js';
 import { randomUUID } from 'node:crypto';
 
 const PASSWORD = 'Strong-Test-Password-123!';
@@ -12,7 +11,6 @@ const credential = { password: PASSWORD, confirmation: PASSWORD };
 let moduleRef: TestingModule;
 let prisma: PrismaService;
 let users: UserManagementService;
-let credentials: CredentialService;
 let hasher: PasswordHasherService;
 
 async function cleanup(): Promise<void> {
@@ -38,7 +36,6 @@ describe('Real database integration', () => {
     await moduleRef.init();
     prisma = moduleRef.get(PrismaService);
     users = moduleRef.get(UserManagementService);
-    credentials = moduleRef.get(CredentialService);
     hasher = moduleRef.get(PasswordHasherService);
   });
 
