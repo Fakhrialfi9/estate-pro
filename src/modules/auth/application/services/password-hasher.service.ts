@@ -38,7 +38,6 @@ export class PasswordHasherService {
       memoryCost: config.memoryCost,
       timeCost: config.timeCost,
       parallelism: config.parallelism,
-      hashLength: config.hashLength,
     });
   }
 
