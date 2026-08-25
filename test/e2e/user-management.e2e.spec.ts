@@ -15,7 +15,6 @@ let prisma: PrismaService;
 let hasher: PasswordHasherService;
 let jwt: JwtService;
 let actorUuid = '';
-let actorId = 0n;
 let targetUuid = '';
 
 const httpRequest = () => request(app.getHttpServer());
@@ -61,7 +60,6 @@ describe('User management E2E', () => {
     await cleanup();
     const actor = await createUser(`manager-${randomUUID()}@example.com`);
     const target = await createUser(`target-${randomUUID()}@example.com`);
-    actorId = actor.id;
     actorUuid = actor.uuid;
     targetUuid = target.uuid;
   });
@@ -76,7 +74,10 @@ describe('User management E2E', () => {
     const create = await httpRequest()
       .post('/api/v1/users')
       .set('Authorization', `Bearer ${token}`)
-      .send({ username: `created-${randomUUID().slice(0, 8)}`, email: `created-${randomUUID()}@example.com` })
+      .send({
+        username: `created-${randomUUID().slice(0, 8)}`,
+        email: `created-${randomUUID()}@example.com`,
+      })
       .expect(201);
     const uuid = create.body.uuid as string;
     expect(create.body.password).toBeUndefined();
@@ -104,18 +105,19 @@ describe('User management E2E', () => {
 
   it('enforces profile ownership and supports profile create/read/update', async () => {
     const actorToken = tokenFor(actorUuid);
-    const otherToken = tokenFor(targetUuid);
+    const ownerToken = tokenFor(targetUuid);
     await httpRequest()
       .post(`/api/v1/users/${targetUuid}/profile`)
-      .set('Authorization', `Bearer ${otherToken}`)
-      .send({ firstName: 'Target', lastName: 'Owner', bio: 'initial' })
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ firstName: 'Target', lastName: 'Owner', locale: 'id-ID' })
       .expect(201);
 
     const own = await httpRequest()
       .get(`/api/v1/users/${targetUuid}/profile`)
-      .set('Authorization', `Bearer ${otherToken}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
     expect(own.body.firstName).toBe('Target');
+    expect(own.body.locale).toBe('id-ID');
 
     await httpRequest()
       .get(`/api/v1/users/${targetUuid}/profile`)
@@ -124,12 +126,12 @@ describe('User management E2E', () => {
 
     await httpRequest()
       .patch(`/api/v1/users/${targetUuid}/profile`)
-      .set('Authorization', `Bearer ${otherToken}`)
-      .send({ bio: 'updated' })
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ locale: 'en-US' })
       .expect(200);
     const target = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid: targetUuid } });
     const profile = await prisma.authenticationUserProfile.findUnique({ where: { userId: target.id } });
-    expect(profile?.bio).toBe('updated');
+    expect(profile?.locale).toBe('en-US');
   });
 
   it('changes the current password, rejects the old credential, and accepts the new credential', async () => {
