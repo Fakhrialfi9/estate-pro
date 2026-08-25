@@ -23,6 +23,8 @@ import { SECURITY_AUDIT_REPOSITORY } from './domain/repositories/security-audit.
 import { PrismaSecurityAuditRepository } from '../../infrastructure/audit/prisma-security-audit.repository.js';
 import { SESSION_SECURITY_PORT } from '../../common/security/session-security.port.js';
 
+type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
+
 @Global()
 @Module({
   imports: [
@@ -37,7 +39,7 @@ import { SESSION_SECURITY_PORT } from '../../common/security/session-security.po
         signOptions: {
           expiresIn: config.getOrThrow<string>(
             'auth.jwt.expiresIn',
-          ) as SignOptions['expiresIn'],
+          ) as RequiredExpiresIn,
           issuer: config.getOrThrow<string>('auth.jwt.issuer'),
           audience: config.getOrThrow<string>('auth.jwt.audience'),
           algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>(
