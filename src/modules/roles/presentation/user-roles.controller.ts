@@ -10,6 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/auth.module.js';
 import {
@@ -30,6 +31,8 @@ type AuthenticatedRequest = Request & {
   user?: { sub?: string; permissions?: string[] };
 };
 
+@ApiTags('User Roles')
+@ApiBearerAuth()
 @Controller({ path: 'users', version: '1' })
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class UserRolesController {
@@ -37,6 +40,7 @@ export class UserRolesController {
 
   @RequirePermissions(ROLE_READ_PERMISSION)
   @Get(':userUuid/roles')
+  @ApiOperation({ summary: 'List user roles', description: `Requires ${ROLE_READ_PERMISSION}.` })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param('userUuid') userUuid: string,
@@ -47,6 +51,7 @@ export class UserRolesController {
 
   @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Post(':userUuid/roles')
+  @ApiOperation({ summary: 'Assign role to user', description: `Requires ${ROLE_MANAGE_PERMISSION}; mandatory-admin and privilege-escalation protections are enforced by the application service.` })
   async assign(
     @Req() request: AuthenticatedRequest,
     @Param('userUuid') userUuid: string,
@@ -74,6 +79,7 @@ export class UserRolesController {
 
   @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Delete(':userUuid/roles/:roleUuid')
+  @ApiOperation({ summary: 'Remove role from user', description: `Requires ${ROLE_MANAGE_PERMISSION}; mandatory-admin protection is enforced by the application service.` })
   async remove(
     @Req() request: AuthenticatedRequest,
     @Param('userUuid') userUuid: string,
