@@ -3,9 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { PasswordHasherService } from '../../../../auth/application/services/password-hasher.service.js';
 import type { UserRepository } from '../../../domain/repositories/user.repository.js';
 import { USER_REPOSITORY } from '../../../domain/repositories/user.repository.js';
-import { PasswordPolicy } from '../domain/policies/password.policy.js';
-import type { CredentialRepository } from '../domain/repositories/credential.repository.js';
-import { CREDENTIAL_REPOSITORY } from '../domain/repositories/credential.repository.js';
+import { PasswordPolicy } from '../../domain/policies/password.policy.js';
+import type { CredentialRepository } from '../../domain/repositories/credential.repository.js';
+import { CREDENTIAL_REPOSITORY } from '../../domain/repositories/credential.repository.js';
 import { CredentialService } from './credential.service.js';
 
 export interface PasswordResetDeliveryPayload {
