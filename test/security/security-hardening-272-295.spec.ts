@@ -169,7 +169,7 @@ describe('STEP 272', () => {
       }),
     ).resolves.toBeNull();
     expect(h.hasher.verify.mock.calls.length).toBe(verifyCalls);
-    const state: LoginSecurityState = await h.security.getState(USER_A);
+    const state: LoginSecurityState = await h.security.getState();
     expect(state.lockedUntil).toBeInstanceOf(Date);
   });
 });
@@ -337,14 +337,12 @@ describe('STEP 281', () => {
   it('rejects revoked sessions at the authentication boundary', async () => {
     const guard = new JwtAuthGuard(
       {
-        verifyAccessToken: vi
-          .fn()
-          .mockResolvedValue({
-            sub: USER_A,
-            sid: 'revoked',
-            iat: 1,
-            exp: Math.floor(Date.now() / 1000) + 60,
-          }),
+        verifyAccessToken: vi.fn().mockResolvedValue({
+          sub: USER_A,
+          sid: 'revoked',
+          iat: 1,
+          exp: Math.floor(Date.now() / 1000) + 60,
+        }),
       } as never,
       { isActive: vi.fn().mockResolvedValue(false) } as never,
     );
@@ -432,13 +430,11 @@ describe('STEP 285', () => {
 describe('STEP 286', () => {
   it('does not trust spoofed request permissions', async () => {
     const repository = {
-      getAuthorizationSnapshot: vi
-        .fn()
-        .mockResolvedValue({
-          userUuid: USER_A,
-          permissionCodes: ['users:read'],
-          roleCodes: ['user'],
-        }),
+      getAuthorizationSnapshot: vi.fn().mockResolvedValue({
+        userUuid: USER_A,
+        permissionCodes: ['users:read'],
+        roleCodes: ['user'],
+      }),
     };
     const guard = new PermissionManageAccessGuard(repository as never);
     const request = {
