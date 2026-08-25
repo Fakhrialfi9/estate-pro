@@ -6,9 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "packageManager": "npm@11.18.0",
-  "engines": {
-    "node": "22.x"
-  },
+  "engines": { "node": "22.x" },
   "scripts": {
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -25,7 +23,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/src/main.js",
     "check:runtime": "bash scripts/check-runtime.sh",
-    "lint": "prisma generate && eslint .",
+    "lint": "npm run typecheck && prisma generate && eslint .",
     "lint:fix": "prisma generate && eslint . --fix",
     "typecheck": "prisma generate && tsc --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"src/modules/users/credentials\" \"test/**/*.ts\" --no-error-on-unmatched-pattern",
@@ -91,6 +89,7 @@
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.4",
     "globals": "17.0.0",
+    "prettier": "3.6.2",
     "prettier": "3.6.2",
     "prisma": "7.9.1",
     "supertest": "7.1.4",
