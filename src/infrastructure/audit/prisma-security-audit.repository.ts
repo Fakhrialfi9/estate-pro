@@ -101,8 +101,8 @@ type AuditRecord = {
   uuid: string;
   action: string;
   actorType: string;
-  actorUser: { uuid: string } | null;
-  subjectUser: { uuid: string } | null;
+  actor: { uuid: string } | null;
+  user: { uuid: string } | null;
   entityType: string | null;
   resourceId: string | null;
   result: string;
@@ -131,6 +131,7 @@ export class PrismaSecurityAuditRepository
   async record(event: SecurityAuditEvent | AuditLogWriteEvent): Promise<void> {
     if (!ALLOWED_ACTIONS.has(event.action))
       throw new Error('Unsupported audit action');
+
     const resourceType = normalizeAuditResourceType(
       event.entityType ?? 'authentication',
     );
@@ -139,11 +140,16 @@ export class PrismaSecurityAuditRepository
       !(AUDIT_RESOURCE_TYPES as readonly string[]).includes(resourceType)
     )
       throw new Error('Unsupported audit resource');
+
     const actorUuid =
-      event.actorUuid ?? (event as SecurityAuditEvent).userUuid ?? null;
+      event.actorUuid ?? event.userUuid ?? null;
     const subjectUuid =
       event.subjectUuid ??
-      (resourceType === 'user' ? (event.entityUuid ?? null) : null);
+      (resourceType === 'authentication'
+        ? (event.userUuid ?? actorUuid ?? null)
+        : resourceType === 'user'
+          ? (event.entityUuid ?? null)
+          : null);
     const inferredActorType = this.inferActorType(
       event,
       resourceType,
@@ -184,6 +190,7 @@ export class PrismaSecurityAuditRepository
             })
           : Promise.resolve(null),
       ]);
+
       let entityId: bigint | null = null;
       if (event.entityUuid && resourceType === 'role')
         entityId =
@@ -201,6 +208,7 @@ export class PrismaSecurityAuditRepository
               select: { id: true, uuid: true },
             })
           )?.id ?? null;
+
       const log = await tx.auditLog.create({
         data: {
           uuid: randomUUID(),
@@ -218,6 +226,7 @@ export class PrismaSecurityAuditRepository
           requestId: safeRequestId,
         },
       });
+
       if (safeChanges.length > 0)
         await tx.auditLogChange.createMany({
           data: safeChanges.map((change) => ({
@@ -237,7 +246,7 @@ export class PrismaSecurityAuditRepository
       ? normalizeAuditResourceType(query.resourceType)
       : undefined;
     const where: Record<string, unknown> = {
-      ...(query.actorUuid ? { actorUser: { uuid: query.actorUuid } } : {}),
+      ...(query.actorUuid ? { actor: { uuid: query.actorUuid } } : {}),
       ...(query.action ? { action: query.action } : {}),
       ...(resourceType ? { entityType: resourceType } : {}),
       ...(query.resourceId ? { resourceId: query.resourceId } : {}),
@@ -251,6 +260,7 @@ export class PrismaSecurityAuditRepository
           }
         : {}),
     };
+
     const client = this.prisma as unknown as AuditShape;
     const [records, total] = await Promise.all([
       client.auditLog.findMany({
@@ -262,8 +272,8 @@ export class PrismaSecurityAuditRepository
           uuid: true,
           action: true,
           actorType: true,
-          actorUser: { select: { uuid: true } },
-          subjectUser: { select: { uuid: true } },
+          actor: { select: { uuid: true } },
+          user: { select: { uuid: true } },
           entityType: true,
           resourceId: true,
           result: true,
@@ -280,15 +290,16 @@ export class PrismaSecurityAuditRepository
       }),
       client.auditLog.count({ where }),
     ]);
+
     return {
       items: records.map(
         (record) =>
           ({
             props: {
               uuid: record.uuid,
-              actorUuid: record.actorUser?.uuid ?? null,
+              actorUuid: record.actor?.uuid ?? null,
               actorType: record.actorType,
-              subjectUuid: record.subjectUser?.uuid ?? null,
+              subjectUuid: record.user?.uuid ?? null,
               action: record.action,
               resourceType: record.entityType,
               resourceId: record.resourceId,
@@ -329,13 +340,6 @@ export class PrismaSecurityAuditRepository
     actorUuid: string | null,
   ): 'AUTHENTICATED' | 'ADMINISTRATIVE' | 'SYSTEM' | 'ANONYMOUS' {
     if (!actorUuid) return event.system ? 'SYSTEM' : 'ANONYMOUS';
-
-    // `actorUuid` explicitly represents the authenticated principal.
-    // `userUuid` is kept as the legacy/admin actor field used by role and
-    // permission management services. Never infer administrative intent from
-    // the resource type alone: user-management operations are authenticated
-    // mutations and must remain `AUTHENTICATED` unless the caller explicitly
-    // provides `actorType: 'ADMINISTRATIVE'`.
     if (event.actorUuid) return 'AUTHENTICATED';
     if (
       event.userUuid &&
