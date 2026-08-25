@@ -125,7 +125,9 @@ describe('STEP 272 — brute force', () => {
       }),
     ).resolves.toBeNull();
     expect(h.hasher.verify.mock.calls.length).toBe(verifyCalls);
-    expect((await h.security.getState(USER_A)).lockedUntil).toBeInstanceOf(Date);
+    expect((await h.security.getState(USER_A)).lockedUntil).toBeInstanceOf(
+      Date,
+    );
   });
 });
 
@@ -140,19 +142,27 @@ describe('STEP 273 — credential stuffing', () => {
     expect(h.audit.record).toHaveBeenCalledTimes(3);
     expect(LOGIN_RATE_LIMIT.limit).toBe(5);
     expect(LOGIN_RATE_LIMIT.ttl).toBe(60000);
-    expect(Reflect.getMetadataKeys(AuthController.prototype, 'loginUser')).not.toHaveLength(0);
+    expect(
+      Reflect.getMetadataKeys(AuthController.prototype, 'loginUser'),
+    ).not.toHaveLength(0);
   });
 });
 
 describe('STEP 274 — user enumeration', () => {
   it('performs equivalent password work for an unknown identity', async () => {
     const known: LoginHarness = makeLoginHarness(false);
-    await known.service.execute({ identifier: 'member@example.com', password: 'wrong' });
+    await known.service.execute({
+      identifier: 'member@example.com',
+      password: 'wrong',
+    });
 
     const unknown: LoginHarness = makeLoginHarness(true);
     unknown.users.findByEmail.mockResolvedValue(null);
     unknown.users.findByUsername.mockResolvedValue(null);
-    await unknown.service.execute({ identifier: 'missing@example.com', password: 'wrong' });
+    await unknown.service.execute({
+      identifier: 'missing@example.com',
+      password: 'wrong',
+    });
 
     expect(known.audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'AUTHENTICATION_FAILURE' }),
@@ -173,7 +183,11 @@ describe('STEP 275 — weak password', () => {
     });
     await expect(
       pipe.transform(
-        { currentPassword: 'short', newPassword: 'short', confirmation: 'short' },
+        {
+          currentPassword: 'short',
+          newPassword: 'short',
+          confirmation: 'short',
+        },
         { type: 'body', metatype: ChangePasswordDto },
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -200,7 +214,10 @@ const jwtConfig = {
 };
 
 const makeJwtService = () =>
-  new JwtTokenService(new JwtService({ secret: JWT_SECRET }), jwtConfig as never);
+  new JwtTokenService(
+    new JwtService({ secret: JWT_SECRET }),
+    jwtConfig as never,
+  );
 
 describe('STEP 276 — JWT algorithm confusion', () => {
   it('rejects unsupported algorithms and alg=none', async () => {
@@ -337,7 +354,9 @@ describe('STEP 282 — expired session', () => {
     const repo = new PrismaAuthenticationSessionRepository({
       authenticationUserSession: { findFirst },
     } as never);
-    await expect(repo.isActive(USER_A, 'secret', new Date())).resolves.toBe(false);
+    await expect(repo.isActive(USER_A, 'secret', new Date())).resolves.toBe(
+      false,
+    );
     expect(received?.where.revokedAt).toBeNull();
     expect(received?.where.expiresAt.gt).toBeInstanceOf(Date);
   });
@@ -350,7 +369,10 @@ describe('STEP 283 — IDOR', () => {
       policy.assertCanManage({ sub: USER_A, permissions: [] }, USER_B),
     ).toThrow();
     expect(() =>
-      policy.assertCanManage({ sub: USER_A, permissions: ['users:manage'] }, USER_B),
+      policy.assertCanManage(
+        { sub: USER_A, permissions: ['users:manage'] },
+        USER_B,
+      ),
     ).not.toThrow();
   });
 });
@@ -370,7 +392,10 @@ describe('STEP 285 — role escalation', () => {
   it('requires an explicit protected-role permission for protected roles', () => {
     const policy = new RoleAuthorizationPolicy();
     expect(() =>
-      policy.canManage({ userUuid: USER_A, permissions: ['roles:manage'] }, true),
+      policy.canManage(
+        { userUuid: USER_A, permissions: ['roles:manage'] },
+        true,
+      ),
     ).toThrow(ForbiddenException);
     expect(() =>
       policy.canManage(
@@ -505,7 +530,9 @@ describe('STEP 293 — security headers', () => {
 
 describe('STEP 294 — rate-limit bypass', () => {
   it('has an explicit login throttle and non-zero bounded policy', () => {
-    expect(Reflect.getMetadataKeys(AuthController.prototype, 'loginUser')).not.toHaveLength(0);
+    expect(
+      Reflect.getMetadataKeys(AuthController.prototype, 'loginUser'),
+    ).not.toHaveLength(0);
     expect(LOGIN_RATE_LIMIT.limit).toBeGreaterThan(0);
     expect(LOGIN_RATE_LIMIT.ttl).toBeGreaterThan(0);
   });
@@ -521,7 +548,9 @@ describe('STEP 295 — sensitive-data leak', () => {
       { field: 'sessionSecret', oldValue: 'x', newValue: 'y' },
       { field: 'reason', oldValue: null, newValue: 'NORMAL' },
     ]);
-    expect(changes).toEqual([{ field: 'reason', oldValue: null, newValue: 'NORMAL' }]);
+    expect(changes).toEqual([
+      { field: 'reason', oldValue: null, newValue: 'NORMAL' },
+    ]);
     expect(sanitizeAuditReason('password=secret')).toBeNull();
     expect(SENSITIVE_LOG_PATHS).toEqual(
       expect.arrayContaining([
