@@ -62,7 +62,11 @@ export class PasswordResetService {
     );
 
     try {
-      await this.delivery.deliver({ userUuid: user.uuid, token, expiresAt });
+      await this.delivery.deliver({
+        userUuid: user.uuid,
+        token,
+        expiresAt,
+      });
     } catch (error: unknown) {
       this.logger.error(
         'Password reset delivery failed',
@@ -92,6 +96,8 @@ export class PasswordResetService {
       hash,
       new Date(),
     );
-    if (!userUuid) throw new Error('Password reset token is invalid or expired');
+    if (!userUuid) {
+      throw new Error('Password reset token is invalid or expired');
+    }
   }
 }
