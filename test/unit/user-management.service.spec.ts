@@ -120,10 +120,7 @@ describe('UserManagementService', () => {
       credentials as never,
     );
     await expect(
-      service.create(
-        {},
-        { password: PASSWORD, confirmation: PASSWORD },
-      ),
+      service.create({}, { password: PASSWORD, confirmation: PASSWORD }),
     ).rejects.toBeInstanceOf(InvalidUserError);
   });
 

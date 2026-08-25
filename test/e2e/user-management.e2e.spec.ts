@@ -183,9 +183,10 @@ describe('User management E2E', () => {
       where: { uuid },
       select: { id: true },
     });
-    const credential = await prisma.authenticationUserCredential.findUniqueOrThrow({
-      where: { userId: persistedUser.id },
-    });
+    const credential =
+      await prisma.authenticationUserCredential.findUniqueOrThrow({
+        where: { userId: persistedUser.id },
+      });
     expect(credential.passwordHash).not.toBe(PASSWORD);
     expect(credential.passwordHash).toMatch(/^\$argon2/);
 

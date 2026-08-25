@@ -211,9 +211,10 @@ describe('Users API', () => {
       where: { uuid },
       select: { id: true },
     });
-    const credential = await prisma.authenticationUserCredential.findUniqueOrThrow({
-      where: { userId: persistedUser.id },
-    });
+    const credential =
+      await prisma.authenticationUserCredential.findUniqueOrThrow({
+        where: { userId: persistedUser.id },
+      });
     expect(credential.passwordHash).not.toBe(CREATE_PASSWORD);
     expect(credential.passwordHash).toMatch(/^\$argon2/);
 
