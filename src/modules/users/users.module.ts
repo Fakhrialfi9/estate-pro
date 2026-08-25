@@ -23,6 +23,7 @@ import {
 } from './credentials/application/services/password-reset.service.js';
 import { ConfiguredPasswordResetDeliveryService } from './credentials/application/services/configured-password-reset-delivery.service.js';
 import { CredentialsController } from './credentials/presentation/credentials.controller.js';
+import { serializeUser } from './application/serializers/user.serializer.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule],
@@ -61,3 +62,4 @@ export { USER_REPOSITORY } from './domain/repositories/user.repository.js';
 export type { UserRepository } from './domain/repositories/user.repository.js';
 export { CREDENTIAL_REPOSITORY } from './credentials/domain/repositories/credential.repository.js';
 export type { CredentialRepository } from './credentials/domain/repositories/credential.repository.js';
+export { UserManagementService, serializeUser };
