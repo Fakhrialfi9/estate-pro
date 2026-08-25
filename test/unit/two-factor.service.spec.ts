@@ -1,13 +1,14 @@
 import { ConfigService } from '@nestjs/config';
 import { describe, expect, it, vi } from 'vitest';
 import type { CredentialRepository } from '../../src/modules/users/domain/repositories/credential.repository.js';
+import { CredentialEntity } from '../../src/modules/users/credentials/domain/entities/credential.entity.js';
 import type { UserRepository } from '../../src/modules/users/domain/repositories/user.repository.js';
 import type { SecurityAuditRepository } from '../../src/modules/auth/domain/repositories/security-audit.repository.js';
 import type { TwoFactorChallengeRepository } from '../../src/modules/auth/domain/repositories/two-factor-challenge.repository.js';
 import type { TwoFactorRecoveryCodeRepository } from '../../src/modules/auth/domain/repositories/two-factor-recovery-code.repository.js';
 import type { TwoFactorRepository } from '../../src/modules/auth/domain/repositories/two-factor.repository.js';
-import { PasswordHasherService } from '../../src/modules/auth/application/services/password-hasher.service.js';
-import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
+import type { PasswordHasherService } from '../../src/modules/auth/application/services/password-hasher.service.js';
+import type { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
 import { TotpService } from '../../src/modules/auth/application/services/totp.service.js';
 import { TwoFactorCryptoService } from '../../src/modules/auth/application/services/two-factor-crypto.service.js';
 import { TwoFactorService } from '../../src/modules/auth/application/services/two-factor.service.js';
@@ -150,10 +151,22 @@ function createHarness() {
     ),
   };
 
-  const credentials = {
-    findByUserUuid: vi.fn(() =>
-      Promise.resolve({ passwordHash: 'hash:password' }),
-    ),
+  const credentials: CredentialRepository = {
+    create: () => Promise.reject(new Error('unused in 2FA unit test')),
+    findByUserUuid: () =>
+      Promise.resolve(
+        CredentialEntity.create({
+          userUuid: 'u1',
+          passwordHash: 'hash:password',
+          passwordChangedAt: null,
+          passwordExpiresAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+      ),
+    updatePassword: () => Promise.reject(new Error('unused in 2FA unit test')),
+    createResetToken: () => Promise.reject(new Error('unused in 2FA unit test')),
+    resetPasswordAtomically: () => Promise.reject(new Error('unused in 2FA unit test')),
   };
 
   const config = new ConfigService({
@@ -175,7 +188,7 @@ function createHarness() {
     recovery as unknown as TwoFactorRecoveryCodeRepository,
     challenges as unknown as TwoFactorChallengeRepository,
     users as unknown as UserRepository,
-    credentials as unknown as CredentialRepository,
+    credentials,
     audit as unknown as SecurityAuditRepository,
     crypto,
     totp,
