@@ -83,6 +83,8 @@ npm run build
 npm run check:runtime
 ```
 
+Dependency security is validated before application tests with `npm audit --audit-level=high`. Phase 1 keeps production/runtime dependencies and security-sensitive framework packages on supported fixed releases; Prisma remains on the current Prisma 7 line rather than being downgraded solely to satisfy a development-tool advisory.
+
 For a combined local health check, the repository also provides:
 
 ```bash
@@ -103,16 +105,7 @@ Do not bypass module boundaries by accessing infrastructure or database state di
 
 ## CI
 
-GitHub Actions validates the `main` branch with a read-only repository token. The workflow does not auto-commit formatting or generated artifacts.
-
-The Phase 1 gate validates:
-
-1. Prisma generation and migration deployment/status.
-2. Security baseline, formatting, lint, and typecheck.
-3. Architecture, unit, integration, E2E, and security suites.
-4. Coverage, production build, and compiled runtime/liveness validation.
-
-The working tree is expected to remain clean after validation; generated output belongs in ignored build/coverage directories and must not be committed.
+GitHub Actions validates the `main` branch. The normal validation gate is read-only and checks dependency security, Prisma migrations, formatting, lint, typecheck, architecture, unit/integration/E2E/security suites, coverage, production build, runtime, and repository cleanliness.
 
 ## Repository conventions
 
