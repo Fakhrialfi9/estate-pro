@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { RoleAuthorizationPolicy } from '../policies/role-authorization.policy.js';
 import type { RoleActor } from '../policies/role-authorization.policy.js';
-import { PRIVILEGED_ROLE_ASSIGNMENT_PERMISSION } from '../policies/user-role-authorization.constants.js';
+import { ROLE_UPDATE_PERMISSION } from '../policies/role-authorization.policy.js';
 import { RoleNotFoundException } from '../../domain/errors/role.errors.js';
 import {
   ROLE_REPOSITORY,
@@ -57,7 +57,7 @@ export class UserRoleService {
     roleUuid: string,
     context: UserRoleMutationAuditContext,
   ): Promise<UserRoleEntity> {
-    this.policy.canManage(actor);
+    this.policy.canManage(actor, ROLE_UPDATE_PERMISSION);
     this.validateIdentifiers(userUuid, roleUuid);
 
     const user = await this.users.findByUuid(userUuid);
@@ -66,11 +66,13 @@ export class UserRoleService {
     const role = await this.roles.findByUuid(roleUuid);
     if (!role) throw new RoleNotFoundException();
 
-    if (
-      role.isSystem &&
-      !actor.permissions.includes(PRIVILEGED_ROLE_ASSIGNMENT_PERMISSION)
-    ) {
-      throw new PrivilegedRoleAssignmentForbiddenException();
+    try {
+      this.policy.canManage(actor, ROLE_UPDATE_PERMISSION, role.isSystem);
+    } catch (error: unknown) {
+      if (role.isSystem) {
+        throw new PrivilegedRoleAssignmentForbiddenException();
+      }
+      throw error;
     }
 
     const existing = await this.userRoles.findByUserAndRole(userUuid, roleUuid);
@@ -114,7 +116,7 @@ export class UserRoleService {
     roleUuid: string,
     context: UserRoleMutationAuditContext,
   ): Promise<void> {
-    this.policy.canManage(actor);
+    this.policy.canManage(actor, ROLE_UPDATE_PERMISSION);
     this.validateIdentifiers(userUuid, roleUuid);
 
     const user = await this.users.findByUuid(userUuid);
@@ -123,7 +125,7 @@ export class UserRoleService {
     const role = await this.roles.findByUuid(roleUuid);
     if (!role) throw new RoleNotFoundException();
 
-    this.policy.canManage(actor, role.isSystem);
+    this.policy.canManage(actor, ROLE_UPDATE_PERMISSION, role.isSystem);
 
     const existing = await this.userRoles.findByUserAndRole(userUuid, roleUuid);
     if (!existing?.isActive) throw new UserRoleNotFoundException();
