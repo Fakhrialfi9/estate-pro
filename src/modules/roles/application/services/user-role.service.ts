@@ -8,9 +8,9 @@ import {
   type RoleRepository,
 } from '../../domain/repositories/role.repository.js';
 import {
-  USER_REPOSITORY,
-  type UserRepository,
-} from '../../../users/domain/repositories/user.repository.js';
+  USER_ROLE_TARGET_REPOSITORY,
+  type UserRoleTargetRepository,
+} from '../../domain/repositories/user-role-target.repository.js';
 import {
   PrivilegedRoleAssignmentForbiddenException,
   UserRoleAlreadyExistsException,
@@ -41,7 +41,8 @@ const UUID_PATTERN =
 @Injectable()
 export class UserRoleService {
   constructor(
-    @Inject(USER_REPOSITORY) private readonly users: UserRepository,
+    @Inject(USER_ROLE_TARGET_REPOSITORY)
+    private readonly users: UserRoleTargetRepository,
     @Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
     @Inject(USER_ROLE_REPOSITORY)
     private readonly userRoles: UserRoleRepository,
