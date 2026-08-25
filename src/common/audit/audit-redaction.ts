@@ -86,8 +86,16 @@ export const sanitizeAuditChanges = (
 };
 
 export const sanitizeAuditReason = (reason?: string): string | null => {
-  if (!reason || SENSITIVE_FIELD_PATTERN.test(reason)) return null;
-  return reason.trim().slice(0, 100) || null;
+  if (!reason) return null;
+
+  const normalized = reason.trim().slice(0, 100);
+  if (!normalized) return null;
+
+  if (/^[A-Z][A-Z0-9_]{1,99}$/.test(normalized)) {
+    return normalized;
+  }
+
+  return SENSITIVE_FIELD_PATTERN.test(normalized) ? null : normalized;
 };
 
 export const sanitizeAuditUserAgent = (
