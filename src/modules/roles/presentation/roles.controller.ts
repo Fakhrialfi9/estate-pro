@@ -11,6 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/auth.module.js';
 import {
@@ -38,6 +39,8 @@ type AuthenticatedRequest = Request & {
   user?: { sub?: string; permissions?: string[] };
 };
 
+@ApiTags('Roles')
+@ApiBearerAuth()
 @Controller('roles')
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class RolesController {
@@ -48,6 +51,7 @@ export class RolesController {
 
   @RequirePermissions(ROLE_READ_PERMISSION)
   @Get(':uuid')
+  @ApiOperation({ summary: 'Get role', description: `Requires permission ${ROLE_READ_PERMISSION}.` })
   async get(@Req() request: AuthenticatedRequest, @Param('uuid') uuid: string) {
     const role = await this.roles.get(this.actor(request), uuid);
     return RoleSerializer.one(role);
@@ -55,6 +59,7 @@ export class RolesController {
 
   @RequirePermissions(ROLE_READ_PERMISSION)
   @Get()
+  @ApiOperation({ summary: 'List roles', description: `Requires permission ${ROLE_READ_PERMISSION}.` })
   async list(
     @Req() request: AuthenticatedRequest,
     @Query() query: RoleQueryDto,
@@ -70,6 +75,7 @@ export class RolesController {
 
   @RequirePermissions(ROLE_READ_PERMISSION)
   @Get(':uuid/permissions')
+  @ApiOperation({ summary: 'List role permissions', description: `Requires permission ${ROLE_READ_PERMISSION}.` })
   async listPermissions(
     @Req() request: AuthenticatedRequest,
     @Param('uuid') uuid: string,
@@ -85,6 +91,7 @@ export class RolesController {
 
   @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Post(':uuid/permissions')
+  @ApiOperation({ summary: 'Assign permission to role', description: `Requires permission ${ROLE_MANAGE_PERMISSION}.` })
   async assignPermission(
     @Req() request: AuthenticatedRequest,
     @Param('uuid') uuid: string,
@@ -103,6 +110,7 @@ export class RolesController {
 
   @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Delete(':uuid/permissions/:permissionUuid')
+  @ApiOperation({ summary: 'Remove permission from role', description: `Requires permission ${ROLE_MANAGE_PERMISSION}.` })
   async removePermission(
     @Req() request: AuthenticatedRequest,
     @Param('uuid') uuid: string,
@@ -121,6 +129,7 @@ export class RolesController {
 
   @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Post()
+  @ApiOperation({ summary: 'Create role', description: `Requires permission ${ROLE_MANAGE_PERMISSION}.` })
   async create(
     @Req() request: AuthenticatedRequest,
     @Body() dto: CreateRoleDto,
@@ -137,6 +146,7 @@ export class RolesController {
 
   @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Put(':uuid')
+  @ApiOperation({ summary: 'Update role', description: `Requires permission ${ROLE_MANAGE_PERMISSION}.` })
   async update(
     @Req() request: AuthenticatedRequest,
     @Param('uuid') uuid: string,
@@ -154,6 +164,7 @@ export class RolesController {
 
   @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Delete(':uuid')
+  @ApiOperation({ summary: 'Delete role', description: `Requires permission ${ROLE_MANAGE_PERMISSION}. System-role and dependency protections are enforced by the application service.` })
   async remove(
     @Req() request: AuthenticatedRequest,
     @Param('uuid') uuid: string,
