@@ -33,7 +33,7 @@
     "test:watch": "prisma generate && vitest",
     "test:unit": "prisma generate && vitest run --config vitest.config.ts",
     "test:integration": "prisma generate && vitest run --config vitest.integration.config.ts",
-    "test:e2e": "prisma generate && bash scripts/test-e2e.sh",
+    "test:e2e": "prisma generate && vitest run --config vitest.e2e.config.ts",
     "test:security": "prisma generate && vitest run --config vitest.security.config.ts",
     "test:security:baseline": "bash scripts/security-test.sh",
     "test:coverage": "prisma generate && vitest run --coverage",
