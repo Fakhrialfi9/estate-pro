@@ -4,7 +4,7 @@ model AuditLog {
     actorUserId BigInt?             @map("actor_user_id") @db.UnsignedBigInt
     userId      BigInt?             @map("user_id") @db.UnsignedBigInt
     action      String              @db.VarChar(100)
-    actorType   String              @map("actor_type") @db.VarChar(24)
+    actorType   String              @default("SYSTEM") @map("actor_type") @db.VarChar(24)
     entityType  String?             @map("entity_type") @db.VarChar(100)
     entityId    BigInt?             @map("entity_id") @db.UnsignedBigInt
     resourceId  String?             @map("resource_id") @db.VarChar(100)
