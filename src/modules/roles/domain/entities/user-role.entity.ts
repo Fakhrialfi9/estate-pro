@@ -17,8 +17,10 @@ export class UserRoleEntity {
   private constructor(private readonly snapshot: UserRoleSnapshot) {}
 
   static create(snapshot: UserRoleSnapshot): UserRoleEntity {
-    if (!UUID_PATTERN.test(snapshot.userUuid)) throw new Error('Invalid user UUID');
-    if (!UUID_PATTERN.test(snapshot.roleUuid)) throw new Error('Invalid role UUID');
+    if (!UUID_PATTERN.test(snapshot.userUuid))
+      throw new Error('Invalid user UUID');
+    if (!UUID_PATTERN.test(snapshot.roleUuid))
+      throw new Error('Invalid role UUID');
     if (!snapshot.roleName.trim() || !snapshot.roleCode.trim()) {
       throw new Error('Invalid role identity');
     }
@@ -31,15 +33,35 @@ export class UserRoleEntity {
     return new UserRoleEntity({ ...snapshot });
   }
 
-  get userUuid(): string { return this.snapshot.userUuid; }
-  get roleUuid(): string { return this.snapshot.roleUuid; }
-  get roleName(): string { return this.snapshot.roleName; }
-  get roleCode(): string { return this.snapshot.roleCode; }
-  get roleIsSystem(): boolean { return this.snapshot.roleIsSystem; }
-  get isActive(): boolean { return this.snapshot.isActive; }
-  get assignedByUuid(): string | null { return this.snapshot.assignedByUuid; }
-  get assignedAt(): Date { return this.snapshot.assignedAt; }
-  get revokedAt(): Date | null { return this.snapshot.revokedAt; }
+  get userUuid(): string {
+    return this.snapshot.userUuid;
+  }
+  get roleUuid(): string {
+    return this.snapshot.roleUuid;
+  }
+  get roleName(): string {
+    return this.snapshot.roleName;
+  }
+  get roleCode(): string {
+    return this.snapshot.roleCode;
+  }
+  get roleIsSystem(): boolean {
+    return this.snapshot.roleIsSystem;
+  }
+  get isActive(): boolean {
+    return this.snapshot.isActive;
+  }
+  get assignedByUuid(): string | null {
+    return this.snapshot.assignedByUuid;
+  }
+  get assignedAt(): Date {
+    return this.snapshot.assignedAt;
+  }
+  get revokedAt(): Date | null {
+    return this.snapshot.revokedAt;
+  }
 
-  toSnapshot(): UserRoleSnapshot { return { ...this.snapshot }; }
+  toSnapshot(): UserRoleSnapshot {
+    return { ...this.snapshot };
+  }
 }

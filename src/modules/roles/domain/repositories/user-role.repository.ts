@@ -22,10 +22,16 @@ export interface RemoveUserRoleData {
 }
 
 export interface UserRoleRepository {
-  findByUserAndRole(userUuid: string, roleUuid: string): Promise<UserRoleEntity | null>;
+  findByUserAndRole(
+    userUuid: string,
+    roleUuid: string,
+  ): Promise<UserRoleEntity | null>;
   assign(data: AssignUserRoleData): Promise<UserRoleEntity>;
   remove(data: RemoveUserRoleData): Promise<UserRoleEntity>;
-  listByUser(userUuid: string, query: UserRoleListQuery): Promise<UserRoleListResult>;
+  listByUser(
+    userUuid: string,
+    query: UserRoleListQuery,
+  ): Promise<UserRoleListResult>;
 }
 
 export const USER_ROLE_REPOSITORY = Symbol('USER_ROLE_REPOSITORY');

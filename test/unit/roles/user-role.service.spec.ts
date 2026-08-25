@@ -203,12 +203,7 @@ describe('UserRoleService', () => {
     roles.findByUuid.mockResolvedValue(selectedRole);
 
     await expect(
-      service.remove(
-        actor(['roles:manage']),
-        user.uuid,
-        selectedRole.uuid,
-        {},
-      ),
+      service.remove(actor(['roles:manage']), user.uuid, selectedRole.uuid, {}),
     ).rejects.toThrow();
   });
 
@@ -220,12 +215,7 @@ describe('UserRoleService', () => {
     userRoles.findByUserAndRole.mockResolvedValue(null);
 
     await expect(
-      service.remove(
-        actor(['roles:manage']),
-        user.uuid,
-        selectedRole.uuid,
-        {},
-      ),
+      service.remove(actor(['roles:manage']), user.uuid, selectedRole.uuid, {}),
     ).rejects.toBeInstanceOf(UserRoleNotFoundException);
     expect(userRoles.remove).not.toHaveBeenCalled();
   });
@@ -235,11 +225,10 @@ describe('UserRoleService', () => {
     users.findByUuid.mockResolvedValue(user);
     userRoles.listByUser.mockResolvedValue({ items: [assignment], total: 1 });
 
-    const result = await service.list(
-      actor(['roles:read']),
-      user.uuid,
-      { page: 1, limit: 20 },
-    );
+    const result = await service.list(actor(['roles:read']), user.uuid, {
+      page: 1,
+      limit: 20,
+    });
 
     expect(result).toEqual({
       user: { uuid: user.uuid },
@@ -252,6 +241,8 @@ describe('UserRoleService', () => {
       ],
       meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
     });
-    expect((result as unknown as { roles: unknown[] }).roles[0]).not.toHaveProperty('assignedByUuid');
+    expect(
+      (result as unknown as { roles: unknown[] }).roles[0],
+    ).not.toHaveProperty('assignedByUuid');
   });
 });

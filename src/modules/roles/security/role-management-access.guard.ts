@@ -1,4 +1,9 @@
-import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 import {

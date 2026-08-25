@@ -9,9 +9,10 @@ const context = (permissions?: string[]) =>
   ({
     switchToHttp: () => ({
       getRequest: () => ({
-        user: permissions === undefined
-          ? { sub: 'actor-uuid' }
-          : { sub: 'actor-uuid', permissions },
+        user:
+          permissions === undefined
+            ? { sub: 'actor-uuid' }
+            : { sub: 'actor-uuid', permissions },
       }),
     }),
   }) as unknown as ExecutionContext;
@@ -49,11 +50,13 @@ describe('Role access guards', () => {
         .mockResolvedValue(['roles:manage', 'roles:manage:protected']),
     };
     const executionContext = context();
-    const result = await new RoleManageAccessGuard(
-      authorization,
-    ).canActivate(executionContext);
+    const result = await new RoleManageAccessGuard(authorization).canActivate(
+      executionContext,
+    );
 
     expect(result).toBe(true);
-    expect(authorization.listPermissionCodes).toHaveBeenCalledWith('actor-uuid');
+    expect(authorization.listPermissionCodes).toHaveBeenCalledWith(
+      'actor-uuid',
+    );
   });
 });
