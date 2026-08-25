@@ -133,20 +133,28 @@ export class LoginService {
 
   async executeMfa(input: {
     challengeToken: string;
-    code?: string;
-    recoveryCode?: string;
-    ipAddress?: string;
-    userAgent?: string;
-    requestId?: string;
+    code?: string | undefined;
+    recoveryCode?: string | undefined;
+    ipAddress?: string | undefined;
+    userAgent?: string | undefined;
+    requestId?: string | undefined;
   }): Promise<AccessTokenLoginResponse | null> {
     const userUuid = await this.twoFactor.verifyLoginChallenge({
       token: input.challengeToken,
-      code: input.code,
-      recoveryCode: input.recoveryCode,
+      ...(input.code !== undefined ? { code: input.code } : {}),
+      ...(input.recoveryCode !== undefined
+        ? { recoveryCode: input.recoveryCode }
+        : {}),
       context: {
-        ipAddress: input.ipAddress,
-        userAgent: input.userAgent,
-        requestId: input.requestId,
+        ...(input.ipAddress !== undefined
+          ? { ipAddress: input.ipAddress }
+          : {}),
+        ...(input.userAgent !== undefined
+          ? { userAgent: input.userAgent }
+          : {}),
+        ...(input.requestId !== undefined
+          ? { requestId: input.requestId }
+          : {}),
       },
     });
     const user = await this.users.findByUuid(userUuid);
@@ -161,7 +169,11 @@ export class LoginService {
     userUuid: string,
     command:
       | LoginCommand
-      | { ipAddress?: string; userAgent?: string; requestId?: string },
+      | {
+          ipAddress?: string | undefined;
+          userAgent?: string | undefined;
+          requestId?: string | undefined;
+        },
     now: Date,
   ): Promise<AccessTokenLoginResponse> {
     const sessionId = SessionService.generateSecret();
@@ -169,10 +181,16 @@ export class LoginService {
     const expiresAt = this.jwt.getExpiresAt(accessToken);
     await this.sessions.create(userUuid, {
       sessionId,
-      ipAddress: command.ipAddress,
-      userAgent: command.userAgent,
       expiresAt,
-      requestId: command.requestId,
+      ...(command.ipAddress !== undefined
+        ? { ipAddress: command.ipAddress }
+        : {}),
+      ...(command.userAgent !== undefined
+        ? { userAgent: command.userAgent }
+        : {}),
+      ...(command.requestId !== undefined
+        ? { requestId: command.requestId }
+        : {}),
     });
     await this.security.recordSuccessfulLogin(userUuid, now, {
       ipAddress: command.ipAddress,
@@ -204,7 +222,7 @@ export class LoginService {
   ): Promise<void> {
     await this.audit.record({
       action: AUTH_ACTIONS.LOGIN_FAILURE,
-      subjectUuid,
+      ...(subjectUuid !== undefined ? { subjectUuid } : {}),
       entityType: 'authentication',
       result: 'FAILURE',
       reason,
