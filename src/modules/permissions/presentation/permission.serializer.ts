@@ -1,7 +1,7 @@
 import type { PermissionEntity } from '../domain/entities/permission.entity.js';
 
 export interface PermissionResponse {
-  id: string;
+  uuid: string;
   name: string;
   code: string;
   resource: string;
@@ -13,10 +13,20 @@ export interface PermissionResponse {
   updatedAt: string;
 }
 
+export interface PermissionListResponse {
+  items: PermissionResponse[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    pageCount: number;
+  };
+}
+
 export const PermissionSerializer = {
   one(permission: PermissionEntity): PermissionResponse {
     return {
-      id: permission.uuid,
+      uuid: permission.uuid,
       name: permission.name,
       code: permission.code,
       resource: permission.resource,
@@ -28,9 +38,15 @@ export const PermissionSerializer = {
       updatedAt: permission.updatedAt.toISOString(),
     };
   },
-  list(items: PermissionEntity[], total: number, page: number, limit: number) {
+
+  list(
+    items: PermissionEntity[],
+    total: number,
+    page: number,
+    limit: number,
+  ): PermissionListResponse {
     return {
-      data: items.map((permission) => PermissionSerializer.one(permission)),
+      items: items.map((permission) => PermissionSerializer.one(permission)),
       meta: { total, page, limit, pageCount: Math.ceil(total / limit) },
     };
   },
