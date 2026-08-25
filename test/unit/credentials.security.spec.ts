@@ -9,6 +9,7 @@ import type { CredentialRepository } from '../../src/modules/users/credentials/d
 import { PasswordResetService } from '../../src/modules/users/credentials/application/services/password-reset.service.js';
 import { UserEntity } from '../../src/modules/users/domain/entities/user.entity.js';
 import type { UserRepository } from '../../src/modules/users/domain/repositories/user.repository.js';
+import type { SessionSecurityPort } from '../../src/common/security/session-security.port.js';
 
 const userUuid = '7d3f5e3a-a0ee-4ed7-9f02-0c9a2f0e1b11';
 const passwordConfig = {
@@ -18,6 +19,9 @@ const passwordConfig = {
       : key === 'auth.passwordReset.tokenTtlMinutes'
         ? 15
         : undefined,
+};
+const sessions: SessionSecurityPort = {
+  revokeAllForSecurityEvent: vi.fn().mockResolvedValue(0),
 };
 
 describe('credential security', () => {
@@ -57,7 +61,7 @@ describe('credential security', () => {
     } as unknown as CredentialRepository;
     const hash = vi.fn().mockResolvedValue('argon2-hash');
     const hasher = { hash } as unknown as PasswordHasherService;
-    const service = new CredentialService(repository, hasher);
+    const service = new CredentialService(repository, sessions, hasher);
 
     await expect(
       service.create({
@@ -81,7 +85,7 @@ describe('credential security', () => {
     const verify = vi.fn().mockResolvedValue(true);
     const hash = vi.fn().mockResolvedValue('new-argon2-hash');
     const hasher = { verify, hash } as unknown as PasswordHasherService;
-    const service = new CredentialService(repository, hasher);
+    const service = new CredentialService(repository, sessions, hasher);
 
     await expect(
       service.changePassword({
@@ -171,12 +175,12 @@ describe('credential security', () => {
         return Promise.resolve();
       },
     };
-    const hash = vi.fn();
     const service = new PasswordResetService(
       users,
       credentials,
+      sessions,
       passwordConfig as unknown as ConfigService,
-      { hash } as unknown as PasswordHasherService,
+      { hash: vi.fn() } as unknown as PasswordHasherService,
       delivery,
     );
 
@@ -213,6 +217,7 @@ describe('credential security', () => {
     const service = new PasswordResetService(
       users,
       credentials,
+      sessions,
       passwordConfig as unknown as ConfigService,
       hasher,
       delivery,
