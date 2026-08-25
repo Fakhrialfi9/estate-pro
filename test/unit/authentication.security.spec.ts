@@ -168,7 +168,7 @@ describe('authentication security steps 102-106', () => {
     expect(result?.accessToken).toBe('signed.jwt.token');
     expect(ctx.sessions.create).toHaveBeenCalledOnce();
     expect((await ctx.security.getState('u-1')).failedLoginAttempts).toBe(0);
-    expect(ctx.auditEvents[0]?.action).toBe('AUTHENTICATION_SUCCESS');
+    expect(ctx.auditEvents[0]?.action).toBe('LOGIN_SUCCESS');
     expect(JSON.stringify(result)).not.toContain('argon2-hash');
   });
 
@@ -180,7 +180,7 @@ describe('authentication security steps 102-106', () => {
         password: 'wrong',
       }),
     ).resolves.toBeNull();
-    expect(invalid.auditEvents.at(-1)?.action).toBe('AUTHENTICATION_FAILURE');
+    expect(invalid.auditEvents.at(-1)?.action).toBe('LOGIN_FAILURE');
     const unknown = makeLogin(true);
     unknown.users.findByEmail = vi.fn().mockResolvedValue(null);
     unknown.users.findByUsername = vi.fn().mockResolvedValue(null);
@@ -190,7 +190,7 @@ describe('authentication security steps 102-106', () => {
         password: 'wrong',
       }),
     ).resolves.toBeNull();
-    expect(unknown.auditEvents.at(-1)?.action).toBe('AUTHENTICATION_FAILURE');
+    expect(unknown.auditEvents.at(-1)?.action).toBe('LOGIN_FAILURE');
     expect(unknown.hasher.hash).toHaveBeenCalledOnce();
   });
 
