@@ -64,19 +64,15 @@ const CREATE_SESSION_TABLE = `CREATE TABLE IF NOT EXISTS authentication_user_ses
   revoked_at DATETIME(3) NULL,
   expires_at DATETIME(3) NOT NULL,
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  INDEX idx_auth_user_sessions_user_id (user_id),
-  INDEX idx_auth_user_sessions_revoked_at (revoked_at),
-  INDEX idx_auth_user_sessions_expires_at (expires_at),
   CONSTRAINT fk_auth_user_sessions_user
     FOREIGN KEY (user_id) REFERENCES authentication_users(id)
-    ON UPDATE CASCADE ON DELETE RESTRICT
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  INDEX idx_auth_user_sessions_user_id (user_id),
+  INDEX idx_auth_user_sessions_revoked_at (revoked_at),
+  INDEX idx_auth_user_sessions_expires_at (expires_at)
 ) ENGINE=InnoDB;`;
 
-const httpRequest = () =>
-  request(app.getHttpServer() as unknown as Server).set(
-    'X-Forwarded-For',
-    clientIp,
-  );
+const httpRequest = () => request(app.getHttpServer() as unknown as Server);
 const bodyOf = <T>(response: SuperTestResponse): T => response.body as T;
 const actorToken = (permissions: string[] = ['users:manage']) =>
   jwt.sign({ sub: actorUuid, sid: randomUUID(), permissions });
@@ -116,18 +112,23 @@ describe('Users API', () => {
   });
 
   it('rejects anonymous access', async () => {
-    await httpRequest().get('/api/v1/users').expect(401);
+    await httpRequest()
+      .get('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
+      .expect(401);
   });
 
   it('rejects malformed and credential-bearing create payloads', async () => {
     await httpRequest()
       .post('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .send({ email: 'not-an-email' })
       .expect(400);
 
     await httpRequest()
       .post('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .send({
         email: 'valid@example.com',
@@ -139,6 +140,7 @@ describe('Users API', () => {
   it('creates, reads, searches, updates, and soft-deletes a user without leaking credentials', async () => {
     const create = await httpRequest()
       .post('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .send({
         username: 'john',
@@ -154,11 +156,13 @@ describe('Users API', () => {
 
     await httpRequest()
       .get(`/api/v1/users/${uuid}`)
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .expect(200);
 
     const list = await httpRequest()
       .get('/api/v1/users?page=1&limit=20&search=john')
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .expect(200);
     const payload = bodyOf<UserListResponse>(list);
@@ -166,12 +170,14 @@ describe('Users API', () => {
 
     await httpRequest()
       .patch(`/api/v1/users/${uuid}`)
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .send({ username: 'john-updated' })
       .expect(200);
 
     await httpRequest()
       .delete(`/api/v1/users/${uuid}`)
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .expect(204);
   });
@@ -179,12 +185,14 @@ describe('Users API', () => {
   it('rejects duplicate identity', async () => {
     await httpRequest()
       .post('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .send({ email: 'duplicate@example.com' })
       .expect(201);
 
     await httpRequest()
       .post('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .send({ email: 'duplicate@example.com' })
       .expect(409);
@@ -193,6 +201,7 @@ describe('Users API', () => {
   it('does not allow an authenticated user to read another user without management permission', async () => {
     const create = await httpRequest()
       .post('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .send({ email: 'other@example.com' })
       .expect(201);
@@ -205,6 +214,7 @@ describe('Users API', () => {
 
     await httpRequest()
       .get(`/api/v1/users/${created.uuid}`)
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${readOnlyToken}`)
       .expect(403);
   });
@@ -217,6 +227,7 @@ describe('Users API', () => {
 
     await httpRequest()
       .get('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .expect(401);
   });
