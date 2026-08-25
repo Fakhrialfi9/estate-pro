@@ -13,16 +13,28 @@ import { UserProfileOwnershipPolicy } from './profile/application/policies/user-
 import { UserProfileController } from './profile/presentation/user-profile.controller.js';
 import { ProfileAuthenticationGuard } from './profile/security/profile-authentication.guard.js';
 import { USER_IDENTITY_READER } from './profile/application/types/user-identity-reader.js';
+import { CREDENTIAL_REPOSITORY } from './credentials/domain/repositories/credential.repository.js';
+import { PrismaCredentialRepository } from './credentials/infrastructure/persistence/prisma-credential.repository.js';
+import { CredentialService } from './credentials/application/services/credential.service.js';
+import {
+  PASSWORD_RESET_DELIVERY,
+  PasswordResetService,
+} from './credentials/application/services/password-reset.service.js';
+import { ConfiguredPasswordResetDeliveryService } from './credentials/application/services/configured-password-reset-delivery.service.js';
+import { CredentialsController } from './credentials/presentation/credentials.controller.js';
 
 @Module({
   imports: [DatabaseModule],
-  controllers: [UsersController, UserProfileController],
+  controllers: [UsersController, UserProfileController, CredentialsController],
   providers: [
     UserManagementService,
     UserManagementAccessGuard,
     UserProfileService,
     UserProfileOwnershipPolicy,
     ProfileAuthenticationGuard,
+    CredentialService,
+    PasswordResetService,
+    ConfiguredPasswordResetDeliveryService,
     {
       provide: USER_REPOSITORY,
       useClass: PrismaUserRepository,
@@ -32,10 +44,18 @@ import { USER_IDENTITY_READER } from './profile/application/types/user-identity-
       useClass: PrismaUserProfileRepository,
     },
     {
+      provide: CREDENTIAL_REPOSITORY,
+      useClass: PrismaCredentialRepository,
+    },
+    {
+      provide: PASSWORD_RESET_DELIVERY,
+      useExisting: ConfiguredPasswordResetDeliveryService,
+    },
+    {
       provide: USER_IDENTITY_READER,
       useExisting: UserManagementService,
     },
   ],
-  exports: [UserManagementService],
+  exports: [UserManagementService, CredentialService, PasswordResetService],
 })
 export class UsersModule {}

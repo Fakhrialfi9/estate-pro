@@ -37,6 +37,7 @@ model AuthenticationUser {
     security    AuthenticationUserSecurity?
     sessions    AuthenticationUserSession[]
     twoFactor   AuthenticationUserTwoFactor?
+    passwordResetTokens AuthenticationPasswordResetToken[]
 
     roles AuthorizationUserRole[] @relation("UserRoles")
 

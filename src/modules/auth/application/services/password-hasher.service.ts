@@ -6,6 +6,7 @@ interface PasswordHashingConfig {
   memoryCost: number;
   timeCost: number;
   parallelism: number;
+  hashLength?: number;
 }
 
 @Injectable()
@@ -14,22 +15,36 @@ export class PasswordHasherService {
 
   async hash(password: string): Promise<string> {
     const config = this.getConfig();
-
     return argon2.hash(password, {
       type: argon2.argon2id,
       memoryCost: config.memoryCost,
       timeCost: config.timeCost,
       parallelism: config.parallelism,
+      hashLength: config.hashLength,
     });
   }
 
   async verify(passwordHash: string, password: string): Promise<boolean> {
-    return argon2.verify(passwordHash, password);
+    try {
+      return await argon2.verify(passwordHash, password);
+    } catch {
+      return false;
+    }
   }
 
-  private getConfig(): PasswordHashingConfig {
-    return this.configService.getOrThrow<PasswordHashingConfig>(
-      'auth.passwordHashing',
-    );
+  needsRehash(passwordHash: string): boolean {
+    const config = this.getConfig();
+    return argon2.needsRehash(passwordHash, {
+      type: argon2.argon2id,
+      memoryCost: config.memoryCost,
+      timeCost: config.timeCost,
+      parallelism: config.parallelism,
+      hashLength: config.hashLength,
+    });
+  }
+
+  private getConfig(): Required<PasswordHashingConfig> {
+    const config = this.configService.getOrThrow<PasswordHashingConfig>('auth.passwordHashing');
+    return { ...config, hashLength: config.hashLength ?? 32 };
   }
 }

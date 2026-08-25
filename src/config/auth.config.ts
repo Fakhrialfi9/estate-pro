@@ -12,6 +12,11 @@ export default registerAs('auth', () => ({
     memoryCost: Number(process.env.AUTH_ARGON2_MEMORY_COST ?? 19456),
     timeCost: Number(process.env.AUTH_ARGON2_TIME_COST ?? 2),
     parallelism: Number(process.env.AUTH_ARGON2_PARALLELISM ?? 1),
+    hashLength: Number(process.env.AUTH_ARGON2_HASH_LENGTH ?? 32),
+  },
+  passwordReset: {
+    tokenTtlMinutes: Number(process.env.AUTH_PASSWORD_RESET_TTL_MINUTES ?? 15),
+    deliveryUrl: process.env.AUTH_PASSWORD_RESET_DELIVERY_URL,
   },
   twoFactor: {
     encryptionKey: process.env.TWO_FACTOR_ENCRYPTION_KEY,
