@@ -52,18 +52,34 @@ describe('AuthorizationService', () => {
 
   it('normalizes legacy colon permission codes', () => {
     expect(() =>
-      service.assertPermissions(snapshot(['roles:read']), ['roles.read'], 'AND'),
+      service.assertPermissions(
+        snapshot(['roles:read']),
+        ['roles.read'],
+        'AND',
+      ),
     ).not.toThrow();
   });
 
   it('allows a scoped manage permission to satisfy its CRUD permissions', () => {
-    const admin = snapshot(['roles.manage', 'permissions.manage', 'users.manage']);
+    const admin = snapshot([
+      'roles.manage',
+      'permissions.manage',
+      'users.manage',
+    ]);
 
     expect(() =>
-      service.assertPermissions(admin, ['roles.create', 'roles.read', 'roles.update', 'roles.delete'], 'AND'),
+      service.assertPermissions(
+        admin,
+        ['roles.create', 'roles.read', 'roles.update', 'roles.delete'],
+        'AND',
+      ),
     ).not.toThrow();
     expect(() =>
-      service.assertPermissions(admin, ['permissions.create', 'permissions.read'], 'AND'),
+      service.assertPermissions(
+        admin,
+        ['permissions.create', 'permissions.read'],
+        'AND',
+      ),
     ).not.toThrow();
     expect(() =>
       service.assertPermissions(admin, ['users.create'], 'AND'),
