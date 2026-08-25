@@ -60,12 +60,15 @@ function createHarness() {
       lockedUntil = new Date(Date.now() + 900000);
       return Promise.resolve();
     }),
-    recordSuccessfulVerification: vi.fn(({ timeStep }: { timeStep: bigint }) => {
-      if (lastStep !== null && timeStep <= lastStep) return Promise.resolve(false);
-      lastStep = timeStep;
-      lockedUntil = null;
-      return Promise.resolve(true);
-    }),
+    recordSuccessfulVerification: vi.fn(
+      ({ timeStep }: { timeStep: bigint }) => {
+        if (lastStep !== null && timeStep <= lastStep)
+          return Promise.resolve(false);
+        lastStep = timeStep;
+        lockedUntil = null;
+        return Promise.resolve(true);
+      },
+    ),
   };
 
   const recovery = {
