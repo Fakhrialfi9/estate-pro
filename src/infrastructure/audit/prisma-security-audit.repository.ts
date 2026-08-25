@@ -338,10 +338,9 @@ export class PrismaSecurityAuditRepository
     if (
       event.userUuid &&
       ADMIN_RESOURCE_TYPES.has(resourceType) &&
-      !event.actorType
-    ) {
+      !event.system
+    )
       return 'ADMINISTRATIVE';
-    }
-    return 'AUTHENTICATED';
+    return event.system ? 'SYSTEM' : 'AUTHENTICATED';
   }
 }
