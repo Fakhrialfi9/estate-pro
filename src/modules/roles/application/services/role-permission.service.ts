@@ -210,7 +210,9 @@ export class RolePermissionService {
   private enforceProtectedPolicy(
     actor: RoleActor,
     role: RoleEntity,
-    permission: ReturnType<PermissionRepository['findByUuid']> extends Promise<infer T>
+    permission: ReturnType<PermissionRepository['findByUuid']> extends Promise<
+      infer T
+    >
       ? Exclude<T, null>
       : never,
   ): void {

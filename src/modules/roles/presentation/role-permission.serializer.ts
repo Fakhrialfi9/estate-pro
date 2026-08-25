@@ -1,6 +1,4 @@
-import type {
-  RolePermissionAssignmentView,
-} from '../application/services/role-permission.service.js';
+import type { RolePermissionAssignmentView } from '../application/services/role-permission.service.js';
 import type { RoleEntity } from '../domain/entities/role.entity.js';
 import type { RolePermissionListResult } from '../domain/repositories/role-permission.repository.js';
 
