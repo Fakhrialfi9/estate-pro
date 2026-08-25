@@ -45,7 +45,10 @@ export class PrismaCredentialRepository implements CredentialRepository {
     this.client = prisma as unknown as PrismaClientShape;
   }
 
-  async create(userUuid: string, passwordHash: string): Promise<CredentialEntity> {
+  async create(
+    userUuid: string,
+    passwordHash: string,
+  ): Promise<CredentialEntity> {
     try {
       const record = await this.client.authenticationUserCredential.create({
         data: {
@@ -74,7 +77,11 @@ export class PrismaCredentialRepository implements CredentialRepository {
     return record ? this.toDomain(record) : null;
   }
 
-  async updatePassword(userUuid: string, passwordHash: string, changedAt: Date): Promise<CredentialEntity> {
+  async updatePassword(
+    userUuid: string,
+    passwordHash: string,
+    changedAt: Date,
+  ): Promise<CredentialEntity> {
     return this.client.$transaction(async (tx) => {
       const existing = await tx.authenticationUserCredential.findFirst({
         where: { user: { uuid: userUuid } },
@@ -84,7 +91,11 @@ export class PrismaCredentialRepository implements CredentialRepository {
 
       const updated = await tx.authenticationUserCredential.updateMany({
         where: { userId: existing.userId },
-        data: { passwordHash, passwordChangedAt: changedAt, passwordExpiresAt: null },
+        data: {
+          passwordHash,
+          passwordChangedAt: changedAt,
+          passwordExpiresAt: null,
+        },
       });
       if (updated.count !== 1) throw new Error('Credential not found');
 
@@ -102,7 +113,11 @@ export class PrismaCredentialRepository implements CredentialRepository {
     });
   }
 
-  async createResetToken(userUuid: string, tokenDigest: string, expiresAt: Date): Promise<void> {
+  async createResetToken(
+    userUuid: string,
+    tokenDigest: string,
+    expiresAt: Date,
+  ): Promise<void> {
     const user = await this.client.authenticationUser.findFirst({
       where: { uuid: userUuid },
       select: { id: true },
@@ -114,7 +129,11 @@ export class PrismaCredentialRepository implements CredentialRepository {
     });
   }
 
-  async resetPasswordAtomically(tokenDigest: string, passwordHash: string, now: Date): Promise<string | null> {
+  async resetPasswordAtomically(
+    tokenDigest: string,
+    passwordHash: string,
+    now: Date,
+  ): Promise<string | null> {
     return this.client.$transaction(async (tx) => {
       const token = await tx.authenticationPasswordResetToken.findFirst({
         where: { tokenDigest, usedAt: null, expiresAt: { gt: now } },
@@ -123,15 +142,24 @@ export class PrismaCredentialRepository implements CredentialRepository {
       if (!token) return null;
 
       const consumed = await tx.authenticationPasswordResetToken.updateMany({
-        where: { id: token.id, usedAt: null, expiresAt: { gt: now } },
+        where: {
+          id: token.id,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
         data: { usedAt: now },
       });
       if (consumed.count !== 1) return null;
 
-      const credentialUpdated = await tx.authenticationUserCredential.updateMany({
-        where: { userId: token.userId },
-        data: { passwordHash, passwordChangedAt: now, passwordExpiresAt: null },
-      });
+      const credentialUpdated =
+        await tx.authenticationUserCredential.updateMany({
+          where: { userId: token.userId },
+          data: {
+            passwordHash,
+            passwordChangedAt: now,
+            passwordExpiresAt: null,
+          },
+        });
       if (credentialUpdated.count !== 1) {
         throw new Error('Credential not found');
       }
