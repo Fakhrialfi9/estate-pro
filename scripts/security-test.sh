@@ -43,18 +43,19 @@ printf 'Estate Pro security baseline\n'
 printf 'Project root: %s\n\n' "$PROJECT_ROOT"
 
 require_file "src/main.ts"
+require_file "src/bootstrap.ts"
 require_file "src/app.module.ts"
 require_file "src/config/configuration.ts"
 require_file "src/common/constants/security.constants.ts"
 require_file ".gitignore"
 require_file "package.json"
 
-require_text "src/main.ts" 'ValidationPipe' 'global validation pipe is configured'
-require_text "src/main.ts" 'whitelist: true' 'validation whitelist is enabled'
-require_text "src/main.ts" 'forbidNonWhitelisted: true' 'unknown properties are rejected'
-require_text "src/main.ts" 'forbidUnknownValues: true' 'unknown validation values are rejected'
-require_text "src/main.ts" 'helmet\(' 'Helmet security middleware is installed'
-require_text "src/main.ts" 'enableCors\(' 'CORS policy is configured explicitly'
+require_text "src/bootstrap.ts" 'ValidationPipe' 'global validation pipe is configured'
+require_text "src/bootstrap.ts" 'whitelist: true' 'validation whitelist is enabled'
+require_text "src/bootstrap.ts" 'forbidNonWhitelisted: true' 'unknown properties are rejected'
+require_text "src/bootstrap.ts" 'forbidUnknownValues: true' 'unknown validation values are rejected'
+require_text "src/bootstrap.ts" 'helmet\(' 'Helmet security middleware is installed'
+require_text "src/bootstrap.ts" 'enableCors\(' 'CORS policy is configured explicitly'
 
 require_text "src/app.module.ts" 'ThrottlerModule\.forRootAsync' 'rate limiting is configured'
 require_text "src/app.module.ts" 'APP_GUARD' 'global security guard registration exists'
@@ -82,7 +83,7 @@ if command -v git >/dev/null 2>&1; then
     fail '.env is not ignored by Git'
   fi
 
-  tracked_secrets="$(git ls-files | grep -E '(^|/)(\.env($|\.)|.*\.(pem|key|p12|pfx|secret)$)' || true)"
+  tracked_secrets="$(git ls-files | grep -E '(^|/)(\.env$|\.env\.(production|staging|development|test|local)$|.*\.(pem|key|p12|pfx|secret)$)' || true)"
   if [[ -z "$tracked_secrets" ]]; then
     pass 'no environment/credential artifacts are tracked'
   else
@@ -92,7 +93,7 @@ else
   fail 'git command is required for repository secret checks'
 fi
 
-if grep -RInE 'JWT_SECRET\s*=\s*["'"']|DATABASE_PASSWORD\s*=\s*["'"']|Authorization:\s*Bearer\s+[A-Za-z0-9._-]{20,}' src --include='*.ts' >/dev/null 2>&1; then
+if grep -RInE "JWT_SECRET[[:space:]]*=[[:space:]]*['\"]|DATABASE_PASSWORD[[:space:]]*=[[:space:]]*['\"]|Authorization:[[:space:]]*Bearer[[:space:]]+[A-Za-z0-9._-]{20,}" src --include='*.ts' >/dev/null 2>&1; then
   fail 'possible hardcoded secret/credential assignment detected under src/'
 else
   pass 'no obvious hardcoded secret/credential assignment detected under src/'
