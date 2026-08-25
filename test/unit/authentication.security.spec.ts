@@ -117,7 +117,7 @@ const makeLogin = (passwordValid = true, account = user()) => {
     }),
   } as unknown as CredentialRepository;
   const security = new SecurityStateFake();
-  const sessionCreateMock = vi.fn();
+  const sessionCreateMock = vi.fn().mockResolvedValue(undefined);
   const sessionActiveMock = vi.fn().mockResolvedValue(true);
   const sessionRevokeMock = vi.fn();
   const sessions = {
@@ -147,10 +147,10 @@ const makeLogin = (passwordValid = true, account = user()) => {
     users,
     credentials,
     security,
-    sessions,
     audit,
     hasher as never,
     jwt as never,
+    sessions as never,
     config as never,
   );
   return {
@@ -197,9 +197,7 @@ describe('authentication security steps 102-106', () => {
       }),
     ).resolves.toBeNull();
     expect(invalid.auditEvents.at(-1)?.action).toBe('LOGIN_FAILURE');
-    expect((await invalid.security.getState('u-1')).failedLoginAttempts).toBe(
-      1,
-    );
+    expect((await invalid.security.getState('u-1')).failedLoginAttempts).toBe(1);
     const unknown = makeLogin(true);
     unknown.users.findByEmail = vi.fn().mockResolvedValue(null);
     unknown.users.findByUsername = vi.fn().mockResolvedValue(null);
@@ -267,7 +265,10 @@ describe('authentication security steps 102-106', () => {
 
 describe('jwt security steps 91-99 and 104-105', () => {
   it('issues minimal expiring claims and rejects expired/malformed/tampered tokens', async () => {
-    const service = new JwtTokenService(new JwtService({}), config as never);
+    const service = new JwtTokenService(
+      new JwtService({ secret }),
+      config as never,
+    );
     const token = await service.issueAccessToken('u-1', 's-1');
     const claims = await service.verifyAccessToken(token);
     expect(claims.sub).toBe('u-1');
@@ -290,7 +291,7 @@ describe('jwt security steps 91-99 and 104-105', () => {
   });
 
   it('rejects missing subject, invalid issuer and invalid audience', async () => {
-    const jwt = new JwtService({});
+    const jwt = new JwtService({ secret });
     const base = {
       secret,
       algorithm: 'HS256' as const,
