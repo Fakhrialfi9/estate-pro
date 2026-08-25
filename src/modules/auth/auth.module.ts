@@ -80,7 +80,7 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
     },
     {
       provide: AUTHENTICATION_SESSION_PORT,
-      useExisting: PrismaAuthenticationSessionRepository,
+      useExisting: AUTHENTICATION_SESSION_REPOSITORY,
     },
   ],
   exports: [
