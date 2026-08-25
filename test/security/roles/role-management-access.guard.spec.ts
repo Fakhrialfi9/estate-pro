@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ExecutionContext } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import {
   RoleManageAccessGuard,
   RoleReadAccessGuard,
