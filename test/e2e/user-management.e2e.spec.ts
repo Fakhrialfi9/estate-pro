@@ -170,12 +170,24 @@ describe('User management E2E', () => {
       .send({
         username: `created-${randomUUID().slice(0, 8)}`,
         email: `created-${randomUUID()}@example.com`,
+        password: PASSWORD,
+        passwordConfirmation: PASSWORD,
       })
       .expect(201);
     const createBody = bodyOf<UserResponse>(create);
     const uuid = createBody.uuid;
     expect(createBody.password).toBeUndefined();
     expect(createBody.passwordHash).toBeUndefined();
+
+    const persistedUser = await prisma.authenticationUser.findUniqueOrThrow({
+      where: { uuid },
+      select: { id: true },
+    });
+    const credential = await prisma.authenticationUserCredential.findUniqueOrThrow({
+      where: { userId: persistedUser.id },
+    });
+    expect(credential.passwordHash).not.toBe(PASSWORD);
+    expect(credential.passwordHash).toMatch(/^\$argon2/);
 
     await httpRequest()
       .get(`/api/v1/users/${uuid}`)
