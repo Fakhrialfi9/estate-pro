@@ -1,18 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  RoleAuthorizationPolicy,
-  type RoleActor,
-} from '../../../roles/application/policies/role-authorization.policy.js';
-import { RoleNotFoundException } from '../../../roles/domain/errors/role.errors.js';
-import { PRIVILEGED_ROLE_ASSIGNMENT_PERMISSION } from '../../../roles/application/policies/user-role-authorization.constants.js';
+import { RoleAuthorizationPolicy } from '../policies/role-authorization.policy.js';
+import type { RoleActor } from '../policies/role-authorization.policy.js';
+import { PRIVILEGED_ROLE_ASSIGNMENT_PERMISSION } from '../policies/user-role-authorization.constants.js';
+import { RoleNotFoundException } from '../../domain/errors/role.errors.js';
 import {
   ROLE_REPOSITORY,
   type RoleRepository,
-} from '../../../roles/domain/repositories/role.repository.js';
+} from '../../domain/repositories/role.repository.js';
 import {
   USER_REPOSITORY,
   type UserRepository,
-} from '../../domain/repositories/user.repository.js';
+} from '../../../users/domain/repositories/user.repository.js';
 import {
   PrivilegedRoleAssignmentForbiddenException,
   UserRoleAlreadyExistsException,
@@ -85,8 +83,10 @@ export class UserRoleService {
         assignedByUuid: actor.userUuid,
       });
     } catch (error: unknown) {
-      const message = (error as { message?: string }).message;
-      if (message === 'UserRoleAlreadyExistsError') {
+      if (
+        error instanceof Error &&
+        error.message === 'UserRoleAlreadyExistsError'
+      ) {
         throw new UserRoleAlreadyExistsException();
       }
       throw error;
