@@ -41,14 +41,18 @@ export class PasswordResetService {
 
   async requestByEmail(email: string): Promise<{ accepted: true }> {
     const normalizedEmail = email.trim().toLowerCase();
-    const user = normalizedEmail ? await this.users.findByEmail(normalizedEmail) : null;
+    const user = normalizedEmail
+      ? await this.users.findByEmail(normalizedEmail)
+      : null;
     if (!user || !user.isAccessible()) return { accepted: true };
 
     const credential = await this.credentials.findByUserUuid(user.uuid);
     if (!credential) return { accepted: true };
 
     const token = CredentialService.generateResetToken();
-    const ttlMinutes = this.config.getOrThrow<number>('auth.passwordReset.tokenTtlMinutes');
+    const ttlMinutes = this.config.getOrThrow<number>(
+      'auth.passwordReset.tokenTtlMinutes',
+    );
     if (!Number.isInteger(ttlMinutes) || ttlMinutes <= 0) {
       throw new Error('Invalid password reset TTL configuration');
     }
@@ -72,7 +76,11 @@ export class PasswordResetService {
     return { accepted: true };
   }
 
-  async reset(rawToken: string, password: string, confirmation: string): Promise<void> {
+  async reset(
+    rawToken: string,
+    password: string,
+    confirmation: string,
+  ): Promise<void> {
     const policyResult = this.policy.validate(password);
     if (!policyResult.valid) {
       throw new Error(policyResult.reason ?? 'Invalid password');
