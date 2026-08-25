@@ -60,11 +60,18 @@ const CREATE_AUDIT_CHANGE_TABLE = `CREATE TABLE IF NOT EXISTS audit_log_changes 
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, audit_log_id BIGINT UNSIGNED NOT NULL, field VARCHAR(100) NOT NULL, old_value JSON NULL, new_value JSON NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   CONSTRAINT fk_audit_log_changes_audit_log FOREIGN KEY (audit_log_id) REFERENCES audit_logs(id) ON UPDATE CASCADE ON DELETE CASCADE, INDEX idx_audit_log_changes_audit_log_id (audit_log_id)
 ) ENGINE=InnoDB;`;
+const USER_MANAGEMENT_PERMISSIONS = [
+  'users.create',
+  'users.read',
+  'users.update',
+  'users.delete',
+] as const;
 type SuperTestApp = Parameters<typeof request>[0];
 const httpRequest = () => request(app.getHttpServer() as SuperTestApp);
 const bodyOf = <T>(response: SuperTestResponse): T => response.body as T;
-const actorToken = (permissions: string[] = ['users:manage']) =>
-  jwt.sign({ sub: actorUuid, sid: randomUUID(), permissions });
+const actorToken = (
+  permissions: string[] = [...USER_MANAGEMENT_PERMISSIONS],
+) => jwt.sign({ sub: actorUuid, sid: randomUUID(), permissions });
 const stringifyForAssertion = (value: unknown): string =>
   JSON.stringify(value, (_key: string, nestedValue: unknown): unknown =>
     typeof nestedValue === 'bigint' ? nestedValue.toString() : nestedValue,
