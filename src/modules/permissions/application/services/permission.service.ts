@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
   buildPermissionCode,
+  isProtectedPermissionCode,
   normalizePermissionName,
   normalizePermissionSegment,
   PermissionEntity,
@@ -66,7 +67,7 @@ export class PermissionService {
 
     const code = buildPermissionCode(module, domain, action);
     this.policy.canManage(actor, PERMISSION_CREATE_PERMISSION);
-    if (isSystemPermissionCode(code)) {
+    if (isProtectedPermissionCode(code)) {
       this.policy.canManageProtected(actor);
     }
 
@@ -324,6 +325,3 @@ export class PermissionService {
     });
   }
 }
-
-const isSystemPermissionCode = (code: string): boolean =>
-  code.startsWith('system.') || code.startsWith('auth.') || code.startsWith('permissions.');
