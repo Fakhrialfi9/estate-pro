@@ -16,7 +16,10 @@ import { LoginService } from '../application/services/login.service.js';
 import { LogoutService } from '../application/services/logout.service.js';
 import { JwtAuthGuard } from '../security/jwt-auth.guard.js';
 import { LOGIN_RATE_LIMIT } from '../../../config/rate-limit.config.js';
-import { UserManagementService, serializeUser } from '../../users/users.module.js';
+import {
+  UserManagementService,
+  serializeUser,
+} from '../../users/users.module.js';
 
 interface AuthenticatedRequest extends Request {
   user: AccessTokenClaims;
