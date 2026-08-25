@@ -323,7 +323,7 @@ export class PrismaSecurityAuditRepository
 
   private inferActorType(
     event: SecurityAuditEvent | AuditLogWriteEvent,
-    resourceType: string,
+    resourceType: string | null,
     actorUuid: string | null,
   ): 'AUTHENTICATED' | 'ADMINISTRATIVE' | 'SYSTEM' | 'ANONYMOUS' {
     if (!actorUuid) return event.system ? 'SYSTEM' : 'ANONYMOUS';
@@ -337,6 +337,7 @@ export class PrismaSecurityAuditRepository
     if (event.actorUuid) return 'AUTHENTICATED';
     if (
       event.userUuid &&
+      resourceType &&
       ADMIN_RESOURCE_TYPES.has(resourceType) &&
       !event.system
     )
