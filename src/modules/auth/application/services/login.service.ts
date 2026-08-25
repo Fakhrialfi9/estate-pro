@@ -10,18 +10,18 @@ import { SessionService } from './session.service.js';
 import type {
   AuthenticationSecurityRepository,
   AuthenticationLockoutPolicy,
-} from '../domain/repositories/authentication-security.repository.js';
-import { AUTHENTICATION_SECURITY_REPOSITORY } from '../domain/repositories/authentication-security.repository.js';
-import type { SecurityAuditRepository } from '../domain/repositories/security-audit.repository.js';
-import { SECURITY_AUDIT_REPOSITORY } from '../domain/repositories/security-audit.repository.js';
+} from '../../domain/repositories/authentication-security.repository.js';
+import { AUTHENTICATION_SECURITY_REPOSITORY } from '../../domain/repositories/authentication-security.repository.js';
+import type { SecurityAuditRepository } from '../../domain/repositories/security-audit.repository.js';
+import { SECURITY_AUDIT_REPOSITORY } from '../../domain/repositories/security-audit.repository.js';
 import { AUTH_ACTIONS } from '../constants/authentication.constants.js';
 
 export interface LoginCommand {
   identifier: string;
   password: string;
-  ipAddress?: string;
-  userAgent?: string;
-  requestId?: string;
+  ipAddress?: string | undefined;
+  userAgent?: string | undefined;
+  requestId?: string | undefined;
 }
 
 export interface LoginResponse {
@@ -51,9 +51,7 @@ export class LoginService {
     const policy: AuthenticationLockoutPolicy = {
       threshold: this.config.getOrThrow<number>('auth.login.lockoutThreshold'),
       windowMs: this.config.getOrThrow<number>('auth.login.lockoutWindowMs'),
-      durationMs: this.config.getOrThrow<number>(
-        'auth.login.lockoutDurationMs',
-      ),
+      durationMs: this.config.getOrThrow<number>('auth.login.lockoutDurationMs'),
     };
     const identifier = command.identifier.trim();
     const user =
@@ -117,10 +115,7 @@ export class LoginService {
     };
   }
 
-  private async auditFailure(
-    command: LoginCommand,
-    userUuid?: string,
-  ): Promise<void> {
+  private async auditFailure(command: LoginCommand, userUuid?: string): Promise<void> {
     await this.audit.record({
       action: AUTH_ACTIONS.LOGIN_FAILURE,
       userUuid,

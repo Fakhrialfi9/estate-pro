@@ -1,8 +1,8 @@
 export interface SessionAuditContext {
-  ipAddress?: string;
-  userAgent?: string;
-  requestId?: string;
-  actorUserUuid?: string;
+  ipAddress?: string | undefined;
+  userAgent?: string | undefined;
+  requestId?: string | undefined;
+  actorUserUuid?: string | undefined;
 }
 
 export type SessionSecurityEvent =

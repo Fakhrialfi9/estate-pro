@@ -1,16 +1,16 @@
-import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type {
   AuthenticationSessionCreation,
   AuthenticationSessionRepository,
   SessionAuditContext,
   SessionListQuery,
-} from '../domain/repositories/authentication-session.repository.js';
-import { AUTHENTICATION_SESSION_REPOSITORY } from '../domain/repositories/authentication-session.repository.js';
-import { SessionEntity } from '../domain/entities/session.entity.js';
+} from '../../domain/repositories/authentication-session.repository.js';
+import { AUTHENTICATION_SESSION_REPOSITORY } from '../../domain/repositories/authentication-session.repository.js';
+import { SessionEntity } from '../../domain/entities/session.entity.js';
 import type { SessionSecurityPort } from '../../../../common/security/session-security.port.js';
-import type { SecurityAuditRepository } from '../domain/repositories/security-audit.repository.js';
-import { SECURITY_AUDIT_REPOSITORY } from '../domain/repositories/security-audit.repository.js';
+import type { SecurityAuditRepository } from '../../domain/repositories/security-audit.repository.js';
+import { SECURITY_AUDIT_REPOSITORY } from '../../domain/repositories/security-audit.repository.js';
+import { createHash, randomBytes } from 'node:crypto';
 
 export const SESSION_AUDIT_ACTIONS = {
   CREATED: 'SESSION_CREATED',
@@ -28,8 +28,8 @@ const SESSION_SECRET_BYTES = 32;
 
 export interface CreateSessionInput extends SessionAuditContext {
   sessionId: string;
-  ipAddress?: string;
-  userAgent?: string;
+  ipAddress?: string | undefined;
+  userAgent?: string | undefined;
   expiresAt: Date;
 }
 
@@ -50,10 +50,7 @@ export class SessionService implements SessionSecurityPort {
     return createHash('sha256').update(secret, 'utf8').digest('hex');
   }
 
-  async create(
-    userUuid: string,
-    input: CreateSessionInput,
-  ): Promise<SessionEntity> {
+  async create(userUuid: string, input: CreateSessionInput): Promise<SessionEntity> {
     const now = new Date();
     if (input.expiresAt.getTime() <= now.getTime()) {
       throw new Error('Session expiry must be in the future');
@@ -76,11 +73,7 @@ export class SessionService implements SessionSecurityPort {
     return entity;
   }
 
-  isActive(
-    userUuid: string,
-    sessionId: string,
-    now = new Date(),
-  ): Promise<boolean> {
+  isActive(userUuid: string, sessionId: string, now = new Date()): Promise<boolean> {
     return this.sessions.isActive(userUuid, sessionId, now);
   }
 
@@ -95,9 +88,7 @@ export class SessionService implements SessionSecurityPort {
       includeInactive: query.includeInactive ?? false,
     };
     const snapshots = await this.sessions.list(userUuid, normalized);
-    return snapshots.map((snapshot) =>
-      SessionEntity.create(snapshot).toSafeView(now),
-    );
+    return snapshots.map((snapshot) => SessionEntity.create(snapshot).toSafeView(now));
   }
 
   async logoutCurrent(
@@ -126,10 +117,7 @@ export class SessionService implements SessionSecurityPort {
     });
   }
 
-  async logoutAll(
-    userUuid: string,
-    context: SessionAuditContext = {},
-  ): Promise<number> {
+  async logoutAll(userUuid: string, context: SessionAuditContext = {}): Promise<number> {
     const count = await this.sessions.revokeAll(userUuid, new Date());
     await this.audit.record({
       action: SESSION_AUDIT_ACTIONS.LOGOUT_ALL,

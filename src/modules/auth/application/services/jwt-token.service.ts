@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import type { JwtPayload } from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import type { SignOptions } from 'jsonwebtoken';
 
 export interface AccessTokenClaims {
   sub: string;
@@ -15,7 +15,7 @@ export interface AccessTokenClaims {
 
 type SupportedAlgorithm = 'HS256' | 'HS384' | 'HS512';
 
-type TokenPayload = JwtPayload & Partial<AccessTokenClaims>;
+type TokenPayload = AccessTokenClaims;
 
 @Injectable()
 export class JwtTokenService {
@@ -60,13 +60,13 @@ export class JwtTokenService {
     return new Date(payload.exp * 1000);
   }
 
-  private getSignOptions() {
+  private getSignOptions(): SignOptions {
     return {
-      expiresIn: this.config.getOrThrow<string>('auth.jwt.expiresIn'),
+      expiresIn: this.config.getOrThrow<string>('auth.jwt.expiresIn') as SignOptions['expiresIn'],
       issuer: this.getIssuer(),
       audience: this.getAudience(),
       algorithm: this.getAlgorithm(),
-    } as const;
+    };
   }
 
   private getSecret(): string {
@@ -83,11 +83,7 @@ export class JwtTokenService {
 
   private getAlgorithm(): SupportedAlgorithm {
     const algorithm = this.config.getOrThrow<string>('auth.jwt.algorithm');
-    if (
-      algorithm !== 'HS256' &&
-      algorithm !== 'HS384' &&
-      algorithm !== 'HS512'
-    ) {
+    if (algorithm !== 'HS256' && algorithm !== 'HS384' && algorithm !== 'HS512') {
       throw new Error('Unsupported JWT algorithm');
     }
     return algorithm;

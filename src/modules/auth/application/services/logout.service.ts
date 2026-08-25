@@ -4,9 +4,9 @@ import { SessionService } from './session.service.js';
 export interface LogoutCommand {
   userUuid: string;
   sessionId: string;
-  ipAddress?: string;
-  userAgent?: string;
-  requestId?: string;
+  ipAddress?: string | undefined;
+  userAgent?: string | undefined;
+  requestId?: string | undefined;
 }
 
 @Injectable()

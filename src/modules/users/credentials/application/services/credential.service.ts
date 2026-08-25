@@ -1,6 +1,7 @@
+import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import type { SessionSecurityPort } from '../../../../common/security/session-security.port.js';
-import { SESSION_SECURITY_PORT } from '../../../../common/security/session-security.port.js';
+import type { SessionSecurityPort } from '../../../../../common/security/session-security.port.js';
+import { SESSION_SECURITY_PORT } from '../../../../../common/security/session-security.port.js';
 import { PasswordHasherService } from '../../../../auth/application/services/password-hasher.service.js';
 import { PasswordPolicy } from '../../domain/policies/password.policy.js';
 import type { CredentialRepository } from '../../domain/repositories/credential.repository.js';
@@ -12,16 +13,15 @@ import {
   InvalidPasswordConfirmationError,
   InvalidPasswordError,
 } from '../../domain/errors/credential.errors.js';
-import { createHash, randomBytes } from 'node:crypto';
 
 export interface ChangePasswordCommand {
   userUuid: string;
   currentPassword: string;
   newPassword: string;
   confirmation: string;
-  ipAddress?: string;
-  userAgent?: string;
-  requestId?: string;
+  ipAddress?: string | undefined;
+  userAgent?: string | undefined;
+  requestId?: string | undefined;
 }
 
 export interface CreateCredentialCommand {
