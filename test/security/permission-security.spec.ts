@@ -34,23 +34,23 @@ describe('Permission authorization security', () => {
   it('denies protected permission management without elevated authorization', () => {
     expect(() =>
       policy.canManage(
-        actor(['permissions:manage']),
-        'permissions:manage:protected',
+        actor(['permissions.manage']),
+        'permissions.manage.protected',
       ),
     ).toThrow(SystemPermissionProtectedException);
   });
 
   it('does not let an ordinary management capability bypass protected permission policy', () => {
     expect(() =>
-      policy.canManage(actor(['permissions:manage']), 'roles:manage:protected'),
+      policy.canManage(actor(['permissions.manage']), 'roles.manage.protected'),
     ).toThrow(SystemPermissionProtectedException);
   });
 
   it('allows protected lifecycle only to the dedicated capability', () => {
     expect(() =>
       policy.canManage(
-        actor(['permissions:manage', 'permissions:manage:protected']),
-        'permissions:manage:protected',
+        actor(['permissions.manage', 'permissions.manage.protected']),
+        'permissions.manage.protected',
       ),
     ).not.toThrow();
   });
