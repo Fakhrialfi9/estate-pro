@@ -44,7 +44,9 @@ export class PasswordHasherService {
   }
 
   private getConfig(): Required<PasswordHashingConfig> {
-    const config = this.configService.getOrThrow<PasswordHashingConfig>('auth.passwordHashing');
+    const config = this.configService.getOrThrow<PasswordHashingConfig>(
+      'auth.passwordHashing',
+    );
     return { ...config, hashLength: config.hashLength ?? 32 };
   }
 }
