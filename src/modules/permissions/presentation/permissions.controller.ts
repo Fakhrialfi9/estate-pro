@@ -11,6 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/auth.module.js';
 import {
@@ -36,6 +37,8 @@ type AuthenticatedRequest = Request & {
   user?: { sub?: string; permissions?: string[] };
 };
 
+@ApiTags('Permissions')
+@ApiBearerAuth()
 @Controller('permissions')
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class PermissionsController {
@@ -46,6 +49,7 @@ export class PermissionsController {
     PERMISSION_MANAGE_PERMISSION,
   )
   @Get(':uuid')
+  @ApiOperation({ summary: 'Get permission', description: `Requires ${PERMISSION_READ_PERMISSION} or ${PERMISSION_MANAGE_PERMISSION}.` })
   async get(@Req() request: AuthenticatedRequest, @Param('uuid') uuid: string) {
     const permission = await this.permissions.get(this.actor(request), uuid);
     return PermissionSerializer.one(permission);
@@ -56,6 +60,7 @@ export class PermissionsController {
     PERMISSION_MANAGE_PERMISSION,
   )
   @Get()
+  @ApiOperation({ summary: 'List permissions', description: `Requires ${PERMISSION_READ_PERMISSION} or ${PERMISSION_MANAGE_PERMISSION}.` })
   async list(
     @Req() request: AuthenticatedRequest,
     @Query() query: PermissionQueryDto,
@@ -71,6 +76,7 @@ export class PermissionsController {
 
   @RequirePermissions(PERMISSION_MANAGE_PERMISSION)
   @Post()
+  @ApiOperation({ summary: 'Create permission', description: `Requires ${PERMISSION_MANAGE_PERMISSION}.` })
   async create(
     @Req() request: AuthenticatedRequest,
     @Body() dto: CreatePermissionDto,
@@ -87,6 +93,7 @@ export class PermissionsController {
 
   @RequirePermissions(PERMISSION_MANAGE_PERMISSION)
   @Put(':uuid')
+  @ApiOperation({ summary: 'Update permission', description: `Requires ${PERMISSION_MANAGE_PERMISSION}; system-permission protection is enforced by the application service.` })
   async update(
     @Req() request: AuthenticatedRequest,
     @Param('uuid') uuid: string,
@@ -105,6 +112,7 @@ export class PermissionsController {
 
   @RequirePermissions(PERMISSION_MANAGE_PERMISSION)
   @Delete(':uuid')
+  @ApiOperation({ summary: 'Delete permission', description: `Requires ${PERMISSION_MANAGE_PERMISSION}; dependency and system-permission protections are enforced by the application service.` })
   async remove(
     @Req() request: AuthenticatedRequest,
     @Param('uuid') uuid: string,
