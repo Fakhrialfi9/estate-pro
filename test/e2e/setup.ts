@@ -13,6 +13,7 @@ process.env.DATABASE_USER = 'test';
 process.env.DATABASE_PASSWORD = 'test-password';
 process.env.JWT_SECRET = 'test-only-secret-that-is-at-least-32-chars';
 process.env.SECURITY_CORS_ORIGINS = 'http://localhost:3000';
+process.env.SECURITY_RATE_LIMIT_MAX = '1000';
 process.env.OTEL_TRACING_ENABLED = 'false';
 process.env.OTEL_METRICS_ENABLED = 'false';
 process.env.LOG_LEVEL = 'debug';
