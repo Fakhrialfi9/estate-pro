@@ -50,17 +50,18 @@ function getDatabaseName(databaseUrl: URL): string {
   return decodeURIComponent(databaseUrl.pathname.replace(/^\//, ''));
 }
 
-function isSafeTestDatabaseUrl(databaseUrl: string | undefined): boolean {
+function getSafeTestDatabaseUrl(databaseUrl: string | undefined): string | undefined {
   const url = parseDatabaseUrl(databaseUrl);
   if (!url) {
-    return false;
+    return undefined;
   }
 
   if (url.protocol !== 'mysql:' || !TEST_DATABASE_HOSTS.has(url.hostname)) {
-    return false;
+    return undefined;
   }
 
-  return TEST_DATABASE_NAME_PATTERN.test(getDatabaseName(url));
+  const databaseName = getDatabaseName(url);
+  return TEST_DATABASE_NAME_PATTERN.test(databaseName) ? databaseUrl : undefined;
 }
 
 function buildDatabaseUrl(environment: Environment): string | undefined {
@@ -93,22 +94,26 @@ function resolveTestDatabaseUrl(): string {
   const processDatabaseUrl = processEnvironment.DATABASE_URL;
   const projectDatabaseUrl = projectEnvironment.DATABASE_URL;
 
-  if (isSafeTestDatabaseUrl(processDatabaseUrl)) {
-    return processDatabaseUrl as string;
+  const safeProcessDatabaseUrl = getSafeTestDatabaseUrl(processDatabaseUrl);
+  if (safeProcessDatabaseUrl) {
+    return safeProcessDatabaseUrl;
   }
 
-  if (isSafeTestDatabaseUrl(projectDatabaseUrl)) {
-    return projectDatabaseUrl as string;
+  const safeProjectDatabaseUrl = getSafeTestDatabaseUrl(projectDatabaseUrl);
+  if (safeProjectDatabaseUrl) {
+    return safeProjectDatabaseUrl;
   }
 
   const processDatabaseFromParts = buildDatabaseUrl(processEnvironment);
-  if (isSafeTestDatabaseUrl(processDatabaseFromParts)) {
-    return processDatabaseFromParts as string;
+  const safeProcessDatabaseFromParts = getSafeTestDatabaseUrl(processDatabaseFromParts);
+  if (safeProcessDatabaseFromParts) {
+    return safeProcessDatabaseFromParts;
   }
 
   const projectDatabaseFromParts = buildDatabaseUrl(projectEnvironment);
-  if (isSafeTestDatabaseUrl(projectDatabaseFromParts)) {
-    return projectDatabaseFromParts as string;
+  const safeProjectDatabaseFromParts = getSafeTestDatabaseUrl(projectDatabaseFromParts);
+  if (safeProjectDatabaseFromParts) {
+    return safeProjectDatabaseFromParts;
   }
 
   const unsafeDatabaseUrl = processDatabaseUrl ?? projectDatabaseUrl;
