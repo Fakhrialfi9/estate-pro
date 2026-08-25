@@ -66,9 +66,7 @@ export const configurationValidationSchema = Joi.object({
   API_PREFIX: Joi.string().trim().min(1).default('api'),
   API_VERSION: Joi.string().trim().min(1).default('v1'),
 
-  DATABASE_URL: Joi.string()
-    .uri({ scheme: ['mysql'] })
-    .required(),
+  DATABASE_URL: Joi.string().uri({ scheme: ['mysql'] }).required(),
   DATABASE_HOST: Joi.string().trim().min(1).required(),
   DATABASE_PORT: Joi.number().integer().min(1).max(65535).default(3306),
   DATABASE_NAME: Joi.string().trim().min(1).required(),
@@ -113,6 +111,24 @@ export const configurationValidationSchema = Joi.object({
     then: optionalSecret,
     otherwise: Joi.string().min(32).optional(),
   }),
+
+  AUTH_LOGIN_RATE_LIMIT: Joi.number().integer().min(1).max(100).default(5),
+  AUTH_LOGIN_RATE_LIMIT_TTL_MS: Joi.number()
+    .integer()
+    .min(1000)
+    .max(3600000)
+    .default(60000),
+  AUTH_LOCKOUT_THRESHOLD: Joi.number().integer().min(2).max(100).default(5),
+  AUTH_LOCKOUT_WINDOW_MS: Joi.number()
+    .integer()
+    .min(1000)
+    .max(86400000)
+    .default(900000),
+  AUTH_LOCKOUT_DURATION_MS: Joi.number()
+    .integer()
+    .min(1000)
+    .max(86400000)
+    .default(900000),
 
   AUTH_ARGON2_MEMORY_COST: Joi.number()
     .integer()
