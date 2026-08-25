@@ -5,11 +5,11 @@ import {
   ACCESS_TOKEN_VERIFIER,
   type AccessTokenClaims,
   type AccessTokenVerifier,
-} from '../../../../../common/security/access-token-verifier.port.js';
+} from '../../../../common/security/access-token-verifier.port.js';
 import {
   AUTHENTICATION_SESSION_PORT,
   type AuthenticationSessionPort,
-} from '../../../../../common/security/authentication-session.port.js';
+} from '../../../../common/security/authentication-session.port.js';
 import { USER_IDENTITY_READER } from '../application/types/user-identity-reader.js';
 import type { UserIdentityReader } from '../application/types/user-identity-reader.js';
 
