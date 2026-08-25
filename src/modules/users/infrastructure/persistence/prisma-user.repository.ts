@@ -4,6 +4,7 @@ import { PrismaService } from '../../../../infrastructure/database/prisma/prisma
 import type { UserUpdate } from '../../domain/entities/user.entity.js';
 import type {
   CreateUserData,
+  UserCredentialCreation,
   UserFilterField,
   UserListQuery,
   UserListResult,
@@ -41,9 +42,17 @@ type SortField =
   | 'createdAt'
   | 'updatedAt';
 type SortDirection = 'asc' | 'desc';
+type UserCreateData = UserPersistenceData & {
+  credentials?: {
+    create: {
+      passwordHash: string;
+      passwordChangedAt: Date;
+    };
+  };
+};
 
 type UserPersistenceDelegate = {
-  create(args: { data: UserPersistenceData }): Promise<UserPersistenceRecord>;
+  create(args: { data: UserCreateData }): Promise<UserPersistenceRecord>;
   findFirst(args: { where: UserWhere }): Promise<UserPersistenceRecord | null>;
   findMany(args: {
     where: UserWhere;
@@ -90,6 +99,33 @@ export class PrismaUserRepository implements UserRepository {
     try {
       const record = await this.users.create({
         data: PrismaUserMapper.toPersistence(data),
+      });
+      return PrismaUserMapper.toDomain(record);
+    } catch (error: unknown) {
+      if ((error as { code?: string }).code === 'P2002') {
+        const duplicate = new Error('User identity is already in use');
+        duplicate.name = 'DuplicateUserError';
+        throw duplicate;
+      }
+      throw error;
+    }
+  }
+
+  async createWithCredential(
+    data: CreateUserData,
+    credential: UserCredentialCreation,
+  ) {
+    try {
+      const record = await this.users.create({
+        data: {
+          ...PrismaUserMapper.toPersistence(data),
+          credentials: {
+            create: {
+              passwordHash: credential.passwordHash,
+              passwordChangedAt: new Date(),
+            },
+          },
+        },
       });
       return PrismaUserMapper.toDomain(record);
     } catch (error: unknown) {
