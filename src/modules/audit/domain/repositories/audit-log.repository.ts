@@ -8,13 +8,13 @@ import type { AuditLogEntity } from '../entities/audit-log.entity.js';
 export interface AuditLogListQuery {
   page: number;
   limit: number;
-  actorUuid?: string;
-  action?: string;
-  resourceType?: string;
-  resourceId?: string;
-  result?: AuditResult;
-  from?: Date;
-  to?: Date;
+  actorUuid?: string | undefined;
+  action?: string | undefined;
+  resourceType?: string | undefined;
+  resourceId?: string | undefined;
+  result?: AuditResult | undefined;
+  from?: Date | undefined;
+  to?: Date | undefined;
 }
 
 export interface AuditLogListResult {
@@ -24,19 +24,19 @@ export interface AuditLogListResult {
 
 export interface AuditLogWriteEvent {
   action: string;
-  actorUuid?: string;
-  subjectUuid?: string;
-  userUuid?: string;
-  actorType?: AuditActorType;
-  entityType?: string;
-  entityUuid?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  requestId?: string;
-  result?: AuditResult;
-  reason?: string;
-  changes?: readonly SecurityAuditChange[];
-  system?: boolean;
+  actorUuid?: string | undefined;
+  subjectUuid?: string | undefined;
+  userUuid?: string | undefined;
+  actorType?: AuditActorType | undefined;
+  entityType?: string | undefined;
+  entityUuid?: string | undefined;
+  ipAddress?: string | undefined;
+  userAgent?: string | undefined;
+  requestId?: string | undefined;
+  result?: AuditResult | undefined;
+  reason?: string | undefined;
+  changes?: readonly SecurityAuditChange[] | undefined;
+  system?: boolean | undefined;
 }
 
 export interface AuditLogRepository {
