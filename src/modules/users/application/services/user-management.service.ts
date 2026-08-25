@@ -17,6 +17,10 @@ import type {
   UserRepository,
 } from '../../domain/repositories/user.repository.js';
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository.js';
+import {
+  CredentialService,
+  type PrepareCredentialCommand,
+} from '../../credentials/application/services/credential.service.js';
 
 export interface UserAuditContext {
   actorUuid?: string | undefined;
@@ -33,10 +37,12 @@ export class UserManagementService {
     private readonly sessions: SessionSecurityPort,
     @Inject(SECURITY_AUDIT_REPOSITORY)
     private readonly audit: SecurityAuditRepository,
+    private readonly credentials: CredentialService,
   ) {}
 
   async create(
     data: CreateUserData,
+    credential: PrepareCredentialCommand,
     context: UserAuditContext = {},
   ): Promise<UserEntity> {
     const normalized: CreateUserData = {
@@ -49,7 +55,11 @@ export class UserManagementService {
       throw new InvalidUserError('At least one identity is required');
     const duplicate = await this.users.findDuplicateIdentity(normalized);
     if (duplicate) throw new DuplicateUserError();
-    const created = await this.users.create(normalized);
+
+    const passwordHash = await this.credentials.preparePasswordHash(credential);
+    const created = await this.users.createWithCredential(normalized, {
+      passwordHash,
+    });
     await this.audit.record({
       action: 'USER_CREATED',
       ...(context.actorUuid !== undefined
