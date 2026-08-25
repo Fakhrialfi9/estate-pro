@@ -6,16 +6,29 @@ import { PrismaUserRepository } from './infrastructure/persistence/prisma-user.r
 import { UserManagementService } from './application/services/user-management.service.js';
 import { UsersController } from './presentation/users.controller.js';
 import { UserManagementAccessGuard } from './security/user-management-access.guard.js';
+import { USER_PROFILE_REPOSITORY } from './profile/domain/repositories/user-profile.repository.js';
+import { PrismaUserProfileRepository } from './profile/infrastructure/persistence/prisma-user-profile.repository.js';
+import { UserProfileService } from './profile/application/services/user-profile.service.js';
+import { UserProfileOwnershipPolicy } from './profile/application/policies/user-profile-ownership.policy.js';
+import { UserProfileController } from './profile/presentation/user-profile.controller.js';
+import { ProfileAuthenticationGuard } from './profile/security/profile-authentication.guard.js';
 
 @Module({
   imports: [DatabaseModule],
-  controllers: [UsersController],
+  controllers: [UsersController, UserProfileController],
   providers: [
     UserManagementService,
     UserManagementAccessGuard,
+    UserProfileService,
+    UserProfileOwnershipPolicy,
+    ProfileAuthenticationGuard,
     {
       provide: USER_REPOSITORY,
       useClass: PrismaUserRepository,
+    },
+    {
+      provide: USER_PROFILE_REPOSITORY,
+      useClass: PrismaUserProfileRepository,
     },
   ],
   exports: [UserManagementService],
