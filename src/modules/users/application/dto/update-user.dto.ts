@@ -30,4 +30,8 @@ export class UpdateUserDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsIn([undefined])
+  'constructor'?: unknown;
 }
