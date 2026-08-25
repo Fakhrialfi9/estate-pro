@@ -4,50 +4,75 @@ import { PrismaService } from '../database/prisma/prisma.service.js';
 import type {
   SecurityAuditEvent,
   SecurityAuditRepository,
-} from '../../modules/auth/domain/repositories/security-audit.repository.js';
+} from '../../common/audit/security-audit.port.js';
 
-type Delegate = {
+type UserDelegate = {
   findFirst(args: unknown): Promise<{ id: bigint } | null>;
+};
+type RoleDelegate = {
+  findFirst(args: unknown): Promise<{ id: bigint } | null>;
+};
+type AuditLogDelegate = {
+  create(args: unknown): Promise<{ id: bigint }>;
+};
+type AuditChangeDelegate = {
   create(args: unknown): Promise<unknown>;
 };
 
 type PrismaShape = {
-  authenticationUser: Delegate;
-  auditLog: Delegate;
+  authenticationUser: UserDelegate;
+  authorizationRole: RoleDelegate;
+  auditLog: AuditLogDelegate;
+  auditLogChange: AuditChangeDelegate;
 };
 
 @Injectable()
 export class PrismaSecurityAuditRepository implements SecurityAuditRepository {
-  private readonly users: Delegate;
-  private readonly auditLogs: Delegate;
+  private readonly users: UserDelegate;
+  private readonly roles: RoleDelegate;
+  private readonly auditLogs: AuditLogDelegate;
+  private readonly auditChanges: AuditChangeDelegate;
 
   constructor(prisma: PrismaService) {
     const client = prisma as unknown as PrismaShape;
     this.users = client.authenticationUser;
+    this.roles = client.authorizationRole;
     this.auditLogs = client.auditLog;
+    this.auditChanges = client.auditLogChange;
   }
 
   async record(event: SecurityAuditEvent): Promise<void> {
-    let userId: bigint | null = null;
-    if (event.userUuid) {
-      const user = await this.users.findFirst({
-        where: { uuid: event.userUuid },
-        select: { id: true },
-      });
-      userId = user?.id ?? null;
+    const userId = event.userUuid
+      ? ((await this.users.findFirst({ where: { uuid: event.userUuid }, select: { id: true } }))?.id ?? null)
+      : null;
+
+    let entityId: bigint | null = null;
+    if (event.entityUuid && event.entityType === 'AuthorizationRole') {
+      entityId = (await this.roles.findFirst({ where: { uuid: event.entityUuid }, select: { id: true } }))?.id ?? null;
     }
 
-    await this.auditLogs.create({
+    const log = await this.auditLogs.create({
       data: {
         uuid: randomUUID(),
         userId,
         action: event.action,
-        entityType: 'Authentication',
-        entityId: null,
+        entityType: event.entityType ?? 'Authentication',
+        entityId,
         ipAddress: event.ipAddress ?? null,
         userAgent: event.userAgent ?? null,
         requestId: event.requestId ?? null,
       },
     });
+
+    for (const change of event.changes ?? []) {
+      await this.auditChanges.create({
+        data: {
+          auditLogId: log.id,
+          field: change.field,
+          oldValue: change.oldValue,
+          newValue: change.newValue,
+        },
+      });
+    }
   }
 }

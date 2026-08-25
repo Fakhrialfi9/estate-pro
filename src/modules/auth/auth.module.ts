@@ -9,10 +9,7 @@ import { LogoutService } from './application/services/logout.service.js';
 import { SessionService } from './application/services/session.service.js';
 import { JwtTokenService } from './application/services/jwt-token.service.js';
 import { AuthController } from './presentation/auth.controller.js';
-import {
-  AdminSessionController,
-  SessionController,
-} from './presentation/session.controller.js';
+import { AdminSessionController, SessionController } from './presentation/session.controller.js';
 import { JwtAuthGuard } from './security/jwt-auth.guard.js';
 import { SessionAdminGuard } from './security/session-admin.guard.js';
 import { AUTHENTICATION_SECURITY_REPOSITORY } from './domain/repositories/authentication-security.repository.js';
@@ -37,14 +34,10 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('auth.jwt.secret'),
         signOptions: {
-          expiresIn: config.getOrThrow<string>(
-            'auth.jwt.expiresIn',
-          ) as RequiredExpiresIn,
+          expiresIn: config.getOrThrow<string>('auth.jwt.expiresIn') as RequiredExpiresIn,
           issuer: config.getOrThrow<string>('auth.jwt.issuer'),
           audience: config.getOrThrow<string>('auth.jwt.audience'),
-          algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>(
-            'auth.jwt.algorithm',
-          ),
+          algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>('auth.jwt.algorithm'),
         },
       }),
     }),
@@ -57,29 +50,13 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
     JwtTokenService,
     JwtAuthGuard,
     SessionAdminGuard,
-    {
-      provide: AUTHENTICATION_SECURITY_REPOSITORY,
-      useClass: PrismaAuthenticationSecurityRepository,
-    },
-    {
-      provide: AUTHENTICATION_SESSION_REPOSITORY,
-      useClass: PrismaAuthenticationSessionRepository,
-    },
-    {
-      provide: SECURITY_AUDIT_REPOSITORY,
-      useClass: PrismaSecurityAuditRepository,
-    },
-    {
-      provide: SESSION_SECURITY_PORT,
-      useExisting: SessionService,
-    },
+    { provide: AUTHENTICATION_SECURITY_REPOSITORY, useClass: PrismaAuthenticationSecurityRepository },
+    { provide: AUTHENTICATION_SESSION_REPOSITORY, useClass: PrismaAuthenticationSessionRepository },
+    { provide: SECURITY_AUDIT_REPOSITORY, useClass: PrismaSecurityAuditRepository },
+    { provide: SESSION_SECURITY_PORT, useExisting: SessionService },
   ],
-  exports: [
-    JwtTokenService,
-    JwtAuthGuard,
-    SessionService,
-    AUTHENTICATION_SESSION_REPOSITORY,
-    SESSION_SECURITY_PORT,
-  ],
+  exports: [JwtTokenService, JwtAuthGuard, SessionService, AUTHENTICATION_SESSION_REPOSITORY, SESSION_SECURITY_PORT, SECURITY_AUDIT_REPOSITORY],
 })
 export class AuthModule {}
+
+export { JwtAuthGuard } from './security/jwt-auth.guard.js';
