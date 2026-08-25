@@ -62,7 +62,8 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Logout current session',
-    description: 'Revokes the authenticated session represented by the access token.',
+    description:
+      'Revokes the authenticated session represented by the access token.',
   })
   async logoutUser(@Req() request: AuthenticatedRequest) {
     await this.logout.execute({

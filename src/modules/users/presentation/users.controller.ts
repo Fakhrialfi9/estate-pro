@@ -43,7 +43,11 @@ export class UsersController {
   constructor(private readonly users: UserManagementService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create user', description: 'Requires users:manage authorization. Request fields are allowlisted by CreateUserDto.' })
+  @ApiOperation({
+    summary: 'Create user',
+    description:
+      'Requires users:manage authorization. Request fields are allowlisted by CreateUserDto.',
+  })
   async create(
     @Req() request: AuthenticatedRequest,
     @Body() dto: CreateUserDto,
@@ -67,7 +71,11 @@ export class UsersController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List users', description: 'Requires users:manage authorization. Pagination, filtering and sorting are constrained by UserQueryDto allowlists.' })
+  @ApiOperation({
+    summary: 'List users',
+    description:
+      'Requires users:manage authorization. Pagination, filtering and sorting are constrained by UserQueryDto allowlists.',
+  })
   async list(@Query() dto: UserQueryDto) {
     if (dto.filterField && dto.filterValue === undefined)
       throw new BadRequestException('filterValue is required with filterField');
@@ -104,7 +112,11 @@ export class UsersController {
   }
 
   @Get('email/:email')
-  @ApiOperation({ summary: 'Get user by email', description: 'Requires users:manage authorization for privileged identity lookup.' })
+  @ApiOperation({
+    summary: 'Get user by email',
+    description:
+      'Requires users:manage authorization for privileged identity lookup.',
+  })
   async getByEmail(@Param('email') email: string) {
     try {
       return serializeUser(await this.users.getByEmail(email));
@@ -114,7 +126,11 @@ export class UsersController {
   }
 
   @Get('username/:username')
-  @ApiOperation({ summary: 'Get user by username', description: 'Requires users:manage authorization for privileged identity lookup.' })
+  @ApiOperation({
+    summary: 'Get user by username',
+    description:
+      'Requires users:manage authorization for privileged identity lookup.',
+  })
   async getByUsername(@Param('username') username: string) {
     try {
       return serializeUser(await this.users.getByUsername(username));
@@ -124,7 +140,11 @@ export class UsersController {
   }
 
   @Get(':uuid')
-  @ApiOperation({ summary: 'Get user', description: 'A user may read their own record; other users require users:manage authorization.' })
+  @ApiOperation({
+    summary: 'Get user',
+    description:
+      'A user may read their own record; other users require users:manage authorization.',
+  })
   async getByUuid(@Param('uuid') uuid: string) {
     try {
       return serializeUser(await this.users.getByUuid(uuid));
@@ -134,7 +154,11 @@ export class UsersController {
   }
 
   @Patch(':uuid')
-  @ApiOperation({ summary: 'Update user', description: 'Requires users:manage authorization. Security-sensitive fields are not accepted by UpdateUserDto.' })
+  @ApiOperation({
+    summary: 'Update user',
+    description:
+      'Requires users:manage authorization. Security-sensitive fields are not accepted by UpdateUserDto.',
+  })
   async update(
     @Req() request: AuthenticatedRequest,
     @Param('uuid') uuid: string,
@@ -162,7 +186,11 @@ export class UsersController {
 
   @Delete(':uuid')
   @HttpCode(204)
-  @ApiOperation({ summary: 'Deactivate user', description: 'Requires users:manage authorization and performs a soft delete with session invalidation.' })
+  @ApiOperation({
+    summary: 'Deactivate user',
+    description:
+      'Requires users:manage authorization and performs a soft delete with session invalidation.',
+  })
   async remove(
     @Req() request: AuthenticatedRequest,
     @Param('uuid') uuid: string,
