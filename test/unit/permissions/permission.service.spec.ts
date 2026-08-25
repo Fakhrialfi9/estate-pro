@@ -102,14 +102,14 @@ describe('PermissionService', () => {
         },
         {},
       ),
-    ).rejects.toThrow('FORBIDDEN_PERMISSION_OPERATION');
+    ).rejects.toMatchObject({ code: 'FORBIDDEN_PERMISSION_OPERATION' });
 
     await expect(
       service.update(actor([]), permission().uuid, { name: 'x' }, {}),
-    ).rejects.toThrow('FORBIDDEN_PERMISSION_OPERATION');
+    ).rejects.toMatchObject({ code: 'FORBIDDEN_PERMISSION_OPERATION' });
     await expect(
       service.delete(actor([]), permission().uuid, {}),
-    ).rejects.toThrow('FORBIDDEN_PERMISSION_OPERATION');
+    ).rejects.toMatchObject({ code: 'FORBIDDEN_PERMISSION_OPERATION' });
   });
 
   it('rejects duplicate semantic identities before persistence', async () => {
@@ -246,6 +246,6 @@ describe('PermissionService', () => {
   it('rejects invalid identifiers rather than leaking persistence details', async () => {
     await expect(
       service.get(actor(['permissions:read']), 'not-a-uuid'),
-    ).rejects.toThrow('INVALID_PERMISSION_IDENTIFIER');
+    ).rejects.toMatchObject({ code: 'INVALID_PERMISSION_IDENTIFIER' });
   });
 });
