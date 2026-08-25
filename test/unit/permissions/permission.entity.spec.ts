@@ -9,7 +9,7 @@ describe('PermissionEntity', () => {
   const base = {
     uuid: '4f7d2c31-6f40-4fa8-9b79-1c99d9af1f12',
     name: 'Read Users',
-    code: 'users:users:read',
+    code: 'users.read',
     module: 'users',
     domain: 'users',
     action: 'read',
@@ -17,16 +17,16 @@ describe('PermissionEntity', () => {
     updatedAt: new Date(),
   };
 
-  it('normalizes canonical resource/action identity', () => {
+  it('normalizes canonical permission identity to module.action', () => {
     const permission = PermissionEntity.create({
       ...base,
-      code: 'USERS:USERS:READ',
+      code: 'USERS.READ',
       module: ' USERS ',
       domain: ' Users ',
       action: ' READ ',
     });
 
-    expect(permission.code).toBe('users:users:read');
+    expect(permission.code).toBe('users.read');
     expect(permission.resource).toBe('users:users');
     expect(
       buildPermissionCode(
@@ -37,10 +37,10 @@ describe('PermissionEntity', () => {
     ).toBe(permission.code);
   });
 
-  it('derives system protection from the stable identifier', () => {
+  it('derives system protection from the stable dotted identifier', () => {
     const permission = PermissionEntity.create({
       ...base,
-      code: 'permissions:manage:protected',
+      code: 'permissions.manage.protected',
       module: 'permissions',
       domain: 'manage',
       action: 'protected',
@@ -48,11 +48,24 @@ describe('PermissionEntity', () => {
 
     expect(permission.isSystem).toBe(true);
     expect(isProtectedPermissionCode(permission.code)).toBe(true);
+    expect(
+      buildPermissionCode(
+        permission.module,
+        permission.domain,
+        permission.action,
+      ),
+    ).toBe('permissions.manage.protected');
+  });
+
+  it('rejects the legacy colon-delimited identifier', () => {
+    expect(() =>
+      PermissionEntity.create({ ...base, code: 'users:users:read' }),
+    ).toThrow('Invalid permission identifier');
   });
 
   it('does not allow an inconsistent identifier', () => {
     expect(() =>
-      PermissionEntity.create({ ...base, code: 'users:users:write' }),
+      PermissionEntity.create({ ...base, code: 'users.write' }),
     ).toThrow('Invalid permission identifier');
   });
 
@@ -60,6 +73,6 @@ describe('PermissionEntity', () => {
     const permission = PermissionEntity.create(base);
     permission.update({ name: 'Updated Users Read' });
     expect(permission.name).toBe('Updated Users Read');
-    expect(permission.code).toBe('users:users:read');
+    expect(permission.code).toBe('users.read');
   });
 });
