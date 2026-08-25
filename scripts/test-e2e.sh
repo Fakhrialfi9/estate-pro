@@ -35,19 +35,24 @@ if [[ "${CI:-false}" != "true" ]]; then
   export DATABASE_ACQUIRE_TIMEOUT_MS="10000"
   export DATABASE_POOL_IDLE_TIMEOUT_SEC="30"
 
-  docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" up -d mariadb
   export DOCKER_E2E_STARTED=1
+  docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" up -d mariadb
 
   echo "Waiting for isolated MariaDB E2E service..."
   for _ in {1..60}; do
-    health="$(docker inspect --format '{{.State.Health.Status}}' "${COMPOSE_PROJECT}-mariadb-1" 2>/dev/null || true)"
-    if [[ "$health" == "healthy" ]]; then
-      break
+    container_id="$(docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" ps -q mariadb 2>/dev/null || true)"
+    if [[ -n "$container_id" ]]; then
+      health="$(docker inspect --format '{{.State.Health.Status}}' "$container_id" 2>/dev/null || true)"
+      if [[ "$health" == "healthy" ]]; then
+        break
+      fi
     fi
     sleep 1
   done
 
-  if [[ "$(docker inspect --format '{{.State.Health.Status}}' "${COMPOSE_PROJECT}-mariadb-1" 2>/dev/null || true)" != "healthy" ]]; then
+  container_id="$(docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" ps -q mariadb 2>/dev/null || true)"
+  health="$(docker inspect --format '{{.State.Health.Status}}' "$container_id" 2>/dev/null || true)"
+  if [[ "$health" != "healthy" ]]; then
     echo "MariaDB E2E service did not become healthy." >&2
     docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" logs mariadb >&2 || true
     exit 1
@@ -56,4 +61,4 @@ if [[ "${CI:-false}" != "true" ]]; then
   npx prisma migrate deploy
 fi
 
-exec npx vitest run --config vitest.e2e.config.ts
+exec npx vitest run --config vitest.e2e.config.ts "$@"
