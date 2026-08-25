@@ -3,14 +3,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import type { ExecutionContext } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
-import {
-  configuration,
-  configurationValidationSchema,
-} from './config/configuration.js';
+import { configuration, configurationValidationSchema } from './config/configuration.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { LoggingModule } from './infrastructure/logging/logger.module.js';
 import { ObservabilityModule } from './infrastructure/observability/observability.module.js';
@@ -19,8 +15,7 @@ import { HealthController } from './modules/health/health.controller.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
-const shouldSkipThrottling = (context: ExecutionContext): boolean =>
-  context.getClass() === HealthController;
+const shouldSkipThrottling = (context: ExecutionContext): boolean => context.getClass() === HealthController;
 
 @Module({
   imports: [
@@ -42,6 +37,11 @@ const shouldSkipThrottling = (context: ExecutionContext): boolean =>
             ttl: configService.getOrThrow<number>('rateLimit.ttl'),
             limit: configService.getOrThrow<number>('rateLimit.limit'),
           },
+          {
+            name: 'login',
+            ttl: configService.getOrThrow<number>('rateLimit.login.ttl'),
+            limit: configService.getOrThrow<number>('rateLimit.login.limit'),
+          },
         ],
         skipIf: shouldSkipThrottling,
       }),
@@ -53,10 +53,6 @@ const shouldSkipThrottling = (context: ExecutionContext): boolean =>
     ObservabilityModule,
   ],
   controllers: [AppController],
-  providers: [
-    AppService,
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
-  ],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_FILTER, useClass: GlobalExceptionFilter }],
 })
 export class AppModule {}
