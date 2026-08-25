@@ -51,7 +51,9 @@ export class TwoFactorEntity {
   }
 
   isLocked(now = new Date()): boolean {
-    return this.snapshot.lockedUntil !== null && this.snapshot.lockedUntil > now;
+    return (
+      this.snapshot.lockedUntil !== null && this.snapshot.lockedUntil > now
+    );
   }
 
   lastUsedTimeStep(): bigint | null {

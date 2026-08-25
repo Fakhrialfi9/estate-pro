@@ -1,11 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { CredentialRepository, UserRepository } from '../../../users/users.module.js';
-import { CREDENTIAL_REPOSITORY, USER_REPOSITORY } from '../../../users/users.module.js';
+import type {
+  CredentialRepository,
+  UserRepository,
+} from '../../../users/users.module.js';
+import {
+  CREDENTIAL_REPOSITORY,
+  USER_REPOSITORY,
+} from '../../../users/users.module.js';
 import { PasswordHasherService } from './password-hasher.service.js';
 import { JwtTokenService } from './jwt-token.service.js';
 import { SessionService } from './session.service.js';
-import type { AuthenticationSecurityRepository, AuthenticationLockoutPolicy } from '../../domain/repositories/authentication-security.repository.js';
+import type {
+  AuthenticationSecurityRepository,
+  AuthenticationLockoutPolicy,
+} from '../../domain/repositories/authentication-security.repository.js';
 import { AUTHENTICATION_SECURITY_REPOSITORY } from '../../domain/repositories/authentication-security.repository.js';
 import type { SecurityAuditRepository } from '../../domain/repositories/security-audit.repository.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../domain/repositories/security-audit.repository.js';
@@ -38,9 +47,12 @@ export type LoginResponse = AccessTokenLoginResponse | MfaRequiredLoginResponse;
 export class LoginService {
   constructor(
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
-    @Inject(CREDENTIAL_REPOSITORY) private readonly credentials: CredentialRepository,
-    @Inject(AUTHENTICATION_SECURITY_REPOSITORY) private readonly security: AuthenticationSecurityRepository,
-    @Inject(SECURITY_AUDIT_REPOSITORY) private readonly audit: SecurityAuditRepository,
+    @Inject(CREDENTIAL_REPOSITORY)
+    private readonly credentials: CredentialRepository,
+    @Inject(AUTHENTICATION_SECURITY_REPOSITORY)
+    private readonly security: AuthenticationSecurityRepository,
+    @Inject(SECURITY_AUDIT_REPOSITORY)
+    private readonly audit: SecurityAuditRepository,
     private readonly hasher: PasswordHasherService,
     private readonly jwt: JwtTokenService,
     private readonly sessions: SessionService,
@@ -53,21 +65,31 @@ export class LoginService {
     const policy: AuthenticationLockoutPolicy = {
       threshold: this.config.getOrThrow<number>('auth.login.lockoutThreshold'),
       windowMs: this.config.getOrThrow<number>('auth.login.lockoutWindowMs'),
-      durationMs: this.config.getOrThrow<number>('auth.login.lockoutDurationMs'),
+      durationMs: this.config.getOrThrow<number>(
+        'auth.login.lockoutDurationMs',
+      ),
     };
     const identifier = command.identifier.trim();
-    const user = (await this.users.findByEmail(identifier)) ?? (await this.users.findByUsername(identifier));
+    const user =
+      (await this.users.findByEmail(identifier)) ??
+      (await this.users.findByUsername(identifier));
     if (!user) {
       await this.auditFailure(command);
       return null;
     }
     const state = await this.security.getState(user.uuid);
-    if (this.isLocked(state.lockedUntil, now) || !user.isAccessible() || user.status !== 'active') {
+    if (
+      this.isLocked(state.lockedUntil, now) ||
+      !user.isAccessible() ||
+      user.status !== 'active'
+    ) {
       await this.auditFailure(command, user.uuid);
       return null;
     }
     const credential = await this.credentials.findByUserUuid(user.uuid);
-    const validPassword = credential ? await this.hasher.verify(credential.passwordHash, command.password) : false;
+    const validPassword = credential
+      ? await this.hasher.verify(credential.passwordHash, command.password)
+      : false;
     if (!validPassword) {
       await this.security.recordFailedLogin(user.uuid, now, policy);
       await this.auditFailure(command, user.uuid);
@@ -80,7 +102,11 @@ export class LoginService {
     }
     if (await this.twoFactor.isEnabled(user.uuid)) {
       const challenge = await this.twoFactor.createLoginChallenge(user.uuid);
-      return { mfaRequired: true, challengeToken: challenge.token, expiresIn: challenge.expiresIn };
+      return {
+        mfaRequired: true,
+        challengeToken: challenge.token,
+        expiresIn: challenge.expiresIn,
+      };
     }
     return this.issueSession(user.uuid, command, now);
   }
@@ -97,7 +123,11 @@ export class LoginService {
       token: input.challengeToken,
       code: input.code,
       recoveryCode: input.recoveryCode,
-      context: { ipAddress: input.ipAddress, userAgent: input.userAgent, requestId: input.requestId },
+      context: {
+        ipAddress: input.ipAddress,
+        userAgent: input.userAgent,
+        requestId: input.requestId,
+      },
     });
     const user = await this.users.findByUuid(userUuid);
     if (!user || !user.isAccessible() || user.status !== 'active') return null;
@@ -107,7 +137,13 @@ export class LoginService {
     return this.issueSession(userUuid, input, now);
   }
 
-  private async issueSession(userUuid: string, command: LoginCommand | { ipAddress?: string; userAgent?: string; requestId?: string }, now: Date): Promise<AccessTokenLoginResponse> {
+  private async issueSession(
+    userUuid: string,
+    command:
+      | LoginCommand
+      | { ipAddress?: string; userAgent?: string; requestId?: string },
+    now: Date,
+  ): Promise<AccessTokenLoginResponse> {
     const sessionId = SessionService.generateSecret();
     const accessToken = await this.jwt.issueAccessToken(userUuid, sessionId);
     const expiresAt = this.jwt.getExpiresAt(accessToken);
@@ -118,14 +154,40 @@ export class LoginService {
       expiresAt,
       requestId: command.requestId,
     });
-    await this.security.recordSuccessfulLogin(userUuid, now, { ipAddress: command.ipAddress });
-    await this.audit.record({ action: AUTH_ACTIONS.LOGIN_SUCCESS, userUuid, ipAddress: command.ipAddress, userAgent: command.userAgent, requestId: command.requestId });
-    return { accessToken, tokenType: 'Bearer', expiresIn: Math.max(1, Math.floor((expiresAt.getTime() - now.getTime()) / 1000)) };
+    await this.security.recordSuccessfulLogin(userUuid, now, {
+      ipAddress: command.ipAddress,
+    });
+    await this.audit.record({
+      action: AUTH_ACTIONS.LOGIN_SUCCESS,
+      userUuid,
+      ipAddress: command.ipAddress,
+      userAgent: command.userAgent,
+      requestId: command.requestId,
+    });
+    return {
+      accessToken,
+      tokenType: 'Bearer',
+      expiresIn: Math.max(
+        1,
+        Math.floor((expiresAt.getTime() - now.getTime()) / 1000),
+      ),
+    };
   }
 
-  private async auditFailure(command: LoginCommand, userUuid?: string): Promise<void> {
-    await this.audit.record({ action: AUTH_ACTIONS.LOGIN_FAILURE, userUuid, ipAddress: command.ipAddress, userAgent: command.userAgent, requestId: command.requestId });
+  private async auditFailure(
+    command: LoginCommand,
+    userUuid?: string,
+  ): Promise<void> {
+    await this.audit.record({
+      action: AUTH_ACTIONS.LOGIN_FAILURE,
+      userUuid,
+      ipAddress: command.ipAddress,
+      userAgent: command.userAgent,
+      requestId: command.requestId,
+    });
   }
 
-  private isLocked(lockedUntil: Date | null, now: Date): boolean { return lockedUntil !== null && lockedUntil > now; }
+  private isLocked(lockedUntil: Date | null, now: Date): boolean {
+    return lockedUntil !== null && lockedUntil > now;
+  }
 }

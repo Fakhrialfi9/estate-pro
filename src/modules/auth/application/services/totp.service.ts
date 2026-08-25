@@ -30,16 +30,28 @@ export class TotpService {
     return String(binary % 10 ** DIGITS).padStart(DIGITS, '0');
   }
 
-  verify(secret: string, suppliedCode: string, now = new Date()): bigint | null {
+  verify(
+    secret: string,
+    suppliedCode: string,
+    now = new Date(),
+  ): bigint | null {
     if (!/^\d{6}$/.test(suppliedCode)) return null;
     const step = this.currentTimeStep(now);
     const expected = Buffer.from(this.generateCode(secret, step));
     const supplied = Buffer.from(suppliedCode);
-    if (expected.length === supplied.length && timingSafeEqual(expected, supplied)) return step;
+    if (
+      expected.length === supplied.length &&
+      timingSafeEqual(expected, supplied)
+    )
+      return step;
     return null;
   }
 
-  provisioningUri(input: { secret: string; accountName: string; issuer: string }): string {
+  provisioningUri(input: {
+    secret: string;
+    accountName: string;
+    issuer: string;
+  }): string {
     const label = `${encodeURIComponent(input.issuer)}:${encodeURIComponent(input.accountName)}`;
     const params = new URLSearchParams({
       secret: input.secret,
