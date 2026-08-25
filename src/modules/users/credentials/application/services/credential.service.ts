@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { SessionSecurityPort } from '../../../../../common/security/session-security.port.js';
 import { SESSION_SECURITY_PORT } from '../../../../../common/security/session-security.port.js';
-import { PasswordHasherService } from '../../../../auth/application/services/password-hasher.service.js';
+import { PasswordHasherService } from '../../../../../common/security/password-hasher.service.js';
 import { PasswordPolicy } from '../../domain/policies/password.policy.js';
 import type { CredentialRepository } from '../../domain/repositories/credential.repository.js';
 import { CREDENTIAL_REPOSITORY } from '../../domain/repositories/credential.repository.js';
