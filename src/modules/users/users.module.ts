@@ -15,7 +15,10 @@ import { USER_IDENTITY_READER } from './profile/application/types/user-identity-
 import { CREDENTIAL_REPOSITORY } from './credentials/domain/repositories/credential.repository.js';
 import { PrismaCredentialRepository } from './credentials/infrastructure/persistence/prisma-credential.repository.js';
 import { CredentialService } from './credentials/application/services/credential.service.js';
-import { PASSWORD_RESET_DELIVERY, PasswordResetService } from './credentials/application/services/password-reset.service.js';
+import {
+  PASSWORD_RESET_DELIVERY,
+  PasswordResetService,
+} from './credentials/application/services/password-reset.service.js';
 import { ConfiguredPasswordResetDeliveryService } from './credentials/application/services/configured-password-reset-delivery.service.js';
 import { CredentialsController } from './credentials/presentation/credentials.controller.js';
 import { PasswordHashingModule } from '../auth/password-hashing.module.js';
@@ -36,7 +39,10 @@ import { PasswordHasherService } from '../auth/application/services/password-has
     { provide: USER_REPOSITORY, useClass: PrismaUserRepository },
     { provide: USER_PROFILE_REPOSITORY, useClass: PrismaUserProfileRepository },
     { provide: CREDENTIAL_REPOSITORY, useClass: PrismaCredentialRepository },
-    { provide: PASSWORD_RESET_DELIVERY, useExisting: ConfiguredPasswordResetDeliveryService },
+    {
+      provide: PASSWORD_RESET_DELIVERY,
+      useExisting: ConfiguredPasswordResetDeliveryService,
+    },
     { provide: USER_IDENTITY_READER, useExisting: UserManagementService },
   ],
   exports: [

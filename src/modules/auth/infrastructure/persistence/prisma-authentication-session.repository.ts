@@ -20,7 +20,9 @@ export class PrismaAuthenticationSessionRepository
   private readonly sessions: Delegate;
 
   constructor(prisma: PrismaService) {
-    this.sessions = (prisma as unknown as PrismaShape).authenticationUserSession;
+    this.sessions = (
+      prisma as unknown as PrismaShape
+    ).authenticationUserSession;
   }
 
   async create(

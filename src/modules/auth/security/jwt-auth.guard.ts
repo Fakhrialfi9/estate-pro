@@ -30,7 +30,8 @@ export class JwtAuthGuard implements CanActivate {
       claims.sid,
       new Date(),
     );
-    if (!active) throw new UnauthorizedException('Invalid authentication token');
+    if (!active)
+      throw new UnauthorizedException('Invalid authentication token');
 
     request.user = claims;
     return true;
