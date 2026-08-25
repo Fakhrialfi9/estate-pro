@@ -21,6 +21,11 @@ import { AUTHENTICATION_SESSION_REPOSITORY } from './domain/repositories/authent
 import { PrismaAuthenticationSessionRepository } from './infrastructure/persistence/prisma-authentication-session.repository.js';
 import { SECURITY_AUDIT_REPOSITORY } from './domain/repositories/security-audit.repository.js';
 import { PrismaSecurityAuditRepository } from '../../infrastructure/audit/prisma-security-audit.repository.js';
+import {
+  ACCESS_TOKEN_VERIFIER,
+  type AccessTokenVerifier,
+} from '../../common/security/access-token-verifier.port.js';
+import { AUTHENTICATION_SESSION_PORT } from '../../common/security/authentication-session.port.js';
 import { SESSION_SECURITY_PORT } from '../../common/security/session-security.port.js';
 
 type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
@@ -70,6 +75,14 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
       useClass: PrismaSecurityAuditRepository,
     },
     { provide: SESSION_SECURITY_PORT, useExisting: SessionService },
+    {
+      provide: ACCESS_TOKEN_VERIFIER,
+      useExisting: JwtTokenService,
+    },
+    {
+      provide: AUTHENTICATION_SESSION_PORT,
+      useExisting: PrismaAuthenticationSessionRepository,
+    },
   ],
   exports: [
     JwtTokenService,
@@ -78,8 +91,11 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
     AUTHENTICATION_SESSION_REPOSITORY,
     SESSION_SECURITY_PORT,
     SECURITY_AUDIT_REPOSITORY,
+    ACCESS_TOKEN_VERIFIER,
+    AUTHENTICATION_SESSION_PORT,
   ],
 })
 export class AuthModule {}
 
 export { JwtAuthGuard } from './security/jwt-auth.guard.js';
+export type { AccessTokenVerifier } from '../../common/security/access-token-verifier.port.js';
