@@ -38,7 +38,9 @@ type RelationRow = {
 };
 
 @Injectable()
-export class PrismaRolePermissionRepository implements RolePermissionRepository {
+export class PrismaRolePermissionRepository
+  implements RolePermissionRepository
+{
   constructor(private readonly prisma: PrismaService) {}
 
   async exists(roleUuid: string, permissionUuid: string): Promise<boolean> {
@@ -150,7 +152,9 @@ export class PrismaRolePermissionRepository implements RolePermissionRepository 
         skip: (query.page - 1) * query.limit,
         take: query.limit,
       }) as Promise<RelationRow[]>,
-      this.client.authorizationRolePermission.count({ where }) as Promise<number>,
+      this.client.authorizationRolePermission.count({
+        where,
+      }) as Promise<number>,
     ]);
 
     return {

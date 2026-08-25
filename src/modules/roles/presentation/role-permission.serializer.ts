@@ -19,10 +19,7 @@ export const RolePermissionSerializer = {
     };
   },
 
-  list(
-    role: RoleEntity,
-    result: RolePermissionListResult,
-  ) {
+  list(role: RoleEntity, result: RolePermissionListResult) {
     return {
       role: {
         id: role.uuid,

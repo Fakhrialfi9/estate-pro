@@ -117,12 +117,7 @@ describe('RolePermissionService', () => {
 
   it('removes an existing assignment without deleting role or permission', async () => {
     assignments.exists.mockResolvedValueOnce(true);
-    await service.remove(
-      actor(['roles:manage']),
-      roleUuid,
-      permissionUuid,
-      {},
-    );
+    await service.remove(actor(['roles:manage']), roleUuid, permissionUuid, {});
     expect(assignments.remove).toHaveBeenCalledWith(roleUuid, permissionUuid);
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'ROLE_PERMISSION_REMOVED' }),
