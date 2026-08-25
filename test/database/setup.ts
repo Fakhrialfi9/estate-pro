@@ -1,53 +1,78 @@
 import { execFileSync } from 'node:child_process';
-import { loadEnvFile } from 'node:process';
+import { readFileSync } from 'node:fs';
 
 const PRISMA_COMMAND = process.platform === 'win32' ? 'prisma.cmd' : 'prisma';
 const TEST_DATABASE_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
+const TEST_DATABASE_NAME_PATTERN = /test/i;
 
-function loadProjectEnvironment(): void {
+function readProjectDatabaseUrl(): string | undefined {
   try {
-    loadEnvFile('.env');
-  } catch (error) {
-    if (
-      !(error instanceof Error) ||
-      !('code' in error) ||
-      error.code !== 'ENOENT'
-    ) {
-      throw error;
+    const envFile = readFileSync('.env', 'utf8');
+    const match = envFile.match(/^\s*DATABASE_URL\s*=\s*(.*?)\s*$/m);
+
+    if (!match?.[1]) {
+      return undefined;
     }
+
+    return match[1].replace(/^['"]|['"]$/g, '');
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return undefined;
+    }
+
+    throw error;
   }
 }
 
-function synchronizeDatabaseEnvironment(): void {
-  const databaseUrl = process.env.DATABASE_URL;
+function isSafeTestDatabaseUrl(databaseUrl: string | undefined): boolean {
   if (!databaseUrl) {
+    return false;
+  }
+
+  try {
+    const url = new URL(databaseUrl);
+    const databaseName = decodeURIComponent(url.pathname.replace(/^\//, ''));
+
+    return (
+      url.protocol === 'mysql:' &&
+      TEST_DATABASE_HOSTS.has(url.hostname) &&
+      TEST_DATABASE_NAME_PATTERN.test(databaseName)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function resolveTestDatabaseUrl(): string {
+  const processDatabaseUrl = process.env.DATABASE_URL;
+
+  if (isSafeTestDatabaseUrl(processDatabaseUrl)) {
+    return processDatabaseUrl!;
+  }
+
+  const projectDatabaseUrl = readProjectDatabaseUrl();
+
+  if (isSafeTestDatabaseUrl(projectDatabaseUrl)) {
+    return projectDatabaseUrl!;
+  }
+
+  if (processDatabaseUrl) {
     throw new Error(
-      'DATABASE_URL is required for integration/E2E tests; refusing to run against an undefined database.',
+      `Refusing to provision database from DATABASE_URL. Expected a local MySQL/MariaDB test database, received "${processDatabaseUrl}".`,
     );
   }
 
+  throw new Error(
+    'DATABASE_URL is required for integration/E2E tests. Configure a local MySQL/MariaDB test database such as estate_pro_test.',
+  );
+}
+
+function synchronizeDatabaseEnvironment(databaseUrl: string): void {
   const url = new URL(databaseUrl);
-  if (url.protocol !== 'mysql:') {
-    throw new Error(
-      `Integration/E2E tests require a MariaDB/MySQL DATABASE_URL, received ${url.protocol}`,
-    );
-  }
-
-  const hostname = url.hostname;
-  if (!TEST_DATABASE_HOSTS.has(hostname)) {
-    throw new Error(
-      `Refusing to mutate non-local database host "${hostname}" during tests. Use a local test database.`,
-    );
-  }
-
   const databaseName = decodeURIComponent(url.pathname.replace(/^\//, ''));
-  if (!databaseName || !databaseName.toLowerCase().includes('test')) {
-    throw new Error(
-      `Refusing to provision database "${databaseName}". The database name must identify a test database.`,
-    );
-  }
 
-  process.env.DATABASE_HOST = hostname;
+  process.env.DATABASE_URL = databaseUrl;
+  process.env.DATABASE_HOST = url.hostname;
   process.env.DATABASE_PORT = url.port || '3306';
   process.env.DATABASE_NAME = databaseName;
   process.env.DATABASE_USER = decodeURIComponent(url.username);
@@ -55,15 +80,16 @@ function synchronizeDatabaseEnvironment(): void {
 }
 
 export function prepareTestDatabase(): void {
-  loadProjectEnvironment();
+  process.env.NODE_ENV ??= 'test';
 
   if (process.env.NODE_ENV !== 'test') {
     throw new Error(
-      `Database test setup may only run with NODE_ENV=test, received "${process.env.NODE_ENV ?? 'undefined'}".`,
+      `Database test setup may only run with NODE_ENV=test, received "${process.env.NODE_ENV}".`,
     );
   }
 
-  synchronizeDatabaseEnvironment();
+  const databaseUrl = resolveTestDatabaseUrl();
+  synchronizeDatabaseEnvironment(databaseUrl);
 
   execFileSync(PRISMA_COMMAND, ['db', 'push', '--accept-data-loss'], {
     cwd: process.cwd(),
