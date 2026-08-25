@@ -72,6 +72,41 @@ const CREATE_SESSION_TABLE = `CREATE TABLE IF NOT EXISTS authentication_user_ses
   INDEX idx_auth_user_sessions_expires_at (expires_at)
 ) ENGINE=InnoDB;`;
 
+const CREATE_AUDIT_LOG_TABLE = `CREATE TABLE IF NOT EXISTS audit_logs (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  uuid CHAR(36) NOT NULL UNIQUE,
+  user_id BIGINT UNSIGNED NULL,
+  action VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(100) NULL,
+  entity_id BIGINT UNSIGNED NULL,
+  ip_address VARCHAR(45) NULL,
+  user_agent TEXT NULL,
+  request_id VARCHAR(100) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  CONSTRAINT fk_audit_logs_user
+    FOREIGN KEY (user_id) REFERENCES authentication_users(id)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  INDEX idx_audit_logs_user_id (user_id),
+  INDEX idx_audit_logs_action (action),
+  INDEX idx_audit_logs_entity_type (entity_type),
+  INDEX idx_audit_logs_entity_id (entity_id),
+  INDEX idx_audit_logs_request_id (request_id),
+  INDEX idx_audit_logs_created_at (created_at)
+) ENGINE=InnoDB;`;
+
+const CREATE_AUDIT_CHANGE_TABLE = `CREATE TABLE IF NOT EXISTS audit_log_changes (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  audit_log_id BIGINT UNSIGNED NOT NULL,
+  field VARCHAR(100) NOT NULL,
+  old_value JSON NULL,
+  new_value JSON NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  CONSTRAINT fk_audit_log_changes_audit_log
+    FOREIGN KEY (audit_log_id) REFERENCES audit_logs(id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  INDEX idx_audit_log_changes_audit_log_id (audit_log_id)
+) ENGINE=InnoDB;`;
+
 const httpRequest = () => request(app.getHttpServer() as unknown as Server);
 const bodyOf = <T>(response: SuperTestResponse): T => response.body as T;
 const actorToken = (permissions: string[] = ['users:manage']) =>
@@ -89,11 +124,15 @@ describe('Users API', () => {
     jwt = app.get(JwtService);
     await prisma.$executeRawUnsafe(CREATE_TABLE);
     await prisma.$executeRawUnsafe(CREATE_SESSION_TABLE);
+    await prisma.$executeRawUnsafe(CREATE_AUDIT_LOG_TABLE);
+    await prisma.$executeRawUnsafe(CREATE_AUDIT_CHANGE_TABLE);
   });
 
   beforeEach(async () => {
     clientIp = `10.0.0.${clientIpCounter}`;
     clientIpCounter += 1;
+    await prisma.auditLogChange.deleteMany();
+    await prisma.auditLog.deleteMany();
     await prisma.authenticationUserSession.deleteMany();
     await prisma.authenticationUser.deleteMany();
     actorUuid = randomUUID();
