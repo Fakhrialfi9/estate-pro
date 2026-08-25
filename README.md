@@ -1,98 +1,122 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Estate Pro API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Estate Pro is a NestJS/TypeScript backend for property management and sales workflows. The application currently focuses on the Phase 1 authentication, authorization, user management, credentials, sessions, 2FA, audit logging, security, and observability foundation.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Stack
 
-## Description
+- Node.js 22.x
+- NestJS 11
+- TypeScript 5
+- Prisma 7 with MariaDB/MySQL-compatible database
+- Argon2 password hashing
+- JWT authentication
+- TOTP-based 2FA and recovery codes
+- Vitest + Supertest
+- ESLint + Prettier
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Setup
 
-## Project setup
+Use the repository's pinned npm version and install dependencies:
 
 ```bash
-$ npm install
+npm install --global npm@11.18.0
+npm ci
 ```
 
-## Compile and run the project
+Configure a valid database and security environment before starting the API. Do not commit `.env` files, credentials, JWT secrets, encryption keys, or database dumps.
+
+## Prisma
+
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:deploy
+npm run prisma:status
+```
+
+`prisma/schema` is the database contract. Production and CI database changes must be delivered through committed Prisma migrations; do not use database reset as a deployment mechanism.
+
+The Phase 1 migration history contains a baseline migration followed by the credential/password-reset, session-secret, 2FA, and audit-logging migrations. A fresh MariaDB database must be able to execute the complete migration chain with `prisma migrate deploy`, followed by `prisma migrate status` reporting an up-to-date schema.
+
+## Run the API
 
 ```bash
 # development
-$ npm run start
+npm run start:dev
 
-# watch mode
-$ npm run start:dev
+# production build
+npm run build
 
-# production mode
-$ npm run start:prod
+# production runtime
+npm run start:prod
 ```
 
-## Run tests
+The API uses the `/api/v1` prefix. The runtime validation script starts the compiled application with production-style configuration and verifies the liveness endpoint:
+
+```text
+GET /api/v1/health/live
+```
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run check:runtime
 ```
 
-## Deployment
+## Validation
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Run the same checks used by the Phase 1 CI gate:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run prisma:generate
+npm run prisma:deploy
+npm run prisma:status
+npm run test:security:baseline
+npm run format:check
+npm run lint
+npm run typecheck
+npm run check:architecture
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+npm run test:security
+npm run test:coverage
+npm run build
+npm run check:runtime
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+For a combined local health check, the repository also provides:
 
-## Resources
+```bash
+npm run check:health
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## Security baseline
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+The project enforces global validation, Helmet, explicit CORS, throttling, JWT secret validation, sensitive logging protection, and ignored credential artifacts. Security-sensitive values such as passwords, password hashes, JWTs, tokens, cookies, sessions, TOTP secrets, recovery codes, encryption keys, API keys, and credentials must never be written to application or audit logs.
 
-## Support
+Password credentials use Argon2. Session secrets are stored as hashes. TOTP secrets are encrypted at rest. Recovery codes are stored as hashes and are single-use. Authentication and security events carry request/correlation context where the current request context is available.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Architecture
 
-## Stay in touch
+The codebase follows a modular NestJS design with domain/application/infrastructure/controller boundaries. Security authorization is default-deny unless a route is explicitly public or has the required role/permission metadata.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Do not bypass module boundaries by accessing infrastructure or database state directly from unrelated domains. Extend the existing design instead of introducing Phase 2+ domain implementation into the Phase 1 codebase.
 
-## License
+## CI
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+GitHub Actions validates the `main` branch with a read-only repository token. The workflow does not auto-commit formatting or generated artifacts.
+
+The Phase 1 gate validates:
+
+1. Prisma generation and migration deployment/status.
+2. Security baseline, formatting, lint, and typecheck.
+3. Architecture, unit, integration, E2E, and security suites.
+4. Coverage, production build, and compiled runtime/liveness validation.
+
+The working tree is expected to remain clean after validation; generated output belongs in ignored build/coverage directories and must not be committed.
+
+## Repository conventions
+
+- Work on `main` for the current Phase 1 workflow.
+- Keep changes production-ready and minimal.
+- Do not weaken tests or security controls to obtain a green build.
+- Do not commit secrets, credentials, database dumps, temporary files, or generated artifacts that are not part of the source contract.
