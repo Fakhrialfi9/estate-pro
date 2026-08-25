@@ -1,16 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { PasswordResetDelivery, PasswordResetDeliveryPayload } from './password-reset.service.js';
+import type {
+  PasswordResetDelivery,
+  PasswordResetDeliveryPayload,
+} from './password-reset.service.js';
 
 @Injectable()
-export class ConfiguredPasswordResetDeliveryService implements PasswordResetDelivery {
+export class ConfiguredPasswordResetDeliveryService
+  implements PasswordResetDelivery
+{
   constructor(private readonly config: ConfigService) {}
 
-  async deliver(payload: PasswordResetDeliveryPayload): Promise<void> {
-    const url = this.config.get<string | undefined>('auth.passwordReset.deliveryUrl');
-    if (!url) return;
+  deliver(payload: PasswordResetDeliveryPayload): Promise<void> {
+    const url = this.config.get<string | undefined>(
+      'auth.passwordReset.deliveryUrl',
+    );
+    if (!url) return Promise.resolve();
 
-    await fetch(url, {
+    return fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -19,8 +26,12 @@ export class ConfiguredPasswordResetDeliveryService implements PasswordResetDeli
         expiresAt: payload.expiresAt.toISOString(),
       }),
       signal: AbortSignal.timeout(5_000),
-    }).then(async (response) => {
-      if (!response.ok) throw new Error(`Password reset delivery failed with status ${response.status}`);
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error(
+          `Password reset delivery failed with status ${response.status}`,
+        );
+      }
     });
   }
 }
