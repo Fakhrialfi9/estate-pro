@@ -141,8 +141,7 @@ export class PrismaSecurityAuditRepository
     )
       throw new Error('Unsupported audit resource');
 
-    const actorUuid =
-      event.actorUuid ?? event.userUuid ?? null;
+    const actorUuid = event.actorUuid ?? event.userUuid ?? null;
     const subjectUuid =
       event.subjectUuid ??
       (resourceType === 'authentication'
