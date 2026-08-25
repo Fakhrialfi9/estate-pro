@@ -33,7 +33,11 @@ export class CredentialsController {
   ) {}
 
   @Post('password-reset')
-  @ApiOperation({ summary: 'Request password reset', description: 'Public endpoint. The response intentionally does not reveal whether the account exists.' })
+  @ApiOperation({
+    summary: 'Request password reset',
+    description:
+      'Public endpoint. The response intentionally does not reveal whether the account exists.',
+  })
   async requestReset(@Body() dto: PasswordResetRequestDto) {
     await this.resets.requestByEmail(dto.email);
     return {
@@ -43,7 +47,11 @@ export class CredentialsController {
   }
 
   @Post('password-reset/confirm')
-  @ApiOperation({ summary: 'Confirm password reset', description: 'Public endpoint. Reset token validity and password policy are enforced by PasswordResetService.' })
+  @ApiOperation({
+    summary: 'Confirm password reset',
+    description:
+      'Public endpoint. Reset token validity and password policy are enforced by PasswordResetService.',
+  })
   async confirmReset(@Body() dto: PasswordResetConfirmDto) {
     try {
       await this.resets.reset(dto.token, dto.password, dto.confirmation);
@@ -56,7 +64,11 @@ export class CredentialsController {
   @Post('users/me/password')
   @UseGuards(ProfileAuthenticationGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Change current password', description: 'Authenticated endpoint. Current password, Argon2 hashing, confirmation, session invalidation and audit rules are handled by CredentialService.' })
+  @ApiOperation({
+    summary: 'Change current password',
+    description:
+      'Authenticated endpoint. Current password, Argon2 hashing, confirmation, session invalidation and audit rules are handled by CredentialService.',
+  })
   async changePassword(
     @Req() request: AuthenticatedRequest,
     @Body() dto: ChangePasswordDto,
