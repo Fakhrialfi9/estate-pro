@@ -7,6 +7,9 @@ import {
 
 export type AuthorizationMatch = 'AND' | 'OR';
 
+const normalizePermissionCode = (permission: string): string =>
+  permission.trim().replace(/:/g, '.');
+
 @Injectable()
 export class AuthorizationService {
   constructor(
@@ -27,11 +30,16 @@ export class AuthorizationService {
     match: AuthorizationMatch,
   ): void {
     this.assertNonEmptyRequirement(required);
-    const granted = new Set(snapshot.permissionCodes);
+
+    const granted = new Set(
+      snapshot.permissionCodes.map(normalizePermissionCode),
+    );
+    const normalizedRequired = required.map(normalizePermissionCode);
     const allowed =
       match === 'AND'
-        ? required.every((permission) => granted.has(permission))
-        : required.some((permission) => granted.has(permission));
+        ? normalizedRequired.every((permission) => granted.has(permission))
+        : normalizedRequired.some((permission) => granted.has(permission));
+
     if (!allowed) throw new ForbiddenException();
   }
 
