@@ -55,7 +55,7 @@ const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS authentication_users (
 const httpRequest = () => request(app.getHttpServer() as unknown as Server);
 const bodyOf = <T>(response: SuperTestResponse): T => response.body as T;
 const actorToken = (permissions: string[] = ['users:manage']) =>
-  jwt.sign({ sub: actorUuid, permissions });
+  jwt.sign({ sub: actorUuid, sid: randomUUID(), permissions });
 
 describe('Users API', () => {
   beforeAll(async () => {
@@ -169,7 +169,11 @@ describe('Users API', () => {
       .send({ email: 'other@example.com' })
       .expect(201);
     const created = bodyOf<UserResponse>(create);
-    const readOnlyToken = jwt.sign({ sub: actorUuid, permissions: [] });
+    const readOnlyToken = jwt.sign({
+      sub: actorUuid,
+      sid: randomUUID(),
+      permissions: [],
+    });
 
     await httpRequest()
       .get(`/api/v1/users/${created.uuid}`)
