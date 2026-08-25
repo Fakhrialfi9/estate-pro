@@ -1,4 +1,5 @@
 import { loadEnvFile } from 'node:process';
+import { prepareTestDatabase } from '../database/setup.js';
 
 const loadProjectEnvironment = (): void => {
   try {
@@ -62,3 +63,5 @@ setDefault('SECURITY_RATE_LIMIT_MAX', '1000');
 setDefault('OTEL_TRACING_ENABLED', 'false');
 setDefault('OTEL_METRICS_ENABLED', 'false');
 setDefault('LOG_LEVEL', 'debug');
+
+prepareTestDatabase();
