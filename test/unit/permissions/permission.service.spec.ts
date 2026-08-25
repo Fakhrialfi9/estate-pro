@@ -24,7 +24,7 @@ const permission = (
   PermissionEntity.create({
     uuid: '4f7d2c31-6f40-4fa8-9b79-1c99d9af1f12',
     name: 'Read Users',
-    code: 'users:users:read',
+    code: 'users.read',
     module: 'users',
     domain: 'users',
     action: 'read',
@@ -66,9 +66,9 @@ describe('PermissionService', () => {
     audit.record.mockResolvedValue(undefined);
   });
 
-  it('creates a normalized permission and audits the mutation', async () => {
+  it('creates a normalized permission with the canonical module.action identifier', async () => {
     const result = await service.create(
-      actor(['permissions:manage']),
+      actor(['permissions.manage']),
       {
         name: ' Read Users ',
         module: ' USERS ',
@@ -78,7 +78,7 @@ describe('PermissionService', () => {
       {},
     );
 
-    expect(result.code).toBe('users:users:read');
+    expect(result.code).toBe('users.read');
     expect(repository.create).toHaveBeenCalledWith({
       name: 'Read Users',
       module: 'users',
@@ -116,7 +116,7 @@ describe('PermissionService', () => {
     repository.findByResourceAction.mockResolvedValueOnce(permission());
     await expect(
       service.create(
-        actor(['permissions:manage']),
+        actor(['permissions.manage']),
         {
           name: 'Read Users',
           module: 'users',
@@ -131,7 +131,7 @@ describe('PermissionService', () => {
     repository.findByCode.mockResolvedValueOnce(permission());
     await expect(
       service.create(
-        actor(['permissions:manage']),
+        actor(['permissions.manage']),
         {
           name: 'Read Users',
           module: 'users',
@@ -149,7 +149,7 @@ describe('PermissionService', () => {
     );
     await expect(
       service.create(
-        actor(['permissions:manage']),
+        actor(['permissions.manage']),
         {
           name: 'Read Users',
           module: 'users',
@@ -163,12 +163,12 @@ describe('PermissionService', () => {
 
   it('reads existing permission and rejects missing permission', async () => {
     await expect(
-      service.get(actor(['permissions:read']), permission().uuid),
+      service.get(actor(['permissions.read']), permission().uuid),
     ).resolves.toBeInstanceOf(PermissionEntity);
 
     repository.findByUuid.mockResolvedValueOnce(null);
     await expect(
-      service.get(actor(['permissions:read']), permission().uuid),
+      service.get(actor(['permissions.read']), permission().uuid),
     ).rejects.toBeInstanceOf(PermissionNotFoundException);
   });
 
@@ -181,18 +181,18 @@ describe('PermissionService', () => {
       sortBy: 'createdAt' as const,
       sortDirection: 'desc' as const,
     };
-    await service.list(actor(['permissions:read']), query);
+    await service.list(actor(['permissions.read']), query);
     expect(repository.list).toHaveBeenCalledWith(query);
   });
 
   it('updates only the display name and audits it', async () => {
     const result = await service.update(
-      actor(['permissions:manage']),
+      actor(['permissions.manage']),
       permission().uuid,
       { name: 'Users Read' },
       {},
     );
-    expect(result.code).toBe('users:users:read');
+    expect(result.code).toBe('users.read');
     expect(repository.update).toHaveBeenCalledWith(permission().uuid, {
       name: 'Users Read',
     });
@@ -204,7 +204,7 @@ describe('PermissionService', () => {
   it('protects critical permissions from regular management', async () => {
     repository.findByUuid.mockResolvedValueOnce(
       permission({
-        code: 'permissions:manage:protected',
+        code: 'permissions.manage.protected',
         module: 'permissions',
         domain: 'manage',
         action: 'protected',
@@ -213,7 +213,7 @@ describe('PermissionService', () => {
 
     await expect(
       service.update(
-        actor(['permissions:manage']),
+        actor(['permissions.manage']),
         permission().uuid,
         { name: 'x' },
         {},
@@ -225,7 +225,7 @@ describe('PermissionService', () => {
   });
 
   it('deletes an unused permission and audits it', async () => {
-    await service.delete(actor(['permissions:manage']), permission().uuid, {});
+    await service.delete(actor(['permissions.manage']), permission().uuid, {});
     expect(repository.delete).toHaveBeenCalledWith(permission().uuid);
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'PERMISSION_DELETED' }),
@@ -235,7 +235,7 @@ describe('PermissionService', () => {
   it('blocks deletion when a role still references the permission', async () => {
     repository.getDependencyCount.mockResolvedValueOnce({ roleAssignments: 1 });
     await expect(
-      service.delete(actor(['permissions:manage']), permission().uuid, {}),
+      service.delete(actor(['permissions.manage']), permission().uuid, {}),
     ).rejects.toBeInstanceOf(PermissionInUseException);
     expect(repository.delete).not.toHaveBeenCalled();
     expect(audit.record).toHaveBeenCalledWith(
@@ -245,7 +245,7 @@ describe('PermissionService', () => {
 
   it('rejects invalid identifiers rather than leaking persistence details', async () => {
     await expect(
-      service.get(actor(['permissions:read']), 'not-a-uuid'),
+      service.get(actor(['permissions.read']), 'not-a-uuid'),
     ).rejects.toMatchObject({ code: 'INVALID_PERMISSION_IDENTIFIER' });
   });
 });
