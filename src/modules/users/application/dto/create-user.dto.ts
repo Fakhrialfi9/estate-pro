@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  MinLength,
   ValidateIf,
 } from 'class-validator';
 
@@ -31,4 +32,14 @@ export class CreateUserDto {
   @IsString()
   @MaxLength(30)
   status?: string;
+
+  @IsString()
+  @MinLength(12)
+  @MaxLength(128)
+  password!: string;
+
+  @IsString()
+  @MinLength(12)
+  @MaxLength(128)
+  passwordConfirmation!: string;
 }
