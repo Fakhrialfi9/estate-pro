@@ -15,11 +15,21 @@ export interface SessionListQuery {
 }
 
 export interface AuthenticationSessionRepository {
-  create(userUuid: string, session: AuthenticationSessionCreation): Promise<SessionSnapshot>;
-  findBySecret(userUuid: string, sessionId: string): Promise<SessionSnapshot | null>;
+  create(
+    userUuid: string,
+    session: AuthenticationSessionCreation,
+  ): Promise<SessionSnapshot>;
+  findBySecret(
+    userUuid: string,
+    sessionId: string,
+  ): Promise<SessionSnapshot | null>;
   findById(userUuid: string, id: string): Promise<SessionSnapshot | null>;
   list(userUuid: string, query: SessionListQuery): Promise<SessionSnapshot[]>;
-  revokeBySecret(userUuid: string, sessionId: string, now: Date): Promise<boolean>;
+  revokeBySecret(
+    userUuid: string,
+    sessionId: string,
+    now: Date,
+  ): Promise<boolean>;
   revokeById(userUuid: string, id: string, now: Date): Promise<boolean>;
   revokeAll(userUuid: string, now: Date): Promise<number>;
   isActive(userUuid: string, sessionId: string, now: Date): Promise<boolean>;

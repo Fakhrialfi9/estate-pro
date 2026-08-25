@@ -50,7 +50,11 @@ export class JwtTokenService {
 
   getExpiresAt(token: string): Date {
     const payload = this.jwt.decode<TokenPayload>(token);
-    if (!payload || typeof payload !== 'object' || typeof payload.exp !== 'number') {
+    if (
+      !payload ||
+      typeof payload !== 'object' ||
+      typeof payload.exp !== 'number'
+    ) {
       throw new UnauthorizedException('Invalid authentication token');
     }
     return new Date(payload.exp * 1000);
@@ -79,7 +83,11 @@ export class JwtTokenService {
 
   private getAlgorithm(): SupportedAlgorithm {
     const algorithm = this.config.getOrThrow<string>('auth.jwt.algorithm');
-    if (algorithm !== 'HS256' && algorithm !== 'HS384' && algorithm !== 'HS512') {
+    if (
+      algorithm !== 'HS256' &&
+      algorithm !== 'HS384' &&
+      algorithm !== 'HS512'
+    ) {
       throw new Error('Unsupported JWT algorithm');
     }
     return algorithm;

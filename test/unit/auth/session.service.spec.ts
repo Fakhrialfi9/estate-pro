@@ -69,14 +69,12 @@ class FakeSessionRepository implements AuthenticationSessionRepository {
 
   findById(userUuid: string, id: string): Promise<SessionSnapshot | null> {
     return Promise.resolve(
-      this.rows.find((row) => row.userUuid === userUuid && row.id === id) ?? null,
+      this.rows.find((row) => row.userUuid === userUuid && row.id === id) ??
+        null,
     );
   }
 
-  list(
-    userUuid: string,
-    query: SessionListQuery,
-  ): Promise<SessionSnapshot[]> {
+  list(userUuid: string, query: SessionListQuery): Promise<SessionSnapshot[]> {
     return Promise.resolve(
       this.rows
         .filter(
@@ -100,11 +98,7 @@ class FakeSessionRepository implements AuthenticationSessionRepository {
     return true;
   }
 
-  async revokeById(
-    userUuid: string,
-    id: string,
-    now: Date,
-  ): Promise<boolean> {
+  async revokeById(userUuid: string, id: string, now: Date): Promise<boolean> {
     const row = await this.findById(userUuid, id);
     if (!row || row.revokedAt !== null || row.expiresAt <= now) return false;
     row.revokedAt = now;

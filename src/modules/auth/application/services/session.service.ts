@@ -50,7 +50,10 @@ export class SessionService implements SessionSecurityPort {
     return createHash('sha256').update(secret, 'utf8').digest('hex');
   }
 
-  async create(userUuid: string, input: CreateSessionInput): Promise<SessionEntity> {
+  async create(
+    userUuid: string,
+    input: CreateSessionInput,
+  ): Promise<SessionEntity> {
     const now = new Date();
     if (input.expiresAt.getTime() <= now.getTime()) {
       throw new Error('Session expiry must be in the future');
@@ -73,7 +76,11 @@ export class SessionService implements SessionSecurityPort {
     return entity;
   }
 
-  isActive(userUuid: string, sessionId: string, now = new Date()): Promise<boolean> {
+  isActive(
+    userUuid: string,
+    sessionId: string,
+    now = new Date(),
+  ): Promise<boolean> {
     return this.sessions.isActive(userUuid, sessionId, now);
   }
 
