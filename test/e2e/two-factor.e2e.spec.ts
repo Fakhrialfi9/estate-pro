@@ -1,7 +1,7 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Response as SuperTestResponse } from 'supertest';
+import { beforeAll, afterAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
 import { AppModule } from '../../src/app.module.js';
@@ -50,6 +50,7 @@ async function cleanup(): Promise<void> {
   await prisma.authenticationUserSession.deleteMany();
   await prisma.authenticationUserCredential.deleteMany();
   await prisma.authenticationUserSecurity.deleteMany();
+  await prisma.authorizationUserRole.deleteMany();
   await prisma.authenticationUser.deleteMany();
 }
 
