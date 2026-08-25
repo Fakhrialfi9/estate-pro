@@ -30,17 +30,27 @@ export class RoleAuthorizationPolicy {
 
   canManage(
     actor: RoleActor,
-    requiredPermission: string = ROLE_MANAGE_PERMISSION,
+    requiredPermissionOrProtected: string | boolean = ROLE_MANAGE_PERMISSION,
     isProtected = false,
   ): void {
+    const requiredPermission =
+      typeof requiredPermissionOrProtected === 'boolean'
+        ? ROLE_MANAGE_PERMISSION
+        : requiredPermissionOrProtected;
+    const protectedRole =
+      typeof requiredPermissionOrProtected === 'boolean'
+        ? requiredPermissionOrProtected
+        : isProtected;
+
     if (
       !this.hasPermission(actor, requiredPermission) &&
       !this.hasPermission(actor, ROLE_MANAGE_PERMISSION)
     ) {
       throw new ForbiddenRoleOperationException();
     }
+
     if (
-      isProtected &&
+      protectedRole &&
       !this.hasPermission(actor, ROLE_PROTECTED_MANAGE_PERMISSION)
     ) {
       throw new SystemRoleProtectedException();
@@ -57,6 +67,7 @@ export class RoleAuthorizationPolicy {
     const normalizedRequired = normalizePermissionCode(required);
     return actor.permissions.some(
       (permission) =>
+        typeof permission === 'string' &&
         normalizePermissionCode(permission) === normalizedRequired,
     );
   }
