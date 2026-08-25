@@ -223,7 +223,13 @@ function createHarness() {
     config,
   );
 
-  return { service, recovery, enrollment, totp };
+  const verifyEnrollment = async (
+    userUuid: string,
+    code: string,
+  ): Promise<EnrollmentResult> =>
+    (await service.verifyEnrollment(userUuid, code)) as EnrollmentResult;
+
+  return { service, recovery, enrollment, totp, verifyEnrollment };
 }
 
 describe('2FA security flow', () => {
@@ -250,13 +256,13 @@ describe('2FA security flow', () => {
   });
 
   it('enables enrollment only after a valid code and blocks replay', async () => {
-    const { service, totp, enrollment } = createHarness();
+    const { service, totp, enrollment, verifyEnrollment } = createHarness();
     const enrollmentResult = await service.startEnrollment('u1');
     const secret = new URL(enrollmentResult.provisioningUri).searchParams.get(
       'secret',
     )!;
     const code = totp.generateCode(secret, totp.currentTimeStep());
-    const result = await service.verifyEnrollment('u1', code);
+    const result = await verifyEnrollment('u1', code);
     expect(result.enabled).toBe(true);
     expect(enrollment.enableWithRecoveryCodes).toHaveBeenCalledTimes(1);
     const challenge = await service.createLoginChallenge('u1');
@@ -266,14 +272,14 @@ describe('2FA security flow', () => {
   });
 
   it('hashes recovery codes and makes each code single-use', async () => {
-    const { service, totp, enrollment, recovery } = createHarness();
+    const { service, totp, enrollment, recovery, verifyEnrollment } =
+      createHarness();
     const enrollmentResult = await service.startEnrollment('u1');
     const secret = new URL(enrollmentResult.provisioningUri).searchParams.get(
       'secret',
     )!;
     const code = totp.generateCode(secret, totp.currentTimeStep());
-    const enabledValue: unknown = await service.verifyEnrollment('u1', code);
-    const enabled = enabledValue as EnrollmentResult;
+    const enabled = await verifyEnrollment('u1', code);
     expect(enabled.enabled).toBe(true);
     expect(enabled.recoveryCodes).toHaveLength(3);
     expect(enrollment.enableWithRecoveryCodes).toHaveBeenCalledWith(
