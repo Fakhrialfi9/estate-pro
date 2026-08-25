@@ -24,6 +24,9 @@ import {
 } from '../../domain/repositories/permission.repository.js';
 import {
   PermissionAuthorizationPolicy,
+  PERMISSION_CREATE_PERMISSION,
+  PERMISSION_DELETE_PERMISSION,
+  PERMISSION_UPDATE_PERMISSION,
   type PermissionActor,
 } from '../policies/permission-authorization.policy.js';
 import {
@@ -63,6 +66,9 @@ export class PermissionService {
 
     const code = buildPermissionCode(module, domain, action);
     this.policy.canManage(actor, code);
+    if (!this.hasAnyPermission(actor, PERMISSION_CREATE_PERMISSION)) {
+      this.policy.canManage(actor, PERMISSION_CREATE_PERMISSION);
+    }
 
     if (await this.permissions.findByResourceAction(module, domain, action)) {
       throw new PermissionResourceActionAlreadyExistsException();
@@ -121,6 +127,7 @@ export class PermissionService {
     if (!permission) throw new PermissionNotFoundException();
 
     try {
+      this.policy.canManage(actor, PERMISSION_UPDATE_PERMISSION);
       this.policy.canManage(actor, permission.code);
     } catch (error: unknown) {
       if (error instanceof SystemPermissionProtectedException) {
@@ -172,6 +179,7 @@ export class PermissionService {
     if (!permission) throw new PermissionNotFoundException();
 
     try {
+      this.policy.canManage(actor, PERMISSION_DELETE_PERMISSION);
       this.policy.canManage(actor, permission.code);
     } catch (error: unknown) {
       if (error instanceof SystemPermissionProtectedException) {
@@ -250,6 +258,13 @@ export class PermissionService {
         'Permission identifier is invalid.',
       );
     }
+  }
+
+  private hasAnyPermission(actor: PermissionActor, required: string): boolean {
+    const normalized = required.replace(/:/g, '.');
+    return actor.permissions.some((permission) =>
+      permission.trim().replace(/:/g, '.').includes(normalized),
+    );
   }
 
   private mapRepositoryError(error: unknown): void {
