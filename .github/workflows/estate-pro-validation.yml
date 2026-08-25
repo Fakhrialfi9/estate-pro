@@ -52,31 +52,8 @@ jobs:
       - name: Generate Prisma client
         run: npm run prisma:generate
 
-      - name: Generate Phase 1 migration baseline from pre-credentials schema
-        run: |
-          set -euo pipefail
-          PARENT_SHA=bbd38cf79078ca9d295de786a842f49055371623
-          git fetch --no-tags --depth=1 origin "$PARENT_SHA"
-          rm -rf /tmp/estate-pro-baseline /tmp/estate-pro-baseline-migration
-          mkdir -p /tmp/estate-pro-baseline /tmp/estate-pro-baseline-migration
-          git archive "$PARENT_SHA" prisma/schema | tar -x -C /tmp/estate-pro-baseline
-          npx prisma migrate diff \
-            --from-empty \
-            --to-schema="/tmp/estate-pro-baseline/prisma/schema" \
-            --script \
-            --output="/tmp/estate-pro-baseline-migration/migration.sql"
-          test -s /tmp/estate-pro-baseline-migration/migration.sql
-          wc -l /tmp/estate-pro-baseline-migration/migration.sql
-
-      - name: Upload generated baseline
-        uses: actions/upload-artifact@v4
-        with:
-          name: estate-pro-phase1-migration-baseline
-          path: /tmp/estate-pro-baseline-migration/migration.sql
-          if-no-files-found: error
-
-      - name: Provision test database schema
-        run: npx prisma db push
+      - name: Deploy Prisma migrations
+        run: npm run prisma:deploy
 
       - name: Migration status
         run: npm run prisma:status
