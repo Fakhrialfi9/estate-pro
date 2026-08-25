@@ -18,31 +18,33 @@ node scripts/check-architecture-graph.mjs || fail 'dependency graph validation f
 [ -f scripts/check-security-boundaries.mjs ] || fail 'security boundary checker is missing'
 node scripts/check-security-boundaries.mjs || fail 'security/identity boundary validation failed'
 
-if grep -RIn --include='*.ts' 'forwardRef[[:space:]]*(' src >/dev/null 2>&1; then
+if git grep -nE -- '*.ts' 'forwardRef[[:space:]]*\(' -- ':!**/node_modules/**' >/dev/null 2>&1; then
   fail 'forwardRef() detected; review module graph instead of masking a cycle'
 fi
 
-if grep -REn --include='*.ts' "@prisma/|@nestjs/|mariadb|typeorm|pino|@opentelemetry/" src/modules/*/domain >/dev/null 2>&1; then
+if git grep -nE -- '*.ts' '@prisma/|@nestjs/|mariadb|typeorm|pino|@opentelemetry/' -- 'src/modules/*/domain/**' >/dev/null 2>&1; then
   fail 'domain layer imports infrastructure/framework dependencies'
 fi
 
-if grep -REn --include='*.ts' "modules/(auth|content|crm|health|permissions|property|roles|sales|services|system|users)|\.\./.*modules/" src/common >/dev/null 2>&1; then
+if git grep -nE -- '*.ts' 'modules/(auth|content|crm|health|permissions|property|roles|sales|services|system|users)|\.\./.*modules/' -- 'src/common/**' >/dev/null 2>&1; then
   fail 'common layer imports a business module'
 fi
 
-# Infrastructure is a valid persistence boundary both at src/infrastructure/* and
-# inside a feature module at src/modules/*/infrastructure/*. Keep all other source
-# layers free of Prisma references.
-if find src -type f -name '*.ts' ! -path '*/infrastructure/*' -print0 \
-  | xargs -0 -r grep -En "@prisma/client|PrismaClient|PrismaService" >/dev/null 2>&1; then
+# Prisma is allowed only inside infrastructure boundaries.
+if git grep -nE -- '*.ts' '@prisma/client|PrismaClient|PrismaService' -- \
+  ':(exclude)src/infrastructure/**' \
+  ':(exclude)src/modules/*/infrastructure/**' \
+  'src/**' >/dev/null 2>&1; then
   fail 'Prisma reference detected outside infrastructure; keep database access behind infrastructure abstractions'
 fi
 
-if grep -REn --include='*.ts' "@prisma/client|PrismaClient|PrismaService|\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b" src/modules/*/presentation src --include='*controller.ts' >/dev/null 2>&1; then
+if git grep -nE -- '*.ts' '@prisma/client|PrismaClient|PrismaService|\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b' -- \
+  'src/modules/*/presentation/**' \
+  'src/**/controller.ts' >/dev/null 2>&1; then
   fail 'presentation layer contains persistence implementation details'
 fi
 
-if grep -REn --include='*.ts' "@prisma/client|PrismaClient|PrismaService" src/modules/*/application >/dev/null 2>&1; then
+if git grep -nE -- '*.ts' '@prisma/client|PrismaClient|PrismaService' -- 'src/modules/*/application/**' >/dev/null 2>&1; then
   fail 'application layer directly references Prisma'
 fi
 
