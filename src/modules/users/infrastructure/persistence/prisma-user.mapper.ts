@@ -1,7 +1,9 @@
 import type { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
 import { UserEntity } from '../../domain/entities/user.entity.js';
 
-type AuthenticationUserRecord = NonNullable<Awaited<ReturnType<PrismaService['authenticationUser']['findFirst']>>>;
+type AuthenticationUserRecord = NonNullable<
+  Awaited<ReturnType<PrismaService['authenticationUser']['findFirst']>>
+>;
 
 export const PrismaUserMapper = {
   toDomain(record: AuthenticationUserRecord): UserEntity {

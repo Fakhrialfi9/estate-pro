@@ -57,7 +57,9 @@ const actorToken = (permissions: string[] = ['users:manage']) =>
 
 describe('Users API', () => {
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
     prisma = app.get(PrismaService);
@@ -95,7 +97,10 @@ describe('Users API', () => {
     await httpRequest()
       .post('/api/v1/users')
       .set('Authorization', `Bearer ${actorToken()}`)
-      .send({ email: 'valid@example.com', password: 'should-never-be-accepted' })
+      .send({
+        email: 'valid@example.com',
+        password: 'should-never-be-accepted',
+      })
       .expect(400);
   });
 
@@ -103,7 +108,11 @@ describe('Users API', () => {
     const create = await httpRequest()
       .post('/api/v1/users')
       .set('Authorization', `Bearer ${actorToken()}`)
-      .send({ username: 'john', email: 'john@example.com', phone: '+62123456789' })
+      .send({
+        username: 'john',
+        email: 'john@example.com',
+        phone: '+62123456789',
+      })
       .expect(201);
 
     const created = bodyOf<UserResponse & Record<string, unknown>>(create);
@@ -118,12 +127,20 @@ describe('Users API', () => {
       .get(`/api/v1/users/${uuid}`)
       .set('Authorization', `Bearer ${actorToken()}`)
       .expect(200)
-      .expect((response) => expect(bodyOf<UserResponse>(response).uuid).toBe(uuid));
+      .expect((response) =>
+        expect(bodyOf<UserResponse>(response).uuid).toBe(uuid),
+      );
 
     await httpRequest()
       .get('/api/v1/users')
       .set('Authorization', `Bearer ${actorToken()}`)
-      .query({ page: 1, limit: 10, sortBy: 'createdAt', sortDirection: 'desc', search: 'john' })
+      .query({
+        page: 1,
+        limit: 10,
+        sortBy: 'createdAt',
+        sortDirection: 'desc',
+        search: 'john',
+      })
       .expect(200)
       .expect((response) => {
         const data = bodyOf<UserListResponse>(response);
@@ -152,7 +169,9 @@ describe('Users API', () => {
       .set('Authorization', `Bearer ${actorToken()}`)
       .expect(204);
 
-    const stored = await prisma.authenticationUser.findUnique({ where: { uuid } });
+    const stored = await prisma.authenticationUser.findUnique({
+      where: { uuid },
+    });
     expect(stored?.deletedAt).toBeTruthy();
     expect(stored?.isActive).toBe(false);
     expect(stored?.status).toBe('inactive');
@@ -184,7 +203,10 @@ describe('Users API', () => {
       .send({ email: 'other@example.com' })
       .expect(201);
     const created = bodyOf<UserResponse>(create);
-    const readOnlyToken = jwt.sign({ sub: ACTOR_UUID, permissions: ['users:read'] });
+    const readOnlyToken = jwt.sign({
+      sub: ACTOR_UUID,
+      permissions: ['users:read'],
+    });
 
     await httpRequest()
       .get(`/api/v1/users/${created.uuid}`)

@@ -33,7 +33,9 @@ const repo = (): UserRepository => ({
   findByUsername: vi.fn(() => Promise.resolve(null)),
   findByPhone: vi.fn(() => Promise.resolve(null)),
   findDuplicateIdentity: vi.fn(() => Promise.resolve(null)),
-  list: vi.fn(() => Promise.resolve({ items: [], total: 0, page: 1, limit: 20 })),
+  list: vi.fn(() =>
+    Promise.resolve({ items: [], total: 0, page: 1, limit: 20 }),
+  ),
   update: vi.fn(() => Promise.resolve(makeUser())),
   softDelete: vi.fn(() => Promise.resolve(undefined)),
 });
