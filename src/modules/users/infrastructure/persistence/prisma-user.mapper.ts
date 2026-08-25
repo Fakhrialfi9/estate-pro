@@ -1,12 +1,29 @@
-import type { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
 import { UserEntity } from '../../domain/entities/user.entity.js';
 
-type AuthenticationUserRecord = NonNullable<
-  Awaited<ReturnType<PrismaService['authenticationUser']['findFirst']>>
->;
+export interface UserPersistenceRecord {
+  uuid: string;
+  username: string | null;
+  email: string | null;
+  phone: string | null;
+  status: string;
+  isActive: boolean;
+  isVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+}
+
+export interface UserPersistenceData {
+  username?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  status?: string;
+  isActive?: boolean;
+  deletedAt?: Date | null;
+}
 
 export const PrismaUserMapper = {
-  toDomain(record: AuthenticationUserRecord): UserEntity {
+  toDomain(record: UserPersistenceRecord): UserEntity {
     return UserEntity.create({
       uuid: record.uuid,
       username: record.username,
@@ -21,13 +38,7 @@ export const PrismaUserMapper = {
     });
   },
 
-  toPersistence(data: {
-    username?: string | null;
-    email?: string | null;
-    phone?: string | null;
-    status?: string;
-    isActive?: boolean;
-  }) {
+  toPersistence(data: Omit<UserPersistenceData, 'deletedAt'>): UserPersistenceData {
     return {
       ...(data.username !== undefined ? { username: data.username } : {}),
       ...(data.email !== undefined ? { email: data.email } : {}),

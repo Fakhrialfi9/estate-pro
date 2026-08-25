@@ -9,15 +9,61 @@ import type {
   UserListResult,
   UserRepository,
 } from '../../domain/repositories/user.repository.js';
-import { PrismaUserMapper } from './prisma-user.mapper.js';
+import {
+  PrismaUserMapper,
+  type UserPersistenceData,
+  type UserPersistenceRecord,
+} from './prisma-user.mapper.js';
+
+type UserStringFilter = string | { contains: string };
+type UserWhere = {
+  uuid?: string;
+  username?: UserStringFilter | null;
+  email?: UserStringFilter | null;
+  phone?: UserStringFilter | null;
+  status?: string;
+  isActive?: boolean;
+  deletedAt?: Date | null;
+  NOT?: { uuid: string };
+  OR?: Array<{
+    username?: UserStringFilter | null;
+    email?: UserStringFilter | null;
+    phone?: UserStringFilter | null;
+  }>;
+};
+
+type UserPersistenceDelegate = {
+  create(args: { data: UserPersistenceData }): Promise<UserPersistenceRecord>;
+  findFirst(args: { where: UserWhere }): Promise<UserPersistenceRecord | null>;
+  findMany(args: {
+    where: UserWhere;
+    orderBy: Record<string, 'asc' | 'desc'>;
+    skip: number;
+    take: number;
+  }): Promise<UserPersistenceRecord[]>;
+  count(args: { where: UserWhere }): Promise<number>;
+  update(args: {
+    where: { uuid: string };
+    data: UserPersistenceData;
+  }): Promise<UserPersistenceRecord>;
+};
+
+type PrismaPersistenceClient = {
+  authenticationUser: UserPersistenceDelegate;
+};
 
 @Injectable()
 export class PrismaUserRepository implements UserRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly users: UserPersistenceDelegate;
+
+  constructor(prisma: PrismaService) {
+    const client = prisma as unknown as PrismaPersistenceClient;
+    this.users = client.authenticationUser;
+  }
 
   async create(data: CreateUserData) {
     try {
-      const record = await this.prisma.authenticationUser.create({
+      const record = await this.users.create({
         data: PrismaUserMapper.toPersistence(data),
       });
       return PrismaUserMapper.toDomain(record);
@@ -32,47 +78,38 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   async findByUuid(uuid: string) {
-    const record = await this.prisma.authenticationUser.findFirst({
+    const record = await this.users.findFirst({
       where: { uuid, deletedAt: null },
     });
     return record ? PrismaUserMapper.toDomain(record) : null;
   }
 
   async findByEmail(email: string) {
-    const record = await this.prisma.authenticationUser.findFirst({
+    const record = await this.users.findFirst({
       where: { email, deletedAt: null },
     });
     return record ? PrismaUserMapper.toDomain(record) : null;
   }
 
   async findByUsername(username: string) {
-    const record = await this.prisma.authenticationUser.findFirst({
+    const record = await this.users.findFirst({
       where: { username, deletedAt: null },
     });
     return record ? PrismaUserMapper.toDomain(record) : null;
   }
 
   async findByPhone(phone: string) {
-    const record = await this.prisma.authenticationUser.findFirst({
+    const record = await this.users.findFirst({
       where: { phone, deletedAt: null },
     });
     return record ? PrismaUserMapper.toDomain(record) : null;
   }
 
-  async findDuplicateIdentity(
-    data: CreateUserData | UserUpdate,
-    excludeUuid?: string,
-  ) {
+  async findDuplicateIdentity(data: CreateUserData | UserUpdate, excludeUuid?: string) {
     const identities = [
-      data.username !== undefined && data.username !== null
-        ? { username: data.username }
-        : null,
-      data.email !== undefined && data.email !== null
-        ? { email: data.email }
-        : null,
-      data.phone !== undefined && data.phone !== null
-        ? { phone: data.phone }
-        : null,
+      data.username !== undefined && data.username !== null ? { username: data.username } : null,
+      data.email !== undefined && data.email !== null ? { email: data.email } : null,
+      data.phone !== undefined && data.phone !== null ? { phone: data.phone } : null,
     ].filter(
       (
         value,
@@ -84,7 +121,7 @@ export class PrismaUserRepository implements UserRepository {
 
     if (identities.length === 0) return null;
 
-    const record = await this.prisma.authenticationUser.findFirst({
+    const record = await this.users.findFirst({
       where: {
         deletedAt: null,
         ...(excludeUuid ? { NOT: { uuid: excludeUuid } } : {}),
@@ -108,16 +145,16 @@ export class PrismaUserRepository implements UserRepository {
             ],
           }
         : {}),
-    };
+    } satisfies UserWhere;
 
     const [records, total] = await Promise.all([
-      this.prisma.authenticationUser.findMany({
+      this.users.findMany({
         where,
         orderBy: { [query.sortBy]: query.sortDirection },
         skip: (query.page - 1) * query.limit,
         take: query.limit,
       }),
-      this.prisma.authenticationUser.count({ where }),
+      this.users.count({ where }),
     ]);
 
     return {
@@ -130,7 +167,7 @@ export class PrismaUserRepository implements UserRepository {
 
   async update(uuid: string, changes: UserUpdate) {
     try {
-      const record = await this.prisma.authenticationUser.update({
+      const record = await this.users.update({
         where: { uuid },
         data: PrismaUserMapper.toPersistence(changes),
       });
@@ -146,13 +183,13 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   async softDelete(uuid: string): Promise<void> {
-    await this.prisma.authenticationUser.update({
+    await this.users.update({
       where: { uuid },
       data: { deletedAt: new Date(), isActive: false, status: 'inactive' },
     });
   }
 
-  private buildFilter(field?: UserFilterField, value?: string) {
+  private buildFilter(field?: UserFilterField, value?: string): UserWhere {
     if (!field || value === undefined) return {};
     if (field === 'isActive') {
       return { isActive: value.toLowerCase() === 'true' };

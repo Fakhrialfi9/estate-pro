@@ -26,27 +26,54 @@ const makeUser = (
     ...overrides,
   });
 
-const repo = (): UserRepository => ({
-  create: vi.fn(() => Promise.resolve(makeUser())),
-  findByUuid: vi.fn(() => Promise.resolve(null)),
-  findByEmail: vi.fn(() => Promise.resolve(null)),
-  findByUsername: vi.fn(() => Promise.resolve(null)),
-  findByPhone: vi.fn(() => Promise.resolve(null)),
-  findDuplicateIdentity: vi.fn(() => Promise.resolve(null)),
-  list: vi.fn(() =>
+const repo = () => {
+  const create = vi.fn(() => Promise.resolve(makeUser()));
+  const findByUuid = vi.fn(() => Promise.resolve(null));
+  const findByEmail = vi.fn(() => Promise.resolve(null));
+  const findByUsername = vi.fn(() => Promise.resolve(null));
+  const findByPhone = vi.fn(() => Promise.resolve(null));
+  const findDuplicateIdentity = vi.fn(() => Promise.resolve(null));
+  const list = vi.fn(() =>
     Promise.resolve({ items: [], total: 0, page: 1, limit: 20 }),
-  ),
-  update: vi.fn(() => Promise.resolve(makeUser())),
-  softDelete: vi.fn(() => Promise.resolve(undefined)),
-});
+  );
+  const update = vi.fn(() => Promise.resolve(makeUser()));
+  const softDelete = vi.fn(() => Promise.resolve(undefined));
+
+  const repository: UserRepository = {
+    create,
+    findByUuid,
+    findByEmail,
+    findByUsername,
+    findByPhone,
+    findDuplicateIdentity,
+    list,
+    update,
+    softDelete,
+  };
+
+  return {
+    repository,
+    mocks: {
+      create,
+      findByUuid,
+      findByEmail,
+      findByUsername,
+      findByPhone,
+      findDuplicateIdentity,
+      list,
+      update,
+      softDelete,
+    },
+  };
+};
 
 describe('UserManagementService', () => {
   it('creates a user from an allowed identity', async () => {
-    const repository = repo();
+    const { repository, mocks } = repo();
     const service = new UserManagementService(repository);
     const result = await service.create({ email: ' JOHN@EXAMPLE.COM ' });
     expect(result.email).toBe('john@example.com');
-    expect(vi.mocked(repository.create)).toHaveBeenCalledWith({
+    expect(mocks.create).toHaveBeenCalledWith({
       email: 'john@example.com',
       username: null,
       phone: null,
@@ -55,22 +82,24 @@ describe('UserManagementService', () => {
   });
 
   it('rejects empty identity', async () => {
-    const service = new UserManagementService(repo());
+    const { repository } = repo();
+    const service = new UserManagementService(repository);
     await expect(service.create({})).rejects.toBeInstanceOf(InvalidUserError);
   });
 
   it('rejects duplicate identity before persistence', async () => {
-    const repository = repo();
-    vi.mocked(repository.findDuplicateIdentity).mockResolvedValue(makeUser());
+    const { repository, mocks } = repo();
+    mocks.findDuplicateIdentity.mockResolvedValue(makeUser());
     const service = new UserManagementService(repository);
     await expect(
       service.create({ email: 'john@example.com' }),
     ).rejects.toBeInstanceOf(DuplicateUserError);
-    expect(vi.mocked(repository.create)).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it('rejects updates to missing users', async () => {
-    const service = new UserManagementService(repo());
+    const { repository } = repo();
+    const service = new UserManagementService(repository);
     await expect(
       service.update('550e8400-e29b-41d4-a716-446655440000', {
         isActive: false,
