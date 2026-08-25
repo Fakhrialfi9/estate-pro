@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
-import type { UserAuthorizationRepository } from '../../domain/repositories/user-authorization.repository.js';
+import type {
+  AuthorizationSnapshot,
+  UserAuthorizationRepository,
+} from '../../../../common/security/authorization.repository.js';
 
 type UserRolePermissionRecord = {
+  isActive: boolean;
   role: {
+    isActive: boolean;
+    code: string;
     permissions: Array<{
       permission: { code: string };
     }>;
@@ -36,17 +42,27 @@ export class PrismaUserAuthorizationRepository
   }
 
   async listPermissionCodes(userUuid: string): Promise<readonly string[]> {
+    const snapshot = await this.getAuthorizationSnapshot(userUuid);
+    return snapshot?.permissionCodes ?? [];
+  }
+
+  async getAuthorizationSnapshot(
+    userUuid: string,
+  ): Promise<AuthorizationSnapshot | null> {
     const user = await this.users.findFirst({
       where: { uuid: userUuid },
       select: { id: true },
     });
-    if (!user) return [];
+    if (!user) return null;
 
     const assignments = await this.userRoles.findMany({
       where: { userId: user.id, isActive: true },
       select: {
+        isActive: true,
         role: {
           select: {
+            isActive: true,
+            code: true,
             permissions: {
               select: {
                 permission: {
@@ -59,12 +75,22 @@ export class PrismaUserAuthorizationRepository
       },
     });
 
-    const codes = new Set<string>();
+    const roleCodes = new Set<string>();
+    const permissionCodes = new Set<string>();
+
     for (const assignment of assignments) {
+      if (!assignment.isActive || !assignment.role.isActive) continue;
+
+      roleCodes.add(assignment.role.code);
       for (const rolePermission of assignment.role.permissions) {
-        codes.add(rolePermission.permission.code);
+        permissionCodes.add(rolePermission.permission.code);
       }
     }
-    return [...codes];
+
+    return {
+      userUuid,
+      roleCodes: [...roleCodes],
+      permissionCodes: [...permissionCodes],
+    };
   }
 }
