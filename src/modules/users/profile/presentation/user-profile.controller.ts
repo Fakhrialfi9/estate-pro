@@ -13,6 +13,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedRequest } from '../security/profile-authentication.guard.js';
 import { ProfileAuthenticationGuard } from '../security/profile-authentication.guard.js';
 import { CreateUserProfileDto } from '../application/dto/create-user-profile.dto.js';
@@ -27,12 +28,15 @@ import {
 } from '../domain/errors/user-profile.errors.js';
 import { UserNotFoundError } from '../../domain/errors/user.errors.js';
 
+@ApiTags('Profile')
+@ApiBearerAuth()
 @Controller({ path: 'users', version: '1' })
 @UseGuards(ProfileAuthenticationGuard)
 export class UserProfileController {
   constructor(private readonly profiles: UserProfileService) {}
 
   @Post(':uuid/profile')
+  @ApiOperation({ summary: 'Create user profile', description: 'Authenticated access only; the service enforces profile ownership.' })
   async create(
     @Param('uuid', ParseUUIDPipe) uuid: string,
     @Body() dto: CreateUserProfileDto,
@@ -48,6 +52,7 @@ export class UserProfileController {
   }
 
   @Get(':uuid/profile')
+  @ApiOperation({ summary: 'Get user profile', description: 'Authenticated access only; only the owner may access the profile unless the application service policy permits otherwise.' })
   async get(
     @Param('uuid', ParseUUIDPipe) uuid: string,
     @Req() request: AuthenticatedRequest,
@@ -60,6 +65,7 @@ export class UserProfileController {
   }
 
   @Patch(':uuid/profile')
+  @ApiOperation({ summary: 'Update user profile', description: 'Authenticated access only; ownership is enforced by the application service.' })
   async update(
     @Param('uuid', ParseUUIDPipe) uuid: string,
     @Body() dto: UpdateUserProfileDto,
