@@ -10,6 +10,11 @@ export const SECURITY_SESSION_RATE_LIMIT = {
   limit: Number(process.env.SECURITY_SESSION_RATE_LIMIT_MAX ?? 30),
 } as const;
 
+export const TWO_FACTOR_ENROLLMENT_RATE_LIMIT = { ttl: 60000, limit: 5 } as const;
+export const TWO_FACTOR_VERIFICATION_RATE_LIMIT = { ttl: 60000, limit: 10 } as const;
+export const TWO_FACTOR_REAUTH_RATE_LIMIT = { ttl: 60000, limit: 5 } as const;
+export const TWO_FACTOR_RECOVERY_REGENERATION_RATE_LIMIT = { ttl: 60000, limit: 3 } as const;
+
 export default registerAs('rateLimit', () => ({
   ttl: Number(process.env.SECURITY_RATE_LIMIT_TTL ?? 60000),
   limit: Number(process.env.SECURITY_RATE_LIMIT_MAX ?? 100),

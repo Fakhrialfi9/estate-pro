@@ -1,0 +1,13 @@
+model AuthenticationUserTwoFactorChallenge {
+    id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+    userId BigInt @map("user_id") @db.UnsignedBigInt
+    challengeHash String @unique @map("challenge_hash") @db.Char(64)
+    expiresAt DateTime @map("expires_at")
+    consumedAt DateTime? @map("consumed_at")
+    failedAttempts Int @default(0) @map("failed_attempts") @db.UnsignedInt
+    createdAt DateTime @default(now()) @map("created_at")
+    user AuthenticationUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+    @@index([userId, expiresAt])
+    @@index([consumedAt])
+    @@map("authentication_user_two_factor_challenges")
+}
