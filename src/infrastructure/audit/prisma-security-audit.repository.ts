@@ -142,7 +142,11 @@ export class PrismaSecurityAuditRepository
     const actorUuid =
       event.actorUuid ?? (event as SecurityAuditEvent).userUuid ?? null;
     const subjectUuid = event.subjectUuid ?? null;
-    const inferredActorType = this.inferActorType(event, resourceType, actorUuid);
+    const inferredActorType = this.inferActorType(
+      event,
+      resourceType,
+      actorUuid,
+    );
     const actorType = event.actorType ?? inferredActorType;
     const safeIp =
       event.ipAddress && isIP(event.ipAddress) !== 0 ? event.ipAddress : null;
