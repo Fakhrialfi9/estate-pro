@@ -50,26 +50,32 @@ function getDatabaseName(databaseUrl: string): string {
 }
 
 function isSafeTestDatabaseUrl(databaseUrl: string | undefined): boolean {
-  return isLocalMysqlDatabaseUrl(databaseUrl) &&
-    TEST_DATABASE_NAME_PATTERN.test(getDatabaseName(databaseUrl!));
+  return (
+    isLocalMysqlDatabaseUrl(databaseUrl) &&
+    TEST_DATABASE_NAME_PATTERN.test(getDatabaseName(databaseUrl!))
+  );
 }
 
 function buildDatabaseUrl(environment: Environment): string | undefined {
   const host = environment.DATABASE_HOST ?? process.env.DATABASE_HOST;
   const port = environment.DATABASE_PORT ?? process.env.DATABASE_PORT ?? '3306';
   const user = environment.DATABASE_USER ?? process.env.DATABASE_USER;
-  const password = environment.DATABASE_PASSWORD ?? process.env.DATABASE_PASSWORD;
+  const password =
+    environment.DATABASE_PASSWORD ?? process.env.DATABASE_PASSWORD;
   const configuredName = environment.DATABASE_NAME ?? process.env.DATABASE_NAME;
 
   if (!host || !user || password === undefined) {
     return undefined;
   }
 
-  const databaseName = configuredName && TEST_DATABASE_NAME_PATTERN.test(configuredName)
-    ? configuredName
-    : DEFAULT_TEST_DATABASE_NAME;
+  const databaseName =
+    configuredName && TEST_DATABASE_NAME_PATTERN.test(configuredName)
+      ? configuredName
+      : DEFAULT_TEST_DATABASE_NAME;
 
-  const url = new URL(`mysql://${encodeURIComponent(user)}@${host}:${port}/${encodeURIComponent(databaseName)}`);
+  const url = new URL(
+    `mysql://${encodeURIComponent(user)}@${host}:${port}/${encodeURIComponent(databaseName)}`,
+  );
   url.password = password;
   return url.toString();
 }
