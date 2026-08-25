@@ -1,4 +1,4 @@
-import type { RoleEntity } from '../../domain/entities/role.entity.js';
+import type { RoleEntity } from '../domain/entities/role.entity.js';
 
 export interface RoleResponse {
   id: string;
