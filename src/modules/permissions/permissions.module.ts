@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module.js';
 import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
-import { AuthorizationService } from '../../common/security/authorization.service.js';
+import { AuthorizationModule } from '../../common/security/authorization.module.js';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { PERMISSION_REPOSITORY } from './domain/repositories/permission.repository.js';
 import type { PermissionRepository } from './domain/repositories/permission.repository.js';
@@ -16,11 +16,10 @@ import {
 } from './security/permission-management-access.guard.js';
 
 @Module({
-  imports: [DatabaseModule, AuditModule],
+  imports: [DatabaseModule, AuditModule, AuthorizationModule],
   controllers: [PermissionsController],
   providers: [
     AuthorizationGuard,
-    AuthorizationService,
     PermissionService,
     PermissionAuthorizationPolicy,
     PermissionReadAccessGuard,
@@ -32,7 +31,6 @@ import {
     PermissionAuthorizationPolicy,
     PERMISSION_REPOSITORY,
     AuthorizationGuard,
-    AuthorizationService,
   ],
 })
 export class PermissionsModule {}
