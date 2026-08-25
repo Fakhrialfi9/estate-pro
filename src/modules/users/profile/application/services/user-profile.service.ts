@@ -68,32 +68,37 @@ export class UserProfileService {
   private normalize(
     data: Omit<CreateUserProfileData, 'userUuid'> | UserProfileUpdate,
   ): UserProfileUpdate {
-    const normalizeNullable = (
-      value: string | null | undefined,
-    ): string | null | undefined => {
-      if (value === undefined || value === null) return value;
+    const normalizeNullable = (value: string | null): string | null => {
       const normalized = value.trim();
       return normalized.length > 0 ? normalized : null;
     };
 
-    const normalized: UserProfileUpdate = {
-      ...(data.firstName !== undefined
-        ? { firstName: normalizeNullable(data.firstName) }
-        : {}),
-      ...(data.lastName !== undefined
-        ? { lastName: normalizeNullable(data.lastName) }
-        : {}),
-      ...(data.imageUrl !== undefined
-        ? { imageUrl: normalizeNullable(data.imageUrl) }
-        : {}),
-      ...(data.avatarThumbnailUrl !== undefined
-        ? { avatarThumbnailUrl: normalizeNullable(data.avatarThumbnailUrl) }
-        : {}),
-      ...(data.timezone !== undefined
-        ? { timezone: data.timezone.trim() }
-        : {}),
-      ...(data.locale !== undefined ? { locale: data.locale.trim() } : {}),
-    };
+    const normalized: UserProfileUpdate = {};
+
+    if (data.firstName !== undefined) {
+      normalized.firstName =
+        data.firstName === null ? null : normalizeNullable(data.firstName);
+    }
+    if (data.lastName !== undefined) {
+      normalized.lastName =
+        data.lastName === null ? null : normalizeNullable(data.lastName);
+    }
+    if (data.imageUrl !== undefined) {
+      normalized.imageUrl =
+        data.imageUrl === null ? null : normalizeNullable(data.imageUrl);
+    }
+    if (data.avatarThumbnailUrl !== undefined) {
+      normalized.avatarThumbnailUrl =
+        data.avatarThumbnailUrl === null
+          ? null
+          : normalizeNullable(data.avatarThumbnailUrl);
+    }
+    if (data.timezone !== undefined) {
+      normalized.timezone = data.timezone.trim();
+    }
+    if (data.locale !== undefined) {
+      normalized.locale = data.locale.trim();
+    }
 
     if (
       normalized.firstName !== undefined &&
