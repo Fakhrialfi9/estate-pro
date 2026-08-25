@@ -103,7 +103,10 @@ async function grantUserManagementPermissions(userId: bigint): Promise<void> {
     },
   });
   await prisma.authorizationRolePermission.createMany({
-    data: permissions.map((permission) => ({ roleId: role.id, permissionId: permission.id })),
+    data: permissions.map((permission) => ({
+      roleId: role.id,
+      permissionId: permission.id,
+    })),
   });
   await prisma.authorizationUserRole.create({
     data: { userId, roleId: role.id, assignedBy: userId },
@@ -168,7 +171,10 @@ describe('Users API', () => {
       .post('/api/v1/users')
       .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
-      .send({ email: 'valid@example.com', password: 'should-never-be-accepted' })
+      .send({
+        email: 'valid@example.com',
+        password: 'should-never-be-accepted',
+      })
       .expect(400);
   });
   it('creates, reads, searches, updates, and soft-deletes a user without leaking credentials or audit secrets', async () => {
@@ -177,7 +183,11 @@ describe('Users API', () => {
       .set('X-Forwarded-For', clientIp)
       .set('X-Request-ID', 'req-user-create')
       .set('Authorization', `Bearer ${actorToken()}`)
-      .send({ username: 'john', email: 'john@example.com', phone: '+62123456789' })
+      .send({
+        username: 'john',
+        email: 'john@example.com',
+        phone: '+62123456789',
+      })
       .expect(201);
     const created = bodyOf<UserResponse & Record<string, unknown>>(create);
     const uuid = created.uuid;
@@ -194,21 +204,65 @@ describe('Users API', () => {
     const serializedAudit = stringifyForAssertion(createdAudit);
     expect(serializedAudit).not.toContain('password');
     expect(serializedAudit).not.toContain('token');
-    await httpRequest().get(`/api/v1/users/${uuid}`).set('X-Forwarded-For', clientIp).set('Authorization', `Bearer ${actorToken()}`).expect(200);
-    const list = await httpRequest().get('/api/v1/users?page=1&limit=20&search=john').set('X-Forwarded-For', clientIp).set('Authorization', `Bearer ${actorToken()}`).expect(200);
-    expect(bodyOf<UserListResponse>(list).items.some((item) => item.uuid === uuid)).toBe(true);
-    await httpRequest().patch(`/api/v1/users/${uuid}`).set('X-Forwarded-For', clientIp).set('Authorization', `Bearer ${actorToken()}`).send({ username: 'john-updated' }).expect(200);
-    const updateAudit = await prisma.auditLog.findFirst({ where: { action: 'USER_UPDATED', resourceId: uuid }, orderBy: { createdAt: 'desc' }, include: { changes: true } });
-    expect(updateAudit?.changes.some((change) => change.field === 'username')).toBe(true);
-    await httpRequest().delete(`/api/v1/users/${uuid}`).set('X-Forwarded-For', clientIp).set('Authorization', `Bearer ${actorToken()}`).expect(204);
-    expect(await prisma.auditLog.count({ where: { action: 'USER_DELETED', resourceId: uuid } })).toBe(1);
+    await httpRequest()
+      .get(`/api/v1/users/${uuid}`)
+      .set('X-Forwarded-For', clientIp)
+      .set('Authorization', `Bearer ${actorToken()}`)
+      .expect(200);
+    const list = await httpRequest()
+      .get('/api/v1/users?page=1&limit=20&search=john')
+      .set('X-Forwarded-For', clientIp)
+      .set('Authorization', `Bearer ${actorToken()}`)
+      .expect(200);
+    expect(
+      bodyOf<UserListResponse>(list).items.some((item) => item.uuid === uuid),
+    ).toBe(true);
+    await httpRequest()
+      .patch(`/api/v1/users/${uuid}`)
+      .set('X-Forwarded-For', clientIp)
+      .set('Authorization', `Bearer ${actorToken()}`)
+      .send({ username: 'john-updated' })
+      .expect(200);
+    const updateAudit = await prisma.auditLog.findFirst({
+      where: { action: 'USER_UPDATED', resourceId: uuid },
+      orderBy: { createdAt: 'desc' },
+      include: { changes: true },
+    });
+    expect(
+      updateAudit?.changes.some((change) => change.field === 'username'),
+    ).toBe(true);
+    await httpRequest()
+      .delete(`/api/v1/users/${uuid}`)
+      .set('X-Forwarded-For', clientIp)
+      .set('Authorization', `Bearer ${actorToken()}`)
+      .expect(204);
+    expect(
+      await prisma.auditLog.count({
+        where: { action: 'USER_DELETED', resourceId: uuid },
+      }),
+    ).toBe(1);
   });
   it('rejects duplicate identity', async () => {
-    await httpRequest().post('/api/v1/users').set('X-Forwarded-For', clientIp).set('Authorization', `Bearer ${actorToken()}`).send({ email: 'duplicate@example.com' }).expect(201);
-    await httpRequest().post('/api/v1/users').set('X-Forwarded-For', clientIp).set('Authorization', `Bearer ${actorToken()}`).send({ email: 'duplicate@example.com' }).expect(409);
+    await httpRequest()
+      .post('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
+      .set('Authorization', `Bearer ${actorToken()}`)
+      .send({ email: 'duplicate@example.com' })
+      .expect(201);
+    await httpRequest()
+      .post('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
+      .set('Authorization', `Bearer ${actorToken()}`)
+      .send({ email: 'duplicate@example.com' })
+      .expect(409);
   });
   it('does not allow an authenticated user to read another user without management permission', async () => {
-    const create = await httpRequest().post('/api/v1/users').set('X-Forwarded-For', clientIp).set('Authorization', `Bearer ${actorToken()}`).send({ email: 'other@example.com' }).expect(201);
+    const create = await httpRequest()
+      .post('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
+      .set('Authorization', `Bearer ${actorToken()}`)
+      .send({ email: 'other@example.com' })
+      .expect(201);
     const created = bodyOf<UserResponse>(create);
     const reader = await prisma.authenticationUser.create({
       data: {
@@ -218,11 +272,26 @@ describe('Users API', () => {
         isActive: true,
       },
     });
-    const readOnlyToken = jwt.sign({ sub: reader.uuid, sid: randomUUID(), permissions: [] });
-    await httpRequest().get(`/api/v1/users/${created.uuid}`).set('X-Forwarded-For', clientIp).set('Authorization', `Bearer ${readOnlyToken}`).expect(403);
+    const readOnlyToken = jwt.sign({
+      sub: reader.uuid,
+      sid: randomUUID(),
+      permissions: [],
+    });
+    await httpRequest()
+      .get(`/api/v1/users/${created.uuid}`)
+      .set('X-Forwarded-For', clientIp)
+      .set('Authorization', `Bearer ${readOnlyToken}`)
+      .expect(403);
   });
   it('rejects inactive actors before user management access', async () => {
-    await prisma.authenticationUser.update({ where: { uuid: actorUuid }, data: { isActive: false } });
-    await httpRequest().get('/api/v1/users').set('X-Forwarded-For', clientIp).set('Authorization', `Bearer ${actorToken()}`).expect(401);
+    await prisma.authenticationUser.update({
+      where: { uuid: actorUuid },
+      data: { isActive: false },
+    });
+    await httpRequest()
+      .get('/api/v1/users')
+      .set('X-Forwarded-For', clientIp)
+      .set('Authorization', `Bearer ${actorToken()}`)
+      .expect(401);
   });
 });
