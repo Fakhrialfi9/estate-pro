@@ -24,8 +24,13 @@ export class JwtAuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException();
 
     const claims = await this.jwt.verifyAccessToken(token);
-    const active = await this.sessions.isActive(claims.sub, claims.sid, new Date());
-    if (!active) throw new UnauthorizedException('Invalid authentication token');
+    const active = await this.sessions.isActive(
+      claims.sub,
+      claims.sid,
+      new Date(),
+    );
+    if (!active)
+      throw new UnauthorizedException('Invalid authentication token');
 
     request.user = claims;
     return true;

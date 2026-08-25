@@ -42,25 +42,41 @@ class FakeSessionRepository implements AuthenticationSessionRepository {
       String(this.rows.length + 1),
       userUuid,
       SessionService.digestSecret(session.sessionId),
-      { ipAddress: session.ipAddress ?? null, userAgent: session.userAgent ?? null, expiresAt: session.expiresAt },
+      {
+        ipAddress: session.ipAddress ?? null,
+        userAgent: session.userAgent ?? null,
+        expiresAt: session.expiresAt,
+      },
     );
     this.rows.push(row);
     return row;
   }
 
   async findBySecret(userUuid: string, sessionId: string) {
-    return this.rows.find(
-      (row) => row.userUuid === userUuid && row.sessionIdHash === SessionService.digestSecret(sessionId),
-    ) ?? null;
+    return (
+      this.rows.find(
+        (row) =>
+          row.userUuid === userUuid &&
+          row.sessionIdHash === SessionService.digestSecret(sessionId),
+      ) ?? null
+    );
   }
 
   async findById(userUuid: string, id: string) {
-    return this.rows.find((row) => row.userUuid === userUuid && row.id === id) ?? null;
+    return (
+      this.rows.find((row) => row.userUuid === userUuid && row.id === id) ??
+      null
+    );
   }
 
   async list(userUuid: string, query: SessionListQuery) {
     return this.rows
-      .filter((row) => row.userUuid === userUuid && (query.includeInactive || (row.revokedAt === null && row.expiresAt > BASE)))
+      .filter(
+        (row) =>
+          row.userUuid === userUuid &&
+          (query.includeInactive ||
+            (row.revokedAt === null && row.expiresAt > BASE)),
+      )
       .slice(query.offset, query.offset + query.limit);
   }
 
@@ -81,7 +97,11 @@ class FakeSessionRepository implements AuthenticationSessionRepository {
   async revokeAll(userUuid: string, now: Date) {
     let count = 0;
     for (const row of this.rows) {
-      if (row.userUuid === userUuid && row.revokedAt === null && row.expiresAt > now) {
+      if (
+        row.userUuid === userUuid &&
+        row.revokedAt === null &&
+        row.expiresAt > now
+      ) {
         row.revokedAt = now;
         count += 1;
       }
@@ -115,7 +135,9 @@ describe('Session lifecycle', () => {
       expiresAt: new Date(BASE.getTime() + 15 * 60_000),
     });
     expect(entity.userUuid).toBe(USER_A);
-    expect(repo.rows[0]?.sessionIdHash).toBe(SessionService.digestSecret(secret));
+    expect(repo.rows[0]?.sessionIdHash).toBe(
+      SessionService.digestSecret(secret),
+    );
     expect(repo.rows[0]?.sessionIdHash).not.toBe(secret);
   });
 
@@ -150,8 +172,14 @@ describe('Session lifecycle', () => {
     const { service } = makeService(repo);
     const secretA = SessionService.generateSecret();
     const secretB = SessionService.generateSecret();
-    await service.create(USER_A, { sessionId: secretA, expiresAt: new Date(BASE.getTime() + 15 * 60_000) });
-    await service.create(USER_B, { sessionId: secretB, expiresAt: new Date(BASE.getTime() + 15 * 60_000) });
+    await service.create(USER_A, {
+      sessionId: secretA,
+      expiresAt: new Date(BASE.getTime() + 15 * 60_000),
+    });
+    await service.create(USER_B, {
+      sessionId: secretB,
+      expiresAt: new Date(BASE.getTime() + 15 * 60_000),
+    });
 
     await service.revokeOwnSession(USER_A, '2');
     expect(repo.rows[1]?.revokedAt).toBeNull();
@@ -161,10 +189,23 @@ describe('Session lifecycle', () => {
   it('logout-all revokes only the current user and is idempotent', async () => {
     const repo = new FakeSessionRepository();
     const { service } = makeService(repo);
-    const secrets = [SessionService.generateSecret(), SessionService.generateSecret(), SessionService.generateSecret()];
-    await service.create(USER_A, { sessionId: secrets[0], expiresAt: new Date(BASE.getTime() + 15 * 60_000) });
-    await service.create(USER_A, { sessionId: secrets[1], expiresAt: new Date(BASE.getTime() + 15 * 60_000) });
-    await service.create(USER_B, { sessionId: secrets[2], expiresAt: new Date(BASE.getTime() + 15 * 60_000) });
+    const secrets = [
+      SessionService.generateSecret(),
+      SessionService.generateSecret(),
+      SessionService.generateSecret(),
+    ];
+    await service.create(USER_A, {
+      sessionId: secrets[0],
+      expiresAt: new Date(BASE.getTime() + 15 * 60_000),
+    });
+    await service.create(USER_A, {
+      sessionId: secrets[1],
+      expiresAt: new Date(BASE.getTime() + 15 * 60_000),
+    });
+    await service.create(USER_B, {
+      sessionId: secrets[2],
+      expiresAt: new Date(BASE.getTime() + 15 * 60_000),
+    });
 
     expect(await service.logoutAll(USER_A)).toBe(2);
     expect(await service.logoutAll(USER_A)).toBe(0);
@@ -175,7 +216,10 @@ describe('Session lifecycle', () => {
     const repo = new FakeSessionRepository();
     const { service } = makeService(repo);
     const secret = SessionService.generateSecret();
-    await service.create(USER_A, { sessionId: secret, expiresAt: new Date(BASE.getTime() + 15 * 60_000) });
+    await service.create(USER_A, {
+      sessionId: secret,
+      expiresAt: new Date(BASE.getTime() + 15 * 60_000),
+    });
 
     const result = await service.listOwn(USER_A, {}, BASE);
     expect(result).toHaveLength(1);

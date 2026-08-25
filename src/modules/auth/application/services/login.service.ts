@@ -51,7 +51,9 @@ export class LoginService {
     const policy: AuthenticationLockoutPolicy = {
       threshold: this.config.getOrThrow<number>('auth.login.lockoutThreshold'),
       windowMs: this.config.getOrThrow<number>('auth.login.lockoutWindowMs'),
-      durationMs: this.config.getOrThrow<number>('auth.login.lockoutDurationMs'),
+      durationMs: this.config.getOrThrow<number>(
+        'auth.login.lockoutDurationMs',
+      ),
     };
     const identifier = command.identifier.trim();
     const user =

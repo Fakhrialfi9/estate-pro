@@ -47,10 +47,7 @@ export class SessionController {
   }
 
   @Delete(':id')
-  async revoke(
-    @Req() request: AuthenticatedRequest,
-    @Param('id') id: string,
-  ) {
+  async revoke(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
     this.assertPublicSessionId(id);
     await this.sessions.revokeOwnSession(
       request.user.sub,

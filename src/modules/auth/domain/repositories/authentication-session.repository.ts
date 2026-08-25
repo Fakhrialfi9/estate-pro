@@ -30,7 +30,11 @@ export interface AuthenticationSessionRepository {
     userUuid: string,
     query: SessionListQuery,
   ): Promise<import('../entities/session.entity.js').SessionSnapshot[]>;
-  revokeBySecret(userUuid: string, sessionId: string, now: Date): Promise<boolean>;
+  revokeBySecret(
+    userUuid: string,
+    sessionId: string,
+    now: Date,
+  ): Promise<boolean>;
   revokeById(userUuid: string, id: string, now: Date): Promise<boolean>;
   revokeAll(userUuid: string, now: Date): Promise<number>;
   isActive(userUuid: string, sessionId: string, now: Date): Promise<boolean>;

@@ -37,7 +37,9 @@ export class PrismaAuthenticationSessionRepository
   private readonly sessions: SessionDelegate;
 
   constructor(prisma: PrismaService) {
-    this.sessions = (prisma as unknown as PrismaShape).authenticationUserSession;
+    this.sessions = (
+      prisma as unknown as PrismaShape
+    ).authenticationUserSession;
   }
 
   async create(
@@ -58,7 +60,10 @@ export class PrismaAuthenticationSessionRepository
     return this.toSnapshot(row);
   }
 
-  async findBySecret(userUuid: string, sessionId: string): Promise<SessionSnapshot | null> {
+  async findBySecret(
+    userUuid: string,
+    sessionId: string,
+  ): Promise<SessionSnapshot | null> {
     const row = await this.sessions.findFirst({
       where: { sessionId: this.digest(sessionId), user: { uuid: userUuid } },
       include: { user: { select: { uuid: true } } },
@@ -66,7 +71,10 @@ export class PrismaAuthenticationSessionRepository
     return row ? this.toSnapshot(row) : null;
   }
 
-  async findById(userUuid: string, id: string): Promise<SessionSnapshot | null> {
+  async findById(
+    userUuid: string,
+    id: string,
+  ): Promise<SessionSnapshot | null> {
     const row = await this.sessions.findFirst({
       where: { id: this.toBigInt(id), user: { uuid: userUuid } },
       include: { user: { select: { uuid: true } } },
@@ -74,8 +82,13 @@ export class PrismaAuthenticationSessionRepository
     return row ? this.toSnapshot(row) : null;
   }
 
-  async list(userUuid: string, query: SessionListQuery): Promise<SessionSnapshot[]> {
-    const rowFilter = query.includeInactive ? {} : { revokedAt: null, expiresAt: { gt: new Date() } };
+  async list(
+    userUuid: string,
+    query: SessionListQuery,
+  ): Promise<SessionSnapshot[]> {
+    const rowFilter = query.includeInactive
+      ? {}
+      : { revokedAt: null, expiresAt: { gt: new Date() } };
     const rows = await this.sessions.findMany({
       where: { user: { uuid: userUuid }, ...rowFilter },
       orderBy: { createdAt: 'desc' },
@@ -86,7 +99,11 @@ export class PrismaAuthenticationSessionRepository
     return rows.map((row) => this.toSnapshot(row));
   }
 
-  async revokeBySecret(userUuid: string, sessionId: string, now: Date): Promise<boolean> {
+  async revokeBySecret(
+    userUuid: string,
+    sessionId: string,
+    now: Date,
+  ): Promise<boolean> {
     const result = await this.sessions.updateMany({
       where: {
         sessionId: this.digest(sessionId),
@@ -124,7 +141,11 @@ export class PrismaAuthenticationSessionRepository
     return result.count;
   }
 
-  async isActive(userUuid: string, sessionId: string, now: Date): Promise<boolean> {
+  async isActive(
+    userUuid: string,
+    sessionId: string,
+    now: Date,
+  ): Promise<boolean> {
     const row = await this.sessions.findFirst({
       where: {
         sessionId: this.digest(sessionId),

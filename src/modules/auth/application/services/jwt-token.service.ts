@@ -83,7 +83,11 @@ export class JwtTokenService {
 
   private getAlgorithm(): SupportedAlgorithm {
     const algorithm = this.config.getOrThrow<string>('auth.jwt.algorithm');
-    if (algorithm !== 'HS256' && algorithm !== 'HS384' && algorithm !== 'HS512') {
+    if (
+      algorithm !== 'HS256' &&
+      algorithm !== 'HS384' &&
+      algorithm !== 'HS512'
+    ) {
       throw new Error('Unsupported JWT algorithm');
     }
     return algorithm;

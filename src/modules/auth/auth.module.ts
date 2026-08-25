@@ -35,10 +35,14 @@ import { SESSION_SECURITY_PORT } from '../../../common/security/session-security
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('auth.jwt.secret'),
         signOptions: {
-          expiresIn: config.getOrThrow<string>('auth.jwt.expiresIn') as SignOptions['expiresIn'],
+          expiresIn: config.getOrThrow<string>(
+            'auth.jwt.expiresIn',
+          ) as SignOptions['expiresIn'],
           issuer: config.getOrThrow<string>('auth.jwt.issuer'),
           audience: config.getOrThrow<string>('auth.jwt.audience'),
-          algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>('auth.jwt.algorithm'),
+          algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>(
+            'auth.jwt.algorithm',
+          ),
         },
       }),
     }),
