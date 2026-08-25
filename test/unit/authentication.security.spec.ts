@@ -123,12 +123,10 @@ const makeLogin = (passwordValid = true, account = user()) => {
     revoke: vi.fn(),
   } as unknown as AuthenticationSessionRepository;
   const auditEvents: SecurityAuditEvent[] = [];
-  const auditRecord = vi.fn(
-    (event: SecurityAuditEvent): Promise<void> => {
-      auditEvents.push(event);
-      return Promise.resolve();
-    },
-  );
+  const auditRecord = vi.fn((event: SecurityAuditEvent): Promise<void> => {
+    auditEvents.push(event);
+    return Promise.resolve();
+  });
   const audit: SecurityAuditRepository = {
     record: auditRecord,
   };
