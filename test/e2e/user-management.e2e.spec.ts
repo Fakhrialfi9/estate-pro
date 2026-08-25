@@ -3,7 +3,8 @@ import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Response as SuperTestResponse } from 'supertest';
 import request from 'supertest';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
@@ -32,7 +33,7 @@ const httpRequest = () => request(app.getHttpServer());
 const bodyOf = <T>(response: SuperTestResponse): T =>
   response.body as unknown as T;
 
-function hashSessionId(sessionId: string): string {
+function digestSessionId(sessionId: string): string {
   return createHash('sha256').update(sessionId, 'utf8').digest('hex');
 }
 
@@ -48,7 +49,7 @@ async function tokenFor(
   await prisma.authenticationUserSession.create({
     data: {
       userId: user.id,
-      sessionId: hashSessionId(sessionId),
+      sessionId: digestSessionId(sessionId),
       expiresAt: new Date(Date.now() + 60 * 60 * 1000),
     },
   });
@@ -164,7 +165,7 @@ describe('User management E2E', () => {
   });
 
   it('enforces profile ownership and supports profile create/read/update', async () => {
-    const actorToken = await tokenFor(actorUuid);
+    const actorToken = await tokenFor(actorUuid, []);
     const ownerToken = await tokenFor(targetUuid);
     await httpRequest()
       .post(`/api/v1/users/${targetUuid}/profile`)
@@ -233,6 +234,15 @@ describe('User management E2E', () => {
     expect(
       await prisma.authenticationUserSession.count({
         where: { userId: actor.id },
+      }),
+    ).toBe(2);
+    expect(
+      await prisma.authenticationUserSession.count({
+        where: {
+          userId: actor.id,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
       }),
     ).toBe(1);
   });
