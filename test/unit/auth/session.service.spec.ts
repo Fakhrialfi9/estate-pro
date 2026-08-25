@@ -138,6 +138,15 @@ function makeService(repo: FakeSessionRepository) {
 }
 
 describe('Session lifecycle', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(BASE);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('creates an unpredictable secret and stores only its digest', async () => {
     const repo = new FakeSessionRepository();
     const { service } = makeService(repo);
