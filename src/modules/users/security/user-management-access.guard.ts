@@ -4,24 +4,23 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 
+import {
+  ACCESS_TOKEN_VERIFIER,
+  type AccessTokenClaims,
+  type AccessTokenVerifier,
+} from '../../../common/security/access-token-verifier.port.js';
+import { Inject } from '@nestjs/common';
 import { UserManagementService } from '../application/services/user-management.service.js';
 
-interface AuthClaims {
-  sub: string;
-  permissions?: string[];
-}
-
-type AuthenticatedRequest = Request & { user?: AuthClaims };
+type AuthenticatedRequest = Request & { user?: AccessTokenClaims };
 
 @Injectable()
 export class UserManagementAccessGuard implements CanActivate {
   constructor(
-    private readonly jwt: JwtService,
-    private readonly config: ConfigService,
+    @Inject(ACCESS_TOKEN_VERIFIER)
+    private readonly accessTokenVerifier: AccessTokenVerifier,
     private readonly users: UserManagementService,
   ) {}
 
@@ -34,17 +33,7 @@ export class UserManagementAccessGuard implements CanActivate {
     if (!token) throw new UnauthorizedException();
 
     try {
-      const claims = await this.jwt.verifyAsync<AuthClaims>(token, {
-        secret: this.config.getOrThrow<string>('auth.jwt.secret'),
-        issuer: this.config.getOrThrow<string>('auth.jwt.issuer'),
-        audience: this.config.getOrThrow<string>('auth.jwt.audience'),
-        algorithms: [
-          this.config.getOrThrow<'HS256' | 'HS384' | 'HS512'>(
-            'auth.jwt.algorithm',
-          ),
-        ],
-      });
-
+      const claims = await this.accessTokenVerifier.verifyAccessToken(token);
       const actor = await this.users.getByUuid(claims.sub);
       if (!actor.isAccessible()) throw new UnauthorizedException();
       request.user = claims;
