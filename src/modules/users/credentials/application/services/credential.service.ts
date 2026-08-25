@@ -1,16 +1,16 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { PasswordHasherService } from '../../../../auth/application/services/password-hasher.service.js';
-import { PasswordPolicy } from '../domain/policies/password.policy.js';
-import type { CredentialRepository } from '../domain/repositories/credential.repository.js';
-import { CREDENTIAL_REPOSITORY } from '../domain/repositories/credential.repository.js';
+import { PasswordPolicy } from '../../domain/policies/password.policy.js';
+import type { CredentialRepository } from '../../domain/repositories/credential.repository.js';
+import { CREDENTIAL_REPOSITORY } from '../../domain/repositories/credential.repository.js';
 import {
   CredentialAlreadyExistsError,
   CredentialNotFoundError,
   CurrentPasswordVerificationError,
   InvalidPasswordConfirmationError,
   InvalidPasswordError,
-} from '../domain/errors/credential.errors.js';
+} from '../../domain/errors/credential.errors.js';
 
 export interface ChangePasswordCommand {
   userUuid: string;
