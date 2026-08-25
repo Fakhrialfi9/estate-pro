@@ -19,7 +19,8 @@ describe('production configuration', () => {
       DATABASE_USER: 'app',
       DATABASE_PASSWORD: 'password',
       JWT_SECRET: 'production-only-secret-that-is-long-and-random-123456',
-      TWO_FACTOR_ENCRYPTION_KEY: 'production-two-factor-key-that-is-long-and-random-123456',
+      TWO_FACTOR_ENCRYPTION_KEY:
+        'production-two-factor-key-that-is-long-and-random-123456',
       SECURITY_CORS_ORIGINS: 'https://app.example.test',
       SECURITY_CSP_ENABLED: true,
       SECURITY_HSTS_ENABLED: true,

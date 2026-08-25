@@ -18,17 +18,18 @@ import type {
 
 const secret = 'unit-test-jwt-secret-012345678901234567890123456789';
 const config = {
-  getOrThrow: vi.fn((key: string) =>
-    ({
-      'auth.jwt.secret': secret,
-      'auth.jwt.issuer': 'estate-pro-api',
-      'auth.jwt.audience': 'estate-pro-client',
-      'auth.jwt.algorithm': 'HS256',
-      'auth.jwt.expiresIn': '60s',
-      'auth.login.lockoutThreshold': 5,
-      'auth.login.lockoutWindowMs': 900000,
-      'auth.login.lockoutDurationMs': 900000,
-    })[key],
+  getOrThrow: vi.fn(
+    (key: string) =>
+      ({
+        'auth.jwt.secret': secret,
+        'auth.jwt.issuer': 'estate-pro-api',
+        'auth.jwt.audience': 'estate-pro-client',
+        'auth.jwt.algorithm': 'HS256',
+        'auth.jwt.expiresIn': '60s',
+        'auth.login.lockoutThreshold': 5,
+        'auth.login.lockoutWindowMs': 900000,
+        'auth.login.lockoutDurationMs': 900000,
+      })[key],
   ),
 };
 
@@ -174,14 +175,20 @@ describe('authentication security steps 102-106', () => {
   it('103: rejects invalid password and unknown identity with the same application failure result', async () => {
     const invalid = makeLogin(false);
     await expect(
-      invalid.service.execute({ identifier: 'member@example.com', password: 'wrong' }),
+      invalid.service.execute({
+        identifier: 'member@example.com',
+        password: 'wrong',
+      }),
     ).resolves.toBeNull();
     expect(invalid.auditEvents.at(-1)?.action).toBe('AUTHENTICATION_FAILURE');
     const unknown = makeLogin(true);
     unknown.users.findByEmail = vi.fn().mockResolvedValue(null);
     unknown.users.findByUsername = vi.fn().mockResolvedValue(null);
     await expect(
-      unknown.service.execute({ identifier: 'missing@example.com', password: 'wrong' }),
+      unknown.service.execute({
+        identifier: 'missing@example.com',
+        password: 'wrong',
+      }),
     ).resolves.toBeNull();
     expect(unknown.auditEvents.at(-1)?.action).toBe('AUTHENTICATION_FAILURE');
     expect(unknown.hasher.hash).toHaveBeenCalledOnce();
@@ -190,19 +197,30 @@ describe('authentication security steps 102-106', () => {
   it('103: rejects disabled accounts before token issuance', async () => {
     const ctx = makeLogin(true, user({ status: 'inactive', isActive: false }));
     await expect(
-      ctx.service.execute({ identifier: 'member@example.com', password: 'CorrectPassword!' }),
+      ctx.service.execute({
+        identifier: 'member@example.com',
+        password: 'CorrectPassword!',
+      }),
     ).resolves.toBeNull();
   });
 
   it('106: locks after threshold and rejects locked attempts', async () => {
     const ctx = makeLogin(false);
     for (let i = 0; i < 5; i += 1) {
-      await ctx.service.execute({ identifier: 'member@example.com', password: 'wrong' });
+      await ctx.service.execute({
+        identifier: 'member@example.com',
+        password: 'wrong',
+      });
     }
     const before = ctx.hasherVerifyMock.mock.calls.length;
-    expect((await ctx.security.getState('u-1')).lockedUntil).toBeInstanceOf(Date);
+    expect((await ctx.security.getState('u-1')).lockedUntil).toBeInstanceOf(
+      Date,
+    );
     await expect(
-      ctx.service.execute({ identifier: 'member@example.com', password: 'CorrectPassword!' }),
+      ctx.service.execute({
+        identifier: 'member@example.com',
+        password: 'CorrectPassword!',
+      }),
     ).resolves.toBeNull();
     expect(ctx.hasherVerifyMock.mock.calls.length).toBe(before);
   });
@@ -215,22 +233,42 @@ describe('authentication security steps 102-106', () => {
 
 describe('jwt security steps 91-99 and 104-105', () => {
   it('issues minimal expiring claims and rejects malformed/tampered tokens', async () => {
-    const service = new JwtTokenService(new JwtService({ secret }), config as never);
+    const service = new JwtTokenService(
+      new JwtService({ secret }),
+      config as never,
+    );
     const token = await service.issueAccessToken('u-1', 's-1');
     const claims = await service.verifyAccessToken(token);
     expect(claims.sub).toBe('u-1');
     expect(claims.sid).toBe('s-1');
     expect(claims.exp).toBeGreaterThan(claims.iat);
-    await expect(service.verifyAccessToken('not-a-jwt')).rejects.toThrow('Invalid authentication token');
+    await expect(service.verifyAccessToken('not-a-jwt')).rejects.toThrow(
+      'Invalid authentication token',
+    );
     const parts = token.split('.');
-    parts[1] = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(parts[1], 'base64url').toString()), sub: 'u-2' })).toString('base64url');
-    await expect(service.verifyAccessToken(parts.join('.'))).rejects.toThrow('Invalid authentication token');
+    parts[1] = Buffer.from(
+      JSON.stringify({
+        ...JSON.parse(Buffer.from(parts[1], 'base64url').toString()),
+        sub: 'u-2',
+      }),
+    ).toString('base64url');
+    await expect(service.verifyAccessToken(parts.join('.'))).rejects.toThrow(
+      'Invalid authentication token',
+    );
   });
 
   it('rejects missing subject, invalid issuer and invalid audience', async () => {
     const jwt = new JwtService({ secret });
-    const base = { secret, algorithm: 'HS256' as const, expiresIn: '60s', issuer: 'estate-pro-api', audience: 'estate-pro-client' };
+    const base = {
+      secret,
+      algorithm: 'HS256' as const,
+      expiresIn: '60s',
+      issuer: 'estate-pro-api',
+      audience: 'estate-pro-client',
+    };
     const missingSub = await jwt.signAsync({ sid: 's-1' }, base);
-    await expect(new JwtTokenService(jwt, config as never).verifyAccessToken(missingSub)).rejects.toThrow();
+    await expect(
+      new JwtTokenService(jwt, config as never).verifyAccessToken(missingSub),
+    ).rejects.toThrow();
   });
 });

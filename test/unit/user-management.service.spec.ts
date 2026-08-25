@@ -38,7 +38,9 @@ const repo = () => {
   );
   const update = vi.fn(() => Promise.resolve(makeUser()));
   const softDelete = vi.fn(() => Promise.resolve(undefined));
-  const sessions = { revokeAllForSecurityEvent: vi.fn(() => Promise.resolve()) };
+  const sessions = {
+    revokeAllForSecurityEvent: vi.fn(() => Promise.resolve()),
+  };
   const audit = { record: vi.fn(() => Promise.resolve()) };
 
   const repository: UserRepository = {
