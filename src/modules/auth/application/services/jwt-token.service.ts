@@ -2,16 +2,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { SignOptions } from 'jsonwebtoken';
+import type { AccessTokenClaims } from '../../../../common/security/access-token-verifier.port.js';
 
-export interface AccessTokenClaims {
-  sub: string;
-  sid: string;
-  iat: number;
-  exp: number;
-  permissions?: string[];
-  iss?: string;
-  aud?: string | string[];
-}
+export type { AccessTokenClaims } from '../../../../common/security/access-token-verifier.port.js';
 
 type SupportedAlgorithm = 'HS256' | 'HS384' | 'HS512';
 type TokenPayload = AccessTokenClaims;
