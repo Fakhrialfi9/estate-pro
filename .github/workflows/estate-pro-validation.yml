@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
@@ -53,23 +53,13 @@ jobs:
         run: npm run prisma:generate
 
       - name: Provision test database schema
-        run: npx prisma db push --accept-data-loss
+        run: npx prisma db push
+
+      - name: Migration status
+        run: npm run prisma:status
 
       - name: Security baseline
         run: npm run test:security:baseline
-
-      - name: Format source
-        run: npm run format
-
-      - name: Commit formatting
-        run: |
-          if ! git diff --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add src test
-            git commit -m "style: format source with prettier"
-            git push origin HEAD:main
-          fi
 
       - name: Format check
         run: npm run format:check
