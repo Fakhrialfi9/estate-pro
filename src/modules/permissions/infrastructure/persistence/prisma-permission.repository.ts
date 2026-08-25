@@ -37,10 +37,14 @@ type PermissionDelegate = {
   create(args: {
     data: PermissionPersistenceData & { uuid: string; code: string };
   }): Promise<PermissionPersistenceRecord>;
-  findFirst(args: { where: PermissionWhere }): Promise<PermissionPersistenceRecord | null>;
+  findFirst(args: {
+    where: PermissionWhere;
+  }): Promise<PermissionPersistenceRecord | null>;
   findMany(args: {
     where: PermissionWhere;
-    orderBy: Record<PermissionSortField, 'asc' | 'desc'> | Record<string, 'asc' | 'desc'>;
+    orderBy:
+      | Record<PermissionSortField, 'asc' | 'desc'>
+      | Record<string, 'asc' | 'desc'>;
     skip: number;
     take: number;
   }): Promise<PermissionPersistenceRecord[]>;
@@ -49,7 +53,9 @@ type PermissionDelegate = {
     where: { uuid: string };
     data: PermissionPersistenceData;
   }): Promise<PermissionPersistenceRecord>;
-  delete(args: { where: { uuid: string } }): Promise<PermissionPersistenceRecord>;
+  delete(args: {
+    where: { uuid: string };
+  }): Promise<PermissionPersistenceRecord>;
 };
 
 type RelationDelegate = {
@@ -188,7 +194,10 @@ export class PrismaPermissionRepository implements PermissionRepository {
     };
   }
 
-  private buildFilter(field?: PermissionFilterField, value?: string): PermissionWhere {
+  private buildFilter(
+    field?: PermissionFilterField,
+    value?: string,
+  ): PermissionWhere {
     if (!field || value === undefined) return {};
     switch (field) {
       case 'module':

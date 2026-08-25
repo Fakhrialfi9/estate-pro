@@ -28,9 +28,13 @@ describe('PermissionEntity', () => {
 
     expect(permission.code).toBe('users:users:read');
     expect(permission.resource).toBe('users:users');
-    expect(buildPermissionCode(permission.module, permission.domain, permission.action)).toBe(
-      permission.code,
-    );
+    expect(
+      buildPermissionCode(
+        permission.module,
+        permission.domain,
+        permission.action,
+      ),
+    ).toBe(permission.code);
   });
 
   it('derives system protection from the stable identifier', () => {

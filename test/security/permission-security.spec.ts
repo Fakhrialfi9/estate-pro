@@ -21,7 +21,10 @@ describe('Permission authorization security', () => {
 
   it('denies protected permission management without elevated authorization', () => {
     expect(() =>
-      policy.canManage(actor(['permissions:manage']), 'permissions:manage:protected'),
+      policy.canManage(
+        actor(['permissions:manage']),
+        'permissions:manage:protected',
+      ),
     ).toThrow(SystemPermissionProtectedException);
   });
 

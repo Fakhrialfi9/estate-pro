@@ -43,8 +43,7 @@ export const buildPermissionCode = (
   module: string,
   domain: string,
   action: string,
-): string =>
-  [module, domain, action].map(normalizePermissionSegment).join(':');
+): string => [module, domain, action].map(normalizePermissionSegment).join(':');
 
 export const isProtectedPermissionCode = (code: string): boolean =>
   PROTECTED_PERMISSION_CODES.includes(
@@ -67,7 +66,11 @@ export class PermissionEntity {
     PermissionEntity.validateSnapshot(normalized);
     if (
       normalized.code !==
-      buildPermissionCode(normalized.module, normalized.domain, normalized.action)
+      buildPermissionCode(
+        normalized.module,
+        normalized.domain,
+        normalized.action,
+      )
     ) {
       throw new Error('Invalid permission identifier');
     }

@@ -230,7 +230,8 @@ export class PermissionService {
         updatedAt: new Date(),
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Invalid permission.';
+      const message =
+        error instanceof Error ? error.message : 'Invalid permission.';
       const code = message.includes('name')
         ? 'INVALID_PERMISSION_NAME'
         : message.includes('module') || message.includes('domain')
@@ -256,7 +257,9 @@ export class PermissionService {
     if (repositoryError.message === 'PermissionAlreadyExistsError') {
       throw new PermissionAlreadyExistsException();
     }
-    if (repositoryError.message === 'PermissionResourceActionAlreadyExistsError') {
+    if (
+      repositoryError.message === 'PermissionResourceActionAlreadyExistsError'
+    ) {
       throw new PermissionResourceActionAlreadyExistsException();
     }
     if (repositoryError.message === 'PermissionNotFoundError') {
@@ -287,7 +290,9 @@ export class PermissionService {
       userUuid: actor.userUuid,
       entityType: 'AuthorizationPermission',
       entityUuid: permission.uuid,
-      changes: [{ field: 'reason', oldValue: null, newValue: 'PERMISSION_IN_USE' }],
+      changes: [
+        { field: 'reason', oldValue: null, newValue: 'PERMISSION_IN_USE' },
+      ],
       ...context,
     });
   }

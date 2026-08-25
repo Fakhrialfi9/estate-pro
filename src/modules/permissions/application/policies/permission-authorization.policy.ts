@@ -34,9 +34,7 @@ export class PermissionAuthorizationPolicy {
   }
 
   canManageProtected(actor: PermissionActor): void {
-    if (
-      !actor.permissions.includes(PERMISSION_PROTECTED_MANAGE_PERMISSION)
-    ) {
+    if (!actor.permissions.includes(PERMISSION_PROTECTED_MANAGE_PERMISSION)) {
       throw new SystemPermissionProtectedException();
     }
   }

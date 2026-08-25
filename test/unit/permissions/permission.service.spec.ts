@@ -1,6 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { PermissionService } from '../../../src/modules/permissions/application/services/permission.service.js';
-import { PermissionAuthorizationPolicy, type PermissionActor } from '../../../src/modules/permissions/application/policies/permission-authorization.policy.js';
+import {
+  PermissionAuthorizationPolicy,
+  type PermissionActor,
+} from '../../../src/modules/permissions/application/policies/permission-authorization.policy.js';
 import { PermissionEntity } from '../../../src/modules/permissions/domain/entities/permission.entity.js';
 import {
   PermissionAlreadyExistsException,
@@ -37,7 +40,9 @@ describe('PermissionService', () => {
     findByUuid: vi.fn().mockResolvedValue(permission()),
     findByCode: vi.fn().mockResolvedValue(null),
     findByResourceAction: vi.fn().mockResolvedValue(null),
-    list: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 }),
+    list: vi
+      .fn()
+      .mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 }),
     update: vi.fn().mockResolvedValue(permission({ name: 'Users Read' })),
     delete: vi.fn().mockResolvedValue(undefined),
     getDependencyCount: vi.fn().mockResolvedValue({ roleAssignments: 0 }),
@@ -87,52 +92,72 @@ describe('PermissionService', () => {
 
   it('rejects regular users from permission management', async () => {
     await expect(
-      service.create(actor([]), {
-        name: 'Read Users',
-        module: 'users',
-        domain: 'users',
-        action: 'read',
-      }, {}),
+      service.create(
+        actor([]),
+        {
+          name: 'Read Users',
+          module: 'users',
+          domain: 'users',
+          action: 'read',
+        },
+        {},
+      ),
     ).rejects.toThrow('FORBIDDEN_PERMISSION_OPERATION');
 
-    await expect(service.update(actor([]), permission().uuid, { name: 'x' }, {}))
-      .rejects.toThrow('FORBIDDEN_PERMISSION_OPERATION');
-    await expect(service.delete(actor([]), permission().uuid, {}))
-      .rejects.toThrow('FORBIDDEN_PERMISSION_OPERATION');
+    await expect(
+      service.update(actor([]), permission().uuid, { name: 'x' }, {}),
+    ).rejects.toThrow('FORBIDDEN_PERMISSION_OPERATION');
+    await expect(
+      service.delete(actor([]), permission().uuid, {}),
+    ).rejects.toThrow('FORBIDDEN_PERMISSION_OPERATION');
   });
 
   it('rejects duplicate semantic identities before persistence', async () => {
     repository.findByResourceAction.mockResolvedValueOnce(permission());
     await expect(
-      service.create(actor(['permissions:manage']), {
-        name: 'Read Users',
-        module: 'users',
-        domain: 'users',
-        action: 'read',
-      }, {}),
+      service.create(
+        actor(['permissions:manage']),
+        {
+          name: 'Read Users',
+          module: 'users',
+          domain: 'users',
+          action: 'read',
+        },
+        {},
+      ),
     ).rejects.toBeInstanceOf(PermissionResourceActionAlreadyExistsException);
 
     repository.findByResourceAction.mockResolvedValue(null);
     repository.findByCode.mockResolvedValueOnce(permission());
     await expect(
-      service.create(actor(['permissions:manage']), {
-        name: 'Read Users',
-        module: 'users',
-        domain: 'users',
-        action: 'read',
-      }, {}),
+      service.create(
+        actor(['permissions:manage']),
+        {
+          name: 'Read Users',
+          module: 'users',
+          domain: 'users',
+          action: 'read',
+        },
+        {},
+      ),
     ).rejects.toBeInstanceOf(PermissionAlreadyExistsException);
   });
 
   it('maps a concurrent database unique violation to a business error', async () => {
-    repository.create.mockRejectedValueOnce(new Error('PermissionAlreadyExistsError'));
+    repository.create.mockRejectedValueOnce(
+      new Error('PermissionAlreadyExistsError'),
+    );
     await expect(
-      service.create(actor(['permissions:manage']), {
-        name: 'Read Users',
-        module: 'users',
-        domain: 'users',
-        action: 'read',
-      }, {}),
+      service.create(
+        actor(['permissions:manage']),
+        {
+          name: 'Read Users',
+          module: 'users',
+          domain: 'users',
+          action: 'read',
+        },
+        {},
+      ),
     ).rejects.toBeInstanceOf(PermissionAlreadyExistsException);
   });
 
@@ -187,7 +212,12 @@ describe('PermissionService', () => {
     );
 
     await expect(
-      service.update(actor(['permissions:manage']), permission().uuid, { name: 'x' }, {}),
+      service.update(
+        actor(['permissions:manage']),
+        permission().uuid,
+        { name: 'x' },
+        {},
+      ),
     ).rejects.toBeInstanceOf(SystemPermissionProtectedException);
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'SYSTEM_PERMISSION_UPDATE_ATTEMPTED' }),
@@ -214,8 +244,8 @@ describe('PermissionService', () => {
   });
 
   it('rejects invalid identifiers rather than leaking persistence details', async () => {
-    await expect(service.get(actor(['permissions:read']), 'not-a-uuid')).rejects.toThrow(
-      'INVALID_PERMISSION_IDENTIFIER',
-    );
+    await expect(
+      service.get(actor(['permissions:read']), 'not-a-uuid'),
+    ).rejects.toThrow('INVALID_PERMISSION_IDENTIFIER');
   });
 });

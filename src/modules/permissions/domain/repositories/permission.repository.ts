@@ -3,11 +3,7 @@ import type {
   PermissionUpdate,
 } from '../entities/permission.entity.js';
 
-export type PermissionFilterField =
-  | 'module'
-  | 'domain'
-  | 'action'
-  | 'isSystem';
+export type PermissionFilterField = 'module' | 'domain' | 'action' | 'isSystem';
 export type PermissionSortField =
   | 'name'
   | 'code'
