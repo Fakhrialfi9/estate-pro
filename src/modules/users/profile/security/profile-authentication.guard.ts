@@ -1,10 +1,15 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
-import { JwtTokenService } from '../../../auth/application/services/jwt-token.service.js';
-import type { AccessTokenClaims } from '../../../auth/application/services/jwt-token.service.js';
-import type { AuthenticationSessionRepository } from '../../../auth/domain/repositories/authentication-session.repository.js';
-import { AUTHENTICATION_SESSION_REPOSITORY } from '../../../auth/domain/repositories/authentication-session.repository.js';
+import {
+  ACCESS_TOKEN_VERIFIER,
+  type AccessTokenClaims,
+  type AccessTokenVerifier,
+} from '../../../../../common/security/access-token-verifier.port.js';
+import {
+  AUTHENTICATION_SESSION_PORT,
+  type AuthenticationSessionPort,
+} from '../../../../../common/security/authentication-session.port.js';
 import { USER_IDENTITY_READER } from '../application/types/user-identity-reader.js';
 import type { UserIdentityReader } from '../application/types/user-identity-reader.js';
 
@@ -13,9 +18,10 @@ export type AuthenticatedRequest = Request & { user?: AccessTokenClaims };
 @Injectable()
 export class ProfileAuthenticationGuard implements CanActivate {
   constructor(
-    private readonly jwt: JwtTokenService,
-    @Inject(AUTHENTICATION_SESSION_REPOSITORY)
-    private readonly sessions: AuthenticationSessionRepository,
+    @Inject(ACCESS_TOKEN_VERIFIER)
+    private readonly jwt: AccessTokenVerifier,
+    @Inject(AUTHENTICATION_SESSION_PORT)
+    private readonly sessions: AuthenticationSessionPort,
     @Inject(USER_IDENTITY_READER) private readonly users: UserIdentityReader,
   ) {}
 
