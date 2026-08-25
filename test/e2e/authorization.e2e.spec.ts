@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Test } from '@nestjs/testing';
-import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
 import { AppModule } from '../../src/app.module.js';
@@ -15,7 +15,14 @@ const PERMISSION_MANAGE = 'permissions:manage';
 const PERMISSION_READ = 'permissions:read';
 
 type LoginResult = { accessToken: string };
-let app: INestApplication;
+type RoleSummary = { uuid: string };
+type RoleListResponse = { items: RoleSummary[] };
+type RoleAssignmentResponse = {
+  user: { uuid: string };
+  role: { uuid: string };
+};
+
+let app: NestExpressApplication;
 let prisma: PrismaService;
 let hasher: PasswordHasherService;
 let adminUuid = '';
@@ -26,6 +33,8 @@ let roleId = 0n;
 let rolePermissionId = 0n;
 
 const httpRequest = () => request(app.getHttpServer());
+const bodyOf = <T>(response: request.Response): T =>
+  response.body as unknown as T;
 
 async function createUser(
   email: string,
@@ -54,7 +63,7 @@ async function login(uuid: string): Promise<string> {
     .post('/api/v1/auth/login')
     .send({ identifier: user.email, password: PASSWORD })
     .expect(201);
-  return (response.body as LoginResult).accessToken;
+  return bodyOf<LoginResult>(response).accessToken;
 }
 
 async function cleanup(): Promise<void> {
@@ -78,8 +87,8 @@ describe('Authorization and RBAC E2E', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
-    app = moduleRef.createNestApplication();
-    configureApplication(app as Parameters<typeof configureApplication>[0]);
+    app = moduleRef.createNestApplication<NestExpressApplication>();
+    configureApplication(app);
     await app.init();
     prisma = app.get(PrismaService);
     hasher = app.get(PasswordHasherService);
@@ -181,23 +190,25 @@ describe('Authorization and RBAC E2E', () => {
       .get('/api/v1/roles')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    expect(
-      list.body.items.some((item: { uuid: string }) => item.uuid === roleUuid),
-    ).toBe(true);
+    const listBody = bodyOf<RoleListResponse>(list);
+    expect(listBody.items.some((item) => item.uuid === roleUuid)).toBe(true);
 
     const assignment = await httpRequest()
       .post(`/api/v1/users/${targetUuid}/roles`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ roleUuid })
       .expect(201);
-    expect(assignment.body.user.uuid).toBe(targetUuid);
-    expect(assignment.body.role.uuid).toBe(roleUuid);
+    const assignmentBody = bodyOf<RoleAssignmentResponse>(assignment);
+    expect(assignmentBody.user.uuid).toBe(targetUuid);
+    expect(assignmentBody.role.uuid).toBe(roleUuid);
 
     const targetRoles = await httpRequest()
       .get(`/api/v1/users/${targetUuid}/roles`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    expect(JSON.stringify(targetRoles.body)).toContain(roleUuid);
+    expect(JSON.stringify(bodyOf<Record<string, unknown>>(targetRoles))).toContain(
+      roleUuid,
+    );
 
     await httpRequest()
       .delete(`/api/v1/users/${targetUuid}/roles/${roleUuid}`)
@@ -207,7 +218,9 @@ describe('Authorization and RBAC E2E', () => {
       .get(`/api/v1/users/${targetUuid}/roles`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    expect(JSON.stringify(rolesAfterRemoval.body)).not.toContain(roleUuid);
+    expect(
+      JSON.stringify(bodyOf<Record<string, unknown>>(rolesAfterRemoval)),
+    ).not.toContain(roleUuid);
   });
 
   it('covers role CRUD and permission CRUD through the real authorization boundary', async () => {
@@ -221,7 +234,7 @@ describe('Authorization and RBAC E2E', () => {
         description: 'e2e',
       })
       .expect(201);
-    const createdRoleUuid = role.body.uuid as string;
+    const createdRoleUuid = bodyOf<{ uuid: string }>(role).uuid;
     expect(createdRoleUuid).toMatch(/^[0-9a-f-]{36}$/i);
     await httpRequest()
       .get(`/api/v1/roles/${createdRoleUuid}`)
@@ -248,7 +261,7 @@ describe('Authorization and RBAC E2E', () => {
         action: 'read',
       })
       .expect(201);
-    const permissionUuid = createdPermission.body.uuid as string;
+    const permissionUuid = bodyOf<{ uuid: string }>(createdPermission).uuid;
     expect(permissionUuid).toMatch(/^[0-9a-f-]{36}$/i);
     await httpRequest()
       .get(`/api/v1/permissions/${permissionUuid}`)
@@ -269,7 +282,9 @@ describe('Authorization and RBAC E2E', () => {
       .get(`/api/v1/roles/${roleUuid}/permissions`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    expect(JSON.stringify(rolePermissions.body)).toContain(permissionUuid);
+    expect(
+      JSON.stringify(bodyOf<Record<string, unknown>>(rolePermissions)),
+    ).toContain(permissionUuid);
 
     await httpRequest()
       .delete(`/api/v1/roles/${roleUuid}/permissions/${permissionUuid}`)
