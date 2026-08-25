@@ -8,6 +8,7 @@ import { CredentialService } from '../../src/modules/users/credentials/applicati
 import { randomUUID } from 'node:crypto';
 
 const PASSWORD = 'Strong-Test-Password-123!';
+const credential = { password: PASSWORD, confirmation: PASSWORD };
 let moduleRef: TestingModule;
 let prisma: PrismaService;
 let users: UserManagementService;
@@ -53,6 +54,7 @@ describe('Real database integration', () => {
   it('persists through application -> repository -> Prisma -> MariaDB and leaves auditable state', async () => {
     const created = await users.create(
       { email: `integration-${randomUUID()}@example.com`, status: 'active' },
+      credential,
       { requestId: 'integration-user-create' },
     );
 
@@ -67,17 +69,15 @@ describe('Real database integration', () => {
       }),
     ).toBe(1);
 
-    await credentials.create({
-      userUuid: created.uuid,
-      password: PASSWORD,
-      confirmation: PASSWORD,
-    });
-    const credential = await prisma.authenticationUserCredential.findUnique({
-      where: { userId: persisted!.id },
-    });
-    expect(credential?.passwordHash).toEqual(expect.any(String));
-    expect(credential?.passwordHash).not.toBe(PASSWORD);
-    expect(await hasher.verify(credential!.passwordHash, PASSWORD)).toBe(true);
+    const storedCredential =
+      await prisma.authenticationUserCredential.findUnique({
+        where: { userId: persisted!.id },
+      });
+    expect(storedCredential?.passwordHash).toEqual(expect.any(String));
+    expect(storedCredential?.passwordHash).not.toBe(PASSWORD);
+    expect(await hasher.verify(storedCredential!.passwordHash, PASSWORD)).toBe(
+      true,
+    );
   });
 
   it('executes a real Prisma transaction and rolls back all writes on failure', async () => {
@@ -101,12 +101,14 @@ describe('Real database integration', () => {
   });
 
   it('keeps database isolation deterministic across test records', async () => {
-    const first = await users.create({
-      email: `isolation-a-${randomUUID()}@example.com`,
-    });
-    const second = await users.create({
-      email: `isolation-b-${randomUUID()}@example.com`,
-    });
+    const first = await users.create(
+      { email: `isolation-a-${randomUUID()}@example.com` },
+      credential,
+    );
+    const second = await users.create(
+      { email: `isolation-b-${randomUUID()}@example.com` },
+      credential,
+    );
     expect(first.uuid).not.toBe(second.uuid);
     expect(
       await prisma.authenticationUser.count({
