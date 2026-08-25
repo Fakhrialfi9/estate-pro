@@ -1,3 +1,4 @@
+import { ForbiddenApplicationException } from '../../../../common/exceptions/forbidden-application.exception.js';
 import { ApplicationException } from '../../../../common/exceptions/application.exception.js';
 
 export class RoleNotFoundException extends ApplicationException {
@@ -23,7 +24,7 @@ export class RoleInUseException extends ApplicationException {
     super('ROLE_IN_USE', 'Role is still referenced and cannot be deleted.');
   }
 }
-export class SystemRoleProtectedException extends ApplicationException {
+export class SystemRoleProtectedException extends ForbiddenApplicationException {
   constructor() {
     super('SYSTEM_ROLE_PROTECTED', 'System role is protected.');
   }
@@ -46,7 +47,7 @@ export class UnauthorizedRoleOperationException extends ApplicationException {
     );
   }
 }
-export class ForbiddenRoleOperationException extends ApplicationException {
+export class ForbiddenRoleOperationException extends ForbiddenApplicationException {
   constructor() {
     super(
       'FORBIDDEN_ROLE_OPERATION',
