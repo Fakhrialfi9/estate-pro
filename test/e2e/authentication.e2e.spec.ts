@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { Test } from '@nestjs/testing';
-import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Response as SuperTestResponse } from 'supertest';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
@@ -19,7 +19,20 @@ type LoginResponse = {
   expiresIn: number;
 };
 
-let app: INestApplication;
+type MeResponse = {
+  uuid: string;
+  passwordHash?: string;
+};
+
+type SessionsResponse = {
+  data: Array<{ id: string }>;
+};
+
+type ErrorResponse = {
+  message: string;
+};
+
+let app: NestExpressApplication;
 let prisma: PrismaService;
 let hasher: PasswordHasherService;
 let jwt: JwtService;
@@ -27,7 +40,8 @@ let config: ConfigService;
 let userUuid: string;
 
 const httpRequest = () => request(app.getHttpServer());
-const bodyOf = <T>(response: SuperTestResponse): T => response.body as T;
+const bodyOf = <T>(response: SuperTestResponse): T =>
+  response.body as unknown as T;
 
 async function createActiveUser(
   email = `auth-${randomUUID()}@example.com`,
@@ -67,8 +81,8 @@ describe('Authentication E2E', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
-    app = moduleRef.createNestApplication();
-    configureApplication(app as Parameters<typeof configureApplication>[0]);
+    app = moduleRef.createNestApplication<NestExpressApplication>();
+    configureApplication(app);
     await app.init();
     prisma = app.get(PrismaService);
     hasher = app.get(PasswordHasherService);
@@ -106,15 +120,17 @@ describe('Authentication E2E', () => {
       .get('/api/v1/auth/me')
       .set('Authorization', `Bearer ${result.accessToken}`)
       .expect(200);
-    expect(me.body.uuid).toBe(userUuid);
-    expect(me.body.passwordHash).toBeUndefined();
+    const meBody = bodyOf<MeResponse>(me);
+    expect(meBody.uuid).toBe(userUuid);
+    expect(meBody.passwordHash).toBeUndefined();
 
     const sessions = await httpRequest()
       .get('/api/v1/auth/sessions')
       .set('Authorization', `Bearer ${result.accessToken}`)
       .expect(200);
-    expect(Array.isArray(sessions.body.data)).toBe(true);
-    expect(sessions.body.data).toHaveLength(1);
+    const sessionsBody = bodyOf<SessionsResponse>(sessions);
+    expect(Array.isArray(sessionsBody.data)).toBe(true);
+    expect(sessionsBody.data).toHaveLength(1);
 
     await httpRequest()
       .post('/api/v1/auth/logout')
@@ -153,7 +169,8 @@ describe('Authentication E2E', () => {
         password: 'Wrong-Password-123!',
       })
       .expect(401);
-    expect(unknown.body.message).toBe('Invalid credentials');
+    const unknownBody = bodyOf<ErrorResponse>(unknown);
+    expect(unknownBody.message).toBe('Invalid credentials');
     expect(
       await prisma.auditLog.count({ where: { action: 'LOGIN_FAILURE' } }),
     ).toBe(2);
@@ -194,7 +211,8 @@ describe('Authentication E2E', () => {
       .get('/api/v1/auth/sessions')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
-    const sessionId = sessions.body.data[0]?.id as string;
+    const sessionsBody = bodyOf<SessionsResponse>(sessions);
+    const sessionId = sessionsBody.data[0]?.id;
     expect(sessionId).toMatch(/^\d+$/);
 
     await httpRequest()
