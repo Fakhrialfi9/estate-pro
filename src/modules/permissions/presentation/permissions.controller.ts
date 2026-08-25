@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../../auth/auth.module.js';
+import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import {
   PERMISSION_MANAGE_PERMISSION,
   PERMISSION_READ_PERMISSION,
