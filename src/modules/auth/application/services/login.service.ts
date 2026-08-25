@@ -1,9 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { UserRepository } from '../../../users/domain/repositories/user.repository.js';
-import { USER_REPOSITORY } from '../../../users/domain/repositories/user.repository.js';
-import type { CredentialRepository } from '../../../users/credentials/domain/repositories/credential.repository.js';
-import { CREDENTIAL_REPOSITORY } from '../../../users/credentials/domain/repositories/credential.repository.js';
+import type {
+  CredentialRepository,
+  UserRepository,
+} from '../../../users/users.module.js';
+import {
+  CREDENTIAL_REPOSITORY,
+  USER_REPOSITORY,
+} from '../../../users/users.module.js';
 import { PasswordHasherService } from './password-hasher.service.js';
 import { JwtTokenService } from './jwt-token.service.js';
 import { SessionService } from './session.service.js';
