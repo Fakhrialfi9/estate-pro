@@ -23,6 +23,10 @@ import {
       useClass: PrismaPermissionRepository,
     },
   ],
-  exports: [PermissionService, PERMISSION_REPOSITORY],
+  exports: [
+    PermissionService,
+    PermissionAuthorizationPolicy,
+    PERMISSION_REPOSITORY,
+  ],
 })
 export class PermissionsModule {}
