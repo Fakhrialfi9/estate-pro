@@ -1,10 +1,10 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtTokenService } from '../application/services/jwt-token.service.js';
 import type { AccessTokenClaims } from '../application/services/jwt-token.service.js';
-import type { AuthenticationSessionRepository } from '../domain/repositories/authentication-session.repository.js';
-import { AUTHENTICATION_SESSION_REPOSITORY } from '../domain/repositories/authentication-session.repository.js';
+import { SessionService } from '../application/services/session.service.js';
 
 export type AuthenticatedRequest = Request & { user?: AccessTokenClaims };
 
@@ -12,8 +12,7 @@ export type AuthenticatedRequest = Request & { user?: AccessTokenClaims };
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwt: JwtTokenService,
-    @Inject(AUTHENTICATION_SESSION_REPOSITORY)
-    private readonly sessions: AuthenticationSessionRepository,
+    private readonly sessions: SessionService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -25,13 +24,8 @@ export class JwtAuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException();
 
     const claims = await this.jwt.verifyAccessToken(token);
-    const active = await this.sessions.isActive(
-      claims.sub,
-      claims.sid,
-      new Date(),
-    );
-    if (!active)
-      throw new UnauthorizedException('Invalid authentication token');
+    const active = await this.sessions.isActive(claims.sub, claims.sid, new Date());
+    if (!active) throw new UnauthorizedException('Invalid authentication token');
 
     request.user = claims;
     return true;

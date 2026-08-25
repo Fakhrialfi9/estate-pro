@@ -8,9 +8,11 @@ export interface AccessTokenClaims {
   sid: string;
   iat: number;
   exp: number;
+  permissions?: string[];
   iss?: string;
   aud?: string | string[];
 }
+
 type SupportedAlgorithm = 'HS256' | 'HS384' | 'HS512';
 
 @Injectable()
@@ -35,8 +37,9 @@ export class JwtTokenService {
         audience: this.getAudience(),
         algorithms: [this.getAlgorithm()],
       });
-      if (!claims.sub || !claims.sid || !claims.iat || !claims.exp)
+      if (!claims.sub || !claims.sid || !claims.iat || !claims.exp) {
         throw new UnauthorizedException();
+      }
       return claims;
     } catch {
       throw new UnauthorizedException('Invalid authentication token');
@@ -49,8 +52,9 @@ export class JwtTokenService {
       !payload ||
       typeof payload !== 'object' ||
       typeof payload.exp !== 'number'
-    )
+    ) {
       throw new UnauthorizedException('Invalid authentication token');
+    }
     return new Date(payload.exp * 1000);
   }
 
@@ -64,19 +68,24 @@ export class JwtTokenService {
       algorithm: this.getAlgorithm(),
     };
   }
+
   private getSecret(): string {
     return this.config.getOrThrow<string>('auth.jwt.secret');
   }
+
   private getIssuer(): string {
     return this.config.getOrThrow<string>('auth.jwt.issuer');
   }
+
   private getAudience(): string {
     return this.config.getOrThrow<string>('auth.jwt.audience');
   }
+
   private getAlgorithm(): SupportedAlgorithm {
     const algorithm = this.config.getOrThrow<string>('auth.jwt.algorithm');
-    if (algorithm !== 'HS256' && algorithm !== 'HS384' && algorithm !== 'HS512')
+    if (algorithm !== 'HS256' && algorithm !== 'HS384' && algorithm !== 'HS512') {
       throw new Error('Unsupported JWT algorithm');
+    }
     return algorithm;
   }
 }

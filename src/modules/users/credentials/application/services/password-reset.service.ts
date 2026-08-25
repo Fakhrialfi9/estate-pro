@@ -1,5 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { SessionSecurityPort } from '../../../../common/security/session-security.port.js';
+import { SESSION_SECURITY_PORT } from '../../../../common/security/session-security.port.js';
 import { PasswordHasherService } from '../../../../auth/application/services/password-hasher.service.js';
 import type { UserRepository } from '../../../domain/repositories/user.repository.js';
 import { USER_REPOSITORY } from '../../../domain/repositories/user.repository.js';
@@ -30,6 +32,8 @@ export class PasswordResetService {
     private readonly users: UserRepository,
     @Inject(CREDENTIAL_REPOSITORY)
     private readonly credentials: CredentialRepository,
+    @Inject(SESSION_SECURITY_PORT)
+    private readonly sessions: SessionSecurityPort,
     private readonly config: ConfigService,
     private readonly hasher: PasswordHasherService,
     @Inject(PASSWORD_RESET_DELIVERY)
@@ -99,5 +103,6 @@ export class PasswordResetService {
     if (!userUuid) {
       throw new Error('Password reset token is invalid or expired');
     }
+    await this.sessions.revokeAllForSecurityEvent(userUuid, 'PASSWORD_RESET');
   }
 }

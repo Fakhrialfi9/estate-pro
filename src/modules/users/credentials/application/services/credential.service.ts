@@ -1,5 +1,6 @@
-import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
+import type { SessionSecurityPort } from '../../../../common/security/session-security.port.js';
+import { SESSION_SECURITY_PORT } from '../../../../common/security/session-security.port.js';
 import { PasswordHasherService } from '../../../../auth/application/services/password-hasher.service.js';
 import { PasswordPolicy } from '../../domain/policies/password.policy.js';
 import type { CredentialRepository } from '../../domain/repositories/credential.repository.js';
@@ -11,12 +12,16 @@ import {
   InvalidPasswordConfirmationError,
   InvalidPasswordError,
 } from '../../domain/errors/credential.errors.js';
+import { createHash, randomBytes } from 'node:crypto';
 
 export interface ChangePasswordCommand {
   userUuid: string;
   currentPassword: string;
   newPassword: string;
   confirmation: string;
+  ipAddress?: string;
+  userAgent?: string;
+  requestId?: string;
 }
 
 export interface CreateCredentialCommand {
@@ -32,6 +37,8 @@ export class CredentialService {
   constructor(
     @Inject(CREDENTIAL_REPOSITORY)
     private readonly credentials: CredentialRepository,
+    @Inject(SESSION_SECURITY_PORT)
+    private readonly sessions: SessionSecurityPort,
     private readonly hasher: PasswordHasherService,
   ) {}
 
@@ -57,6 +64,11 @@ export class CredentialService {
     this.assertPassword(command.newPassword, command.confirmation);
     const hash = await this.hasher.hash(command.newPassword);
     await this.credentials.updatePassword(command.userUuid, hash, new Date());
+    await this.sessions.revokeAllForSecurityEvent(command.userUuid, 'PASSWORD_CHANGE', {
+      ipAddress: command.ipAddress,
+      userAgent: command.userAgent,
+      requestId: command.requestId,
+    });
   }
 
   static generateResetToken(): string {
