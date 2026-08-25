@@ -30,14 +30,18 @@ import {
 interface AuthenticatedRequest extends Request {
   user: AccessTokenClaims;
 }
+
 const requestContext = (request: Request) => ({
-  ipAddress: request.ip,
-  userAgent: request.get('user-agent') ?? undefined,
-  requestId: request.get('x-request-id') ?? undefined,
+  ...(request.ip !== undefined ? { ipAddress: request.ip } : {}),
+  ...(request.get('user-agent') !== undefined
+    ? { userAgent: request.get('user-agent') }
+    : {}),
+  ...(request.get('x-request-id') !== undefined
+    ? { requestId: request.get('x-request-id') }
+    : {}),
 });
 
 @Controller('auth/2fa')
-@Header('Cache-Control', 'no-store')
 export class TwoFactorController {
   constructor(
     private readonly twoFactor: TwoFactorService,
@@ -45,12 +49,14 @@ export class TwoFactorController {
   ) {}
 
   @Get()
+  @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
   async status(@Req() request: AuthenticatedRequest) {
     return { enabled: await this.twoFactor.isEnabled(request.user.sub) };
   }
 
   @Post('enrollment')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: TWO_FACTOR_ENROLLMENT_RATE_LIMIT })
   async enrollment(@Req() request: AuthenticatedRequest) {
@@ -61,6 +67,7 @@ export class TwoFactorController {
   }
 
   @Post('enrollment/verify')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: TWO_FACTOR_ENROLLMENT_RATE_LIMIT })
   async verifyEnrollment(
@@ -75,12 +82,15 @@ export class TwoFactorController {
   }
 
   @Post('verify')
+  @Header('Cache-Control', 'no-store')
   @Throttle({ default: TWO_FACTOR_VERIFICATION_RATE_LIMIT })
   async verify(@Body() dto: TwoFactorVerifyDto, @Req() request: Request) {
     const result = await this.login.executeMfa({
       challengeToken: dto.challengeToken,
-      code: dto.code,
-      recoveryCode: dto.recoveryCode,
+      ...(dto.code !== undefined ? { code: dto.code } : {}),
+      ...(dto.recoveryCode !== undefined
+        ? { recoveryCode: dto.recoveryCode }
+        : {}),
       ...requestContext(request),
     });
     if (!result) throw new UnauthorizedException('Authentication failed');
@@ -88,6 +98,7 @@ export class TwoFactorController {
   }
 
   @Post('recovery-codes/regenerate')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: TWO_FACTOR_RECOVERY_REGENERATION_RATE_LIMIT })
   async regenerateRecoveryCodes(
@@ -103,6 +114,7 @@ export class TwoFactorController {
   }
 
   @Post('disable')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: TWO_FACTOR_REAUTH_RATE_LIMIT })
   async disable(
