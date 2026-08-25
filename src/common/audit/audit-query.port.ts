@@ -1,4 +1,7 @@
-import type { AuditResult, SecurityAuditChange } from './security-audit.port.js';
+import type {
+  AuditResult,
+  SecurityAuditChange,
+} from './security-audit.port.js';
 
 export interface AuditLogQuery {
   page: number;

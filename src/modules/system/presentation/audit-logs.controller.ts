@@ -1,4 +1,12 @@
-import { BadRequestException, Controller, Get, Inject, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Inject,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/auth.module.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -25,11 +33,16 @@ export class AuditLogsController {
 
   @RequirePermissions(AUDIT_READ_PERMISSION)
   @Get()
-  async list(@Req() request: AuditRequest, @Query() query: AuditLogQueryDto): Promise<unknown> {
-    if (!request.user?.sub) throw new BadRequestException('Authenticated actor missing');
+  async list(
+    @Req() request: AuditRequest,
+    @Query() query: AuditLogQueryDto,
+  ): Promise<unknown> {
+    if (!request.user?.sub)
+      throw new BadRequestException('Authenticated actor missing');
     const from = query.from ? new Date(query.from) : undefined;
     const to = query.to ? new Date(query.to) : undefined;
-    if (from && to && from.getTime() > to.getTime()) throw new BadRequestException('Audit log date range is invalid');
+    if (from && to && from.getTime() > to.getTime())
+      throw new BadRequestException('Audit log date range is invalid');
     const result = await this.auditQuery.list({
       page: query.page,
       limit: query.limit,
@@ -47,8 +60,12 @@ export class AuditLogsController {
       entityType: 'AuditLog',
       result: 'SUCCESS',
       ...(request.ip !== undefined ? { ipAddress: request.ip } : {}),
-      ...(request.get('user-agent') !== undefined ? { userAgent: request.get('user-agent') } : {}),
-      ...(request.get('x-request-id') !== undefined ? { requestId: request.get('x-request-id') } : {}),
+      ...(request.get('user-agent') !== undefined
+        ? { userAgent: request.get('user-agent') }
+        : {}),
+      ...(request.get('x-request-id') !== undefined
+        ? { requestId: request.get('x-request-id') }
+        : {}),
     });
     return {
       items: result.items,

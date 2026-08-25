@@ -21,7 +21,11 @@ import { AuditLogService } from './application/audit-log.service.js';
     { provide: SECURITY_AUDIT_REPOSITORY, useExisting: AuditLogService },
     { provide: AUDIT_QUERY_REPOSITORY, useExisting: AuditLogService },
   ],
-  exports: [AUDIT_LOG_REPOSITORY, SECURITY_AUDIT_REPOSITORY, AUDIT_QUERY_REPOSITORY],
+  exports: [
+    AUDIT_LOG_REPOSITORY,
+    SECURITY_AUDIT_REPOSITORY,
+    AUDIT_QUERY_REPOSITORY,
+  ],
 })
 export class AuditModule {}
 
