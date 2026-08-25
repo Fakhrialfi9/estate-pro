@@ -68,9 +68,7 @@ function createHarness() {
   const recovery = {
     findUnused: vi.fn(() =>
       Promise.resolve(
-        recoveryUsed
-          ? []
-          : [{ id: 1n, codeHash: `hash:${RECOVERY_CODE}` }],
+        recoveryUsed ? [] : [{ id: 1n, codeHash: `hash:${RECOVERY_CODE}` }],
       ),
     ),
     markUsed: vi.fn(() => {
@@ -89,7 +87,7 @@ function createHarness() {
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 300,
       }),
-  ) ,
+    ),
   };
   const hasher = {
     hash: vi.fn((value: string) => Promise.resolve(`hash:${value}`)),

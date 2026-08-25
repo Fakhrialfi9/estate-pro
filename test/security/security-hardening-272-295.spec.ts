@@ -298,14 +298,12 @@ describe('STEPS 280–282', () => {
   it('281 rejects revoked sessions at the authentication boundary', async () => {
     const guard = new JwtAuthGuard(
       {
-        verifyAccessToken: vi
-          .fn()
-          .mockResolvedValue({
-            sub: UUID_A,
-            sid: 'revoked',
-            iat: 1,
-            exp: Math.floor(Date.now() / 1000) + 60,
-          }),
+        verifyAccessToken: vi.fn().mockResolvedValue({
+          sub: UUID_A,
+          sid: 'revoked',
+          iat: 1,
+          exp: Math.floor(Date.now() / 1000) + 60,
+        }),
       } as never,
       { isActive: vi.fn().mockResolvedValue(false) } as never,
     );
@@ -374,13 +372,11 @@ describe('STEPS 283–286', () => {
 
   it('286 rejects permission escalation using spoofed request permissions', async () => {
     const repository = {
-      getAuthorizationSnapshot: vi
-        .fn()
-        .mockResolvedValue({
-          userUuid: UUID_A,
-          permissionCodes: ['users:read'],
-          roleCodes: ['user'],
-        }),
+      getAuthorizationSnapshot: vi.fn().mockResolvedValue({
+        userUuid: UUID_A,
+        permissionCodes: ['users:read'],
+        roleCodes: ['user'],
+      }),
     };
     const guard = new PermissionManageAccessGuard(repository as never);
     const request = {
