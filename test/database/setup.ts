@@ -6,7 +6,7 @@ const TEST_DATABASE_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 const TEST_DATABASE_NAME_PATTERN = /test/i;
 const DEFAULT_TEST_DATABASE_NAME = 'estate_pro_test';
 
-type Environment = Record<string, string>;
+type Environment = Record<string, string | undefined>;
 
 function readProjectEnvironment(): Environment {
   try {
@@ -19,7 +19,9 @@ function readProjectEnvironment(): Environment {
         continue;
       }
 
-      environment[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+      const key = match[1];
+      const value = match[2];
+      environment[key] = value.replace(/^['"]|['"]$/g, '');
     }
 
     return environment;
@@ -32,37 +34,41 @@ function readProjectEnvironment(): Environment {
   }
 }
 
-function isLocalMysqlDatabaseUrl(databaseUrl: string | undefined): boolean {
+function parseDatabaseUrl(databaseUrl: string | undefined): URL | undefined {
   if (!databaseUrl) {
-    return false;
+    return undefined;
   }
 
   try {
-    const url = new URL(databaseUrl);
-    return url.protocol === 'mysql:' && TEST_DATABASE_HOSTS.has(url.hostname);
+    return new URL(databaseUrl);
   } catch {
-    return false;
+    return undefined;
   }
 }
 
-function getDatabaseName(databaseUrl: string): string {
+function getDatabaseName(databaseUrl: URL): string {
   return decodeURIComponent(databaseUrl.pathname.replace(/^\//, ''));
 }
 
 function isSafeTestDatabaseUrl(databaseUrl: string | undefined): boolean {
-  return (
-    isLocalMysqlDatabaseUrl(databaseUrl) &&
-    TEST_DATABASE_NAME_PATTERN.test(getDatabaseName(databaseUrl!))
-  );
+  const url = parseDatabaseUrl(databaseUrl);
+  if (!url) {
+    return false;
+  }
+
+  if (url.protocol !== 'mysql:' || !TEST_DATABASE_HOSTS.has(url.hostname)) {
+    return false;
+  }
+
+  return TEST_DATABASE_NAME_PATTERN.test(getDatabaseName(url));
 }
 
 function buildDatabaseUrl(environment: Environment): string | undefined {
-  const host = environment.DATABASE_HOST ?? process.env.DATABASE_HOST;
-  const port = environment.DATABASE_PORT ?? process.env.DATABASE_PORT ?? '3306';
-  const user = environment.DATABASE_USER ?? process.env.DATABASE_USER;
-  const password =
-    environment.DATABASE_PASSWORD ?? process.env.DATABASE_PASSWORD;
-  const configuredName = environment.DATABASE_NAME ?? process.env.DATABASE_NAME;
+  const host = environment.DATABASE_HOST;
+  const port = environment.DATABASE_PORT ?? '3306';
+  const user = environment.DATABASE_USER;
+  const password = environment.DATABASE_PASSWORD;
+  const configuredName = environment.DATABASE_NAME;
 
   if (!host || !user || password === undefined) {
     return undefined;
@@ -77,30 +83,32 @@ function buildDatabaseUrl(environment: Environment): string | undefined {
     `mysql://${encodeURIComponent(user)}@${host}:${port}/${encodeURIComponent(databaseName)}`,
   );
   url.password = password;
+
   return url.toString();
 }
 
 function resolveTestDatabaseUrl(): string {
   const projectEnvironment = readProjectEnvironment();
-  const processDatabaseUrl = process.env.DATABASE_URL;
+  const processEnvironment: Environment = process.env;
+  const processDatabaseUrl = processEnvironment.DATABASE_URL;
   const projectDatabaseUrl = projectEnvironment.DATABASE_URL;
 
   if (isSafeTestDatabaseUrl(processDatabaseUrl)) {
-    return processDatabaseUrl!;
+    return processDatabaseUrl as string;
   }
 
   if (isSafeTestDatabaseUrl(projectDatabaseUrl)) {
-    return projectDatabaseUrl!;
+    return projectDatabaseUrl as string;
   }
 
-  const processDatabaseFromParts = buildDatabaseUrl(process.env as Environment);
+  const processDatabaseFromParts = buildDatabaseUrl(processEnvironment);
   if (isSafeTestDatabaseUrl(processDatabaseFromParts)) {
-    return processDatabaseFromParts!;
+    return processDatabaseFromParts as string;
   }
 
   const projectDatabaseFromParts = buildDatabaseUrl(projectEnvironment);
   if (isSafeTestDatabaseUrl(projectDatabaseFromParts)) {
-    return projectDatabaseFromParts!;
+    return projectDatabaseFromParts as string;
   }
 
   const unsafeDatabaseUrl = processDatabaseUrl ?? projectDatabaseUrl;
@@ -116,13 +124,15 @@ function resolveTestDatabaseUrl(): string {
 }
 
 function synchronizeDatabaseEnvironment(databaseUrl: string): void {
-  const url = new URL(databaseUrl);
-  const databaseName = getDatabaseName(databaseUrl);
+  const url = parseDatabaseUrl(databaseUrl);
+  if (!url) {
+    throw new Error('Resolved test database URL is invalid.');
+  }
 
   process.env.DATABASE_URL = databaseUrl;
   process.env.DATABASE_HOST = url.hostname;
   process.env.DATABASE_PORT = url.port || '3306';
-  process.env.DATABASE_NAME = databaseName;
+  process.env.DATABASE_NAME = getDatabaseName(url);
   process.env.DATABASE_USER = decodeURIComponent(url.username);
   process.env.DATABASE_PASSWORD = decodeURIComponent(url.password);
 }
