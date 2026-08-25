@@ -55,13 +55,14 @@ function synchronizeDatabaseEnvironment(): void {
 }
 
 export function prepareTestDatabase(): void {
+  loadProjectEnvironment();
+
   if (process.env.NODE_ENV !== 'test') {
     throw new Error(
       `Database test setup may only run with NODE_ENV=test, received "${process.env.NODE_ENV ?? 'undefined'}".`,
     );
   }
 
-  loadProjectEnvironment();
   synchronizeDatabaseEnvironment();
 
   execFileSync(PRISMA_COMMAND, ['db', 'push', '--accept-data-loss'], {
@@ -70,5 +71,3 @@ export function prepareTestDatabase(): void {
     stdio: 'inherit',
   });
 }
-
-prepareTestDatabase();
