@@ -167,9 +167,10 @@ for (const [source, dependencies] of graph) {
 
     const targetRelative = path.relative(SRC_ROOT, target).split(path.sep);
     const targetIsPublicModule =
-      targetRelative.length === 2 &&
+      targetRelative.length === 3 &&
       targetRelative[0] === 'modules' &&
-      targetRelative[1] === `${targetModule}.module.ts`;
+      targetRelative[1] === targetModule &&
+      targetRelative[2] === `${targetModule}.module.ts`;
 
     if (!targetIsPublicModule) {
       crossModuleViolations.push(
