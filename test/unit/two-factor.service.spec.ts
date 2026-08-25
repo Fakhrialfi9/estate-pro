@@ -165,8 +165,10 @@ function createHarness() {
         }),
       ),
     updatePassword: () => Promise.reject(new Error('unused in 2FA unit test')),
-    createResetToken: () => Promise.reject(new Error('unused in 2FA unit test')),
-    resetPasswordAtomically: () => Promise.reject(new Error('unused in 2FA unit test')),
+    createResetToken: () =>
+      Promise.reject(new Error('unused in 2FA unit test')),
+    resetPasswordAtomically: () =>
+      Promise.reject(new Error('unused in 2FA unit test')),
   };
 
   const config = new ConfigService({
