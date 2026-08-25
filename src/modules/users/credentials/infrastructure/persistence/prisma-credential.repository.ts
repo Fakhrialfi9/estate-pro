@@ -81,6 +81,7 @@ export class PrismaCredentialRepository implements CredentialRepository {
     userUuid: string,
     passwordHash: string,
     changedAt: Date,
+    expectedPasswordHash?: string,
   ): Promise<CredentialEntity> {
     return this.client.$transaction(async (tx) => {
       const existing = await tx.authenticationUserCredential.findFirst({
@@ -90,14 +91,26 @@ export class PrismaCredentialRepository implements CredentialRepository {
       if (!existing) throw new Error('Credential not found');
 
       const updated = await tx.authenticationUserCredential.updateMany({
-        where: { userId: existing.userId },
+        where: {
+          userId: existing.userId,
+          ...(expectedPasswordHash !== undefined
+            ? { passwordHash: expectedPasswordHash }
+            : {}),
+        },
         data: {
           passwordHash,
           passwordChangedAt: changedAt,
           passwordExpiresAt: null,
         },
       });
-      if (updated.count !== 1) throw new Error('Credential not found');
+      if (updated.count !== 1) {
+        if (expectedPasswordHash !== undefined) {
+          const concurrent = new Error('Password was changed concurrently');
+          concurrent.name = 'ConcurrentPasswordChangeError';
+          throw concurrent;
+        }
+        throw new Error('Credential not found');
+      }
 
       await tx.authenticationUserSession.updateMany({
         where: { userId: existing.userId, revokedAt: null },
