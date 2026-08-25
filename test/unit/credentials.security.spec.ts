@@ -117,6 +117,7 @@ describe('credential security', () => {
   });
 
   it('surfaces compare-and-swap conflicts instead of overwriting a concurrent password change', async () => {
+    revokeAllForSecurityEvent.mockClear();
     const findByUserUuid = vi
       .fn()
       .mockResolvedValue({ userUuid, passwordHash: 'old-hash' });
