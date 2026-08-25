@@ -1,10 +1,11 @@
-import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import type { HelmetOptions } from 'helmet';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
+
+import { SecureValidationPipe } from './common/pipes/secure-validation.pipe.js';
 
 export const configureApplication = (app: NestExpressApplication): void => {
   const configService = app.get(ConfigService);
@@ -23,12 +24,12 @@ export const configureApplication = (app: NestExpressApplication): void => {
   const apiVersion = configuredApiVersion.replace(/^v/i, '');
 
   app.enableVersioning({
-    type: VersioningType.URI,
+    type: 0,
     defaultVersion: apiVersion,
   });
 
   app.useGlobalPipes(
-    new ValidationPipe({
+    new SecureValidationPipe({
       transform: true,
       whitelist: true,
       forbidNonWhitelisted: true,
