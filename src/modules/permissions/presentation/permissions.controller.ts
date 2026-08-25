@@ -26,7 +26,10 @@ import { CreatePermissionDto } from './dto/create-permission.dto.js';
 import { UpdatePermissionDto } from './dto/update-permission.dto.js';
 import { PermissionQueryDto } from './dto/permission-query.dto.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
-import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
+import {
+  RequirePermissions,
+  RequirePermissionsAny,
+} from '../../../common/security/authorization.decorators.js';
 import { PermissionSerializer } from './permission.serializer.js';
 
 type AuthenticatedRequest = Request & {
@@ -38,14 +41,14 @@ type AuthenticatedRequest = Request & {
 export class PermissionsController {
   constructor(private readonly permissions: PermissionService) {}
 
-  @RequirePermissions(PERMISSION_READ_PERMISSION, PERMISSION_MANAGE_PERMISSION)
+  @RequirePermissionsAny(PERMISSION_READ_PERMISSION, PERMISSION_MANAGE_PERMISSION)
   @Get(':uuid')
   async get(@Req() request: AuthenticatedRequest, @Param('uuid') uuid: string) {
     const permission = await this.permissions.get(this.actor(request), uuid);
     return PermissionSerializer.one(permission);
   }
 
-  @RequirePermissions(PERMISSION_READ_PERMISSION, PERMISSION_MANAGE_PERMISSION)
+  @RequirePermissionsAny(PERMISSION_READ_PERMISSION, PERMISSION_MANAGE_PERMISSION)
   @Get()
   async list(
     @Req() request: AuthenticatedRequest,

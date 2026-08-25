@@ -52,6 +52,6 @@ import {
       useClass: PrismaUserRoleTargetRepository,
     },
   ],
-  exports: [RoleService, ROLE_REPOSITORY, UserRoleService, AuthorizationGuard],
+  exports: [RoleService, ROLE_REPOSITORY, UserRoleService],
 })
 export class RolesModule {}
