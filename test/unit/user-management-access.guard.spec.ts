@@ -26,7 +26,6 @@ function createGuard(scenario: Scenario, accessible = true) {
   const claims = {
     sub: scenario.uuid ?? 'actor-uuid',
     sid: 'session-id',
-    permissions: scenario.permissions ?? [],
     iat: 1,
     exp: 2,
   } as never;
@@ -39,11 +38,23 @@ function createGuard(scenario: Scenario, accessible = true) {
       isAccessible: () => accessible,
     }),
   };
+  const authorization = {
+    getAuthorizationSnapshot: vi.fn().mockResolvedValue({
+      userUuid: scenario.uuid ?? 'actor-uuid',
+      roleCodes: [],
+      permissionCodes: scenario.permissions ?? [],
+    }),
+  };
 
   return {
-    guard: new UserManagementAccessGuard(verifier as never, users as never),
+    guard: new UserManagementAccessGuard(
+      verifier as never,
+      authorization as never,
+      users as never,
+    ),
     verifier,
     users,
+    authorization,
   };
 }
 
