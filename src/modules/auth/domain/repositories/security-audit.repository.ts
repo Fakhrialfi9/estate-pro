@@ -1,9 +1,9 @@
 export interface SecurityAuditEvent {
   action: string;
-  userUuid?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  requestId?: string;
+  userUuid?: string | undefined;
+  ipAddress?: string | undefined;
+  userAgent?: string | undefined;
+  requestId?: string | undefined;
 }
 
 export interface SecurityAuditRepository {
