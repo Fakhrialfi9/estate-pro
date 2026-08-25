@@ -35,9 +35,11 @@ function snapshot(
 
 class FakeSessionRepository implements AuthenticationSessionRepository {
   rows: SessionSnapshot[] = [];
-  auditCount = 0;
 
-  async create(userUuid: string, session: AuthenticationSessionCreation) {
+  create(
+    userUuid: string,
+    session: AuthenticationSessionCreation,
+  ): Promise<SessionSnapshot> {
     const row = snapshot(
       String(this.rows.length + 1),
       userUuid,
@@ -49,52 +51,67 @@ class FakeSessionRepository implements AuthenticationSessionRepository {
       },
     );
     this.rows.push(row);
-    return row;
+    return Promise.resolve(row);
   }
 
-  async findBySecret(userUuid: string, sessionId: string) {
-    return (
+  findBySecret(
+    userUuid: string,
+    sessionId: string,
+  ): Promise<SessionSnapshot | null> {
+    return Promise.resolve(
       this.rows.find(
         (row) =>
           row.userUuid === userUuid &&
           row.sessionIdHash === SessionService.digestSecret(sessionId),
-      ) ?? null
+      ) ?? null,
     );
   }
 
-  async findById(userUuid: string, id: string) {
-    return (
-      this.rows.find((row) => row.userUuid === userUuid && row.id === id) ??
-      null
+  findById(userUuid: string, id: string): Promise<SessionSnapshot | null> {
+    return Promise.resolve(
+      this.rows.find((row) => row.userUuid === userUuid && row.id === id) ?? null,
     );
   }
 
-  async list(userUuid: string, query: SessionListQuery) {
-    return this.rows
-      .filter(
-        (row) =>
-          row.userUuid === userUuid &&
-          (query.includeInactive ||
-            (row.revokedAt === null && row.expiresAt > BASE)),
-      )
-      .slice(query.offset, query.offset + query.limit);
+  list(
+    userUuid: string,
+    query: SessionListQuery,
+  ): Promise<SessionSnapshot[]> {
+    return Promise.resolve(
+      this.rows
+        .filter(
+          (row) =>
+            row.userUuid === userUuid &&
+            (query.includeInactive ||
+              (row.revokedAt === null && row.expiresAt > BASE)),
+        )
+        .slice(query.offset, query.offset + query.limit),
+    );
   }
 
-  async revokeBySecret(userUuid: string, sessionId: string, now: Date) {
+  async revokeBySecret(
+    userUuid: string,
+    sessionId: string,
+    now: Date,
+  ): Promise<boolean> {
     const row = await this.findBySecret(userUuid, sessionId);
     if (!row || row.revokedAt !== null || row.expiresAt <= now) return false;
     row.revokedAt = now;
     return true;
   }
 
-  async revokeById(userUuid: string, id: string, now: Date) {
+  async revokeById(
+    userUuid: string,
+    id: string,
+    now: Date,
+  ): Promise<boolean> {
     const row = await this.findById(userUuid, id);
     if (!row || row.revokedAt !== null || row.expiresAt <= now) return false;
     row.revokedAt = now;
     return true;
   }
 
-  async revokeAll(userUuid: string, now: Date) {
+  revokeAll(userUuid: string, now: Date): Promise<number> {
     let count = 0;
     for (const row of this.rows) {
       if (
@@ -106,10 +123,14 @@ class FakeSessionRepository implements AuthenticationSessionRepository {
         count += 1;
       }
     }
-    return count;
+    return Promise.resolve(count);
   }
 
-  async isActive(userUuid: string, sessionId: string, now: Date) {
+  async isActive(
+    userUuid: string,
+    sessionId: string,
+    now: Date,
+  ): Promise<boolean> {
     const row = await this.findBySecret(userUuid, sessionId);
     return row !== null && row.revokedAt === null && row.expiresAt > now;
   }
@@ -117,7 +138,7 @@ class FakeSessionRepository implements AuthenticationSessionRepository {
 
 function makeService(repo: FakeSessionRepository) {
   const audit: SecurityAuditRepository = {
-    record: vi.fn(async () => undefined),
+    record: vi.fn().mockResolvedValue(undefined),
   };
   return { service: new SessionService(repo, audit), audit };
 }

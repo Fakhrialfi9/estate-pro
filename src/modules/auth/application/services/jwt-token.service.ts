@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import type { SignOptions } from 'jsonwebtoken';
+import type { JwtPayload } from 'jsonwebtoken';
+import { ConfigService } from '@nestjs/config';
 
 export interface AccessTokenClaims {
   sub: string;
@@ -14,6 +14,8 @@ export interface AccessTokenClaims {
 }
 
 type SupportedAlgorithm = 'HS256' | 'HS384' | 'HS512';
+
+type TokenPayload = JwtPayload & Partial<AccessTokenClaims>;
 
 @Injectable()
 export class JwtTokenService {
@@ -47,26 +49,20 @@ export class JwtTokenService {
   }
 
   getExpiresAt(token: string): Date {
-    const payload = this.jwt.decode(token);
-    if (
-      !payload ||
-      typeof payload !== 'object' ||
-      typeof payload.exp !== 'number'
-    ) {
+    const payload = this.jwt.decode<TokenPayload>(token);
+    if (!payload || typeof payload !== 'object' || typeof payload.exp !== 'number') {
       throw new UnauthorizedException('Invalid authentication token');
     }
     return new Date(payload.exp * 1000);
   }
 
-  private getSignOptions(): SignOptions {
+  private getSignOptions() {
     return {
-      expiresIn: this.config.getOrThrow<string>(
-        'auth.jwt.expiresIn',
-      ) as SignOptions['expiresIn'],
+      expiresIn: this.config.getOrThrow<string>('auth.jwt.expiresIn'),
       issuer: this.getIssuer(),
       audience: this.getAudience(),
       algorithm: this.getAlgorithm(),
-    };
+    } as const;
   }
 
   private getSecret(): string {
@@ -83,11 +79,7 @@ export class JwtTokenService {
 
   private getAlgorithm(): SupportedAlgorithm {
     const algorithm = this.config.getOrThrow<string>('auth.jwt.algorithm');
-    if (
-      algorithm !== 'HS256' &&
-      algorithm !== 'HS384' &&
-      algorithm !== 'HS512'
-    ) {
+    if (algorithm !== 'HS256' && algorithm !== 'HS384' && algorithm !== 'HS512') {
       throw new Error('Unsupported JWT algorithm');
     }
     return algorithm;

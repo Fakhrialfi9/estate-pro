@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ExecutionContext } from '@nestjs/common';
 import { SessionAdminGuard } from '../../../src/modules/auth/security/session-admin.guard.js';
+import type { ExecutionContext } from '@nestjs/common';
 
 function context(permissions?: string[]): ExecutionContext {
   const request = {

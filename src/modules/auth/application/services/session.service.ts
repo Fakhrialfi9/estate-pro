@@ -7,8 +7,8 @@ import type {
   SessionListQuery,
 } from '../domain/repositories/authentication-session.repository.js';
 import { AUTHENTICATION_SESSION_REPOSITORY } from '../domain/repositories/authentication-session.repository.js';
-import type { SessionSecurityPort } from '../../../../common/security/session-security.port.js';
 import { SessionEntity } from '../domain/entities/session.entity.js';
+import type { SessionSecurityPort } from '../../../../common/security/session-security.port.js';
 import type { SecurityAuditRepository } from '../domain/repositories/security-audit.repository.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../domain/repositories/security-audit.repository.js';
 
@@ -50,10 +50,7 @@ export class SessionService implements SessionSecurityPort {
     return createHash('sha256').update(secret, 'utf8').digest('hex');
   }
 
-  async create(
-    userUuid: string,
-    input: CreateSessionInput,
-  ): Promise<SessionEntity> {
+  async create(userUuid: string, input: CreateSessionInput): Promise<SessionEntity> {
     const now = new Date();
     if (input.expiresAt.getTime() <= now.getTime()) {
       throw new Error('Session expiry must be in the future');
@@ -76,11 +73,7 @@ export class SessionService implements SessionSecurityPort {
     return entity;
   }
 
-  async isActive(
-    userUuid: string,
-    sessionId: string,
-    now = new Date(),
-  ): Promise<boolean> {
+  isActive(userUuid: string, sessionId: string, now = new Date()): Promise<boolean> {
     return this.sessions.isActive(userUuid, sessionId, now);
   }
 
