@@ -1,10 +1,5 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 import {
   ROLE_MANAGE_PERMISSION,
@@ -35,7 +30,7 @@ abstract class BaseRoleAccessGuard implements CanActivate {
 export class RoleReadAccessGuard extends BaseRoleAccessGuard {
   protected readonly requiredPermission = ROLE_READ_PERMISSION;
 
-  canActivate(context: ExecutionContext): boolean {
+  override canActivate(context: ExecutionContext): boolean {
     const request = context
       .switchToHttp()
       .getRequest<RoleAuthenticatedRequest>();
