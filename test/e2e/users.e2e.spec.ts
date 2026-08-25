@@ -32,6 +32,8 @@ let app: INestApplication;
 let prisma: PrismaService;
 let jwt: JwtService;
 let actorUuid: string;
+let clientIp = '10.0.0.1';
+let clientIpCounter = 1;
 
 const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS authentication_users (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -52,7 +54,29 @@ const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS authentication_users (
   INDEX idx_auth_users_active_deleted_at (is_active, deleted_at)
 ) ENGINE=InnoDB;`;
 
-const httpRequest = () => request(app.getHttpServer() as unknown as Server);
+const CREATE_SESSION_TABLE = `CREATE TABLE IF NOT EXISTS authentication_user_sessions (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  session_id VARCHAR(64) NOT NULL UNIQUE,
+  ip_address VARCHAR(45) NULL,
+  user_agent TEXT NULL,
+  last_activity_at DATETIME(3) NULL,
+  revoked_at DATETIME(3) NULL,
+  expires_at DATETIME(3) NOT NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_auth_user_sessions_user_id (user_id),
+  INDEX idx_auth_user_sessions_revoked_at (revoked_at),
+  INDEX idx_auth_user_sessions_expires_at (expires_at),
+  CONSTRAINT fk_auth_user_sessions_user
+    FOREIGN KEY (user_id) REFERENCES authentication_users(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB;`;
+
+const httpRequest = () =>
+  request(app.getHttpServer() as unknown as Server).set(
+    'X-Forwarded-For',
+    clientIp,
+  );
 const bodyOf = <T>(response: SuperTestResponse): T => response.body as T;
 const actorToken = (permissions: string[] = ['users:manage']) =>
   jwt.sign({ sub: actorUuid, sid: randomUUID(), permissions });
@@ -68,9 +92,13 @@ describe('Users API', () => {
     prisma = app.get(PrismaService);
     jwt = app.get(JwtService);
     await prisma.$executeRawUnsafe(CREATE_TABLE);
+    await prisma.$executeRawUnsafe(CREATE_SESSION_TABLE);
   });
 
   beforeEach(async () => {
+    clientIp = `10.0.0.${clientIpCounter}`;
+    clientIpCounter += 1;
+    await prisma.authenticationUserSession.deleteMany();
     await prisma.authenticationUser.deleteMany();
     actorUuid = randomUUID();
     await prisma.authenticationUser.create({
