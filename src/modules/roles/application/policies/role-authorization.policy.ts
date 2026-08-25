@@ -56,7 +56,8 @@ export class RoleAuthorizationPolicy {
   private hasPermission(actor: RoleActor, required: string): boolean {
     const normalizedRequired = normalizePermissionCode(required);
     return actor.permissions.some(
-      (permission) => normalizePermissionCode(permission) === normalizedRequired,
+      (permission) =>
+        normalizePermissionCode(permission) === normalizedRequired,
     );
   }
 }

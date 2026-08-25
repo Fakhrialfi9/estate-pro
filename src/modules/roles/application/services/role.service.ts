@@ -58,7 +58,11 @@ export class RoleService {
     const name = normalizeRoleName(input.name);
     const code = normalizeRoleCode(input.code);
     this.validateInput(name, code);
-    this.policy.canManage(actor, ROLE_CREATE_PERMISSION, isProtectedRoleCode(code));
+    this.policy.canManage(
+      actor,
+      ROLE_CREATE_PERMISSION,
+      isProtectedRoleCode(code),
+    );
     if (await this.roles.findByName(name))
       throw new RoleAlreadyExistsException();
     if (await this.roles.findByCode(code))

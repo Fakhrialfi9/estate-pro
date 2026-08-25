@@ -31,8 +31,7 @@ export class PermissionAuthorizationPolicy {
   }
 
   canManage(actor: PermissionActor, code?: string): void {
-    const requiredPermission =
-      code ?? PERMISSION_MANAGE_PERMISSION;
+    const requiredPermission = code ?? PERMISSION_MANAGE_PERMISSION;
     if (
       !this.hasPermission(actor, requiredPermission) &&
       !this.hasPermission(actor, PERMISSION_MANAGE_PERMISSION)
@@ -61,7 +60,8 @@ export class PermissionAuthorizationPolicy {
   private hasPermission(actor: PermissionActor, required: string): boolean {
     const normalizedRequired = normalizePermissionCode(required);
     return actor.permissions.some(
-      (permission) => normalizePermissionCode(permission) === normalizedRequired,
+      (permission) =>
+        normalizePermissionCode(permission) === normalizedRequired,
     );
   }
 }
