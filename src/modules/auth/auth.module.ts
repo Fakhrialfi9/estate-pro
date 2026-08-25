@@ -25,7 +25,6 @@ import { AUTHENTICATION_SECURITY_REPOSITORY } from './domain/repositories/authen
 import { PrismaAuthenticationSecurityRepository } from './infrastructure/persistence/prisma-authentication-security.repository.js';
 import { AUTHENTICATION_SESSION_REPOSITORY } from './domain/repositories/authentication-session.repository.js';
 import { PrismaAuthenticationSessionRepository } from './infrastructure/persistence/prisma-authentication-session.repository.js';
-import { SECURITY_AUDIT_REPOSITORY } from '../../common/audit/security-audit.port.js';
 import { ACCESS_TOKEN_VERIFIER } from '../../common/security/access-token-verifier.port.js';
 import { AUTHENTICATION_SESSION_PORT } from '../../common/security/authentication-session.port.js';
 import { SESSION_SECURITY_PORT } from '../../common/security/session-security.port.js';
@@ -111,7 +110,6 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
     TwoFactorService,
     AUTHENTICATION_SESSION_REPOSITORY,
     SESSION_SECURITY_PORT,
-    SECURITY_AUDIT_REPOSITORY,
     ACCESS_TOKEN_VERIFIER,
     AUTHENTICATION_SESSION_PORT,
   ],
