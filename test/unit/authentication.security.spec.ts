@@ -184,9 +184,7 @@ describe('authentication security steps 102-106', () => {
       }),
     ).resolves.toBeNull();
     expect(invalid.auditEvents.at(-1)?.action).toBe('LOGIN_FAILURE');
-    expect((await invalid.security.getState('u-1')).failedLoginAttempts).toBe(
-      1,
-    );
+    expect((await invalid.security.getState('u-1')).failedLoginAttempts).toBe(1);
     const unknown = makeLogin(true);
     unknown.users.findByEmail = vi.fn().mockResolvedValue(null);
     unknown.users.findByUsername = vi.fn().mockResolvedValue(null);
@@ -200,17 +198,18 @@ describe('authentication security steps 102-106', () => {
   });
 
   it('103: rejects disabled accounts before token issuance', async () => {
-    const ctx = makeLogin(true, user({ status: 'disabled', isActive: false }));
+    const ctx = makeLogin(true, user({ status: 'inactive', isActive: false }));
     await expect(
       ctx.service.execute({
         identifier: 'member@example.com',
         password: 'CorrectPassword!',
       }),
     ).resolves.toBeNull();
-    expect(ctx.jwt.issueAccessToken).not.toHaveBeenCalled();
+    const issueAccessToken = vi.mocked(ctx.jwt.issueAccessToken);
+    expect(issueAccessToken).not.toHaveBeenCalled();
   });
 
-  it('106: locks after threshold, rejects locked attempts, and recovers on successful authentication after expiry', async () => {
+  it('106: locks after threshold and rejects locked attempts', async () => {
     const ctx = makeLogin(false);
     for (let i = 0; i < 5; i += 1) {
       await ctx.service.execute({
