@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module.js';
+import { AuthenticatedAccessGuard } from '../../common/security/authenticated-access.guard.js';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { PrismaRoleRepository } from './infrastructure/persistence/prisma-role.repository.js';
 import { ROLE_REPOSITORY } from './domain/repositories/role.repository.js';
@@ -12,9 +12,10 @@ import {
 } from './security/role-management-access.guard.js';
 
 @Module({
-  imports: [DatabaseModule, AuthModule],
+  imports: [DatabaseModule],
   controllers: [RolesController],
   providers: [
+    AuthenticatedAccessGuard,
     RoleService,
     RoleAuthorizationPolicy,
     RoleReadAccessGuard,
