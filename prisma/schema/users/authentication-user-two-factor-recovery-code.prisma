@@ -1,10 +1,11 @@
 model AuthenticationUserTwoFactorRecoveryCode {
-    id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-    userId BigInt @map("user_id") @db.UnsignedBigInt
-    codeHash String @map("code_hash") @db.VarChar(255)
-    usedAt DateTime? @map("used_at")
-    createdAt DateTime @default(now()) @map("created_at")
-    user AuthenticationUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id        BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+    userId    BigInt             @map("user_id") @db.UnsignedBigInt
+    codeHash  String             @map("code_hash") @db.VarChar(255)
+    usedAt    DateTime?          @map("used_at")
+    createdAt DateTime           @default(now()) @map("created_at")
+    user      AuthenticationUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
     @@index([userId, usedAt])
     @@map("authentication_user_two_factor_recovery_codes")
 }
