@@ -1,35 +1,14 @@
-import {
-  BadRequestException,
-  Body,
-  ConflictException,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  NotFoundException,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Delete, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { UserManagementAccessGuard } from '../security/user-management-access.guard.js';
 import { CreateUserDto } from '../application/dto/create-user.dto.js';
 import { UpdateUserDto } from '../application/dto/update-user.dto.js';
 import { UserQueryDto } from '../application/dto/user-query.dto.js';
-import {
-  DuplicateUserError,
-  InvalidUserError,
-  UserNotFoundError,
-} from '../domain/errors/user.errors.js';
-import type {
-  UserFilterField,
-  UserSortField,
-} from '../domain/repositories/user.repository.js';
+import { DuplicateUserError, InvalidUserError, UserNotFoundError } from '../domain/errors/user.errors.js';
+import type { UserFilterField, UserSortField } from '../domain/repositories/user.repository.js';
 import { UserManagementService } from '../application/services/user-management.service.js';
 import { serializeUser } from '../application/serializers/user.serializer.js';
 
-@Controller('users')
+@Controller({ path: 'users', version: '1' })
 @UseGuards(UserManagementAccessGuard)
 export class UsersController {
   constructor(private readonly users: UserManagementService) {}
@@ -41,9 +20,7 @@ export class UsersController {
         ...(dto.username !== undefined ? { username: dto.username } : {}),
         ...(dto.email !== undefined ? { email: dto.email } : {}),
         ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-        ...(dto.status !== undefined
-          ? { status: this.normalizeStatus(dto.status) }
-          : {}),
+        ...(dto.status !== undefined ? { status: this.normalizeStatus(dto.status) } : {}),
       });
       return serializeUser(user);
     } catch (error: unknown) {
@@ -53,16 +30,15 @@ export class UsersController {
 
   @Get()
   async list(@Query() dto: UserQueryDto) {
-    if (dto.filterField && dto.filterValue === undefined)
+    if (dto.filterField && dto.filterValue === undefined) {
       throw new BadRequestException('filterValue is required with filterField');
+    }
     if (
       dto.filterField === 'isActive' &&
       dto.filterValue !== undefined &&
       !['true', 'false'].includes(dto.filterValue.toLowerCase())
     ) {
-      throw new BadRequestException(
-        'isActive filterValue must be true or false',
-      );
+      throw new BadRequestException('isActive filterValue must be true or false');
     }
 
     const result = await this.users.list({
@@ -123,9 +99,7 @@ export class UsersController {
         ...(dto.username !== undefined ? { username: dto.username } : {}),
         ...(dto.email !== undefined ? { email: dto.email } : {}),
         ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-        ...(dto.status !== undefined
-          ? { status: this.normalizeStatus(dto.status) }
-          : {}),
+        ...(dto.status !== undefined ? { status: this.normalizeStatus(dto.status) } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       });
       return serializeUser(user);
@@ -146,21 +120,25 @@ export class UsersController {
 
   private normalizeStatus(value: string) {
     const status = value.trim().toLowerCase();
-    if (!['pending', 'active', 'inactive', 'suspended'].includes(status))
+    if (!['pending', 'active', 'inactive', 'suspended'].includes(status)) {
       throw new InvalidUserError('Invalid user status');
+    }
     return status as 'pending' | 'active' | 'inactive' | 'suspended';
   }
 
   private mapError(error: unknown): never {
-    if (error instanceof UserNotFoundError)
+    if (error instanceof UserNotFoundError) {
       throw new NotFoundException('User not found');
+    }
     if (
       error instanceof DuplicateUserError ||
       (error as { name?: string }).name === 'DuplicateUserError'
-    )
+    ) {
       throw new ConflictException('User identity is already in use');
-    if (error instanceof InvalidUserError)
+    }
+    if (error instanceof InvalidUserError) {
       throw new BadRequestException(error.message);
+    }
     throw error;
   }
 }
