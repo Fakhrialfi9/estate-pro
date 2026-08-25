@@ -7,12 +7,7 @@ import { PermissionsModule } from '../permissions/permissions.module.js';
 import { AuditLogsController } from './presentation/audit-logs.controller.js';
 
 @Module({
-  imports: [
-    AuditModule,
-    AuthModule,
-    PermissionsModule,
-    AuthorizationModule,
-  ],
+  imports: [AuditModule, AuthModule, PermissionsModule, AuthorizationModule],
   controllers: [AuditLogsController],
   providers: [AuthorizationGuard],
 })
