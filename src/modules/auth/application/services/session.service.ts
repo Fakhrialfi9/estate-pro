@@ -44,7 +44,10 @@ export class SessionService implements SessionSecurityPort {
   static digestSecret(secret: string): string {
     return createHash('sha256').update(secret, 'utf8').digest('hex');
   }
-  async create(userUuid: string, input: CreateSessionInput): Promise<SessionEntity> {
+  async create(
+    userUuid: string,
+    input: CreateSessionInput,
+  ): Promise<SessionEntity> {
     const now = new Date();
     if (input.expiresAt.getTime() <= now.getTime()) {
       throw new Error('Session expiry must be in the future');
@@ -68,19 +71,33 @@ export class SessionService implements SessionSecurityPort {
     });
     return entity;
   }
-  isActive(userUuid: string, sessionId: string, now = new Date()): Promise<boolean> {
+  isActive(
+    userUuid: string,
+    sessionId: string,
+    now = new Date(),
+  ): Promise<boolean> {
     return this.sessions.isActive(userUuid, sessionId, now);
   }
-  async listOwn(userUuid: string, query: Partial<SessionListQuery> = {}, now = new Date()): Promise<ReturnType<SessionEntity['toSafeView']>[]> {
+  async listOwn(
+    userUuid: string,
+    query: Partial<SessionListQuery> = {},
+    now = new Date(),
+  ): Promise<ReturnType<SessionEntity['toSafeView']>[]> {
     const normalized: SessionListQuery = {
       limit: Math.min(Math.max(query.limit ?? 20, 1), MAX_PAGE_SIZE),
       offset: Math.max(query.offset ?? 0, 0),
       includeInactive: query.includeInactive ?? false,
     };
     const snapshots = await this.sessions.list(userUuid, normalized);
-    return snapshots.map((snapshot) => SessionEntity.create(snapshot).toSafeView(now));
+    return snapshots.map((snapshot) =>
+      SessionEntity.create(snapshot).toSafeView(now),
+    );
   }
-  async logoutCurrent(userUuid: string, sessionId: string, context: SessionAuditContext = {}): Promise<void> {
+  async logoutCurrent(
+    userUuid: string,
+    sessionId: string,
+    context: SessionAuditContext = {},
+  ): Promise<void> {
     await this.sessions.revokeBySecret(userUuid, sessionId, new Date());
     await this.audit.record({
       action: SESSION_AUDIT_ACTIONS.LOGOUT,
@@ -93,7 +110,11 @@ export class SessionService implements SessionSecurityPort {
       requestId: context.requestId,
     });
   }
-  async revokeOwnSession(userUuid: string, publicSessionId: string, context: SessionAuditContext = {}): Promise<void> {
+  async revokeOwnSession(
+    userUuid: string,
+    publicSessionId: string,
+    context: SessionAuditContext = {},
+  ): Promise<void> {
     await this.sessions.revokeById(userUuid, publicSessionId, new Date());
     await this.audit.record({
       action: SESSION_AUDIT_ACTIONS.REVOKED,
@@ -106,7 +127,10 @@ export class SessionService implements SessionSecurityPort {
       requestId: context.requestId,
     });
   }
-  async logoutAll(userUuid: string, context: SessionAuditContext = {}): Promise<number> {
+  async logoutAll(
+    userUuid: string,
+    context: SessionAuditContext = {},
+  ): Promise<number> {
     const count = await this.sessions.revokeAll(userUuid, new Date());
     await this.audit.record({
       action: SESSION_AUDIT_ACTIONS.LOGOUT_ALL,
@@ -120,7 +144,12 @@ export class SessionService implements SessionSecurityPort {
     });
     return count;
   }
-  async adminRevoke(actorUserUuid: string, targetUserUuid: string, publicSessionId: string, context: SessionAuditContext = {}): Promise<void> {
+  async adminRevoke(
+    actorUserUuid: string,
+    targetUserUuid: string,
+    publicSessionId: string,
+    context: SessionAuditContext = {},
+  ): Promise<void> {
     await this.sessions.revokeById(targetUserUuid, publicSessionId, new Date());
     await this.audit.record({
       action: SESSION_AUDIT_ACTIONS.ADMIN_REVOKED,
@@ -133,10 +162,17 @@ export class SessionService implements SessionSecurityPort {
       requestId: context.requestId,
     });
   }
-  async revokeAllForSecurityEvent(userUuid: string, event: Parameters<SessionSecurityPort['revokeAllForSecurityEvent']>[1], context: SessionAuditContext = {}): Promise<number> {
+  async revokeAllForSecurityEvent(
+    userUuid: string,
+    event: Parameters<SessionSecurityPort['revokeAllForSecurityEvent']>[1],
+    context: SessionAuditContext = {},
+  ): Promise<number> {
     const count = await this.sessions.revokeAll(userUuid, new Date());
     await this.audit.record({
-      action: event === 'PASSWORD_CHANGE' ? SESSION_AUDIT_ACTIONS.PASSWORD_CHANGE_REVOKED : SESSION_AUDIT_ACTIONS.SECURITY_EVENT_REVOKED,
+      action:
+        event === 'PASSWORD_CHANGE'
+          ? SESSION_AUDIT_ACTIONS.PASSWORD_CHANGE_REVOKED
+          : SESSION_AUDIT_ACTIONS.SECURITY_EVENT_REVOKED,
       actorUuid: context.actorUserUuid ?? userUuid,
       subjectUuid: userUuid,
       entityType: 'session',

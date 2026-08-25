@@ -29,9 +29,7 @@ export class AuditLogService implements SecurityAuditRepository {
       event.changes,
     );
     const safeReason =
-      event.reason !== undefined
-        ? sanitizeAuditReason(event.reason)
-        : null;
+      event.reason !== undefined ? sanitizeAuditReason(event.reason) : null;
     const writeEvent: AuditLogWriteEvent = {
       action: event.action,
       ...(event.actorUuid !== undefined ? { actorUuid: event.actorUuid } : {}),

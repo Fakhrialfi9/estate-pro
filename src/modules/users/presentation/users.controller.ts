@@ -40,14 +40,19 @@ export class UsersController {
   constructor(private readonly users: UserManagementService) {}
 
   @Post()
-  async create(@Req() request: AuthenticatedRequest, @Body() dto: CreateUserDto) {
+  async create(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: CreateUserDto,
+  ) {
     try {
       const user = await this.users.create(
         {
           ...(dto.username !== undefined ? { username: dto.username } : {}),
           ...(dto.email !== undefined ? { email: dto.email } : {}),
           ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-          ...(dto.status !== undefined ? { status: this.normalizeStatus(dto.status) } : {}),
+          ...(dto.status !== undefined
+            ? { status: this.normalizeStatus(dto.status) }
+            : {}),
         },
         this.auditContext(request),
       );
@@ -59,20 +64,37 @@ export class UsersController {
 
   @Get()
   async list(@Query() dto: UserQueryDto) {
-    if (dto.filterField && dto.filterValue === undefined) throw new BadRequestException('filterValue is required with filterField');
-    if (dto.filterField === 'isActive' && dto.filterValue !== undefined && !['true', 'false'].includes(dto.filterValue.toLowerCase())) throw new BadRequestException('isActive filterValue must be true or false');
+    if (dto.filterField && dto.filterValue === undefined)
+      throw new BadRequestException('filterValue is required with filterField');
+    if (
+      dto.filterField === 'isActive' &&
+      dto.filterValue !== undefined &&
+      !['true', 'false'].includes(dto.filterValue.toLowerCase())
+    )
+      throw new BadRequestException(
+        'isActive filterValue must be true or false',
+      );
     const result = await this.users.list({
       page: dto.page ?? 1,
       limit: dto.limit ?? 20,
-      ...(dto.filterField !== undefined ? { filterField: dto.filterField as UserFilterField } : {}),
-      ...(dto.filterValue !== undefined ? { filterValue: dto.filterValue } : {}),
+      ...(dto.filterField !== undefined
+        ? { filterField: dto.filterField as UserFilterField }
+        : {}),
+      ...(dto.filterValue !== undefined
+        ? { filterValue: dto.filterValue }
+        : {}),
       sortBy: (dto.sortBy ?? 'createdAt') as UserSortField,
       sortDirection: dto.sortDirection ?? 'desc',
       ...(dto.search !== undefined ? { search: dto.search.trim() } : {}),
     });
     return {
       items: result.items.map(serializeUser),
-      meta: { page: result.page, limit: result.limit, total: result.total, totalPages: Math.ceil(result.total / result.limit) },
+      meta: {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: Math.ceil(result.total / result.limit),
+      },
     };
   }
 
@@ -102,7 +124,11 @@ export class UsersController {
   }
 
   @Patch(':uuid')
-  async update(@Req() request: AuthenticatedRequest, @Param('uuid') uuid: string, @Body() dto: UpdateUserDto) {
+  async update(
+    @Req() request: AuthenticatedRequest,
+    @Param('uuid') uuid: string,
+    @Body() dto: UpdateUserDto,
+  ) {
     try {
       const user = await this.users.update(
         uuid,
@@ -110,7 +136,9 @@ export class UsersController {
           ...(dto.username !== undefined ? { username: dto.username } : {}),
           ...(dto.email !== undefined ? { email: dto.email } : {}),
           ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-          ...(dto.status !== undefined ? { status: this.normalizeStatus(dto.status) } : {}),
+          ...(dto.status !== undefined
+            ? { status: this.normalizeStatus(dto.status) }
+            : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         },
         this.auditContext(request),
@@ -123,7 +151,10 @@ export class UsersController {
 
   @Delete(':uuid')
   @HttpCode(204)
-  async remove(@Req() request: AuthenticatedRequest, @Param('uuid') uuid: string): Promise<void> {
+  async remove(
+    @Req() request: AuthenticatedRequest,
+    @Param('uuid') uuid: string,
+  ): Promise<void> {
     try {
       await this.users.remove(uuid, this.auditContext(request));
     } catch (error: unknown) {
@@ -133,23 +164,36 @@ export class UsersController {
 
   private auditContext(request: AuthenticatedRequest): UserAuditContext {
     return {
-      ...(request.user?.sub !== undefined ? { actorUuid: request.user.sub } : {}),
+      ...(request.user?.sub !== undefined
+        ? { actorUuid: request.user.sub }
+        : {}),
       ...(request.ip !== undefined ? { ipAddress: request.ip } : {}),
-      ...(request.get('user-agent') !== undefined ? { userAgent: request.get('user-agent') } : {}),
-      ...(request.get('x-request-id') !== undefined ? { requestId: request.get('x-request-id') } : {}),
+      ...(request.get('user-agent') !== undefined
+        ? { userAgent: request.get('user-agent') }
+        : {}),
+      ...(request.get('x-request-id') !== undefined
+        ? { requestId: request.get('x-request-id') }
+        : {}),
     };
   }
 
   private normalizeStatus(value: string) {
     const status = value.trim().toLowerCase();
-    if (!['pending', 'active', 'inactive', 'suspended'].includes(status)) throw new InvalidUserError('Invalid user status');
+    if (!['pending', 'active', 'inactive', 'suspended'].includes(status))
+      throw new InvalidUserError('Invalid user status');
     return status as 'pending' | 'active' | 'inactive' | 'suspended';
   }
 
   private mapError(error: unknown): never {
-    if (error instanceof UserNotFoundError) throw new NotFoundException('User not found');
-    if (error instanceof DuplicateUserError || (error as { name?: string }).name === 'DuplicateUserError') throw new ConflictException('User identity is already in use');
-    if (error instanceof InvalidUserError) throw new BadRequestException(error.message);
+    if (error instanceof UserNotFoundError)
+      throw new NotFoundException('User not found');
+    if (
+      error instanceof DuplicateUserError ||
+      (error as { name?: string }).name === 'DuplicateUserError'
+    )
+      throw new ConflictException('User identity is already in use');
+    if (error instanceof InvalidUserError)
+      throw new BadRequestException(error.message);
     throw error;
   }
 }
