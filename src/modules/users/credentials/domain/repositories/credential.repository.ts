@@ -7,6 +7,7 @@ export interface CredentialRepository {
     userUuid: string,
     passwordHash: string,
     changedAt: Date,
+    expectedPasswordHash?: string,
   ): Promise<CredentialEntity>;
   createResetToken(
     userUuid: string,
