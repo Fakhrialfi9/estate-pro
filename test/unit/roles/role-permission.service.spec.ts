@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RolePermissionService } from '../../../src/modules/roles/application/services/role-permission.service.js';
 import { RoleAuthorizationPolicy } from '../../../src/modules/roles/application/policies/role-authorization.policy.js';
 import { PermissionAuthorizationPolicy } from '../../../src/modules/permissions/application/policies/permission-authorization.policy.js';
@@ -59,6 +59,22 @@ describe('RolePermissionService', () => {
     new PermissionAuthorizationPolicy(),
   );
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+    assignments.exists.mockResolvedValue(false);
+    assignments.assign.mockResolvedValue(undefined);
+    assignments.remove.mockResolvedValue(undefined);
+    assignments.listByRole.mockResolvedValue({
+      items: [permission.toSnapshot()],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    roles.findByUuid.mockResolvedValue(role);
+    permissions.findByUuid.mockResolvedValue(permission);
+    audit.record.mockResolvedValue(undefined);
+  });
+
   it('assigns an existing permission to an existing role and audits success', async () => {
     const result = await service.assign(
       actor(['roles:manage']),
@@ -77,8 +93,27 @@ describe('RolePermissionService', () => {
   it('rejects regular users from assignment', async () => {
     await expect(
       service.assign(actor([]), roleUuid, permissionUuid, {}),
-    ).rejects.toMatchObject({ code: 'FORBIDDEN_ROLE_OPERATION' });
+    ).rejects.toMatchObject({ code: 'ROLE_PERMISSION_ASSIGNMENT_FORBIDDEN' });
     expect(assignments.assign).not.toHaveBeenCalled();
+  });
+
+  it('rejects regular users from removal', async () => {
+    await expect(
+      service.remove(actor([]), roleUuid, permissionUuid, {}),
+    ).rejects.toMatchObject({ code: 'ROLE_PERMISSION_REMOVAL_FORBIDDEN' });
+    expect(assignments.remove).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid role identifiers', async () => {
+    await expect(
+      service.assign(actor(['roles:manage']), 'not-a-uuid', permissionUuid, {}),
+    ).rejects.toMatchObject({ code: 'INVALID_ROLE_IDENTIFIER' });
+  });
+
+  it('rejects invalid permission identifiers', async () => {
+    await expect(
+      service.assign(actor(['roles:manage']), roleUuid, 'not-a-uuid', {}),
+    ).rejects.toMatchObject({ code: 'INVALID_PERMISSION_IDENTIFIER' });
   });
 
   it('rejects nonexistent roles', async () => {
@@ -110,9 +145,7 @@ describe('RolePermissionService', () => {
     await expect(
       service.assign(actor(['roles:manage']), roleUuid, permissionUuid, {}),
     ).rejects.toMatchObject({ code: 'ROLE_PERMISSION_ALREADY_EXISTS' });
-    expect(audit.record).not.toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'ROLE_PERMISSION_ASSIGNED' }),
-    );
+    expect(audit.record).not.toHaveBeenCalled();
   });
 
   it('removes an existing assignment without deleting role or permission', async () => {
@@ -129,6 +162,21 @@ describe('RolePermissionService', () => {
     await expect(
       service.remove(actor(['roles:manage']), roleUuid, permissionUuid, {}),
     ).rejects.toMatchObject({ code: 'ROLE_PERMISSION_NOT_FOUND' });
+    expect(assignments.remove).not.toHaveBeenCalled();
+  });
+
+  it('rejects protected-role removal without the protected-role permission', async () => {
+    const protectedRole = RoleEntity.create({
+      ...role.toSnapshot(),
+      uuid: roleUuid,
+      name: 'Admin',
+      code: 'admin',
+      isSystem: true,
+    });
+    roles.findByUuid.mockResolvedValueOnce(protectedRole);
+    await expect(
+      service.remove(actor(['roles:manage']), roleUuid, permissionUuid, {}),
+    ).rejects.toMatchObject({ code: 'SYSTEM_ROLE_PROTECTED' });
     expect(assignments.remove).not.toHaveBeenCalled();
   });
 
@@ -156,7 +204,23 @@ describe('RolePermissionService', () => {
     ).rejects.toMatchObject({ code: 'SYSTEM_ROLE_PROTECTED' });
   });
 
-  it('rejects protected permission without the protected-permission permission', async () => {
+  it('rejects protected permission management without the protected-permission permission', async () => {
+    const protectedPermission = PermissionEntity.create({
+      ...permission.toSnapshot(),
+      name: 'Protected Role Management',
+      code: 'roles:manage:protected',
+      module: 'roles',
+      domain: 'manage',
+      action: 'protected',
+    });
+    permissions.findByUuid.mockResolvedValueOnce(protectedPermission);
+    await expect(
+      service.remove(actor(['roles:manage']), roleUuid, permissionUuid, {}),
+    ).rejects.toMatchObject({ code: 'SYSTEM_PERMISSION_PROTECTED' });
+    expect(assignments.remove).not.toHaveBeenCalled();
+  });
+
+  it('rejects protected permission assignment without the protected-permission permission', async () => {
     const protectedPermission = PermissionEntity.create({
       ...permission.toSnapshot(),
       name: 'Protected Role Management',
@@ -169,5 +233,6 @@ describe('RolePermissionService', () => {
     await expect(
       service.assign(actor(['roles:manage']), roleUuid, permissionUuid, {}),
     ).rejects.toMatchObject({ code: 'SYSTEM_PERMISSION_PROTECTED' });
+    expect(assignments.assign).not.toHaveBeenCalled();
   });
 });
