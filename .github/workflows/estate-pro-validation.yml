@@ -53,7 +53,7 @@ jobs:
         run: npm run prisma:generate
 
       - name: Provision test database schema
-        run: npx prisma db push --accept-data-loss --skip-generate
+        run: npx prisma db push --accept-data-loss
 
       - name: Security baseline
         run: npm run test:security:baseline
