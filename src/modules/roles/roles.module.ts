@@ -19,7 +19,10 @@ import { UserRoleService } from './application/services/user-role.service.js';
 import { RoleAuthorizationPolicy } from './application/policies/role-authorization.policy.js';
 import { RolesController } from './presentation/roles.controller.js';
 import { UserRolesController } from './presentation/user-roles.controller.js';
-import { RoleReadAccessGuard, RoleManageAccessGuard } from './security/role-management-access.guard.js';
+import {
+  RoleReadAccessGuard,
+  RoleManageAccessGuard,
+} from './security/role-management-access.guard.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, PermissionsModule],
@@ -36,9 +39,15 @@ import { RoleReadAccessGuard, RoleManageAccessGuard } from './security/role-mana
     RoleManageAccessGuard,
     PrismaUserRoleTargetRepository,
     { provide: ROLE_REPOSITORY, useClass: PrismaRoleRepository },
-    { provide: ROLE_PERMISSION_REPOSITORY, useClass: PrismaRolePermissionRepository },
+    {
+      provide: ROLE_PERMISSION_REPOSITORY,
+      useClass: PrismaRolePermissionRepository,
+    },
     { provide: USER_ROLE_REPOSITORY, useClass: PrismaUserRoleRepository },
-    { provide: USER_ROLE_TARGET_REPOSITORY, useExisting: PrismaUserRoleTargetRepository },
+    {
+      provide: USER_ROLE_TARGET_REPOSITORY,
+      useExisting: PrismaUserRoleTargetRepository,
+    },
   ],
   exports: [RoleService, ROLE_REPOSITORY, UserRoleService],
 })

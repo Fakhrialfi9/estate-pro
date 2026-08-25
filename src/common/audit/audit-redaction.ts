@@ -1,8 +1,15 @@
 const MAX_STRING_LENGTH = 512;
-const SENSITIVE_FIELD_PATTERN = /(password|passphrase|token|jwt|secret|otp|totp|recovery|credential|authorization|cookie|sessionsecret|encryption|privatekey|apikey|database)/i;
+const SENSITIVE_FIELD_PATTERN =
+  /(password|passphrase|token|jwt|secret|otp|totp|recovery|credential|authorization|cookie|sessionsecret|encryption|privatekey|apikey|database)/i;
 
 const ALLOWED_FIELDS: Record<string, ReadonlySet<string>> = {
-  AuthenticationUser: new Set(['username', 'email', 'phone', 'status', 'isActive']),
+  AuthenticationUser: new Set([
+    'username',
+    'email',
+    'phone',
+    'status',
+    'isActive',
+  ]),
   user: new Set(['username', 'email', 'phone', 'status', 'isActive']),
   AuthorizationRole: new Set(['name', 'description', 'isActive']),
   role: new Set(['name', 'description', 'isActive']),
@@ -34,7 +41,13 @@ export const normalizeAuditResourceType = (value?: string): string | null => {
     AuthorizationUserRole: 'user_role',
     AuditLog: 'audit_log',
   };
-  return aliases[normalized] ?? normalized.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 100);
+  return (
+    aliases[normalized] ??
+    normalized
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_')
+      .slice(0, 100)
+  );
 };
 
 const sanitizeScalar = (value: unknown): string | boolean | number | null => {
@@ -47,7 +60,11 @@ const sanitizeScalar = (value: unknown): string | boolean | number | null => {
 
 export const sanitizeAuditChanges = (
   resourceType: string,
-  changes: readonly { field: string; oldValue: unknown; newValue: unknown }[] = [],
+  changes: readonly {
+    field: string;
+    oldValue: unknown;
+    newValue: unknown;
+  }[] = [],
 ) => {
   const allowlist = ALLOWED_FIELDS[resourceType] ?? new Set<string>();
   return changes.flatMap((change) => {
@@ -58,11 +75,13 @@ export const sanitizeAuditChanges = (
     ) {
       return [];
     }
-    return [{
-      field: change.field.slice(0, 100),
-      oldValue: sanitizeScalar(change.oldValue),
-      newValue: sanitizeScalar(change.newValue),
-    }];
+    return [
+      {
+        field: change.field.slice(0, 100),
+        oldValue: sanitizeScalar(change.oldValue),
+        newValue: sanitizeScalar(change.newValue),
+      },
+    ];
   });
 };
 
@@ -71,7 +90,10 @@ export const sanitizeAuditReason = (reason?: string): string | null => {
   return reason.trim().slice(0, 100) || null;
 };
 
-export const sanitizeAuditUserAgent = (userAgent: string | undefined, maxLength = 1024): string | null => {
+export const sanitizeAuditUserAgent = (
+  userAgent: string | undefined,
+  maxLength = 1024,
+): string | null => {
   if (!userAgent) return null;
   return userAgent.slice(0, Math.max(1, maxLength));
 };

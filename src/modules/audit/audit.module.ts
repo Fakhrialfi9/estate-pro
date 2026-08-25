@@ -10,7 +10,10 @@ import { AuditLogService } from './application/audit-log.service.js';
   providers: [
     PrismaSecurityAuditRepository,
     AuditLogService,
-    { provide: AUDIT_LOG_REPOSITORY, useExisting: PrismaSecurityAuditRepository },
+    {
+      provide: AUDIT_LOG_REPOSITORY,
+      useExisting: PrismaSecurityAuditRepository,
+    },
     { provide: SECURITY_AUDIT_REPOSITORY, useExisting: AuditLogService },
   ],
   exports: [AuditLogService, AUDIT_LOG_REPOSITORY, SECURITY_AUDIT_REPOSITORY],

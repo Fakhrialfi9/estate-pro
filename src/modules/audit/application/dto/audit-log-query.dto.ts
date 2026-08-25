@@ -1,6 +1,20 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
-import { AUDIT_ACTIONS, AUDIT_RESOURCE_TYPES, AUDIT_RESULT_VALUES } from '../../../../common/audit/audit-events.js';
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import {
+  AUDIT_ACTIONS,
+  AUDIT_RESOURCE_TYPES,
+  AUDIT_RESULT_VALUES,
+} from '../../../../common/audit/audit-events.js';
 
 const AUDIT_ACTION_VALUES = Object.values(AUDIT_ACTIONS);
 

@@ -1,4 +1,7 @@
-import type { AuditResult, SecurityAuditChange } from '../../../../common/audit/security-audit.port.js';
+import type {
+  AuditResult,
+  SecurityAuditChange,
+} from '../../../../common/audit/security-audit.port.js';
 
 export interface AuditLogEntityProps {
   uuid: string;

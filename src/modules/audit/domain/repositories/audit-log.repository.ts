@@ -1,4 +1,8 @@
-import type { AuditActorType, AuditResult, SecurityAuditChange } from '../../../../common/audit/security-audit.port.js';
+import type {
+  AuditActorType,
+  AuditResult,
+  SecurityAuditChange,
+} from '../../../../common/audit/security-audit.port.js';
 import type { AuditLogEntity } from '../entities/audit-log.entity.js';
 
 export interface AuditLogListQuery {
