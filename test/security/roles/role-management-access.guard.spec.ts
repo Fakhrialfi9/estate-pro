@@ -1,14 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ExecutionContext } from '@nestjs/common';
 import {
   RoleManageAccessGuard,
   RoleReadAccessGuard,
 } from '../../../src/modules/roles/security/role-management-access.guard.js';
 
-const context = (permissions: string[]) =>
+const context = (permissions?: string[]) =>
   ({
     switchToHttp: () => ({
-      getRequest: () => ({ user: { sub: 'actor-uuid', permissions } }),
+      getRequest: () => ({
+        user: permissions === undefined
+          ? { sub: 'actor-uuid' }
+          : { sub: 'actor-uuid', permissions },
+      }),
     }),
   }) as unknown as ExecutionContext;
 
@@ -36,5 +40,20 @@ describe('Role access guards', () => {
 
   it('rejects arbitrary authenticated users', () => {
     expect(() => new RoleReadAccessGuard().canActivate(context([]))).toThrow();
+  });
+
+  it('resolves authoritative permissions when the token has no permission claim', async () => {
+    const authorization = {
+      listPermissionCodes: vi
+        .fn()
+        .mockResolvedValue(['roles:manage', 'roles:manage:protected']),
+    };
+    const executionContext = context();
+    const result = await new RoleManageAccessGuard(
+      authorization,
+    ).canActivate(executionContext);
+
+    expect(result).toBe(true);
+    expect(authorization.listPermissionCodes).toHaveBeenCalledWith('actor-uuid');
   });
 });

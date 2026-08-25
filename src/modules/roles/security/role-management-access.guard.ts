@@ -41,6 +41,7 @@ abstract class BaseRoleAccessGuard implements CanActivate {
     return this.authorization
       .listPermissionCodes(request.user.sub)
       .then((permissions) => {
+        request.user!.permissions = [...permissions];
         if (!permissions.includes(this.requiredPermission)) {
           throw new ForbiddenException();
         }
@@ -82,6 +83,7 @@ export class RoleReadAccessGuard extends BaseRoleAccessGuard {
     return this.authorization
       .listPermissionCodes(request.user.sub)
       .then((permissions) => {
+        request.user!.permissions = [...permissions];
         const permissionSet = new Set(permissions);
         if (
           !permissionSet.has(ROLE_READ_PERMISSION) &&
