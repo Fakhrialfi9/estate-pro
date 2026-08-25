@@ -1,0 +1,20 @@
+services:
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: estate_pro_test
+      MARIADB_USER: test
+      MARIADB_PASSWORD: test-password
+      MARIADB_ROOT_PASSWORD: root-test-password
+    ports:
+      - "${E2E_DB_PORT:-3307}:3306"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mariadb-admin ping -h 127.0.0.1 -u root -proot-test-password --silent",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
