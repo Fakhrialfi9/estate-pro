@@ -57,7 +57,8 @@ const user = (overrides: Partial<UserEntity> = {}): UserEntity =>
 
 class SecurityStateFake implements AuthenticationSecurityRepository {
   readonly states = new Map<string, AuthenticationSecurityState>();
-  async getState(userUuid: string): Promise<AuthenticationSecurityState> {
+
+  getState(userUuid: string): Promise<AuthenticationSecurityState> {
     let state = this.states.get(userUuid);
     if (!state) {
       state = {
@@ -70,8 +71,9 @@ class SecurityStateFake implements AuthenticationSecurityRepository {
       };
       this.states.set(userUuid, state);
     }
-    return state;
+    return Promise.resolve(state);
   }
+
   async recordFailedLogin(
     userUuid: string,
     now: Date,
@@ -88,6 +90,7 @@ class SecurityStateFake implements AuthenticationSecurityRepository {
     }
     return state;
   }
+
   async recordSuccessfulLogin(
     userUuid: string,
     now: Date,
@@ -120,10 +123,14 @@ const makeLogin = (passwordValid = true, account = user()) => {
     revoke: vi.fn(),
   } as unknown as AuthenticationSessionRepository;
   const auditEvents: SecurityAuditEvent[] = [];
-  const audit: SecurityAuditRepository = {
-    record: vi.fn(async (event) => {
+  const auditRecord = vi.fn(
+    (event: SecurityAuditEvent): Promise<void> => {
       auditEvents.push(event);
-    }),
+      return Promise.resolve();
+    },
+  );
+  const audit: SecurityAuditRepository = {
+    record: auditRecord,
   };
   const hasher = { verify: vi.fn().mockResolvedValue(passwordValid) };
   const jwt = {
@@ -140,7 +147,7 @@ const makeLogin = (passwordValid = true, account = user()) => {
     jwt as never,
     config as never,
   );
-  return { service, security, sessions, auditEvents, hasher, users, jwt };
+  return { service, security, sessions, auditRecord, auditEvents, hasher, users, jwt };
 };
 
 describe('authentication security steps 102-106', () => {
@@ -213,7 +220,7 @@ describe('authentication security steps 102-106', () => {
         password: 'CorrectPassword!',
       }),
     ).resolves.toBeNull();
-    expect(ctx.hasher.verify).toHaveBeenCalledTimes(before);
+    expect(ctx.hasher.verify.mock.calls.length).toBe(before);
   });
 
   it('106: repeated concurrent failures leave the security state locked consistently', async () => {
