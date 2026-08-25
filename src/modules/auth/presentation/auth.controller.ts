@@ -33,7 +33,7 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  @Throttle({ login: LOGIN_RATE_LIMIT })
+  @Throttle({ default: LOGIN_RATE_LIMIT })
   async loginUser(@Body() dto: LoginDto, @Req() request: Request) {
     const result = await this.login.execute({
       ...dto,
