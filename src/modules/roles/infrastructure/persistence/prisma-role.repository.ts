@@ -4,16 +4,17 @@ import { PrismaService } from '../../../../infrastructure/database/prisma/prisma
 import {
   normalizeRoleCode,
   normalizeRoleName,
+  PROTECTED_ROLE_CODES,
   type RoleUpdate,
 } from '../../domain/entities/role.entity.js';
 import type {
   CreateRoleData,
+  RoleDependencyCount,
   RoleFilterField,
   RoleListQuery,
   RoleListResult,
   RoleRepository,
   RoleSortField,
-  RoleDependencyCount,
 } from '../../domain/repositories/role.repository.js';
 import {
   PrismaRoleMapper,
@@ -24,14 +25,19 @@ import {
 interface RoleWhere {
   uuid?: string;
   name?: { contains: string } | string;
-  code?: string;
+  code?: string | { contains: string } | { in: string[] };
   isActive?: boolean;
+  NOT?: { code?: { in: string[] } };
   OR?: Array<{ name?: { contains: string }; code?: { contains: string } }>;
 }
 
 type RoleDelegate = {
-  create(args: { data: RolePersistenceData }): Promise<RolePersistenceRecord>;
-  findFirst(args: { where: RoleWhere }): Promise<RolePersistenceRecord | null>;
+  create(args: {
+    data: RolePersistenceData & { uuid: string };
+  }): Promise<RolePersistenceRecord>;
+  findFirst(args: {
+    where: RoleWhere;
+  }): Promise<RolePersistenceRecord | null>;
   findMany(args: {
     where: RoleWhere;
     orderBy:
@@ -189,14 +195,16 @@ export class PrismaRoleRepository implements RoleRepository {
       case 'code':
         return { code: normalizeRoleCode(value) };
       case 'isActive':
-        return { isActive: value.toLowerCase() === 'true' };
+        return { isActive: value.trim().toLowerCase() === 'true' };
       case 'isSystem': {
-        const code = normalizeRoleCode(value);
-        return {
-          code: ['admin', 'owner', 'super-admin', 'system'].includes(code)
-            ? code
-            : '__not_protected__',
-        };
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'true') {
+          return { code: { in: [...PROTECTED_ROLE_CODES] } };
+        }
+        if (normalized === 'false') {
+          return { NOT: { code: { in: [...PROTECTED_ROLE_CODES] } } };
+        }
+        return { code: { in: [] } };
       }
     }
   }
