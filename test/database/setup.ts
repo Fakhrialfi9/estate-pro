@@ -50,7 +50,9 @@ function getDatabaseName(databaseUrl: URL): string {
   return decodeURIComponent(databaseUrl.pathname.replace(/^\//, ''));
 }
 
-function getSafeTestDatabaseUrl(databaseUrl: string | undefined): string | undefined {
+function getSafeTestDatabaseUrl(
+  databaseUrl: string | undefined,
+): string | undefined {
   const url = parseDatabaseUrl(databaseUrl);
   if (!url) {
     return undefined;
@@ -61,7 +63,9 @@ function getSafeTestDatabaseUrl(databaseUrl: string | undefined): string | undef
   }
 
   const databaseName = getDatabaseName(url);
-  return TEST_DATABASE_NAME_PATTERN.test(databaseName) ? databaseUrl : undefined;
+  return TEST_DATABASE_NAME_PATTERN.test(databaseName)
+    ? databaseUrl
+    : undefined;
 }
 
 function buildDatabaseUrl(environment: Environment): string | undefined {
@@ -105,13 +109,17 @@ function resolveTestDatabaseUrl(): string {
   }
 
   const processDatabaseFromParts = buildDatabaseUrl(processEnvironment);
-  const safeProcessDatabaseFromParts = getSafeTestDatabaseUrl(processDatabaseFromParts);
+  const safeProcessDatabaseFromParts = getSafeTestDatabaseUrl(
+    processDatabaseFromParts,
+  );
   if (safeProcessDatabaseFromParts) {
     return safeProcessDatabaseFromParts;
   }
 
   const projectDatabaseFromParts = buildDatabaseUrl(projectEnvironment);
-  const safeProjectDatabaseFromParts = getSafeTestDatabaseUrl(projectDatabaseFromParts);
+  const safeProjectDatabaseFromParts = getSafeTestDatabaseUrl(
+    projectDatabaseFromParts,
+  );
   if (safeProjectDatabaseFromParts) {
     return safeProjectDatabaseFromParts;
   }
