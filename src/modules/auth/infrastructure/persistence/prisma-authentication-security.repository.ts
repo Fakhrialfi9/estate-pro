@@ -30,7 +30,9 @@ export class PrismaAuthenticationSecurityRepository
   private readonly security: Delegate;
 
   constructor(prisma: PrismaService) {
-    this.security = (prisma as unknown as PrismaShape).authenticationUserSecurity;
+    this.security = (
+      prisma as unknown as PrismaShape
+    ).authenticationUserSecurity;
   }
 
   async getState(userUuid: string): Promise<AuthenticationSecurityState> {
@@ -47,7 +49,8 @@ export class PrismaAuthenticationSecurityRepository
       const raced = await this.security.findFirst({
         where: { user: { uuid: userUuid } },
       });
-      if (!raced) throw new Error('Unable to initialize authentication security state');
+      if (!raced)
+        throw new Error('Unable to initialize authentication security state');
       return this.toState(raced);
     }
   }

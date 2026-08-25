@@ -51,7 +51,9 @@ export class LoginService {
     const policy: AuthenticationLockoutPolicy = {
       threshold: this.config.getOrThrow<number>('auth.login.lockoutThreshold'),
       windowMs: this.config.getOrThrow<number>('auth.login.lockoutWindowMs'),
-      durationMs: this.config.getOrThrow<number>('auth.login.lockoutDurationMs'),
+      durationMs: this.config.getOrThrow<number>(
+        'auth.login.lockoutDurationMs',
+      ),
     };
     const identifier = command.identifier.trim();
     const user =
@@ -115,7 +117,10 @@ export class LoginService {
     };
   }
 
-  private async auditFailure(command: LoginCommand, userUuid?: string): Promise<void> {
+  private async auditFailure(
+    command: LoginCommand,
+    userUuid?: string,
+  ): Promise<void> {
     await this.audit.record({
       action: AUTH_ACTIONS.LOGIN_FAILURE,
       userUuid,

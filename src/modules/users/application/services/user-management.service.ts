@@ -20,7 +20,8 @@ import { USER_REPOSITORY } from '../../domain/repositories/user.repository.js';
 export class UserManagementService {
   constructor(
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
-    @Inject(SESSION_SECURITY_PORT) private readonly sessions: SessionSecurityPort,
+    @Inject(SESSION_SECURITY_PORT)
+    private readonly sessions: SessionSecurityPort,
   ) {}
 
   async create(data: CreateUserData): Promise<UserEntity> {
@@ -68,7 +69,9 @@ export class UserManagementService {
         ? { username: this.normalizeNullable(changes.username) }
         : {}),
       ...(changes.email !== undefined
-        ? { email: this.normalizeNullable(changes.email)?.toLowerCase() ?? null }
+        ? {
+            email: this.normalizeNullable(changes.email)?.toLowerCase() ?? null,
+          }
         : {}),
       ...(changes.phone !== undefined
         ? { phone: this.normalizeNullable(changes.phone) }
@@ -76,9 +79,14 @@ export class UserManagementService {
       ...(changes.status !== undefined ? { status: changes.status } : {}),
       ...(changes.isActive !== undefined ? { isActive: changes.isActive } : {}),
     };
-    const nextUsername = normalized.username !== undefined ? normalized.username : existing.username;
-    const nextEmail = normalized.email !== undefined ? normalized.email : existing.email;
-    const nextPhone = normalized.phone !== undefined ? normalized.phone : existing.phone;
+    const nextUsername =
+      normalized.username !== undefined
+        ? normalized.username
+        : existing.username;
+    const nextEmail =
+      normalized.email !== undefined ? normalized.email : existing.email;
+    const nextPhone =
+      normalized.phone !== undefined ? normalized.phone : existing.phone;
     if (!nextUsername && !nextEmail && !nextPhone) {
       throw new InvalidUserError('At least one identity is required');
     }
@@ -103,12 +111,16 @@ export class UserManagementService {
     await this.sessions.revokeAllForSecurityEvent(uuid, 'ACCOUNT_DISABLED');
   }
 
-  private hasSecurityDisablingChange(existing: UserEntity, changes: UserUpdate): boolean {
+  private hasSecurityDisablingChange(
+    existing: UserEntity,
+    changes: UserUpdate,
+  ): boolean {
     return (
-      changes.isActive === false ||
-      changes.status === 'inactive' ||
-      changes.status === 'suspended'
-    ) && existing.isAccessible();
+      (changes.isActive === false ||
+        changes.status === 'inactive' ||
+        changes.status === 'suspended') &&
+      existing.isAccessible()
+    );
   }
 
   private normalizeNullable(value: string | null | undefined): string | null {
