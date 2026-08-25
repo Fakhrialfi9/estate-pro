@@ -18,6 +18,7 @@ const key = '01234567890123456789012345678901';
 type TestCredentialRepository = ConstructorParameters<
   typeof TwoFactorService
 >[5];
+type EnrollmentResult = { enabled: boolean; recoveryCodes: string[] };
 
 function createHarness() {
   let enabled = false;
@@ -271,13 +272,12 @@ describe('2FA security flow', () => {
       'secret',
     )!;
     const code = totp.generateCode(secret, totp.currentTimeStep());
-    const enabled = await service.verifyEnrollment('u1', code);
-    const enabledBody = enabled as unknown as {
-      enabled: boolean;
-      recoveryCodes: string[];
-    };
-    expect(enabledBody.enabled).toBe(true);
-    expect(enabledBody.recoveryCodes).toHaveLength(3);
+    const enabled: EnrollmentResult = (await service.verifyEnrollment(
+      'u1',
+      code,
+    )) as unknown as EnrollmentResult;
+    expect(enabled.enabled).toBe(true);
+    expect(enabled.recoveryCodes).toHaveLength(3);
     expect(enrollment.enableWithRecoveryCodes).toHaveBeenCalledWith(
       expect.objectContaining({
         userUuid: 'u1',
@@ -290,7 +290,7 @@ describe('2FA security flow', () => {
     const firstChallenge = await service.createLoginChallenge('u1');
     await service.verifyLoginChallenge({
       token: firstChallenge.token,
-      recoveryCode: enabledBody.recoveryCodes[0],
+      recoveryCode: enabled.recoveryCodes[0],
     });
     expect(recovery.markUsed).toHaveBeenCalled();
 
@@ -298,7 +298,7 @@ describe('2FA security flow', () => {
     await expect(
       service.verifyLoginChallenge({
         token: secondChallenge.token,
-        recoveryCode: enabledBody.recoveryCodes[0],
+        recoveryCode: enabled.recoveryCodes[0],
       }),
     ).rejects.toThrow();
   });
