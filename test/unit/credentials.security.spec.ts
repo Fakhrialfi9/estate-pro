@@ -50,7 +50,10 @@ describe('credential security', () => {
   it('creates credentials without returning password material', async () => {
     const findByUserUuid = vi.fn().mockResolvedValue(null);
     const create = vi.fn().mockResolvedValue({ passwordHash: 'hash' });
-    const repository = { findByUserUuid, create } as unknown as CredentialRepository;
+    const repository = {
+      findByUserUuid,
+      create,
+    } as unknown as CredentialRepository;
     const hash = vi.fn().mockResolvedValue('argon2-hash');
     const hasher = { hash } as unknown as PasswordHasherService;
     const service = new CredentialService(repository, hasher);
@@ -70,7 +73,10 @@ describe('credential security', () => {
       .fn()
       .mockResolvedValue({ userUuid, passwordHash: 'old-hash' });
     const updatePassword = vi.fn().mockResolvedValue(undefined);
-    const repository = { findByUserUuid, updatePassword } as unknown as CredentialRepository;
+    const repository = {
+      findByUserUuid,
+      updatePassword,
+    } as unknown as CredentialRepository;
     const verify = vi.fn().mockResolvedValue(true);
     const hash = vi.fn().mockResolvedValue('new-argon2-hash');
     const hasher = { verify, hash } as unknown as PasswordHasherService;
@@ -129,7 +135,10 @@ describe('credential security', () => {
       .fn()
       .mockResolvedValue({ userUuid, passwordHash: 'hash' });
     const createResetToken = vi.fn().mockResolvedValue(undefined);
-    const credentials = { findByUserUuid, createResetToken } as unknown as CredentialRepository;
+    const credentials = {
+      findByUserUuid,
+      createResetToken,
+    } as unknown as CredentialRepository;
     const deliver = vi.fn().mockResolvedValue(undefined);
     const delivery = { deliver };
     const hash = vi.fn();
@@ -168,7 +177,9 @@ describe('credential security', () => {
       .fn()
       .mockResolvedValueOnce(userUuid)
       .mockResolvedValueOnce(null);
-    const credentials = { resetPasswordAtomically } as unknown as CredentialRepository;
+    const credentials = {
+      resetPasswordAtomically,
+    } as unknown as CredentialRepository;
     const users = {} as UserRepository;
     const hash = vi.fn().mockResolvedValue('new-argon2-hash');
     const hasher = { hash } as unknown as PasswordHasherService;
