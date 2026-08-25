@@ -108,12 +108,10 @@ const makeLogin = (passwordValid = true, account = user()) => {
     findByUsername: vi.fn().mockResolvedValue(account),
   } as unknown as UserRepository;
   const credentials = {
-    findByUserUuid: vi
-      .fn()
-      .mockResolvedValue({
-        userUuid: account.uuid,
-        passwordHash: 'argon2-hash',
-      }),
+    findByUserUuid: vi.fn().mockResolvedValue({
+      userUuid: account.uuid,
+      passwordHash: 'argon2-hash',
+    }),
   } as unknown as CredentialRepository;
   const security = new SecurityStateFake();
   const sessions = {

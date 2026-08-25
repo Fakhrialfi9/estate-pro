@@ -28,7 +28,8 @@ export class ProfileAuthenticationGuard implements CanActivate {
 
     try {
       const claims = await this.jwt.verifyAccessToken(token);
-      if (!(await this.sessions.isActive(claims.sub, claims.sid, new Date()))) throw new UnauthorizedException();
+      if (!(await this.sessions.isActive(claims.sub, claims.sid, new Date())))
+        throw new UnauthorizedException();
       const actor = await this.users.getByUuid(claims.sub);
       if (!actor.isAccessible()) throw new UnauthorizedException();
       request.user = claims;

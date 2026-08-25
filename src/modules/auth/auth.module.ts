@@ -18,28 +18,46 @@ import { PrismaSecurityAuditRepository } from '../../../infrastructure/audit/pri
 
 @Global()
 @Module({
-  imports: [ConfigModule, UsersModule, PasswordHashingModule, JwtModule.registerAsync({
-    imports: [ConfigModule],
-    inject: [ConfigService],
-    useFactory: (config: ConfigService) => ({
-      secret: config.getOrThrow<string>('auth.jwt.secret'),
-      signOptions: {
-        expiresIn: config.getOrThrow<string>('auth.jwt.expiresIn') as SignOptions['expiresIn'],
-        issuer: config.getOrThrow<string>('auth.jwt.issuer'),
-        audience: config.getOrThrow<string>('auth.jwt.audience'),
-        algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>('auth.jwt.algorithm'),
-      },
+  imports: [
+    ConfigModule,
+    UsersModule,
+    PasswordHashingModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.getOrThrow<string>('auth.jwt.secret'),
+        signOptions: {
+          expiresIn: config.getOrThrow<string>(
+            'auth.jwt.expiresIn',
+          ) as SignOptions['expiresIn'],
+          issuer: config.getOrThrow<string>('auth.jwt.issuer'),
+          audience: config.getOrThrow<string>('auth.jwt.audience'),
+          algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>(
+            'auth.jwt.algorithm',
+          ),
+        },
+      }),
     }),
-  })],
+  ],
   controllers: [AuthController],
   providers: [
     LoginService,
     LogoutService,
     JwtTokenService,
     JwtAuthGuard,
-    { provide: AUTHENTICATION_SECURITY_REPOSITORY, useClass: PrismaAuthenticationSecurityRepository },
-    { provide: AUTHENTICATION_SESSION_REPOSITORY, useClass: PrismaAuthenticationSessionRepository },
-    { provide: SECURITY_AUDIT_REPOSITORY, useClass: PrismaSecurityAuditRepository },
+    {
+      provide: AUTHENTICATION_SECURITY_REPOSITORY,
+      useClass: PrismaAuthenticationSecurityRepository,
+    },
+    {
+      provide: AUTHENTICATION_SESSION_REPOSITORY,
+      useClass: PrismaAuthenticationSessionRepository,
+    },
+    {
+      provide: SECURITY_AUDIT_REPOSITORY,
+      useClass: PrismaSecurityAuditRepository,
+    },
   ],
   exports: [JwtTokenService, JwtAuthGuard, AUTHENTICATION_SESSION_REPOSITORY],
 })
