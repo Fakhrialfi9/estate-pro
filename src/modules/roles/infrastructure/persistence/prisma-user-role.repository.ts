@@ -44,41 +44,36 @@ interface UserRoleDelegate {
   create(args: unknown): Promise<UserRoleRecord>;
   update(args: unknown): Promise<UserRoleRecord>;
 }
-
 interface PrismaUserRoleShape {
   authenticationUser: UserDelegate;
   authorizationRole: RoleDelegate;
   authorizationUserRole: UserRoleDelegate;
+  $transaction<T>(callback: (tx: PrismaUserRoleShape) => Promise<T>): Promise<T>;
 }
 
 @Injectable()
 export class PrismaUserRoleRepository implements UserRoleRepository {
-  private readonly users: UserDelegate;
-  private readonly roles: RoleDelegate;
-  private readonly userRoles: UserRoleDelegate;
+  private readonly client: PrismaUserRoleShape;
 
   constructor(prisma: PrismaService) {
-    const client = prisma as unknown as PrismaUserRoleShape;
-    this.users = client.authenticationUser;
-    this.roles = client.authorizationRole;
-    this.userRoles = client.authorizationUserRole;
+    this.client = prisma as unknown as PrismaUserRoleShape;
   }
 
   async findByUserAndRole(
     userUuid: string,
     roleUuid: string,
   ): Promise<UserRoleEntity | null> {
-    const user = await this.users.findFirst({
+    const user = await this.client.authenticationUser.findFirst({
       where: { uuid: userUuid },
       select: { id: true, uuid: true },
     });
-    const role = await this.roles.findFirst({
+    const role = await this.client.authorizationRole.findFirst({
       where: { uuid: roleUuid },
       select: { id: true, uuid: true, name: true, code: true },
     });
     if (!user || !role) return null;
 
-    const record = await this.userRoles.findFirst({
+    const record = await this.client.authorizationUserRole.findFirst({
       where: { userId: user.id, roleId: role.id },
       include: { role: true },
     });
@@ -86,79 +81,81 @@ export class PrismaUserRoleRepository implements UserRoleRepository {
   }
 
   async assign(data: AssignUserRoleData): Promise<UserRoleEntity> {
-    const [user, role, assignedBy] = await Promise.all([
-      this.users.findFirst({
-        where: { uuid: data.userUuid },
-        select: { id: true, uuid: true },
-      }),
-      this.roles.findFirst({
-        where: { uuid: data.roleUuid },
-        select: { id: true, uuid: true, name: true, code: true },
-      }),
-      this.users.findFirst({
-        where: { uuid: data.assignedByUuid },
-        select: { id: true, uuid: true },
-      }),
-    ]);
+    return this.client.$transaction(async (tx) => {
+      const [user, role, assignedBy] = await Promise.all([
+        tx.authenticationUser.findFirst({
+          where: { uuid: data.userUuid },
+          select: { id: true, uuid: true },
+        }),
+        tx.authorizationRole.findFirst({
+          where: { uuid: data.roleUuid },
+          select: { id: true, uuid: true, name: true, code: true },
+        }),
+        tx.authenticationUser.findFirst({
+          where: { uuid: data.assignedByUuid },
+          select: { id: true, uuid: true },
+        }),
+      ]);
 
-    if (!user || !role || !assignedBy) {
-      throw new Error('UserRoleAssignmentContextNotFound');
-    }
+      if (!user || !role || !assignedBy) {
+        throw new Error('UserRoleAssignmentContextNotFound');
+      }
 
-    const existing = await this.userRoles.findFirst({
-      where: { userId: user.id, roleId: role.id },
-      include: { role: true },
-    });
+      const existing = await tx.authorizationUserRole.findFirst({
+        where: { userId: user.id, roleId: role.id },
+        include: { role: true },
+      });
 
-    if (existing?.isActive) {
-      throw new Error('UserRoleAlreadyExistsError');
-    }
-
-    try {
-      const record = existing
-        ? await this.userRoles.update({
-            where: {
-              userId_roleId: {
-                userId: user.id,
-                roleId: role.id,
-              },
-            },
-            data: {
-              isActive: true,
-              assignedBy: assignedBy.id,
-              assignedAt: new Date(),
-              revokedAt: null,
-            },
-            include: { role: true },
-          })
-        : await this.userRoles.create({
-            data: {
-              userId: user.id,
-              roleId: role.id,
-              isActive: true,
-              assignedBy: assignedBy.id,
-              assignedAt: new Date(),
-              revokedAt: null,
-            },
-            include: { role: true },
-          });
-
-      return this.toDomain(record, user.uuid, data.assignedByUuid);
-    } catch (error: unknown) {
-      if ((error as { code?: string }).code === 'P2002') {
+      if (existing?.isActive) {
         throw new Error('UserRoleAlreadyExistsError');
       }
-      throw error;
-    }
+
+      try {
+        const record = existing
+          ? await tx.authorizationUserRole.update({
+              where: {
+                userId_roleId: {
+                  userId: user.id,
+                  roleId: role.id,
+                },
+              },
+              data: {
+                isActive: true,
+                assignedBy: assignedBy.id,
+                assignedAt: new Date(),
+                revokedAt: null,
+              },
+              include: { role: true },
+            })
+          : await tx.authorizationUserRole.create({
+              data: {
+                userId: user.id,
+                roleId: role.id,
+                isActive: true,
+                assignedBy: assignedBy.id,
+                assignedAt: new Date(),
+                revokedAt: null,
+              },
+              include: { role: true },
+            });
+
+        return this.toDomain(record, user.uuid, data.assignedByUuid);
+      } catch (error: unknown) {
+        if ((error as { code?: string }).code === 'P2002') {
+          throw new Error('UserRoleAlreadyExistsError');
+        }
+        throw error;
+      }
+    });
   }
 
   async remove(data: RemoveUserRoleData): Promise<UserRoleEntity> {
     const [user, role] = await Promise.all([
-      this.users.findFirst({
+      this.client.authenticationUser.findFirst({
         where: { uuid: data.userUuid },
         select: { id: true, uuid: true },
       }),
-      this.roles.findFirst({
+      this.client.authorizationRole.findFirst({
         where: { uuid: data.roleUuid },
         select: { id: true, uuid: true, name: true, code: true },
       }),
@@ -166,7 +163,7 @@ export class PrismaUserRoleRepository implements UserRoleRepository {
 
     if (!user || !role) throw new Error('UserRoleNotFoundError');
 
-    const existing = await this.userRoles.findFirst({
+    const existing = await this.client.authorizationUserRole.findFirst({
       where: { userId: user.id, roleId: role.id },
       include: { role: true },
     });
@@ -174,7 +171,7 @@ export class PrismaUserRoleRepository implements UserRoleRepository {
       throw new Error('UserRoleNotFoundError');
     }
 
-    const record = await this.userRoles.update({
+    const record = await this.client.authorizationUserRole.update({
       where: {
         userId_roleId: {
           userId: user.id,
@@ -195,22 +192,26 @@ export class PrismaUserRoleRepository implements UserRoleRepository {
     userUuid: string,
     query: UserRoleListQuery,
   ): Promise<UserRoleListResult> {
-    const user = await this.users.findFirst({
+    const user = await this.client.authenticationUser.findFirst({
       where: { uuid: userUuid },
       select: { id: true, uuid: true },
     });
     if (!user) throw new Error('UserRoleNotFoundError');
 
     const where = { userId: user.id, isActive: true };
+    const page = Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
+    const limit = Number.isInteger(query.limit)
+      ? Math.min(Math.max(query.limit, 1), 100)
+      : 50;
     const [records, total] = await Promise.all([
-      this.userRoles.findMany({
+      this.client.authorizationUserRole.findMany({
         where,
-        orderBy: { assignedAt: 'desc' },
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
+        orderBy: [{ assignedAt: 'desc' }, { roleId: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
         include: { role: true },
       }),
-      this.userRoles.count({ where }),
+      this.client.authorizationUserRole.count({ where }),
     ]);
 
     return {
