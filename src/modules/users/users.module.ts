@@ -12,6 +12,7 @@ import { UserProfileService } from './profile/application/services/user-profile.
 import { UserProfileOwnershipPolicy } from './profile/application/policies/user-profile-ownership.policy.js';
 import { UserProfileController } from './profile/presentation/user-profile.controller.js';
 import { ProfileAuthenticationGuard } from './profile/security/profile-authentication.guard.js';
+import { USER_IDENTITY_READER } from './profile/application/types/user-identity-reader.js';
 
 @Module({
   imports: [DatabaseModule],
@@ -29,6 +30,10 @@ import { ProfileAuthenticationGuard } from './profile/security/profile-authentic
     {
       provide: USER_PROFILE_REPOSITORY,
       useClass: PrismaUserProfileRepository,
+    },
+    {
+      provide: USER_IDENTITY_READER,
+      useExisting: UserManagementService,
     },
   ],
   exports: [UserManagementService],
