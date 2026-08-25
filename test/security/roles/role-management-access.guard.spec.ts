@@ -8,7 +8,9 @@ import type { UserAuthorizationRepository } from '../../../src/common/security/a
 
 const actorUuid = '11111111-1111-4111-8111-111111111111';
 
-const context = (request: { user?: { sub?: string; permissions?: string[] } }) =>
+const context = (request: {
+  user?: { sub?: string; permissions?: string[] };
+}) =>
   ({
     switchToHttp: () => ({
       getRequest: () => request,
@@ -38,7 +40,9 @@ describe('Role access guards', () => {
 
   it('allows management with authoritative roles:manage', async () => {
     const authorization = repository(['roles:manage']);
-    const request = { user: { sub: actorUuid, permissions: ['spoofed:admin'] } };
+    const request = {
+      user: { sub: actorUuid, permissions: ['spoofed:admin'] },
+    };
 
     await expect(
       new RoleManageAccessGuard(authorization).canActivate(context(request)),
@@ -79,9 +83,9 @@ describe('Role access guards', () => {
     ]);
     const request = { user: { sub: actorUuid } };
 
-    const result = await new RoleManageAccessGuard(
-      authorization,
-    ).canActivate(context(request));
+    const result = await new RoleManageAccessGuard(authorization).canActivate(
+      context(request),
+    );
 
     expect(result).toBe(true);
     expect(authorization.getAuthorizationSnapshot).toHaveBeenCalledWith(
@@ -98,9 +102,7 @@ describe('Role access guards', () => {
     const request = { user: { sub: actorUuid, permissions: ['roles:manage'] } };
 
     await expect(
-      new RoleManageAccessGuard(authorization).canActivate(
-        context(request),
-      ),
+      new RoleManageAccessGuard(authorization).canActivate(context(request)),
     ).rejects.toThrow();
     expect(authorization.getAuthorizationSnapshot).toHaveBeenCalledWith(
       actorUuid,

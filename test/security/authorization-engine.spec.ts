@@ -163,7 +163,9 @@ describe('AuthorizationGuard', () => {
     const target: Record<string, unknown> = {};
     expect(() => RequireRoles('admin')).not.toThrow();
     expect(() => RequireRolesAny('admin', 'auditor')).not.toThrow();
-    expect(() => RequirePermissionsAny('users:read', 'users:admin')).not.toThrow();
+    expect(() =>
+      RequirePermissionsAny('users:read', 'users:admin'),
+    ).not.toThrow();
     expect(() => RequirePermissions('users:read')).not.toThrow();
     expect(Public).toBeTypeOf('function');
     expect(target).toBeDefined();
@@ -194,11 +196,11 @@ describe('AuthorizationGuard', () => {
     (authorization.resolve as ReturnType<typeof vi.fn>).mockResolvedValue(
       snapshot(['users:read'], ['user']),
     );
-    (authorization.assertPermissions as ReturnType<typeof vi.fn>).mockImplementation(
-      () => {
-        throw new ForbiddenException();
-      },
-    );
+    (
+      authorization.assertPermissions as ReturnType<typeof vi.fn>
+    ).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
     await expect(
       guard.canActivate(context(request({ sub: 'u' }), handler)),
     ).rejects.toThrow(ForbiddenException);
