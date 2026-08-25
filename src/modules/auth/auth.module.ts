@@ -5,7 +5,6 @@ import type { SignOptions } from 'jsonwebtoken';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { AuditModule } from '../audit/audit.module.js';
-import { AuditLogService } from '../audit/application/audit-log.service.js';
 import { PasswordHashingModule } from './password-hashing.module.js';
 import { LoginService } from './application/services/login.service.js';
 import { LogoutService } from './application/services/logout.service.js';
@@ -26,7 +25,7 @@ import { AUTHENTICATION_SECURITY_REPOSITORY } from './domain/repositories/authen
 import { PrismaAuthenticationSecurityRepository } from './infrastructure/persistence/prisma-authentication-security.repository.js';
 import { AUTHENTICATION_SESSION_REPOSITORY } from './domain/repositories/authentication-session.repository.js';
 import { PrismaAuthenticationSessionRepository } from './infrastructure/persistence/prisma-authentication-session.repository.js';
-import { SECURITY_AUDIT_REPOSITORY } from './domain/repositories/security-audit.repository.js';
+import { SECURITY_AUDIT_REPOSITORY } from '../../common/audit/security-audit.port.js';
 import { ACCESS_TOKEN_VERIFIER } from '../../common/security/access-token-verifier.port.js';
 import { AUTHENTICATION_SESSION_PORT } from '../../common/security/authentication-session.port.js';
 import { SESSION_SECURITY_PORT } from '../../common/security/session-security.port.js';
@@ -89,7 +88,6 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
       provide: AUTHENTICATION_SESSION_REPOSITORY,
       useClass: PrismaAuthenticationSessionRepository,
     },
-    { provide: SECURITY_AUDIT_REPOSITORY, useExisting: AuditLogService },
     { provide: TWO_FACTOR_REPOSITORY, useClass: PrismaTwoFactorRepository },
     {
       provide: TWO_FACTOR_RECOVERY_CODE_REPOSITORY,
