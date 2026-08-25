@@ -24,6 +24,8 @@ import type { TwoFactorRepository } from '../../domain/repositories/two-factor.r
 import { TWO_FACTOR_REPOSITORY } from '../../domain/repositories/two-factor.repository.js';
 import type { TwoFactorRecoveryCodeRepository } from '../../domain/repositories/two-factor-recovery-code.repository.js';
 import { TWO_FACTOR_RECOVERY_CODE_REPOSITORY } from '../../domain/repositories/two-factor-recovery-code.repository.js';
+import type { TwoFactorEnrollmentRepository } from '../../domain/repositories/two-factor-enrollment.repository.js';
+import { TWO_FACTOR_ENROLLMENT_REPOSITORY } from '../../domain/repositories/two-factor-enrollment.repository.js';
 import type { TwoFactorChallengeRepository } from '../../domain/repositories/two-factor-challenge.repository.js';
 import { TWO_FACTOR_CHALLENGE_REPOSITORY } from '../../domain/repositories/two-factor-challenge.repository.js';
 
@@ -47,6 +49,8 @@ export class TwoFactorService {
     private readonly repository: TwoFactorRepository,
     @Inject(TWO_FACTOR_RECOVERY_CODE_REPOSITORY)
     private readonly recoveryCodes: TwoFactorRecoveryCodeRepository,
+    @Inject(TWO_FACTOR_ENROLLMENT_REPOSITORY)
+    private readonly enrollment: TwoFactorEnrollmentRepository,
     @Inject(TWO_FACTOR_CHALLENGE_REPOSITORY)
     private readonly challenges: TwoFactorChallengeRepository,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
@@ -116,22 +120,24 @@ export class TwoFactorService {
       await this.recordFailure(userUuid, now);
       throw new UnauthorizedException('Invalid verification code');
     }
-    if (
-      !(await this.repository.enable({
-        userUuid,
-        enabledAt: now,
-        lastUsedAt: now,
-        lastUsedTimeStep: timeStep,
-      }))
-    )
-      throw new UnauthorizedException('Invalid verification code');
-    const recoveryCodes = await this.issueRecoveryCodes(userUuid);
+
+    const { codes, hashes } = await this.generateRecoveryCodes();
+    const enabled = await this.enrollment.enableWithRecoveryCodes({
+      userUuid,
+      enabledAt: now,
+      lastUsedAt: now,
+      lastUsedTimeStep: timeStep,
+      recoveryCodeHashes: hashes,
+    });
+    if (!enabled)
+      throw new UnauthorizedException('Two-factor enrollment is no longer valid');
+
     await this.audit.record({
       action: TWO_FACTOR_AUDIT_ACTIONS.ENABLED,
       userUuid,
       ...context,
     });
-    return { enabled: true, recoveryCodes };
+    return { enabled: true, recoveryCodes: codes };
   }
 
   async createLoginChallenge(
@@ -253,13 +259,14 @@ export class TwoFactorService {
       }))
     )
       throw new UnauthorizedException('Re-authentication failed');
-    const recoveryCodes = await this.issueRecoveryCodes(userUuid);
+    const { codes, hashes } = await this.generateRecoveryCodes();
+    await this.recoveryCodes.replaceAll(userUuid, hashes);
     await this.audit.record({
       action: TWO_FACTOR_AUDIT_ACTIONS.RECOVERY_CODES_REGENERATED,
       userUuid,
       ...context,
     });
-    return { recoveryCodes };
+    return { recoveryCodes: codes };
   }
 
   async disable(
@@ -338,7 +345,10 @@ export class TwoFactorService {
     return false;
   }
 
-  private async issueRecoveryCodes(userUuid: string): Promise<string[]> {
+  private async generateRecoveryCodes(): Promise<{
+    codes: string[];
+    hashes: string[];
+  }> {
     const count = this.config.get<number>(
       'auth.twoFactor.recoveryCodeCount',
       10,
@@ -348,8 +358,7 @@ export class TwoFactorService {
     );
     const hashes: string[] = [];
     for (const code of codes) hashes.push(await this.hasher.hash(code));
-    await this.recoveryCodes.replaceAll(userUuid, hashes);
-    return codes;
+    return { codes, hashes };
   }
 
   private digest(value: string): string {
