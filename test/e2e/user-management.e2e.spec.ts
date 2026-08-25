@@ -12,6 +12,12 @@ import { PasswordHasherService } from '../../src/modules/auth/application/servic
 import { JwtService } from '@nestjs/jwt';
 
 const PASSWORD = 'Strong-Test-Password-123!';
+const USER_MANAGEMENT_PERMISSIONS = [
+  'users.create',
+  'users.read',
+  'users.update',
+  'users.delete',
+] as const;
 type UserResponse = {
   uuid: string;
   email: string;
@@ -39,7 +45,7 @@ function digestSessionId(sessionId: string): string {
 
 async function tokenFor(
   sub: string,
-  permissions: string[] = ['users:manage'],
+  permissions: string[] = [...USER_MANAGEMENT_PERMISSIONS],
 ): Promise<string> {
   const user = await prisma.authenticationUser.findUniqueOrThrow({
     where: { uuid: sub },
