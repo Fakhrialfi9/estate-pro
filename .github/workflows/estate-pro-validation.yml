@@ -38,7 +38,7 @@ jobs:
         run: npm install --global npm@11.18.0
 
       - name: Refresh dependency lockfile for security update
-        if: contains(github.event.head_commit.message, '[refresh-lock]')
+        if: ${{ contains(github.event.head_commit.message, '[refresh-lock]') }}
         run: |
           npm install --package-lock-only --ignore-scripts
           git config user.name "github-actions[bot]"
@@ -108,7 +108,7 @@ jobs:
         run: npm run check:runtime
 
       - name: Repository cleanliness
-        if: !contains(github.event.head_commit.message, '[refresh-lock]')
+        if: ${{ !contains(github.event.head_commit.message, '[refresh-lock]') }}
         run: |
           test "$(git branch --show-current)" = "main"
           test -z "$(git status --porcelain)"
