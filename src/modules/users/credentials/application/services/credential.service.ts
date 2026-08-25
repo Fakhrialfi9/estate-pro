@@ -64,11 +64,15 @@ export class CredentialService {
     this.assertPassword(command.newPassword, command.confirmation);
     const hash = await this.hasher.hash(command.newPassword);
     await this.credentials.updatePassword(command.userUuid, hash, new Date());
-    await this.sessions.revokeAllForSecurityEvent(command.userUuid, 'PASSWORD_CHANGE', {
-      ipAddress: command.ipAddress,
-      userAgent: command.userAgent,
-      requestId: command.requestId,
-    });
+    await this.sessions.revokeAllForSecurityEvent(
+      command.userUuid,
+      'PASSWORD_CHANGE',
+      {
+        ipAddress: command.ipAddress,
+        userAgent: command.userAgent,
+        requestId: command.requestId,
+      },
+    );
   }
 
   static generateResetToken(): string {
