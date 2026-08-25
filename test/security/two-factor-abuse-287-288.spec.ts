@@ -24,8 +24,8 @@ function createHarness() {
     },
   });
   const crypto = new TwoFactorCryptoService(config);
+  let failedAttempts = 0;
   const challenges = {
-    failedAttempts: 0,
     create: vi.fn(),
     findByHash: vi.fn(() =>
       Promise.resolve({
@@ -34,12 +34,12 @@ function createHarness() {
         challengeHash: 'challenge-hash',
         expiresAt: new Date(Date.now() + 300000),
         consumedAt: null,
-        failedAttempts: challenges.failedAttempts,
+        failedAttempts,
         createdAt: new Date(),
       }),
     ),
     recordFailure: vi.fn(() => {
-      challenges.failedAttempts += 1;
+      failedAttempts += 1;
       return Promise.resolve();
     }),
     consume: vi.fn(() => Promise.resolve(true)),
