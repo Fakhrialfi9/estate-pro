@@ -15,8 +15,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import {
-  PERMISSION_MANAGE_PERMISSION,
+  PERMISSION_CREATE_PERMISSION,
+  PERMISSION_DELETE_PERMISSION,
   PERMISSION_READ_PERMISSION,
+  PERMISSION_UPDATE_PERMISSION,
 } from '../application/policies/permission-authorization.policy.js';
 import {
   PermissionService,
@@ -27,10 +29,7 @@ import { CreatePermissionDto } from './dto/create-permission.dto.js';
 import { UpdatePermissionDto } from './dto/update-permission.dto.js';
 import { PermissionQueryDto } from './dto/permission-query.dto.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
-import {
-  RequirePermissions,
-  RequirePermissionsAny,
-} from '../../../common/security/authorization.decorators.js';
+import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { PermissionSerializer } from './permission.serializer.js';
 
 type AuthenticatedRequest = Request & {
@@ -44,28 +43,22 @@ type AuthenticatedRequest = Request & {
 export class PermissionsController {
   constructor(private readonly permissions: PermissionService) {}
 
-  @RequirePermissionsAny(
-    PERMISSION_READ_PERMISSION,
-    PERMISSION_MANAGE_PERMISSION,
-  )
+  @RequirePermissions(PERMISSION_READ_PERMISSION)
   @Get(':uuid')
   @ApiOperation({
     summary: 'Get permission',
-    description: `Requires ${PERMISSION_READ_PERMISSION} or ${PERMISSION_MANAGE_PERMISSION}.`,
+    description: `Requires ${PERMISSION_READ_PERMISSION}.`,
   })
   async get(@Req() request: AuthenticatedRequest, @Param('uuid') uuid: string) {
     const permission = await this.permissions.get(this.actor(request), uuid);
     return PermissionSerializer.one(permission);
   }
 
-  @RequirePermissionsAny(
-    PERMISSION_READ_PERMISSION,
-    PERMISSION_MANAGE_PERMISSION,
-  )
+  @RequirePermissions(PERMISSION_READ_PERMISSION)
   @Get()
   @ApiOperation({
     summary: 'List permissions',
-    description: `Requires ${PERMISSION_READ_PERMISSION} or ${PERMISSION_MANAGE_PERMISSION}.`,
+    description: `Requires ${PERMISSION_READ_PERMISSION}.`,
   })
   async list(
     @Req() request: AuthenticatedRequest,
@@ -80,11 +73,11 @@ export class PermissionsController {
     );
   }
 
-  @RequirePermissions(PERMISSION_MANAGE_PERMISSION)
+  @RequirePermissions(PERMISSION_CREATE_PERMISSION)
   @Post()
   @ApiOperation({
     summary: 'Create permission',
-    description: `Requires ${PERMISSION_MANAGE_PERMISSION}.`,
+    description: `Requires ${PERMISSION_CREATE_PERMISSION}.`,
   })
   async create(
     @Req() request: AuthenticatedRequest,
@@ -100,11 +93,11 @@ export class PermissionsController {
     return PermissionSerializer.one(permission);
   }
 
-  @RequirePermissions(PERMISSION_MANAGE_PERMISSION)
+  @RequirePermissions(PERMISSION_UPDATE_PERMISSION)
   @Put(':uuid')
   @ApiOperation({
     summary: 'Update permission',
-    description: `Requires ${PERMISSION_MANAGE_PERMISSION}; system-permission protection is enforced by the application service.`,
+    description: `Requires ${PERMISSION_UPDATE_PERMISSION}; system-permission protection is enforced by the application service.`,
   })
   async update(
     @Req() request: AuthenticatedRequest,
@@ -122,11 +115,11 @@ export class PermissionsController {
     return PermissionSerializer.one(permission);
   }
 
-  @RequirePermissions(PERMISSION_MANAGE_PERMISSION)
+  @RequirePermissions(PERMISSION_DELETE_PERMISSION)
   @Delete(':uuid')
   @ApiOperation({
     summary: 'Delete permission',
-    description: `Requires ${PERMISSION_MANAGE_PERMISSION}; dependency and system-permission protections are enforced by the application service.`,
+    description: `Requires ${PERMISSION_DELETE_PERMISSION}; dependency and system-permission protections are enforced by the application service.`,
   })
   async remove(
     @Req() request: AuthenticatedRequest,
