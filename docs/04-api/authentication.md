@@ -1,23 +1,23 @@
-# Authentication API Strategy
+# Authentication API
 
-Estate Pro uses a short-lived JWT access token bound to a server-side session. The access token contains a session identifier and every protected request verifies both the JWT and the active session.
+Base path: `/api/v1`.
 
-The current architecture does **not** expose a refresh-token endpoint. Session renewal is intentionally handled through the configured access-token/session lifetime rather than introducing a second long-lived credential type.
+## `POST /auth/login`
 
-## Public endpoint
+Public primary-authentication endpoint. The controller delegates to `LoginService`. Successful primary authentication returns a session-bound bearer access token with `tokenType` and `expiresIn`. When 2FA is enabled, the response is an MFA challenge instead of an access token. Invalid credentials return `401` without revealing whether an account exists.
 
-- `POST /api/v1/auth/login`
+## `POST /auth/logout`
 
-## Protected endpoints
+Requires `JwtAuthGuard`. The controller revokes the current session using the `sub` and `sid` claims from the verified token. A successful response is `{ "success": true }`.
 
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/auth/me`
-- session management endpoints
-- 2FA enrollment, verification, disable and recovery-code management
-- user/profile/password management
-- role/permission administration
-- audit-log queries
+## `GET /auth/me`
 
-Swagger exposes the bearer JWT security scheme as `bearer`. No real secret, token, session secret or 2FA secret is included in the OpenAPI contract.
+Requires `JwtAuthGuard`. Returns the safe user serializer. Credential hashes, session secrets and 2FA secrets are not serialized.
 
-Authorization requirements are represented through the same permission metadata used by the server-side authorization guard. Controller documentation must not claim a permission that differs from the runtime guard requirement.
+## Session endpoints
+
+`GET /auth/sessions` lists safe session metadata for the authenticated user. `POST /auth/sessions/logout-all` revokes all own sessions. `DELETE /auth/sessions/:id` revokes one owned session by its public numeric identifier. Administrative revocation is exposed at `POST /admin/session-management/users/:userUuid/sessions/:id/revoke` behind the session-admin guard.
+
+## 2FA endpoints
+
+`GET /auth/2fa` returns only enabled state. `POST /auth/2fa/enrollment` starts enrollment. `POST /auth/2fa/enrollment/verify` verifies the enrollment TOTP. `POST /auth/2fa/verify` completes a login challenge using TOTP or a recovery code. `POST /auth/2fa/recovery-codes/regenerate` and `POST /auth/2fa/disable` require secure re-authentication.
