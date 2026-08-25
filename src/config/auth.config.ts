@@ -8,6 +8,11 @@ export default registerAs('auth', () => ({
     audience: process.env.JWT_AUDIENCE ?? 'estate-pro-client',
     algorithm: process.env.JWT_ALGORITHM ?? 'HS256',
   },
+  login: {
+    lockoutThreshold: Number(process.env.AUTH_LOCKOUT_THRESHOLD ?? 5),
+    lockoutWindowMs: Number(process.env.AUTH_LOCKOUT_WINDOW_MS ?? 900000),
+    lockoutDurationMs: Number(process.env.AUTH_LOCKOUT_DURATION_MS ?? 900000),
+  },
   passwordHashing: {
     memoryCost: Number(process.env.AUTH_ARGON2_MEMORY_COST ?? 19456),
     timeCost: Number(process.env.AUTH_ARGON2_TIME_COST ?? 2),
