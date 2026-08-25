@@ -1,18 +1,14 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { BadRequestException, Controller, Get, Inject, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/auth.module.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
-import { AuditLogService } from '../../audit/application/audit-log.service.js';
-import { AuditLogQueryDto } from '../../audit/application/dto/audit-log-query.dto.js';
 import { AUDIT_ACTIONS } from '../../../common/audit/audit-events.js';
+import { AUDIT_QUERY_REPOSITORY } from '../../../common/audit/audit-query.port.js';
+import type { AuditQueryRepository } from '../../../common/audit/audit-query.port.js';
+import { SECURITY_AUDIT_REPOSITORY } from '../../../common/audit/security-audit.port.js';
+import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';
+import { AuditLogQueryDto } from './audit-log-query.dto.js';
 
 const AUDIT_READ_PERMISSION = 'audit:read';
 type AuditRequest = Request & { user?: { sub?: string } };
@@ -20,21 +16,21 @@ type AuditRequest = Request & { user?: { sub?: string } };
 @Controller({ path: 'system/audit-logs', version: '1' })
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class AuditLogsController {
-  constructor(private readonly audit: AuditLogService) {}
+  constructor(
+    @Inject(AUDIT_QUERY_REPOSITORY)
+    private readonly auditQuery: AuditQueryRepository,
+    @Inject(SECURITY_AUDIT_REPOSITORY)
+    private readonly audit: SecurityAuditRepository,
+  ) {}
 
   @RequirePermissions(AUDIT_READ_PERMISSION)
   @Get()
-  async list(
-    @Req() request: AuditRequest,
-    @Query() query: AuditLogQueryDto,
-  ): Promise<unknown> {
-    if (!request.user?.sub)
-      throw new BadRequestException('Authenticated actor missing');
+  async list(@Req() request: AuditRequest, @Query() query: AuditLogQueryDto): Promise<unknown> {
+    if (!request.user?.sub) throw new BadRequestException('Authenticated actor missing');
     const from = query.from ? new Date(query.from) : undefined;
     const to = query.to ? new Date(query.to) : undefined;
-    if (from && to && from.getTime() > to.getTime())
-      throw new BadRequestException('Audit log date range is invalid');
-    const result = await this.audit.list({
+    if (from && to && from.getTime() > to.getTime()) throw new BadRequestException('Audit log date range is invalid');
+    const result = await this.auditQuery.list({
       page: query.page,
       limit: query.limit,
       ...(query.actorUuid ? { actorUuid: query.actorUuid } : {}),
@@ -45,34 +41,17 @@ export class AuditLogsController {
       ...(from ? { from } : {}),
       ...(to ? { to } : {}),
     });
-
     await this.audit.record({
       action: AUDIT_ACTIONS.AUDIT_LOG_ACCESSED,
       actorUuid: request.user.sub,
       entityType: 'AuditLog',
       result: 'SUCCESS',
-      ipAddress: request.ip,
-      userAgent: request.get('user-agent') ?? undefined,
-      requestId: request.get('x-request-id') ?? undefined,
+      ...(request.ip !== undefined ? { ipAddress: request.ip } : {}),
+      ...(request.get('user-agent') !== undefined ? { userAgent: request.get('user-agent') } : {}),
+      ...(request.get('x-request-id') !== undefined ? { requestId: request.get('x-request-id') } : {}),
     });
-
     return {
-      items: result.items.map((item) => ({
-        uuid: item.props.uuid,
-        actorUuid: item.props.actorUuid,
-        actorType: item.props.actorType,
-        subjectUuid: item.props.subjectUuid,
-        action: item.props.action,
-        resourceType: item.props.resourceType,
-        resourceId: item.props.resourceId,
-        result: item.props.result,
-        reason: item.props.reason,
-        ipAddress: item.props.ipAddress,
-        userAgent: item.props.userAgent,
-        requestId: item.props.requestId,
-        createdAt: item.props.createdAt,
-        changes: item.props.changes,
-      })),
+      items: result.items,
       meta: {
         page: query.page,
         limit: query.limit,
