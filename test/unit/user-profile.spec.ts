@@ -92,10 +92,9 @@ describe('UserProfile domain and application', () => {
 
   it('reads a profile successfully', async () => {
     const { service, repository } = createService();
-    repository.findByUserUuid.mockResolvedValueOnce(profile());
-    await expect(service.get({ sub: userUuid }, userUuid)).resolves.toBe(
-      profile(),
-    );
+    const expected = profile();
+    repository.findByUserUuid.mockResolvedValueOnce(expected);
+    await expect(service.get({ sub: userUuid }, userUuid)).resolves.toBe(expected);
   });
 
   it('handles profile not found', async () => {
