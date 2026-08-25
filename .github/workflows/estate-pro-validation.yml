@@ -14,21 +14,15 @@ jobs:
     timeout-minutes: 20
     env:
       DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test
-    services:
-      mariadb:
-        image: mariadb:11.4
-        env:
-          MARIADB_DATABASE: estate_pro_test
-          MARIADB_USER: test
-          MARIADB_PASSWORD: test-password
-          MARIADB_ROOT_PASSWORD: root-test-password
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mariadb-admin ping -h 127.0.0.1 -u root -proot-test-password"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=20
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: 3306
+      DATABASE_NAME: estate_pro_test
+      DATABASE_USER: test
+      DATABASE_PASSWORD: test-password
+      DATABASE_POOL_CONNECTION_LIMIT: 2
+      DATABASE_CONNECT_TIMEOUT_MS: 5000
+      DATABASE_ACQUIRE_TIMEOUT_MS: 10000
+      DATABASE_POOL_IDLE_TIMEOUT_SEC: 30
 
     steps:
       - name: Checkout
@@ -42,6 +36,15 @@ jobs:
 
       - name: Pin npm
         run: npm install --global npm@11.18.0
+
+      - name: Install MariaDB
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-server
+          sudo systemctl start mariadb
+          sudo mysql -e "CREATE DATABASE IF NOT EXISTS estate_pro_test;"
+          sudo mysql -e "CREATE USER IF NOT EXISTS 'test'@'127.0.0.1' IDENTIFIED BY 'test-password';"
+          sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_test.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
 
       - name: Install dependencies
         run: npm ci
