@@ -9,6 +9,7 @@ import { CREDENTIAL_REPOSITORY } from '../../domain/repositories/credential.repo
 import {
   CredentialAlreadyExistsError,
   CredentialNotFoundError,
+  ConcurrentPasswordChangeError,
   CurrentPasswordVerificationError,
   InvalidPasswordConfirmationError,
   InvalidPasswordError,
@@ -55,15 +56,26 @@ export class CredentialService {
     const credential = await this.credentials.findByUserUuid(command.userUuid);
     if (!credential) throw new CredentialNotFoundError();
 
+    const expectedPasswordHash = credential.passwordHash;
     const currentValid = await this.hasher.verify(
-      credential.passwordHash,
+      expectedPasswordHash,
       command.currentPassword,
     );
     if (!currentValid) throw new CurrentPasswordVerificationError();
 
     this.assertPassword(command.newPassword, command.confirmation);
     const hash = await this.hasher.hash(command.newPassword);
-    await this.credentials.updatePassword(command.userUuid, hash, new Date());
+    try {
+      await this.credentials.updatePassword(
+        command.userUuid,
+        hash,
+        new Date(),
+        expectedPasswordHash,
+      );
+    } catch (error: unknown) {
+      if (error instanceof ConcurrentPasswordChangeError) throw error;
+      throw error;
+    }
     await this.sessions.revokeAllForSecurityEvent(
       command.userUuid,
       'PASSWORD_CHANGE',
