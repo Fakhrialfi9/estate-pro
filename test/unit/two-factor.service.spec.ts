@@ -15,7 +15,9 @@ import { TwoFactorService } from '../../src/modules/auth/application/services/tw
 
 const key = '01234567890123456789012345678901';
 
-type TestCredentialRepository = ConstructorParameters<typeof TwoFactorService>[5];
+type TestCredentialRepository = ConstructorParameters<
+  typeof TwoFactorService
+>[5];
 type EnrollmentResult = { enabled: boolean; recoveryCodes: string[] };
 
 function createHarness() {
@@ -185,8 +187,10 @@ function createHarness() {
         }),
       ),
     updatePassword: () => Promise.reject(new Error('unused in 2FA unit test')),
-    createResetToken: () => Promise.reject(new Error('unused in 2FA unit test')),
-    resetPasswordAtomically: () => Promise.reject(new Error('unused in 2FA unit test')),
+    createResetToken: () =>
+      Promise.reject(new Error('unused in 2FA unit test')),
+    resetPasswordAtomically: () =>
+      Promise.reject(new Error('unused in 2FA unit test')),
   };
 
   const config = new ConfigService({
@@ -240,25 +244,33 @@ describe('2FA security flow', () => {
     const code = totp.generateCode(secret, step);
     expect(totp.verify(secret, code, now)).toBe(step);
     expect(totp.verify(secret, '000000', now)).toBeNull();
-    expect(totp.verify(secret, code, new Date(now.getTime() + 30000))).toBeNull();
+    expect(
+      totp.verify(secret, code, new Date(now.getTime() + 30000)),
+    ).toBeNull();
   });
 
   it('enables enrollment only after a valid code and blocks replay', async () => {
     const { service, totp, enrollment } = createHarness();
     const enrollmentResult = await service.startEnrollment('u1');
-    const secret = new URL(enrollmentResult.provisioningUri).searchParams.get('secret')!;
+    const secret = new URL(enrollmentResult.provisioningUri).searchParams.get(
+      'secret',
+    )!;
     const code = totp.generateCode(secret, totp.currentTimeStep());
     const result = await service.verifyEnrollment('u1', code);
     expect(result.enabled).toBe(true);
     expect(enrollment.enableWithRecoveryCodes).toHaveBeenCalledTimes(1);
     const challenge = await service.createLoginChallenge('u1');
-    await expect(service.verifyLoginChallenge({ token: challenge.token, code })).rejects.toThrow();
+    await expect(
+      service.verifyLoginChallenge({ token: challenge.token, code }),
+    ).rejects.toThrow();
   });
 
   it('hashes recovery codes and makes each code single-use', async () => {
     const { service, totp, enrollment, recovery } = createHarness();
     const enrollmentResult = await service.startEnrollment('u1');
-    const secret = new URL(enrollmentResult.provisioningUri).searchParams.get('secret')!;
+    const secret = new URL(enrollmentResult.provisioningUri).searchParams.get(
+      'secret',
+    )!;
     const code = totp.generateCode(secret, totp.currentTimeStep());
     const enabledValue: unknown = await service.verifyEnrollment('u1', code);
     const enabled = enabledValue as EnrollmentResult;
@@ -267,7 +279,9 @@ describe('2FA security flow', () => {
     expect(enrollment.enableWithRecoveryCodes).toHaveBeenCalledWith(
       expect.objectContaining({
         userUuid: 'u1',
-        recoveryCodeHashes: expect.arrayContaining([expect.stringMatching(/^hash:/)]),
+        recoveryCodeHashes: expect.arrayContaining([
+          expect.stringMatching(/^hash:/),
+        ]),
       }),
     );
 
