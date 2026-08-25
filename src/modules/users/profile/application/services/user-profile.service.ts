@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UserManagementService } from '../../application/services/user-management.service.js';
 import {
   DuplicateUserProfileError,
   InvalidUserProfileError,
@@ -13,6 +12,8 @@ import type {
 } from '../../domain/repositories/user-profile.repository.js';
 import { USER_PROFILE_REPOSITORY } from '../../domain/repositories/user-profile.repository.js';
 import type { AuthenticatedPrincipal } from '../types/authenticated-principal.js';
+import type { UserIdentityReader } from '../types/user-identity-reader.js';
+import { USER_IDENTITY_READER } from '../types/user-identity-reader.js';
 import { UserProfileOwnershipPolicy } from '../policies/user-profile-ownership.policy.js';
 
 @Injectable()
@@ -20,7 +21,8 @@ export class UserProfileService {
   constructor(
     @Inject(USER_PROFILE_REPOSITORY)
     private readonly profiles: UserProfileRepository,
-    private readonly users: UserManagementService,
+    @Inject(USER_IDENTITY_READER)
+    private readonly users: UserIdentityReader,
     private readonly ownership: UserProfileOwnershipPolicy,
   ) {}
 
