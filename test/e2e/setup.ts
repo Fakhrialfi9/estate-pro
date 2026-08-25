@@ -5,7 +5,8 @@ process.env.APP_HOST = '127.0.0.1';
 process.env.APP_PORT = '3001';
 process.env.API_PREFIX = 'api';
 process.env.API_VERSION = 'v1';
-process.env.DATABASE_URL = 'mysql://test:test-password@127.0.0.1:3306/estate_pro_test';
+process.env.DATABASE_URL =
+  'mysql://test:test-password@127.0.0.1:3306/estate_pro_test';
 process.env.DATABASE_HOST = '127.0.0.1';
 process.env.DATABASE_PORT = '3306';
 process.env.DATABASE_NAME = 'estate_pro_test';
