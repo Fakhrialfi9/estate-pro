@@ -1,11 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { AUDIT_LOG_REPOSITORY } from '../domain/repositories/audit-log.repository.js';
 import type {
-  AuditLogListQuery,
-  AuditLogListResult,
   AuditLogRepository,
   AuditLogWriteEvent,
 } from '../domain/repositories/audit-log.repository.js';
+import type {
+  AuditQueryRepository,
+  AuditLogQuery,
+  AuditLogQueryResult,
+} from '../../../common/audit/audit-query.port.js';
 import type {
   SecurityAuditRepository,
   SecurityAuditEvent,
@@ -16,7 +19,9 @@ import {
 } from '../../../common/audit/audit-redaction.js';
 
 @Injectable()
-export class AuditLogService implements SecurityAuditRepository {
+export class AuditLogService
+  implements SecurityAuditRepository, AuditQueryRepository
+{
   constructor(
     @Inject(AUDIT_LOG_REPOSITORY)
     private readonly repository: AuditLogRepository,
@@ -55,7 +60,26 @@ export class AuditLogService implements SecurityAuditRepository {
     await this.repository.record(writeEvent);
   }
 
-  list(query: AuditLogListQuery): Promise<AuditLogListResult> {
-    return this.repository.list(query);
+  async list(query: AuditLogQuery): Promise<AuditLogQueryResult> {
+    const result = await this.repository.list(query);
+    return {
+      total: result.total,
+      items: result.items.map((item) => ({
+        uuid: item.props.uuid,
+        actorUuid: item.props.actorUuid,
+        actorType: item.props.actorType,
+        subjectUuid: item.props.subjectUuid,
+        action: item.props.action,
+        resourceType: item.props.resourceType,
+        resourceId: item.props.resourceId,
+        result: item.props.result,
+        reason: item.props.reason,
+        ipAddress: item.props.ipAddress,
+        userAgent: item.props.userAgent,
+        requestId: item.props.requestId,
+        createdAt: item.props.createdAt,
+        changes: item.props.changes,
+      })),
+    };
   }
 }
