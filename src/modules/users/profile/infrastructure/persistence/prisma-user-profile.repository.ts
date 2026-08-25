@@ -9,7 +9,7 @@ import {
   DuplicateUserProfileError,
   UserProfileNotFoundError,
 } from '../../domain/errors/user-profile.errors.js';
-import { UserNotFoundError } from '../../domain/errors/user.errors.js';
+import { UserNotFoundError } from '../../../domain/errors/user.errors.js';
 import {
   PrismaUserProfileMapper,
   type UserProfilePersistenceData,
