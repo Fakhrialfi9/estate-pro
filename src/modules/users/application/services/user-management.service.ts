@@ -1,11 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
+import type { UserUpdate } from '../../domain/entities/user.entity.js';
+import { UserEntity } from '../../domain/entities/user.entity.js';
 import { DuplicateUserError, InvalidUserError, UserNotFoundError } from '../../domain/errors/user.errors.js';
 import type { CreateUserData, UserListQuery, UserListResult, UserRepository } from '../../domain/repositories/user.repository.js';
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository.js';
-import type { UserUpdate } from '../../domain/entities/user.entity.js';
-import { UserEntity } from '../../domain/entities/user.entity.js';
 
 @Injectable()
 export class UserManagementService {
@@ -67,6 +66,13 @@ export class UserManagementService {
       ...(changes.status !== undefined ? { status: changes.status } : {}),
       ...(changes.isActive !== undefined ? { isActive: changes.isActive } : {}),
     };
+
+    const nextUsername = normalized.username !== undefined ? normalized.username : existing.username;
+    const nextEmail = normalized.email !== undefined ? normalized.email : existing.email;
+    const nextPhone = normalized.phone !== undefined ? normalized.phone : existing.phone;
+    if (!nextUsername && !nextEmail && !nextPhone) {
+      throw new InvalidUserError('At least one identity is required');
+    }
 
     const duplicate = await this.users.findDuplicateIdentity(normalized, uuid);
     if (duplicate) throw new DuplicateUserError();
