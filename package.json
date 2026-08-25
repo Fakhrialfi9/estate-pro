@@ -17,7 +17,7 @@
     "clean:hard": "bash scripts/hard-clean.sh",
     "clean:soft": "bash scripts/soft-clean.sh",
     "clean": "rm -rf dist node_modules/.cache generated tsconfig.build.tsbuildinfo && npm run clean:soft",
-    "build": "prisma generate && nest build --path tsconfig.build.tsconfig.build.json",
+    "build": "prisma generate && nest build --path tsconfig.build.json",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -69,10 +69,9 @@
     "joi": "18.2.3",
     "mariadb": "3.5.3",
     "nestjs-pino": "4.6.1",
+    "pino": "10.3.1",
     "passport": "0.7.0",
     "passport-jwt": "4.0.1",
-    "pino": "10.3.1",
-    "pino-http": "10.5.0",
     "rxjs": "7.8.1"
   },
   "devDependencies": {
