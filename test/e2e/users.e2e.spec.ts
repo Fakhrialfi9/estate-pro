@@ -69,9 +69,8 @@ const USER_MANAGEMENT_PERMISSIONS = [
 type SuperTestApp = Parameters<typeof request>[0];
 const httpRequest = () => request(app.getHttpServer() as SuperTestApp);
 const bodyOf = <T>(response: SuperTestResponse): T => response.body as T;
-const actorToken = (
-  permissions: string[] = [...USER_MANAGEMENT_PERMISSIONS],
-) => jwt.sign({ sub: actorUuid, sid: randomUUID(), permissions });
+const actorToken = (permissions: string[] = [...USER_MANAGEMENT_PERMISSIONS]) =>
+  jwt.sign({ sub: actorUuid, sid: randomUUID(), permissions });
 const stringifyForAssertion = (value: unknown): string =>
   JSON.stringify(value, (_key: string, nestedValue: unknown): unknown =>
     typeof nestedValue === 'bigint' ? nestedValue.toString() : nestedValue,
