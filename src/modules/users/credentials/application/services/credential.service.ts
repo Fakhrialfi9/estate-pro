@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { PasswordHasherService } from '../../../../auth/application/services/password-hasher.service.js';
+import { PasswordHasherService } from '../../../../../auth/application/services/password-hasher.service.js';
 import { PasswordPolicy } from '../domain/policies/password.policy.js';
 import type { CredentialRepository } from '../domain/repositories/credential.repository.js';
 import { CREDENTIAL_REPOSITORY } from '../domain/repositories/credential.repository.js';
@@ -30,7 +30,8 @@ export class CredentialService {
   private readonly policy = new PasswordPolicy();
 
   constructor(
-    @Inject(CREDENTIAL_REPOSITORY) private readonly credentials: CredentialRepository,
+    @Inject(CREDENTIAL_REPOSITORY)
+    private readonly credentials: CredentialRepository,
     private readonly hasher: PasswordHasherService,
   ) {}
 
@@ -47,7 +48,10 @@ export class CredentialService {
     const credential = await this.credentials.findByUserUuid(command.userUuid);
     if (!credential) throw new CredentialNotFoundError();
 
-    const currentValid = await this.hasher.verify(credential.passwordHash, command.currentPassword);
+    const currentValid = await this.hasher.verify(
+      credential.passwordHash,
+      command.currentPassword,
+    );
     if (!currentValid) throw new CurrentPasswordVerificationError();
 
     this.assertPassword(command.newPassword, command.confirmation);
