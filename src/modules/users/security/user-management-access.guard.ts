@@ -12,6 +12,10 @@ import {
   type AccessTokenClaims,
   type AccessTokenVerifier,
 } from '../../../common/security/access-token-verifier.port.js';
+import {
+  USER_AUTHORIZATION_REPOSITORY,
+  type UserAuthorizationRepository,
+} from '../../../common/security/authorization.repository.js';
 import { UserManagementService } from '../application/services/user-management.service.js';
 import { USER_MANAGEMENT_PERMISSIONS } from '../application/constants/user-management-permissions.js';
 
@@ -22,6 +26,8 @@ export class UserManagementAccessGuard implements CanActivate {
   constructor(
     @Inject(ACCESS_TOKEN_VERIFIER)
     private readonly accessTokenVerifier: AccessTokenVerifier,
+    @Inject(USER_AUTHORIZATION_REPOSITORY)
+    private readonly authorization: UserAuthorizationRepository,
     private readonly users: UserManagementService,
   ) {}
 
@@ -32,9 +38,18 @@ export class UserManagementAccessGuard implements CanActivate {
     const actor = await this.users.getByUuid(claims.sub);
     if (!actor.isAccessible()) throw new UnauthorizedException();
 
-    request.user = claims;
-    this.authorize(request, claims);
+    const snapshot = await this.authorization.getAuthorizationSnapshot(
+      claims.sub,
+    );
+    if (!snapshot) throw new UnauthorizedException();
 
+    const effectiveClaims: AccessTokenClaims = {
+      ...claims,
+      permissions: [...snapshot.permissionCodes],
+    };
+    request.user = effectiveClaims;
+
+    this.authorize(request, effectiveClaims);
     return true;
   }
 
