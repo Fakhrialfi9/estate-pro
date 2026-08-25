@@ -65,9 +65,9 @@ export class PermissionService {
     this.validateInput(name, module, domain, action);
 
     const code = buildPermissionCode(module, domain, action);
-    this.policy.canManage(actor, code);
-    if (!this.hasAnyPermission(actor, PERMISSION_CREATE_PERMISSION)) {
-      this.policy.canManage(actor, PERMISSION_CREATE_PERMISSION);
+    this.policy.canManage(actor, PERMISSION_CREATE_PERMISSION);
+    if (isSystemPermissionCode(code)) {
+      this.policy.canManageProtected(actor);
     }
 
     if (await this.permissions.findByResourceAction(module, domain, action)) {
@@ -128,7 +128,9 @@ export class PermissionService {
 
     try {
       this.policy.canManage(actor, PERMISSION_UPDATE_PERMISSION);
-      this.policy.canManage(actor, permission.code);
+      if (permission.isSystem) {
+        this.policy.canManageProtected(actor);
+      }
     } catch (error: unknown) {
       if (error instanceof SystemPermissionProtectedException) {
         await this.recordSecurityAttempt(
@@ -180,7 +182,9 @@ export class PermissionService {
 
     try {
       this.policy.canManage(actor, PERMISSION_DELETE_PERMISSION);
-      this.policy.canManage(actor, permission.code);
+      if (permission.isSystem) {
+        this.policy.canManageProtected(actor);
+      }
     } catch (error: unknown) {
       if (error instanceof SystemPermissionProtectedException) {
         await this.recordSecurityAttempt(
@@ -260,13 +264,6 @@ export class PermissionService {
     }
   }
 
-  private hasAnyPermission(actor: PermissionActor, required: string): boolean {
-    const normalized = required.replace(/:/g, '.');
-    return actor.permissions.some((permission) =>
-      permission.trim().replace(/:/g, '.').includes(normalized),
-    );
-  }
-
   private mapRepositoryError(error: unknown): void {
     const repositoryError = error as { message?: string };
     if (repositoryError.message === 'PermissionAlreadyExistsError') {
@@ -327,3 +324,6 @@ export class PermissionService {
     });
   }
 }
+
+const isSystemPermissionCode = (code: string): boolean =>
+  code.startsWith('system.') || code.startsWith('auth.') || code.startsWith('permissions.');
