@@ -31,6 +31,8 @@ let actorUuid: string;
 let clientIp = '10.0.0.1';
 let clientIpCounter = 1;
 
+const CREATE_PASSWORD = 'Strong-Test-Password-123!';
+const CREATE_CONFIRMATION = CREATE_PASSWORD;
 const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS authentication_users (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   uuid CHAR(36) NOT NULL UNIQUE,
@@ -138,6 +140,7 @@ describe('Users API', () => {
     await prisma.authorizationRole.deleteMany();
     await prisma.authorizationPermission.deleteMany();
     await prisma.authenticationUserSession.deleteMany();
+    await prisma.authenticationUserCredential.deleteMany();
     await prisma.authenticationUser.deleteMany();
     actorUuid = randomUUID();
     const actor = await prisma.authenticationUser.create({
@@ -160,23 +163,31 @@ describe('Users API', () => {
       .set('X-Forwarded-For', clientIp)
       .expect(401);
   });
-  it('rejects malformed and credential-bearing create payloads', async () => {
+
+  it('rejects malformed and invalid credential create payloads', async () => {
     await httpRequest()
       .post('/api/v1/users')
       .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
-      .send({ email: 'not-an-email' })
+      .send({
+        email: 'not-an-email',
+        password: CREATE_PASSWORD,
+        passwordConfirmation: CREATE_CONFIRMATION,
+      })
       .expect(400);
+
     await httpRequest()
       .post('/api/v1/users')
       .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
       .send({
         email: 'valid@example.com',
-        password: 'should-never-be-accepted',
+        password: CREATE_PASSWORD,
+        passwordConfirmation: 'Different-Password-456!',
       })
       .expect(400);
   });
+
   it('creates, reads, searches, updates, and soft-deletes a user without leaking credentials or audit secrets', async () => {
     const create = await httpRequest()
       .post('/api/v1/users')
@@ -187,12 +198,25 @@ describe('Users API', () => {
         username: 'john',
         email: 'john@example.com',
         phone: '+62123456789',
+        password: CREATE_PASSWORD,
+        passwordConfirmation: CREATE_CONFIRMATION,
       })
       .expect(201);
     const created = bodyOf<UserResponse & Record<string, unknown>>(create);
     const uuid = created.uuid;
     expect(created.password).toBeUndefined();
     expect(created.passwordHash).toBeUndefined();
+
+    const persistedUser = await prisma.authenticationUser.findUniqueOrThrow({
+      where: { uuid },
+      select: { id: true },
+    });
+    const credential = await prisma.authenticationUserCredential.findUniqueOrThrow({
+      where: { userId: persistedUser.id },
+    });
+    expect(credential.passwordHash).not.toBe(CREATE_PASSWORD);
+    expect(credential.passwordHash).toMatch(/^\$argon2/);
+
     const createdAudit = await prisma.auditLog.findFirst({
       where: { action: 'USER_CREATED', resourceId: uuid },
       orderBy: { createdAt: 'desc' },
@@ -202,7 +226,8 @@ describe('Users API', () => {
     expect(createdAudit?.requestId).toBe('req-user-create');
     expect(createdAudit?.result).toBe('SUCCESS');
     const serializedAudit = stringifyForAssertion(createdAudit);
-    expect(serializedAudit).not.toContain('password');
+    expect(serializedAudit).not.toContain(CREATE_PASSWORD);
+    expect(serializedAudit).not.toContain('passwordHash');
     expect(serializedAudit).not.toContain('token');
     await httpRequest()
       .get(`/api/v1/users/${uuid}`)
@@ -242,26 +267,40 @@ describe('Users API', () => {
       }),
     ).toBe(1);
   });
+
   it('rejects duplicate identity', async () => {
     await httpRequest()
       .post('/api/v1/users')
       .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
-      .send({ email: 'duplicate@example.com' })
+      .send({
+        email: 'duplicate@example.com',
+        password: CREATE_PASSWORD,
+        passwordConfirmation: CREATE_CONFIRMATION,
+      })
       .expect(201);
     await httpRequest()
       .post('/api/v1/users')
       .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
-      .send({ email: 'duplicate@example.com' })
+      .send({
+        email: 'duplicate@example.com',
+        password: CREATE_PASSWORD,
+        passwordConfirmation: CREATE_CONFIRMATION,
+      })
       .expect(409);
   });
+
   it('does not allow an authenticated user to read another user without management permission', async () => {
     const create = await httpRequest()
       .post('/api/v1/users')
       .set('X-Forwarded-For', clientIp)
       .set('Authorization', `Bearer ${actorToken()}`)
-      .send({ email: 'other@example.com' })
+      .send({
+        email: 'other@example.com',
+        password: CREATE_PASSWORD,
+        passwordConfirmation: CREATE_CONFIRMATION,
+      })
       .expect(201);
     const created = bodyOf<UserResponse>(create);
     const reader = await prisma.authenticationUser.create({
@@ -283,6 +322,7 @@ describe('Users API', () => {
       .set('Authorization', `Bearer ${readOnlyToken}`)
       .expect(403);
   });
+
   it('rejects inactive actors before user management access', async () => {
     await prisma.authenticationUser.update({
       where: { uuid: actorUuid },
