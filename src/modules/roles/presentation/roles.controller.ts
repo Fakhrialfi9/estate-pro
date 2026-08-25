@@ -15,8 +15,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import {
-  ROLE_MANAGE_PERMISSION,
+  ROLE_CREATE_PERMISSION,
+  ROLE_DELETE_PERMISSION,
   ROLE_READ_PERMISSION,
+  ROLE_UPDATE_PERMISSION,
 } from '../application/policies/role-authorization.policy.js';
 import {
   RolePermissionService,
@@ -79,11 +81,11 @@ export class RolesController {
     );
   }
 
-  @RequirePermissions(ROLE_READ_PERMISSION)
+  @RequirePermissions(ROLE_UPDATE_PERMISSION)
   @Get(':uuid/permissions')
   @ApiOperation({
     summary: 'List role permissions',
-    description: `Requires permission ${ROLE_READ_PERMISSION}.`,
+    description: `Requires permission ${ROLE_UPDATE_PERMISSION}.`,
   })
   async listPermissions(
     @Req() request: AuthenticatedRequest,
@@ -98,11 +100,11 @@ export class RolesController {
     return RolePermissionSerializer.list(result.role, result.assignments);
   }
 
-  @RequirePermissions(ROLE_MANAGE_PERMISSION)
+  @RequirePermissions(ROLE_UPDATE_PERMISSION)
   @Post(':uuid/permissions')
   @ApiOperation({
     summary: 'Assign permission to role',
-    description: `Requires permission ${ROLE_MANAGE_PERMISSION}.`,
+    description: `Requires permission ${ROLE_UPDATE_PERMISSION}.`,
   })
   async assignPermission(
     @Req() request: AuthenticatedRequest,
@@ -120,11 +122,11 @@ export class RolesController {
     return RolePermissionSerializer.assignment(result);
   }
 
-  @RequirePermissions(ROLE_MANAGE_PERMISSION)
+  @RequirePermissions(ROLE_UPDATE_PERMISSION)
   @Delete(':uuid/permissions/:permissionUuid')
   @ApiOperation({
     summary: 'Remove permission from role',
-    description: `Requires permission ${ROLE_MANAGE_PERMISSION}.`,
+    description: `Requires permission ${ROLE_UPDATE_PERMISSION}.`,
   })
   async removePermission(
     @Req() request: AuthenticatedRequest,
@@ -142,11 +144,11 @@ export class RolesController {
     return { success: true };
   }
 
-  @RequirePermissions(ROLE_MANAGE_PERMISSION)
+  @RequirePermissions(ROLE_CREATE_PERMISSION)
   @Post()
   @ApiOperation({
     summary: 'Create role',
-    description: `Requires permission ${ROLE_MANAGE_PERMISSION}.`,
+    description: `Requires permission ${ROLE_CREATE_PERMISSION}.`,
   })
   async create(
     @Req() request: AuthenticatedRequest,
@@ -162,11 +164,11 @@ export class RolesController {
     return RoleSerializer.one(role);
   }
 
-  @RequirePermissions(ROLE_MANAGE_PERMISSION)
+  @RequirePermissions(ROLE_UPDATE_PERMISSION)
   @Put(':uuid')
   @ApiOperation({
     summary: 'Update role',
-    description: `Requires permission ${ROLE_MANAGE_PERMISSION}.`,
+    description: `Requires permission ${ROLE_UPDATE_PERMISSION}.`,
   })
   async update(
     @Req() request: AuthenticatedRequest,
@@ -183,11 +185,11 @@ export class RolesController {
     return RoleSerializer.one(role);
   }
 
-  @RequirePermissions(ROLE_MANAGE_PERMISSION)
+  @RequirePermissions(ROLE_DELETE_PERMISSION)
   @Delete(':uuid')
   @ApiOperation({
     summary: 'Delete role',
-    description: `Requires permission ${ROLE_MANAGE_PERMISSION}. System-role and dependency protections are enforced by the application service.`,
+    description: `Requires permission ${ROLE_DELETE_PERMISSION}; system-role and dependency protections are enforced by the application service.`,
   })
   async remove(
     @Req() request: AuthenticatedRequest,
