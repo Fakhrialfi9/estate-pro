@@ -48,7 +48,9 @@ interface PrismaUserRoleShape {
   authenticationUser: UserDelegate;
   authorizationRole: RoleDelegate;
   authorizationUserRole: UserRoleDelegate;
-  $transaction<T>(callback: (tx: PrismaUserRoleShape) => Promise<T>): Promise<T>;
+  $transaction<T>(
+    callback: (tx: PrismaUserRoleShape) => Promise<T>,
+  ): Promise<T>;
 }
 
 @Injectable()
@@ -199,7 +201,8 @@ export class PrismaUserRoleRepository implements UserRoleRepository {
     if (!user) throw new Error('UserRoleNotFoundError');
 
     const where = { userId: user.id, isActive: true };
-    const page = Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
+    const page =
+      Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
     const limit = Number.isInteger(query.limit)
       ? Math.min(Math.max(query.limit, 1), 100)
       : 50;

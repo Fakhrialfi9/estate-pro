@@ -101,7 +101,13 @@ function createHarness() {
 
   const enrollment = {
     enableWithRecoveryCodes: vi.fn(
-      ({ lastUsedTimeStep, recoveryCodeHashes }: { lastUsedTimeStep: bigint; recoveryCodeHashes: readonly string[] }) => {
+      ({
+        lastUsedTimeStep,
+        recoveryCodeHashes,
+      }: {
+        lastUsedTimeStep: bigint;
+        recoveryCodeHashes: readonly string[];
+      }) => {
         enabled = true;
         lastStep = lastUsedTimeStep;
         lockedUntil = null;
@@ -270,7 +276,9 @@ describe('2FA security flow', () => {
     expect(enrollment.enableWithRecoveryCodes).toHaveBeenCalledWith(
       expect.objectContaining({
         userUuid: 'u1',
-        recoveryCodeHashes: expect.arrayContaining([expect.stringMatching(/^hash:/)]),
+        recoveryCodeHashes: expect.arrayContaining([
+          expect.stringMatching(/^hash:/),
+        ]),
       }),
     );
 

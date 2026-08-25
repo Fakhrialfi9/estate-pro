@@ -130,7 +130,9 @@ export class TwoFactorService {
       recoveryCodeHashes: hashes,
     });
     if (!enabled)
-      throw new UnauthorizedException('Two-factor enrollment is no longer valid');
+      throw new UnauthorizedException(
+        'Two-factor enrollment is no longer valid',
+      );
 
     await this.audit.record({
       action: TWO_FACTOR_AUDIT_ACTIONS.ENABLED,

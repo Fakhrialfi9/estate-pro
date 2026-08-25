@@ -167,7 +167,8 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   async list(query: UserListQuery): Promise<UserListResult> {
-    const page = Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
+    const page =
+      Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
     const limit = Number.isInteger(query.limit)
       ? Math.min(Math.max(query.limit, 1), MAX_PAGE_SIZE)
       : DEFAULT_PAGE_SIZE;
