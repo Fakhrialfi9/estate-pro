@@ -17,10 +17,7 @@ const context = (request: {
     }),
   }) as unknown as ExecutionContext;
 
-const repository = (
-  permissions: string[],
-  roles: string[] = ['user'],
-) => {
+const repository = (permissions: string[], roles: string[] = ['user']) => {
   const listPermissionCodes = vi.fn().mockResolvedValue(permissions);
   const getAuthorizationSnapshot = vi.fn().mockResolvedValue({
     userUuid: actorUuid,
