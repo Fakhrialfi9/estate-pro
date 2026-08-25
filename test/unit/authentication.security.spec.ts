@@ -197,7 +197,9 @@ describe('authentication security steps 102-106', () => {
       }),
     ).resolves.toBeNull();
     expect(invalid.auditEvents.at(-1)?.action).toBe('LOGIN_FAILURE');
-    expect((await invalid.security.getState('u-1')).failedLoginAttempts).toBe(1);
+    expect((await invalid.security.getState('u-1')).failedLoginAttempts).toBe(
+      1,
+    );
     const unknown = makeLogin(true);
     unknown.users.findByEmail = vi.fn().mockResolvedValue(null);
     unknown.users.findByUsername = vi.fn().mockResolvedValue(null);
@@ -312,7 +314,9 @@ describe('jwt security steps 91-99 and 104-105', () => {
       { ...base, audience: 'other' },
     );
     await expect(
-      new JwtTokenService(jwt, config as never).verifyAccessToken(wrongAudience),
+      new JwtTokenService(jwt, config as never).verifyAccessToken(
+        wrongAudience,
+      ),
     ).rejects.toThrow();
   });
 });
