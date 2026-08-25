@@ -29,7 +29,9 @@ let userUuid: string;
 const httpRequest = () => request(app.getHttpServer());
 const bodyOf = <T>(response: SuperTestResponse): T => response.body as T;
 
-async function createActiveUser(email = `auth-${randomUUID()}@example.com`): Promise<void> {
+async function createActiveUser(
+  email = `auth-${randomUUID()}@example.com`,
+): Promise<void> {
   const user = await prisma.authenticationUser.create({
     data: {
       uuid: randomUUID(),
@@ -62,7 +64,9 @@ async function cleanup(): Promise<void> {
 
 describe('Authentication E2E', () => {
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication();
     configureApplication(app as Parameters<typeof configureApplication>[0]);
     await app.init();
@@ -83,7 +87,9 @@ describe('Authentication E2E', () => {
   });
 
   it('logs in, establishes a session, authenticates /me, then logs out the current session', async () => {
-    const user = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid: userUuid } });
+    const user = await prisma.authenticationUser.findUniqueOrThrow({
+      where: { uuid: userUuid },
+    });
     const valid = await httpRequest()
       .post('/api/v1/auth/login')
       .set('X-Forwarded-For', '10.20.0.1')
@@ -121,29 +127,43 @@ describe('Authentication E2E', () => {
       .expect(401);
 
     expect(
-      await prisma.auditLog.count({ where: { action: 'LOGIN_SUCCESS', userId: user.id } }),
+      await prisma.auditLog.count({
+        where: { action: 'LOGIN_SUCCESS', userId: user.id },
+      }),
     ).toBe(1);
     expect(
-      await prisma.auditLog.count({ where: { action: 'LOGOUT', userId: user.id } }),
+      await prisma.auditLog.count({
+        where: { action: 'LOGOUT', userId: user.id },
+      }),
     ).toBe(1);
   });
 
   it('rejects invalid credentials without revealing account existence', async () => {
-    const user = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid: userUuid } });
+    const user = await prisma.authenticationUser.findUniqueOrThrow({
+      where: { uuid: userUuid },
+    });
     await httpRequest()
       .post('/api/v1/auth/login')
       .send({ identifier: user.email, password: 'Wrong-Password-123!' })
       .expect(401);
     const unknown = await httpRequest()
       .post('/api/v1/auth/login')
-      .send({ identifier: 'missing@example.com', password: 'Wrong-Password-123!' })
+      .send({
+        identifier: 'missing@example.com',
+        password: 'Wrong-Password-123!',
+      })
       .expect(401);
     expect(unknown.body.message).toBe('Invalid credentials');
-    expect(await prisma.auditLog.count({ where: { action: 'LOGIN_FAILURE' } })).toBe(2);
+    expect(
+      await prisma.auditLog.count({ where: { action: 'LOGIN_FAILURE' } }),
+    ).toBe(2);
   });
 
   it('rejects malformed and expired JWTs at the real authentication boundary', async () => {
-    await httpRequest().get('/api/v1/auth/me').set('Authorization', 'Bearer not-a-jwt').expect(401);
+    await httpRequest()
+      .get('/api/v1/auth/me')
+      .set('Authorization', 'Bearer not-a-jwt')
+      .expect(401);
 
     const expired = jwt.sign(
       { sub: userUuid, sid: randomUUID() },
@@ -155,11 +175,16 @@ describe('Authentication E2E', () => {
         expiresIn: -1,
       },
     );
-    await httpRequest().get('/api/v1/auth/me').set('Authorization', `Bearer ${expired}`).expect(401);
+    await httpRequest()
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${expired}`)
+      .expect(401);
   });
 
   it('revokes an owned session through the session API and records the security event', async () => {
-    const user = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid: userUuid } });
+    const user = await prisma.authenticationUser.findUniqueOrThrow({
+      where: { uuid: userUuid },
+    });
     const login = await httpRequest()
       .post('/api/v1/auth/login')
       .send({ identifier: user.email, password: PASSWORD })
@@ -176,7 +201,14 @@ describe('Authentication E2E', () => {
       .delete(`/api/v1/auth/sessions/${sessionId}`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
-    await httpRequest().get('/api/v1/auth/me').set('Authorization', `Bearer ${token}`).expect(401);
-    expect(await prisma.auditLog.count({ where: { action: 'SESSION_REVOKED', userId: user.id } })).toBe(1);
+    await httpRequest()
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+    expect(
+      await prisma.auditLog.count({
+        where: { action: 'SESSION_REVOKED', userId: user.id },
+      }),
+    ).toBe(1);
   });
 });

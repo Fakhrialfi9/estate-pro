@@ -25,7 +25,9 @@ async function cleanup(): Promise<void> {
 
 describe('Real database integration', () => {
   beforeAll(async () => {
-    moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     await moduleRef.init();
     prisma = moduleRef.get(PrismaService);
     users = moduleRef.get(UserManagementService);
@@ -48,13 +50,25 @@ describe('Real database integration', () => {
       { requestId: 'integration-user-create' },
     );
 
-    const persisted = await prisma.authenticationUser.findUnique({ where: { uuid: created.uuid } });
+    const persisted = await prisma.authenticationUser.findUnique({
+      where: { uuid: created.uuid },
+    });
     expect(persisted?.email).toBe(created.email);
     expect(persisted?.status).toBe('active');
-    expect(await prisma.auditLog.count({ where: { action: 'USER_CREATED', userId: persisted?.id } })).toBe(1);
+    expect(
+      await prisma.auditLog.count({
+        where: { action: 'USER_CREATED', userId: persisted?.id },
+      }),
+    ).toBe(1);
 
-    await credentials.create({ userUuid: created.uuid, password: PASSWORD, confirmation: PASSWORD });
-    const credential = await prisma.authenticationUserCredential.findUnique({ where: { userId: persisted!.id } });
+    await credentials.create({
+      userUuid: created.uuid,
+      password: PASSWORD,
+      confirmation: PASSWORD,
+    });
+    const credential = await prisma.authenticationUserCredential.findUnique({
+      where: { userId: persisted!.id },
+    });
     expect(credential?.passwordHash).toEqual(expect.any(String));
     expect(credential?.passwordHash).not.toBe(PASSWORD);
     expect(await hasher.verify(credential!.passwordHash, PASSWORD)).toBe(true);
@@ -68,20 +82,30 @@ describe('Real database integration', () => {
         const user = await tx.authenticationUser.create({
           data: { uuid, email, status: 'active', isActive: true },
         });
-        await tx.authenticationUserSecurity.create({ data: { userId: user.id } });
+        await tx.authenticationUserSecurity.create({
+          data: { userId: user.id },
+        });
         throw new Error('intentional integration rollback');
       }),
     ).rejects.toThrow('intentional integration rollback');
 
-    expect(await prisma.authenticationUser.findUnique({ where: { uuid } })).toBeNull();
+    expect(
+      await prisma.authenticationUser.findUnique({ where: { uuid } }),
+    ).toBeNull();
   });
 
   it('keeps database isolation deterministic across test records', async () => {
-    const first = await users.create({ email: `isolation-a-${randomUUID()}@example.com` });
-    const second = await users.create({ email: `isolation-b-${randomUUID()}@example.com` });
+    const first = await users.create({
+      email: `isolation-a-${randomUUID()}@example.com`,
+    });
+    const second = await users.create({
+      email: `isolation-b-${randomUUID()}@example.com`,
+    });
     expect(first.uuid).not.toBe(second.uuid);
     expect(
-      await prisma.authenticationUser.count({ where: { uuid: { in: [first.uuid, second.uuid] } } }),
+      await prisma.authenticationUser.count({
+        where: { uuid: { in: [first.uuid, second.uuid] } },
+      }),
     ).toBe(2);
   });
 });

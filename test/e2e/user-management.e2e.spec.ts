@@ -21,9 +21,17 @@ const httpRequest = () => request(app.getHttpServer());
 const tokenFor = (sub: string, permissions: string[] = ['users:manage']) =>
   jwt.sign({ sub, sid: randomUUID(), permissions });
 
-async function createUser(email: string): Promise<{ id: bigint; uuid: string }> {
+async function createUser(
+  email: string,
+): Promise<{ id: bigint; uuid: string }> {
   const user = await prisma.authenticationUser.create({
-    data: { uuid: randomUUID(), email, status: 'active', isActive: true, isVerified: true },
+    data: {
+      uuid: randomUUID(),
+      email,
+      status: 'active',
+      isActive: true,
+      isVerified: true,
+    },
   });
   await prisma.authenticationUserSecurity.create({ data: { userId: user.id } });
   await prisma.authenticationUserCredential.create({
@@ -47,7 +55,9 @@ async function cleanup(): Promise<void> {
 
 describe('User management E2E', () => {
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication();
     configureApplication(app as Parameters<typeof configureApplication>[0]);
     await app.init();
@@ -83,12 +93,19 @@ describe('User management E2E', () => {
     expect(create.body.password).toBeUndefined();
     expect(create.body.passwordHash).toBeUndefined();
 
-    await httpRequest().get(`/api/v1/users/${uuid}`).set('Authorization', `Bearer ${token}`).expect(200);
-    const list = await httpRequest()
-      .get(`/api/v1/users?page=1&limit=20&search=${encodeURIComponent(create.body.email)}`)
+    await httpRequest()
+      .get(`/api/v1/users/${uuid}`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
-    expect(list.body.items.some((item: { uuid: string }) => item.uuid === uuid)).toBe(true);
+    const list = await httpRequest()
+      .get(
+        `/api/v1/users?page=1&limit=20&search=${encodeURIComponent(create.body.email)}`,
+      )
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(
+      list.body.items.some((item: { uuid: string }) => item.uuid === uuid),
+    ).toBe(true);
 
     await httpRequest()
       .patch(`/api/v1/users/${uuid}`)
@@ -96,11 +113,20 @@ describe('User management E2E', () => {
       .send({ username: `updated-${randomUUID().slice(0, 8)}` })
       .expect(200);
 
-    await httpRequest().delete(`/api/v1/users/${uuid}`).set('Authorization', `Bearer ${token}`).expect(204);
-    const persisted = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid } });
+    await httpRequest()
+      .delete(`/api/v1/users/${uuid}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(204);
+    const persisted = await prisma.authenticationUser.findUniqueOrThrow({
+      where: { uuid },
+    });
     expect(persisted.deletedAt).not.toBeNull();
     expect(persisted.isActive).toBe(false);
-    expect(await prisma.auditLog.count({ where: { action: 'USER_DELETED', userId: persisted.id } })).toBe(1);
+    expect(
+      await prisma.auditLog.count({
+        where: { action: 'USER_DELETED', userId: persisted.id },
+      }),
+    ).toBe(1);
   });
 
   it('enforces profile ownership and supports profile create/read/update', async () => {
@@ -129,8 +155,12 @@ describe('User management E2E', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ locale: 'en-US' })
       .expect(200);
-    const target = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid: targetUuid } });
-    const profile = await prisma.authenticationUserProfile.findUnique({ where: { userId: target.id } });
+    const target = await prisma.authenticationUser.findUniqueOrThrow({
+      where: { uuid: targetUuid },
+    });
+    const profile = await prisma.authenticationUserProfile.findUnique({
+      where: { userId: target.id },
+    });
     expect(profile?.locale).toBe('en-US');
   });
 
@@ -146,7 +176,9 @@ describe('User management E2E', () => {
       })
       .expect(201);
 
-    const actor = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid: actorUuid } });
+    const actor = await prisma.authenticationUser.findUniqueOrThrow({
+      where: { uuid: actorUuid },
+    });
     await httpRequest()
       .post('/api/v1/auth/login')
       .send({ identifier: actor.email, password: PASSWORD })
@@ -156,7 +188,15 @@ describe('User management E2E', () => {
       .send({ identifier: actor.email, password: 'Changed-Password-456!' })
       .expect(201);
     expect(login.body.accessToken).toEqual(expect.any(String));
-    expect(await prisma.authenticationUserCredential.count({ where: { userId: actor.id } })).toBe(1);
-    expect(await prisma.authenticationUserSession.count({ where: { userId: actor.id } })).toBe(1);
+    expect(
+      await prisma.authenticationUserCredential.count({
+        where: { userId: actor.id },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.authenticationUserSession.count({
+        where: { userId: actor.id },
+      }),
+    ).toBe(1);
   });
 });

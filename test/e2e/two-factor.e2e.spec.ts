@@ -51,7 +51,9 @@ async function createUser(): Promise<void> {
 
 describe('Two-factor and recovery E2E', () => {
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication();
     configureApplication(app as Parameters<typeof configureApplication>[0]);
     await app.init();
@@ -72,7 +74,9 @@ describe('Two-factor and recovery E2E', () => {
   });
 
   it('enrolls and verifies TOTP, persists recovery codes, requires MFA at login, and consumes a recovery code once', async () => {
-    const loginUser = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid: userUuid } });
+    const loginUser = await prisma.authenticationUser.findUniqueOrThrow({
+      where: { uuid: userUuid },
+    });
     const login = await httpRequest()
       .post('/api/v1/auth/login')
       .send({ identifier: loginUser.email, password: PASSWORD })
@@ -126,18 +130,43 @@ describe('Two-factor and recovery E2E', () => {
       .expect(201);
     await httpRequest()
       .post('/api/v1/auth/2fa/verify')
-      .send({ challengeToken: secondChallenge.body.challengeToken, recoveryCode })
+      .send({
+        challengeToken: secondChallenge.body.challengeToken,
+        recoveryCode,
+      })
       .expect(401);
 
-    expect(await prisma.authenticationUserTwoFactor.count({ where: { userId: loginUser.id } })).toBe(1);
-    expect(await prisma.authenticationUserTwoFactorRecoveryCode.count({ where: { userId: loginUser.id } })).toBe(10);
-    expect(await prisma.authenticationUserTwoFactorChallenge.count({ where: { userId: loginUser.id } })).toBe(2);
-    expect(await prisma.auditLog.count({ where: { action: '2FA_ENABLED', userId: loginUser.id } })).toBe(1);
-    expect(await prisma.auditLog.count({ where: { action: '2FA_RECOVERY_CODE_USED', userId: loginUser.id } })).toBe(1);
+    expect(
+      await prisma.authenticationUserTwoFactor.count({
+        where: { userId: loginUser.id },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.authenticationUserTwoFactorRecoveryCode.count({
+        where: { userId: loginUser.id },
+      }),
+    ).toBe(10);
+    expect(
+      await prisma.authenticationUserTwoFactorChallenge.count({
+        where: { userId: loginUser.id },
+      }),
+    ).toBe(2);
+    expect(
+      await prisma.auditLog.count({
+        where: { action: '2FA_ENABLED', userId: loginUser.id },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.auditLog.count({
+        where: { action: '2FA_RECOVERY_CODE_USED', userId: loginUser.id },
+      }),
+    ).toBe(1);
   });
 
   it('rejects invalid enrollment codes without enabling 2FA', async () => {
-    const loginUser = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid: userUuid } });
+    const loginUser = await prisma.authenticationUser.findUniqueOrThrow({
+      where: { uuid: userUuid },
+    });
     const login = await httpRequest()
       .post('/api/v1/auth/login')
       .send({ identifier: loginUser.email, password: PASSWORD })
@@ -152,7 +181,11 @@ describe('Two-factor and recovery E2E', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ code: '000000' })
       .expect(401);
-    expect(await prisma.authenticationUserTwoFactor.findFirst({ where: { userId: loginUser.id, enabledAt: { not: null } } })).toBeNull();
+    expect(
+      await prisma.authenticationUserTwoFactor.findFirst({
+        where: { userId: loginUser.id, enabledAt: { not: null } },
+      }),
+    ).toBeNull();
   });
 
   it('keeps MFA challenge tokens invalid outside their purpose', async () => {

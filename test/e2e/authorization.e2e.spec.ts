@@ -27,9 +27,17 @@ let rolePermissionId = 0n;
 
 const httpRequest = () => request(app.getHttpServer());
 
-async function createUser(email: string): Promise<{ uuid: string; id: bigint }> {
+async function createUser(
+  email: string,
+): Promise<{ uuid: string; id: bigint }> {
   const user = await prisma.authenticationUser.create({
-    data: { uuid: randomUUID(), email, status: 'active', isActive: true, isVerified: true },
+    data: {
+      uuid: randomUUID(),
+      email,
+      status: 'active',
+      isActive: true,
+      isVerified: true,
+    },
   });
   await prisma.authenticationUserCredential.create({
     data: { userId: user.id, passwordHash: await hasher.hash(PASSWORD) },
@@ -39,7 +47,9 @@ async function createUser(email: string): Promise<{ uuid: string; id: bigint }> 
 }
 
 async function login(uuid: string): Promise<string> {
-  const user = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid } });
+  const user = await prisma.authenticationUser.findUniqueOrThrow({
+    where: { uuid },
+  });
   const response = await httpRequest()
     .post('/api/v1/auth/login')
     .send({ identifier: user.email, password: PASSWORD })
@@ -65,7 +75,9 @@ async function cleanup(): Promise<void> {
 
 describe('Authorization and RBAC E2E', () => {
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication();
     configureApplication(app as Parameters<typeof configureApplication>[0]);
     await app.init();
@@ -84,33 +96,54 @@ describe('Authorization and RBAC E2E', () => {
 
     const permissionManage = await prisma.authorizationPermission.create({
       data: {
-        uuid: randomUUID(), name: 'Manage roles', code: ROLE_MANAGE,
-        module: 'authorization', domain: 'roles', action: 'manage',
+        uuid: randomUUID(),
+        name: 'Manage roles',
+        code: ROLE_MANAGE,
+        module: 'authorization',
+        domain: 'roles',
+        action: 'manage',
       },
     });
     const permissionRead = await prisma.authorizationPermission.create({
       data: {
-        uuid: randomUUID(), name: 'Read roles', code: ROLE_READ,
-        module: 'authorization', domain: 'roles', action: 'read',
+        uuid: randomUUID(),
+        name: 'Read roles',
+        code: ROLE_READ,
+        module: 'authorization',
+        domain: 'roles',
+        action: 'read',
       },
     });
-    const permissionPermissionManage = await prisma.authorizationPermission.create({
-      data: {
-        uuid: randomUUID(), name: 'Manage permissions', code: PERMISSION_MANAGE,
-        module: 'authorization', domain: 'permissions', action: 'manage',
-      },
-    });
-    const permissionPermissionRead = await prisma.authorizationPermission.create({
-      data: {
-        uuid: randomUUID(), name: 'Read permissions', code: PERMISSION_READ,
-        module: 'authorization', domain: 'permissions', action: 'read',
-      },
-    });
+    const permissionPermissionManage =
+      await prisma.authorizationPermission.create({
+        data: {
+          uuid: randomUUID(),
+          name: 'Manage permissions',
+          code: PERMISSION_MANAGE,
+          module: 'authorization',
+          domain: 'permissions',
+          action: 'manage',
+        },
+      });
+    const permissionPermissionRead =
+      await prisma.authorizationPermission.create({
+        data: {
+          uuid: randomUUID(),
+          name: 'Read permissions',
+          code: PERMISSION_READ,
+          module: 'authorization',
+          domain: 'permissions',
+          action: 'read',
+        },
+      });
 
     const role = await prisma.authorizationRole.create({
       data: {
-        uuid: randomUUID(), name: 'RBAC Administrator', code: `rbac-admin-${randomUUID()}`,
-        description: 'E2E test role', isActive: true,
+        uuid: randomUUID(),
+        name: 'RBAC Administrator',
+        code: `rbac-admin-${randomUUID()}`,
+        description: 'E2E test role',
+        isActive: true,
       },
     });
     roleUuid = role.uuid;
@@ -138,11 +171,19 @@ describe('Authorization and RBAC E2E', () => {
   it('blocks unauthenticated and unprivileged actors, then allows a DB-backed role assignment and removal', async () => {
     await httpRequest().get('/api/v1/roles').expect(401);
     const readerToken = await login(readerUuid);
-    await httpRequest().get('/api/v1/roles').set('Authorization', `Bearer ${readerToken}`).expect(403);
+    await httpRequest()
+      .get('/api/v1/roles')
+      .set('Authorization', `Bearer ${readerToken}`)
+      .expect(403);
 
     const adminToken = await login(adminUuid);
-    const list = await httpRequest().get('/api/v1/roles').set('Authorization', `Bearer ${adminToken}`).expect(200);
-    expect(list.body.items.some((item: { uuid: string }) => item.uuid === roleUuid)).toBe(true);
+    const list = await httpRequest()
+      .get('/api/v1/roles')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(
+      list.body.items.some((item: { uuid: string }) => item.uuid === roleUuid),
+    ).toBe(true);
 
     const assignment = await httpRequest()
       .post(`/api/v1/users/${targetUuid}/roles`)
@@ -174,26 +215,45 @@ describe('Authorization and RBAC E2E', () => {
     const role = await httpRequest()
       .post('/api/v1/roles')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Temporary Role', code: `temporary-${randomUUID()}`, description: 'e2e' })
+      .send({
+        name: 'Temporary Role',
+        code: `temporary-${randomUUID()}`,
+        description: 'e2e',
+      })
       .expect(201);
     const createdRoleUuid = role.body.uuid as string;
     expect(createdRoleUuid).toMatch(/^[0-9a-f-]{36}$/i);
-    await httpRequest().get(`/api/v1/roles/${createdRoleUuid}`).set('Authorization', `Bearer ${adminToken}`).expect(200);
+    await httpRequest()
+      .get(`/api/v1/roles/${createdRoleUuid}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
     await httpRequest()
       .put(`/api/v1/roles/${createdRoleUuid}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ name: 'Updated Temporary Role' })
       .expect(200);
-    await httpRequest().delete(`/api/v1/roles/${createdRoleUuid}`).set('Authorization', `Bearer ${adminToken}`).expect(200);
+    await httpRequest()
+      .delete(`/api/v1/roles/${createdRoleUuid}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
 
     const createdPermission = await httpRequest()
       .post('/api/v1/permissions')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Read test resource', code: `test:read:${randomUUID()}`, module: 'testing', domain: 'resource', action: 'read' })
+      .send({
+        name: 'Read test resource',
+        code: `test:read:${randomUUID()}`,
+        module: 'testing',
+        domain: 'resource',
+        action: 'read',
+      })
       .expect(201);
     const permissionUuid = createdPermission.body.uuid as string;
     expect(permissionUuid).toMatch(/^[0-9a-f-]{36}$/i);
-    await httpRequest().get(`/api/v1/permissions/${permissionUuid}`).set('Authorization', `Bearer ${adminToken}`).expect(200);
+    await httpRequest()
+      .get(`/api/v1/permissions/${permissionUuid}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
     await httpRequest()
       .put(`/api/v1/permissions/${permissionUuid}`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -215,20 +275,31 @@ describe('Authorization and RBAC E2E', () => {
       .delete(`/api/v1/roles/${roleUuid}/permissions/${permissionUuid}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    await httpRequest().delete(`/api/v1/permissions/${permissionUuid}`).set('Authorization', `Bearer ${adminToken}`).expect(200);
+    await httpRequest()
+      .delete(`/api/v1/permissions/${permissionUuid}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
   });
 
   it('revokes a role permission in the database and blocks the corresponding mutation capability', async () => {
     const adminToken = await login(adminUuid);
-    await httpRequest().get('/api/v1/roles').set('Authorization', `Bearer ${adminToken}`).expect(200);
+    await httpRequest()
+      .get('/api/v1/roles')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
     await prisma.authorizationRolePermission.delete({
-      where: { roleId_permissionId: { roleId, permissionId: rolePermissionId } },
+      where: {
+        roleId_permissionId: { roleId, permissionId: rolePermissionId },
+      },
     });
     await httpRequest()
       .post('/api/v1/roles')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ name: 'Should be denied', code: `denied-${randomUUID()}` })
       .expect(403);
-    await httpRequest().get('/api/v1/roles').set('Authorization', `Bearer ${adminToken}`).expect(200);
+    await httpRequest()
+      .get('/api/v1/roles')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
   });
 });
