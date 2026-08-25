@@ -14,7 +14,7 @@ export interface AuthenticationLockoutPolicy {
 }
 
 export interface SuccessfulLoginContext {
-  ipAddress?: string;
+  ipAddress?: string | undefined;
 }
 
 export interface AuthenticationSecurityRepository {
