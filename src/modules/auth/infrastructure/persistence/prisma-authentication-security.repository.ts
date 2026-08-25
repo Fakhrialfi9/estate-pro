@@ -38,19 +38,24 @@ export class PrismaAuthenticationSecurityRepository
   async getState(userUuid: string): Promise<AuthenticationSecurityState> {
     const existing = await this.security.findFirst({
       where: { user: { uuid: userUuid } },
+      include: { user: { select: { uuid: true } } },
     });
     if (existing) return this.toState(existing);
+
     try {
       const created = await this.security.create({
         data: { user: { connect: { uuid: userUuid } } },
+        include: { user: { select: { uuid: true } } },
       });
       return this.toState(created);
     } catch {
       const raced = await this.security.findFirst({
         where: { user: { uuid: userUuid } },
+        include: { user: { select: { uuid: true } } },
       });
-      if (!raced)
+      if (!raced) {
         throw new Error('Unable to initialize authentication security state');
+      }
       return this.toState(raced);
     }
   }
