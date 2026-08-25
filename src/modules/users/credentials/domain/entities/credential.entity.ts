@@ -17,12 +17,29 @@ export class CredentialEntity {
     return new CredentialEntity({ ...snapshot });
   }
 
-  get userUuid(): string { return this.snapshot.userUuid; }
-  get passwordHash(): string { return this.snapshot.passwordHash; }
-  get passwordChangedAt(): Date | null { return this.snapshot.passwordChangedAt; }
-  get passwordExpiresAt(): Date | null { return this.snapshot.passwordExpiresAt; }
-  get createdAt(): Date { return this.snapshot.createdAt; }
-  get updatedAt(): Date { return this.snapshot.updatedAt; }
+  get userUuid(): string {
+    return this.snapshot.userUuid;
+  }
+
+  get passwordHash(): string {
+    return this.snapshot.passwordHash;
+  }
+
+  get passwordChangedAt(): Date | null {
+    return this.snapshot.passwordChangedAt;
+  }
+
+  get passwordExpiresAt(): Date | null {
+    return this.snapshot.passwordExpiresAt;
+  }
+
+  get createdAt(): Date {
+    return this.snapshot.createdAt;
+  }
+
+  get updatedAt(): Date {
+    return this.snapshot.updatedAt;
+  }
 
   toSnapshot(): CredentialSnapshot {
     return { ...this.snapshot };
