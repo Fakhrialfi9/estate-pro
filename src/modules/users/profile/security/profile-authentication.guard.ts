@@ -1,20 +1,21 @@
-import { ConfigService } from '@nestjs/config';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
-import type { AuthenticatedPrincipal } from '../application/types/authenticated-principal.js';
-import type { UserIdentityReader } from '../application/types/user-identity-reader.js';
+import { JwtTokenService } from '../../../auth/application/services/jwt-token.service.js';
+import type { AccessTokenClaims } from '../../../auth/application/services/jwt-token.service.js';
+import type { AuthenticationSessionRepository } from '../../../auth/domain/repositories/authentication-session.repository.js';
+import { AUTHENTICATION_SESSION_REPOSITORY } from '../../../auth/domain/repositories/authentication-session.repository.js';
 import { USER_IDENTITY_READER } from '../application/types/user-identity-reader.js';
-import { Inject } from '@nestjs/common';
+import type { UserIdentityReader } from '../application/types/user-identity-reader.js';
 
-export type AuthenticatedRequest = Request & { user?: AuthenticatedPrincipal };
+export type AuthenticatedRequest = Request & { user?: AccessTokenClaims };
 
 @Injectable()
 export class ProfileAuthenticationGuard implements CanActivate {
   constructor(
-    private readonly jwt: JwtService,
-    private readonly config: ConfigService,
+    private readonly jwt: JwtTokenService,
+    @Inject(AUTHENTICATION_SESSION_REPOSITORY)
+    private readonly sessions: AuthenticationSessionRepository,
     @Inject(USER_IDENTITY_READER) private readonly users: UserIdentityReader,
   ) {}
 
@@ -22,23 +23,12 @@ export class ProfileAuthenticationGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const header = request.headers.authorization;
     if (!header?.startsWith('Bearer ')) throw new UnauthorizedException();
-
     const token = header.slice('Bearer '.length).trim();
     if (!token) throw new UnauthorizedException();
 
     try {
-      const claims = await this.jwt.verifyAsync<AuthenticatedPrincipal>(token, {
-        secret: this.config.getOrThrow<string>('auth.jwt.secret'),
-        issuer: this.config.getOrThrow<string>('auth.jwt.issuer'),
-        audience: this.config.getOrThrow<string>('auth.jwt.audience'),
-        algorithms: [
-          this.config.getOrThrow<'HS256' | 'HS384' | 'HS512'>(
-            'auth.jwt.algorithm',
-          ),
-        ],
-      });
-
-      if (!claims.sub) throw new UnauthorizedException();
+      const claims = await this.jwt.verifyAccessToken(token);
+      if (!(await this.sessions.isActive(claims.sub, claims.sid, new Date()))) throw new UnauthorizedException();
       const actor = await this.users.getByUuid(claims.sub);
       if (!actor.isAccessible()) throw new UnauthorizedException();
       request.user = claims;
