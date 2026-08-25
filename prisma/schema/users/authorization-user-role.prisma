@@ -1,0 +1,47 @@
+model AuthorizationUserRole {
+    /**
+     * Composite Primary Key
+     */
+    userId BigInt @map("user_id") @db.UnsignedBigInt
+    roleId BigInt @map("role_id") @db.UnsignedBigInt
+
+    /**
+     * Status
+     */
+    isActive Boolean @default(true) @map("is_active")
+
+    /**
+     * Assignment
+     */
+    assignedBy BigInt? @map("assigned_by") @db.UnsignedBigInt
+
+    assignedAt DateTime @default(now()) @map("assigned_at")
+
+    revokedAt DateTime? @map("revoked_at")
+
+    /**
+     * Timestamps
+     */
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    /**
+     * Relations
+     */
+    user AuthenticationUser @relation("UserRoles", fields: [userId], references: [id])
+
+    role AuthorizationRole @relation(fields: [roleId], references: [id])
+
+    assignedByUser AuthenticationUser? @relation("AssignedBy", fields: [assignedBy], references: [id])
+
+    /**
+     * Primary Key
+     */
+    @@id([userId, roleId])
+    /**
+     * Indexes
+     */
+    @@index([isActive])
+    @@index([assignedBy])
+    @@map("authorization_user_roles")
+}

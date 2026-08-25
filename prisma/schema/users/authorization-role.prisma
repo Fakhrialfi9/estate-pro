@@ -1,0 +1,40 @@
+model AuthorizationRole {
+    /**
+     * Identity
+     */
+    id   BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+    uuid String @unique @db.Char(36)
+
+    /**
+     * Basic Information
+     */
+    name String @db.VarChar(100)
+
+    code String @unique @db.VarChar(100)
+
+    description String? @db.Text
+
+    /**
+     * Status
+     */
+    isActive Boolean @default(true) @map("is_active")
+
+    /**
+     * Timestamps
+     */
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    /**
+     * Relations
+     */
+    users AuthorizationUserRole[]
+
+    permissions AuthorizationRolePermission[]
+
+    /**
+     * Indexes
+     */
+    @@index([isActive])
+    @@map("authorization_roles")
+}

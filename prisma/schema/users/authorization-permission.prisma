@@ -1,0 +1,41 @@
+model AuthorizationPermission {
+    /**
+     * Identity
+     */
+    id   BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+    uuid String @unique @db.Char(36)
+
+    /**
+     * Basic Information
+     */
+    name String @db.VarChar(150)
+
+    code String @unique @db.VarChar(150)
+
+    /**
+     * Permission Scope
+     */
+    module String @db.VarChar(100)
+
+    domain String @db.VarChar(100)
+
+    action String @db.VarChar(50)
+
+    /**
+     * Timestamps
+     */
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    /**
+     * Relations
+     */
+    roles AuthorizationRolePermission[]
+
+    /**
+     * Indexes
+     */
+    @@index([module])
+    @@index([domain])
+    @@map("authorization_permissions")
+}

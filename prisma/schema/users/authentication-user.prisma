@@ -1,0 +1,56 @@
+model AuthenticationUser {
+    /**
+     * Identity
+     *
+     * BigInt is the internal relational key.
+     * UUID is the stable external identity used by application contracts.
+     */
+    id   BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+    uuid String @unique @default(uuid()) @db.Char(36)
+
+    /**
+     * Account Information
+     */
+    username String? @unique @db.VarChar(100)
+    email    String? @unique @db.VarChar(191)
+    phone    String? @unique @db.VarChar(30)
+
+    /**
+     * Status
+     */
+    status     String  @default("pending") @db.VarChar(30)
+    isActive   Boolean @default(true) @map("is_active")
+    isVerified Boolean @default(false) @map("is_verified")
+
+    /**
+     * Timestamps
+     */
+    createdAt DateTime  @default(now()) @map("created_at")
+    updatedAt DateTime  @updatedAt @map("updated_at")
+    deletedAt DateTime? @map("deleted_at")
+
+    /**
+     * Relations
+     */
+    profile     AuthenticationUserProfile?
+    credentials AuthenticationUserCredential?
+    security    AuthenticationUserSecurity?
+    sessions    AuthenticationUserSession[]
+    twoFactor   AuthenticationUserTwoFactor?
+
+    roles AuthorizationUserRole[] @relation("UserRoles")
+
+    assignedUserRoles AuthorizationUserRole[] @relation("AssignedBy")
+
+    auditLogs AuditLog[]
+
+    /**
+     * Indexes
+     */
+    @@index([status])
+    @@index([isActive])
+    @@index([deletedAt])
+    @@index([status, deletedAt])
+    @@index([isActive, deletedAt])
+    @@map("authentication_users")
+}

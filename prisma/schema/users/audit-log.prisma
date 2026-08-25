@@ -1,0 +1,56 @@
+model AuditLog {
+    /**
+     * Identity
+     */
+    id   BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+    uuid String @unique @db.Char(36)
+
+    /**
+     * User
+     */
+    userId BigInt? @map("user_id") @db.UnsignedBigInt
+
+    /**
+     * Action
+     */
+    action String @db.VarChar(100)
+
+    /**
+     * Entity
+     */
+    entityType String? @map("entity_type") @db.VarChar(100)
+
+    entityId BigInt? @map("entity_id") @db.UnsignedBigInt
+
+    /**
+     * Request Context
+     */
+    ipAddress String? @map("ip_address") @db.VarChar(45)
+
+    userAgent String? @map("user_agent") @db.Text
+
+    requestId String? @map("request_id") @db.VarChar(100)
+
+    /**
+     * Timestamp
+     */
+    createdAt DateTime @default(now()) @map("created_at")
+
+    /**
+     * Relations
+     */
+    user AuthenticationUser? @relation(fields: [userId], references: [id])
+
+    changes AuditLogChange[]
+
+    /**
+     * Indexes
+     */
+    @@index([userId])
+    @@index([action])
+    @@index([entityType])
+    @@index([entityId])
+    @@index([requestId])
+    @@index([createdAt])
+    @@map("audit_logs")
+}

@@ -1,0 +1,50 @@
+model AuthenticationUserSession {
+    /**
+     * Identity
+     */
+    id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+
+    /**
+     * User Reference
+     */
+    userId BigInt @map("user_id") @db.UnsignedBigInt
+
+    /**
+     * Session
+     */
+    sessionId String @unique @map("session_id") @db.VarChar(64)
+
+    /**
+     * Client Information
+     */
+    ipAddress String? @map("ip_address") @db.VarChar(45)
+
+    userAgent String? @map("user_agent") @db.Text
+
+    /**
+     * Activity
+     */
+    lastActivityAt DateTime? @map("last_activity_at")
+
+    revokedAt DateTime? @map("revoked_at")
+
+    expiresAt DateTime @map("expires_at")
+
+    /**
+     * Timestamp
+     */
+    createdAt DateTime @default(now()) @map("created_at")
+
+    /**
+     * Relations
+     */
+    user AuthenticationUser @relation(fields: [userId], references: [id])
+
+    /**
+     * Indexes
+     */
+    @@index([userId])
+    @@index([revokedAt])
+    @@index([expiresAt])
+    @@map("authentication_user_sessions")
+}

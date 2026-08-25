@@ -1,0 +1,41 @@
+model AuthenticationUserSecurity {
+    /**
+     * Identity
+     */
+    id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+
+    /**
+     * User Reference
+     */
+    userId BigInt @unique @map("user_id") @db.UnsignedBigInt
+
+    /**
+     * Verification
+     */
+    emailVerifiedAt DateTime? @map("email_verified_at")
+    phoneVerifiedAt DateTime? @map("phone_verified_at")
+
+    /**
+     * Login Security
+     */
+    lastLoginAt DateTime? @map("last_login_at")
+
+    lastLoginIp String? @map("last_login_ip") @db.VarChar(45)
+
+    failedLoginAttempts Int @default(0) @map("failed_login_attempts") @db.UnsignedInt
+
+    lockedUntil DateTime? @map("locked_until")
+
+    /**
+     * Timestamps
+     */
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    /**
+     * Relations
+     */
+    user AuthenticationUser @relation(fields: [userId], references: [id])
+
+    @@map("authentication_user_security")
+}

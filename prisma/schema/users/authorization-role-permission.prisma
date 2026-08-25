@@ -1,0 +1,26 @@
+model AuthorizationRolePermission {
+    /**
+     * Composite Primary Key
+     */
+    roleId       BigInt @map("role_id") @db.UnsignedBigInt
+    permissionId BigInt @map("permission_id") @db.UnsignedBigInt
+
+    /**
+     * Timestamps
+     */
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    /**
+     * Relations
+     */
+    role AuthorizationRole @relation(fields: [roleId], references: [id])
+
+    permission AuthorizationPermission @relation(fields: [permissionId], references: [id])
+
+    /**
+     * Primary Key
+     */
+    @@id([roleId, permissionId])
+    @@map("authorization_role_permissions")
+}

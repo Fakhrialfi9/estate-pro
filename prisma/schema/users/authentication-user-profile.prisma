@@ -1,0 +1,42 @@
+model AuthenticationUserProfile {
+    /**
+     * Identity
+     */
+    id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+
+    /**
+     * User Reference
+     */
+    userId BigInt @unique @map("user_id") @db.UnsignedBigInt
+
+    /**
+     * Personal Information
+     */
+    firstName String? @map("first_name") @db.VarChar(100)
+    lastName  String? @map("last_name") @db.VarChar(100)
+
+    /**
+     * Media
+     */
+    imageUrl           String? @map("image_url") @db.VarChar(500)
+    avatarThumbnailUrl String? @map("avatar_thumbnail_url") @db.VarChar(500)
+
+    /**
+     * Localization
+     */
+    timezone String @default("Asia/Jakarta") @db.VarChar(100)
+    locale   String @default("id") @db.VarChar(10)
+
+    /**
+     * Timestamps
+     */
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    /**
+     * Relations
+     */
+    user AuthenticationUser @relation(fields: [userId], references: [id])
+
+    @@map("authentication_user_profiles")
+}
