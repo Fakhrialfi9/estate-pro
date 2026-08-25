@@ -10,7 +10,7 @@ CREATE TABLE `authentication_password_reset_tokens` (
   KEY `authentication_password_reset_tokens_user_id_idx` (`user_id`),
   KEY `authentication_password_reset_tokens_expires_at_idx` (`expires_at`),
   KEY `authentication_password_reset_tokens_used_at_idx` (`used_at`),
-  KEY `authentication_password_reset_tokens_user_id_expires_at_used_at_idx` (`user_id`, `expires_at`, `used_at`),
+  KEY `authentication_password_reset_tokens_user_exp_used_idx` (`user_id`, `expires_at`, `used_at`),
   CONSTRAINT `authentication_password_reset_tokens_user_id_fkey`
     FOREIGN KEY (`user_id`) REFERENCES `authentication_users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
