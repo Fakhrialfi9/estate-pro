@@ -16,6 +16,7 @@ import { ObservabilityModule } from './infrastructure/observability/observabilit
 import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthController } from './modules/health/health.controller.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { PermissionsModule } from './modules/permissions/permissions.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 
@@ -56,6 +57,7 @@ const shouldSkipThrottling = (context: ExecutionContext): boolean =>
     HealthModule,
     UsersModule,
     RolesModule,
+    PermissionsModule,
     ObservabilityModule,
   ],
   controllers: [AppController],

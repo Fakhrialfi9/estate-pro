@@ -12,6 +12,9 @@ type UserDelegate = {
 type RoleDelegate = {
   findFirst(args: unknown): Promise<{ id: bigint } | null>;
 };
+type PermissionDelegate = {
+  findFirst(args: unknown): Promise<{ id: bigint } | null>;
+};
 type AuditLogDelegate = {
   create(args: unknown): Promise<{ id: bigint }>;
 };
@@ -22,6 +25,7 @@ type AuditChangeDelegate = {
 type PrismaShape = {
   authenticationUser: UserDelegate;
   authorizationRole: RoleDelegate;
+  authorizationPermission: PermissionDelegate;
   auditLog: AuditLogDelegate;
   auditLogChange: AuditChangeDelegate;
 };
@@ -30,6 +34,7 @@ type PrismaShape = {
 export class PrismaSecurityAuditRepository implements SecurityAuditRepository {
   private readonly users: UserDelegate;
   private readonly roles: RoleDelegate;
+  private readonly permissions: PermissionDelegate;
   private readonly auditLogs: AuditLogDelegate;
   private readonly auditChanges: AuditChangeDelegate;
 
@@ -37,6 +42,7 @@ export class PrismaSecurityAuditRepository implements SecurityAuditRepository {
     const client = prisma as unknown as PrismaShape;
     this.users = client.authenticationUser;
     this.roles = client.authorizationRole;
+    this.permissions = client.authorizationPermission;
     this.auditLogs = client.auditLog;
     this.auditChanges = client.auditLogChange;
   }
@@ -56,6 +62,15 @@ export class PrismaSecurityAuditRepository implements SecurityAuditRepository {
       entityId =
         (
           await this.roles.findFirst({
+            where: { uuid: event.entityUuid },
+            select: { id: true },
+          })
+        )?.id ?? null;
+    }
+    if (event.entityUuid && event.entityType === 'AuthorizationPermission') {
+      entityId =
+        (
+          await this.permissions.findFirst({
             where: { uuid: event.entityUuid },
             select: { id: true },
           })
