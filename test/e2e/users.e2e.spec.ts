@@ -1,4 +1,5 @@
 import { beforeAll, afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -30,7 +31,7 @@ type UserListResponse = {
 let app: INestApplication;
 let prisma: PrismaService;
 let jwt: JwtService;
-const ACTOR_UUID = '550e8400-e29b-41d4-a716-446655440001';
+let actorUuid: string;
 
 const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS authentication_users (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -54,7 +55,7 @@ const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS authentication_users (
 const httpRequest = () => request(app.getHttpServer() as unknown as Server);
 const bodyOf = <T>(response: SuperTestResponse): T => response.body as T;
 const actorToken = (permissions: string[] = ['users:manage']) =>
-  jwt.sign({ sub: ACTOR_UUID, permissions });
+  jwt.sign({ sub: actorUuid, permissions });
 
 describe('Users API', () => {
   beforeAll(async () => {
@@ -71,10 +72,11 @@ describe('Users API', () => {
 
   beforeEach(async () => {
     await prisma.authenticationUser.deleteMany();
+    actorUuid = randomUUID();
     await prisma.authenticationUser.create({
       data: {
-        uuid: ACTOR_UUID,
-        email: 'actor@example.com',
+        uuid: actorUuid,
+        email: `actor-${actorUuid}@example.com`,
         status: 'active',
         isActive: true,
       },
@@ -137,7 +139,7 @@ describe('Users API', () => {
     await httpRequest()
       .patch(`/api/v1/users/${uuid}`)
       .set('Authorization', `Bearer ${actorToken()}`)
-      .send({ firstName: 'John' })
+      .send({ username: 'john-updated' })
       .expect(200);
 
     await httpRequest()
@@ -149,13 +151,13 @@ describe('Users API', () => {
   it('rejects duplicate identity', async () => {
     await httpRequest()
       .post('/api/v1/users')
-      .set('Authorization', actorToken())
+      .set('Authorization', `Bearer ${actorToken()}`)
       .send({ email: 'duplicate@example.com' })
       .expect(201);
 
     await httpRequest()
       .post('/api/v1/users')
-      .set('Authorization', actorToken())
+      .set('Authorization', `Bearer ${actorToken()}`)
       .send({ email: 'duplicate@example.com' })
       .expect(409);
   });
@@ -163,11 +165,11 @@ describe('Users API', () => {
   it('does not allow an authenticated user to read another user without management permission', async () => {
     const create = await httpRequest()
       .post('/api/v1/users')
-      .set('Authorization', actorToken())
+      .set('Authorization', `Bearer ${actorToken()}`)
       .send({ email: 'other@example.com' })
       .expect(201);
     const created = bodyOf<UserResponse>(create);
-    const readOnlyToken = jwt.sign({ sub: ACTOR_UUID, permissions: [] });
+    const readOnlyToken = jwt.sign({ sub: actorUuid, permissions: [] });
 
     await httpRequest()
       .get(`/api/v1/users/${created.uuid}`)
@@ -177,7 +179,7 @@ describe('Users API', () => {
 
   it('rejects inactive actors before user management access', async () => {
     await prisma.authenticationUser.update({
-      where: { uuid: ACTOR_UUID },
+      where: { uuid: actorUuid },
       data: { isActive: false },
     });
 
