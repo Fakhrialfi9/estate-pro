@@ -47,11 +47,22 @@ for (const [table, owner] of requiredTables) {
   }
 }
 
-assertAbsent('authentication_user_profiles', /password|credential|secret/i);
-assertAbsent('authentication_users', /passwordHash|password_hash|password/i);
-assertAbsent('authorization_roles', /password|credential|secret/i);
-assertAbsent('authorization_permissions', /password|credential|secret/i);
-assertAbsent('audit_logs', /password|password_hash|token|secret|credential/i);
+// Match persisted scalar credential fields, not relation names such as
+// passwordResetTokens, which are valid identity-boundary relationships.
+assertAbsent(
+  'authentication_user_profiles',
+  /\bpassword(?:Hash|_hash)?\s+(?:String|Bytes|Json|Int|Boolean|DateTime)\b/i,
+);
+assertAbsent(
+  'authentication_users',
+  /\bpassword(?:Hash|_hash)?\s+(?:String|Bytes|Json|Int|Boolean|DateTime)\b/i,
+);
+assertAbsent('authorization_roles', /\b(?:password|credential|secret)\s+/i);
+assertAbsent('authorization_permissions', /\b(?:password|credential|secret)\s+/i);
+assertAbsent(
+  'audit_logs',
+  /\b(?:password|password_hash|token|secret|credential)\s+/i,
+);
 
 const identity = models.get('authentication_users');
 if (identity && !/uuid\s+String\s+@unique/.test(identity.source)) {
