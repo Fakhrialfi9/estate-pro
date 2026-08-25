@@ -17,20 +17,19 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SEGMENT_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const CODE_PATTERN =
-  /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?::[a-z][a-z0-9]*(?:-[a-z0-9]+)*){2}$/;
+  /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*)?$/;
 const MAX_NAME_LENGTH = 150;
 const MAX_SEGMENT_LENGTH = 100;
 const MAX_ACTION_LENGTH = 50;
 
 /**
- * Permission protection is derived from the stable permission identifier, not
- * from a mutable display label. These codes are intentionally explicit so a
- * future policy cannot accidentally treat a similarly named permission as
- * protected.
+ * Protected authorization capabilities use the same dotted identifier format
+ * as normal permissions, with a reserved third segment for the protected
+ * capability itself.
  */
 export const PROTECTED_PERMISSION_CODES = [
-  'roles:manage:protected',
-  'permissions:manage:protected',
+  'roles.manage.protected',
+  'permissions.manage.protected',
 ] as const;
 
 export const normalizePermissionSegment = (value: string): string =>
@@ -43,7 +42,20 @@ export const buildPermissionCode = (
   module: string,
   domain: string,
   action: string,
-): string => [module, domain, action].map(normalizePermissionSegment).join(':');
+): string => {
+  const normalizedModule = normalizePermissionSegment(module);
+  const normalizedDomain = normalizePermissionSegment(domain);
+  const normalizedAction = normalizePermissionSegment(action);
+
+  // `manage.protected` is the reserved three-segment capability used by
+  // protected system-level authorization checks. Regular permissions are
+  // intentionally identified by the stable `module.action` form.
+  if (normalizedDomain === 'manage' && normalizedAction === 'protected') {
+    return `${normalizedModule}.${normalizedDomain}.${normalizedAction}`;
+  }
+
+  return `${normalizedModule}.${normalizedAction}`;
+};
 
 export const isProtectedPermissionCode = (code: string): boolean =>
   PROTECTED_PERMISSION_CODES.includes(
