@@ -1,4 +1,7 @@
-import { isProtectedRoleCode, RoleEntity } from '../../domain/entities/role.entity.js';
+import {
+  isProtectedRoleCode,
+  RoleEntity,
+} from '../../domain/entities/role.entity.js';
 
 export interface RolePersistenceRecord {
   uuid: string;

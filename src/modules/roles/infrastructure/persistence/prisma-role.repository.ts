@@ -35,9 +35,7 @@ type RoleDelegate = {
   create(args: {
     data: RolePersistenceData & { uuid: string };
   }): Promise<RolePersistenceRecord>;
-  findFirst(args: {
-    where: RoleWhere;
-  }): Promise<RolePersistenceRecord | null>;
+  findFirst(args: { where: RoleWhere }): Promise<RolePersistenceRecord | null>;
   findMany(args: {
     where: RoleWhere;
     orderBy:
