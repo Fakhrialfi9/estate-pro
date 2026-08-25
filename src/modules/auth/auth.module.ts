@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule, JwtService } from '@nestjs/jwt';
+import { JwtModule } from '@nestjs/jwt';
 import type { SignOptions } from 'jsonwebtoken';
 import { UsersModule } from '../users/users.module.js';
 import { PasswordHashingModule } from './password-hashing.module.js';
@@ -82,7 +82,6 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
     },
   ],
   exports: [
-    JwtService,
     JwtTokenService,
     JwtAuthGuard,
     SessionService,
