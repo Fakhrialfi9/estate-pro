@@ -86,7 +86,9 @@ export class UserProfileService {
       normalized.imageUrl = normalizeNullable(data.imageUrl);
     }
     if (data.avatarThumbnailUrl !== undefined) {
-      normalized.avatarThumbnailUrl = normalizeNullable(data.avatarThumbnailUrl);
+      normalized.avatarThumbnailUrl = normalizeNullable(
+        data.avatarThumbnailUrl,
+      );
     }
     if (data.timezone !== undefined) {
       normalized.timezone = data.timezone.trim();
