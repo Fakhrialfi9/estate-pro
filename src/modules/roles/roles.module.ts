@@ -3,6 +3,7 @@ import { AuthenticatedAccessGuard } from '../../common/security/authenticated-ac
 import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
 import { AuthorizationService } from '../../common/security/authorization.service.js';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
+import { AuditModule } from '../audit/audit.module.js';
 import { PermissionsModule } from '../permissions/permissions.module.js';
 import { PrismaRoleRepository } from './infrastructure/persistence/prisma-role.repository.js';
 import { PrismaRolePermissionRepository } from './infrastructure/persistence/prisma-role-permission.repository.js';
@@ -18,13 +19,10 @@ import { UserRoleService } from './application/services/user-role.service.js';
 import { RoleAuthorizationPolicy } from './application/policies/role-authorization.policy.js';
 import { RolesController } from './presentation/roles.controller.js';
 import { UserRolesController } from './presentation/user-roles.controller.js';
-import {
-  RoleReadAccessGuard,
-  RoleManageAccessGuard,
-} from './security/role-management-access.guard.js';
+import { RoleReadAccessGuard, RoleManageAccessGuard } from './security/role-management-access.guard.js';
 
 @Module({
-  imports: [DatabaseModule, PermissionsModule],
+  imports: [DatabaseModule, AuditModule, PermissionsModule],
   controllers: [RolesController, UserRolesController],
   providers: [
     AuthenticatedAccessGuard,
@@ -37,22 +35,10 @@ import {
     RoleReadAccessGuard,
     RoleManageAccessGuard,
     PrismaUserRoleTargetRepository,
-    {
-      provide: ROLE_REPOSITORY,
-      useClass: PrismaRoleRepository,
-    },
-    {
-      provide: ROLE_PERMISSION_REPOSITORY,
-      useClass: PrismaRolePermissionRepository,
-    },
-    {
-      provide: USER_ROLE_REPOSITORY,
-      useClass: PrismaUserRoleRepository,
-    },
-    {
-      provide: USER_ROLE_TARGET_REPOSITORY,
-      useExisting: PrismaUserRoleTargetRepository,
-    },
+    { provide: ROLE_REPOSITORY, useClass: PrismaRoleRepository },
+    { provide: ROLE_PERMISSION_REPOSITORY, useClass: PrismaRolePermissionRepository },
+    { provide: USER_ROLE_REPOSITORY, useClass: PrismaUserRoleRepository },
+    { provide: USER_ROLE_TARGET_REPOSITORY, useExisting: PrismaUserRoleTargetRepository },
   ],
   exports: [RoleService, ROLE_REPOSITORY, UserRoleService],
 })

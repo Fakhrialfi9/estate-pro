@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuditModule } from '../audit/audit.module.js';
 import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
 import { AuthorizationService } from '../../common/security/authorization.service.js';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
@@ -9,13 +10,10 @@ import { PrismaPermissionRepository } from './infrastructure/persistence/prisma-
 import { PermissionAuthorizationPolicy } from './application/policies/permission-authorization.policy.js';
 import { PermissionService } from './application/services/permission.service.js';
 import { PermissionsController } from './presentation/permissions.controller.js';
-import {
-  PermissionReadAccessGuard,
-  PermissionManageAccessGuard,
-} from './security/permission-management-access.guard.js';
+import { PermissionReadAccessGuard, PermissionManageAccessGuard } from './security/permission-management-access.guard.js';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, AuditModule],
   controllers: [PermissionsController],
   providers: [
     AuthorizationGuard,
@@ -24,22 +22,11 @@ import {
     PermissionAuthorizationPolicy,
     PermissionReadAccessGuard,
     PermissionManageAccessGuard,
-    {
-      provide: PERMISSION_REPOSITORY,
-      useClass: PrismaPermissionRepository,
-    },
+    { provide: PERMISSION_REPOSITORY, useClass: PrismaPermissionRepository },
   ],
-  exports: [
-    PermissionService,
-    PermissionAuthorizationPolicy,
-    PERMISSION_REPOSITORY,
-  ],
+  exports: [PermissionService, PermissionAuthorizationPolicy, PERMISSION_REPOSITORY, AuthorizationGuard, AuthorizationService],
 })
 export class PermissionsModule {}
 
-export {
-  PERMISSION_REPOSITORY,
-  PermissionAuthorizationPolicy,
-  PermissionNotFoundException,
-};
+export { PERMISSION_REPOSITORY, PermissionAuthorizationPolicy, PermissionNotFoundException };
 export type { PermissionRepository };

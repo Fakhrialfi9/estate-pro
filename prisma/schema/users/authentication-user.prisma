@@ -20,7 +20,8 @@ model AuthenticationUser {
     passwordResetTokens AuthenticationPasswordResetToken[]
     roles AuthorizationUserRole[] @relation("UserRoles")
     assignedUserRoles AuthorizationUserRole[] @relation("AssignedBy")
-    auditLogs AuditLog[]
+    auditLogs AuditLog[] @relation("AuditSubject")
+    auditActorLogs AuditLog[] @relation("AuditActor")
     @@index([status])
     @@index([isActive])
     @@index([deletedAt])
