@@ -96,80 +96,25 @@ describe('Authorization and RBAC E2E', () => {
 
   beforeEach(async () => {
     await cleanup();
-    const admin = await createUser(`rbac-admin-${randomUUID()}@example.com`);
-    const reader = await createUser(`rbac-reader-${randomUUID()}@example.com`);
-    const target = await createUser(`rbac-target-${randomUUID()}@example.com`);
+    const admin = await createUser(`admin-${randomUUID()}@example.com`);
+    const reader = await createUser(`reader-${randomUUID()}@example.com`);
+    const target = await createUser(`target-${randomUUID()}@example.com`);
     adminUuid = admin.uuid;
     readerUuid = reader.uuid;
     targetUuid = target.uuid;
 
-    const permissionManage = await prisma.authorizationPermission.create({
-      data: {
-        uuid: randomUUID(),
-        name: 'Manage roles',
-        code: ROLE_MANAGE,
-        module: 'authorization',
-        domain: 'roles',
-        action: 'manage',
-      },
-    });
-    const permissionRead = await prisma.authorizationPermission.create({
-      data: {
-        uuid: randomUUID(),
-        name: 'Read roles',
-        code: ROLE_READ,
-        module: 'authorization',
-        domain: 'roles',
-        action: 'read',
-      },
-    });
-    const permissionPermissionManage =
-      await prisma.authorizationPermission.create({
-        data: {
-          uuid: randomUUID(),
-          name: 'Manage permissions',
-          code: PERMISSION_MANAGE,
-          module: 'authorization',
-          domain: 'permissions',
-          action: 'manage',
-        },
-      });
-    const permissionPermissionRead =
-      await prisma.authorizationPermission.create({
-        data: {
-          uuid: randomUUID(),
-          name: 'Read permissions',
-          code: PERMISSION_READ,
-          module: 'authorization',
-          domain: 'permissions',
-          action: 'read',
-        },
-      });
-
     const role = await prisma.authorizationRole.create({
       data: {
         uuid: randomUUID(),
-        name: 'RBAC Administrator',
-        code: `rbac-admin-${randomUUID()}`,
-        description: 'E2E test role',
+        name: 'Test Admin Role',
+        code: `test-admin-${randomUUID()}`,
+        description: 'E2E role',
         isActive: true,
+        isSystem: false,
       },
     });
     roleUuid = role.uuid;
     roleId = role.id;
-
-    await prisma.authorizationRolePermission.createMany({
-      data: [
-        { roleId: role.id, permissionId: permissionManage.id },
-        { roleId: role.id, permissionId: permissionRead.id },
-        { roleId: role.id, permissionId: permissionPermissionManage.id },
-        { roleId: role.id, permissionId: permissionPermissionRead.id },
-      ],
-    });
-    rolePermissionId = permissionManage.id;
-    await prisma.authorizationUserRole.create({
-      data: { userId: admin.id, roleId: role.id, assignedBy: admin.id },
-    });
   });
 
   afterAll(async () => {
@@ -255,7 +200,6 @@ describe('Authorization and RBAC E2E', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         name: 'Read test resource',
-        code: `test:read:${randomUUID()}`,
         module: 'testing',
         domain: 'resource',
         action: 'read',
