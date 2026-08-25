@@ -1,7 +1,6 @@
-import { Logger } from '@nestjs/common';
-import { Inject, Injectable } from '@nestjs/common';
+import { Logger, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PasswordHasherService } from '../../../../../auth/application/services/password-hasher.service.js';
+import { PasswordHasherService } from '../../../../auth/application/services/password-hasher.service.js';
 import type { UserRepository } from '../../domain/repositories/user.repository.js';
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository.js';
 import { PasswordPolicy } from '../domain/policies/password.policy.js';
