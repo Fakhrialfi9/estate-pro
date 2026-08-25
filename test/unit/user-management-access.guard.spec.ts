@@ -41,10 +41,7 @@ function createGuard(scenario: Scenario, accessible = true) {
   };
 
   return {
-    guard: new UserManagementAccessGuard(
-      verifier as never,
-      users as never,
-    ),
+    guard: new UserManagementAccessGuard(verifier as never, users as never),
     verifier,
     users,
   };
@@ -71,7 +68,9 @@ describe('UserManagementAccessGuard', () => {
     } satisfies Scenario;
 
     await expect(
-      createGuard(withoutPermission).guard.canActivate(context(withoutPermission)),
+      createGuard(withoutPermission).guard.canActivate(
+        context(withoutPermission),
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     await expect(
       createGuard(withPermission).guard.canActivate(context(withPermission)),
@@ -85,10 +84,15 @@ describe('UserManagementAccessGuard', () => {
     ['DELETE', 'users.delete'],
   ])('requires %s -> %s', async (method, permission) => {
     const withoutPermission = { method } satisfies Scenario;
-    const withPermission = { method, permissions: [permission] } satisfies Scenario;
+    const withPermission = {
+      method,
+      permissions: [permission],
+    } satisfies Scenario;
 
     await expect(
-      createGuard(withoutPermission).guard.canActivate(context(withoutPermission)),
+      createGuard(withoutPermission).guard.canActivate(
+        context(withoutPermission),
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     await expect(
       createGuard(withPermission).guard.canActivate(context(withPermission)),
