@@ -117,10 +117,13 @@ const makeLogin = (passwordValid = true, account = user()) => {
     }),
   } as unknown as CredentialRepository;
   const security = new SecurityStateFake();
+  const sessionCreateMock = vi.fn();
+  const sessionActiveMock = vi.fn().mockResolvedValue(true);
+  const sessionRevokeMock = vi.fn();
   const sessions = {
-    create: vi.fn(),
-    isActive: vi.fn().mockResolvedValue(true),
-    revoke: vi.fn(),
+    create: sessionCreateMock,
+    isActive: sessionActiveMock,
+    revoke: sessionRevokeMock,
   } as unknown as AuthenticationSessionRepository;
   const auditEvents: SecurityAuditEvent[] = [];
   const auditRecord = vi.fn((event: SecurityAuditEvent): Promise<void> => {
@@ -130,10 +133,15 @@ const makeLogin = (passwordValid = true, account = user()) => {
   const audit: SecurityAuditRepository = {
     record: auditRecord,
   };
-  const hasher = { verify: vi.fn().mockResolvedValue(passwordValid) };
+  const hasherVerifyMock = vi.fn().mockResolvedValue(passwordValid);
+  const hasher = { verify: hasherVerifyMock };
+  const jwtIssueAccessTokenMock = vi.fn().mockResolvedValue('signed.jwt.token');
+  const jwtExpiresAtMock = vi
+    .fn()
+    .mockReturnValue(new Date(Date.now() + 60000));
   const jwt = {
-    issueAccessToken: vi.fn().mockResolvedValue('signed.jwt.token'),
-    getExpiresAt: vi.fn().mockReturnValue(new Date(Date.now() + 60000)),
+    issueAccessToken: jwtIssueAccessTokenMock,
+    getExpiresAt: jwtExpiresAtMock,
   };
   const service = new LoginService(
     users,
@@ -149,11 +157,17 @@ const makeLogin = (passwordValid = true, account = user()) => {
     service,
     security,
     sessions,
+    sessionCreateMock,
+    sessionActiveMock,
+    sessionRevokeMock,
     auditRecord,
     auditEvents,
+    hasherVerifyMock,
     hasher,
     users,
     jwt,
+    jwtIssueAccessTokenMock,
+    jwtExpiresAtMock,
   };
 };
 
@@ -167,8 +181,7 @@ describe('authentication security steps 102-106', () => {
     });
     expect(result?.accessToken).toBe('signed.jwt.token');
     expect(result?.tokenType).toBe('Bearer');
-    const createMock = vi.mocked(ctx.sessions.create);
-    expect(createMock).toHaveBeenCalledOnce();
+    expect(ctx.sessionCreateMock).toHaveBeenCalledOnce();
     expect((await ctx.security.getState('u-1')).failedLoginAttempts).toBe(0);
     expect(ctx.auditEvents[0]?.action).toBe('LOGIN_SUCCESS');
     expect(JSON.stringify(ctx.auditEvents)).not.toContain('argon2-hash');
@@ -184,9 +197,7 @@ describe('authentication security steps 102-106', () => {
       }),
     ).resolves.toBeNull();
     expect(invalid.auditEvents.at(-1)?.action).toBe('LOGIN_FAILURE');
-    expect((await invalid.security.getState('u-1')).failedLoginAttempts).toBe(
-      1,
-    );
+    expect((await invalid.security.getState('u-1')).failedLoginAttempts).toBe(1);
     const unknown = makeLogin(true);
     unknown.users.findByEmail = vi.fn().mockResolvedValue(null);
     unknown.users.findByUsername = vi.fn().mockResolvedValue(null);
@@ -207,8 +218,7 @@ describe('authentication security steps 102-106', () => {
         password: 'CorrectPassword!',
       }),
     ).resolves.toBeNull();
-    const issueAccessToken = vi.mocked(ctx.jwt.issueAccessToken);
-    expect(issueAccessToken).not.toHaveBeenCalled();
+    expect(ctx.jwtIssueAccessTokenMock).not.toHaveBeenCalled();
   });
 
   it('106: locks after threshold and rejects locked attempts', async () => {
@@ -222,14 +232,14 @@ describe('authentication security steps 102-106', () => {
     const state = await ctx.security.getState('u-1');
     expect(state.failedLoginAttempts).toBe(5);
     expect(state.lockedUntil).toBeInstanceOf(Date);
-    const before = ctx.hasher.verify.mock.calls.length;
+    const before = ctx.hasherVerifyMock.mock.calls.length;
     await expect(
       ctx.service.execute({
         identifier: 'member@example.com',
         password: 'CorrectPassword!',
       }),
     ).resolves.toBeNull();
-    expect(ctx.hasher.verify.mock.calls.length).toBe(before);
+    expect(ctx.hasherVerifyMock.mock.calls.length).toBe(before);
   });
 
   it('106: repeated concurrent failures leave the security state locked consistently', async () => {
@@ -302,9 +312,7 @@ describe('jwt security steps 91-99 and 104-105', () => {
       { ...base, audience: 'other' },
     );
     await expect(
-      new JwtTokenService(jwt, config as never).verifyAccessToken(
-        wrongAudience,
-      ),
+      new JwtTokenService(jwt, config as never).verifyAccessToken(wrongAudience),
     ).rejects.toThrow();
   });
 });
