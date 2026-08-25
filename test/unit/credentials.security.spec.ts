@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { PasswordHasherService } from '../../src/modules/auth/application/services/password-hasher.service.js';
 import { CredentialService } from '../../src/modules/users/credentials/application/services/credential.service.js';
 import { PasswordPolicy } from '../../src/modules/users/credentials/domain/policies/password.policy.js';
-import { CurrentPasswordVerificationError } from '../../src/modules/users/credentials/domain/errors/credential.errors.js';
+import {
+  ConcurrentPasswordChangeError,
+  CurrentPasswordVerificationError,
+} from '../../src/modules/users/credentials/domain/errors/credential.errors.js';
 import { CredentialEntity } from '../../src/modules/users/credentials/domain/entities/credential.entity.js';
 import type { CredentialRepository } from '../../src/modules/users/credentials/domain/repositories/credential.repository.js';
 import { PasswordResetService } from '../../src/modules/users/credentials/application/services/password-reset.service.js';
@@ -99,6 +102,7 @@ describe('credential security', () => {
       userUuid,
       'new-argon2-hash',
       expect.any(Date),
+      'old-hash',
     );
 
     verify.mockResolvedValue(false);
@@ -111,6 +115,34 @@ describe('credential security', () => {
       }),
     ).rejects.toBeInstanceOf(CurrentPasswordVerificationError);
     expect(updatePassword).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces compare-and-swap conflicts instead of overwriting a concurrent password change', async () => {
+    const findByUserUuid = vi
+      .fn()
+      .mockResolvedValue({ userUuid, passwordHash: 'old-hash' });
+    const updatePassword = vi
+      .fn()
+      .mockRejectedValue(new ConcurrentPasswordChangeError());
+    const repository = {
+      findByUserUuid,
+      updatePassword,
+    } as unknown as CredentialRepository;
+    const hasher = {
+      verify: vi.fn().mockResolvedValue(true),
+      hash: vi.fn().mockResolvedValue('new-hash'),
+    } as unknown as PasswordHasherService;
+    const service = new CredentialService(repository, sessions, hasher);
+
+    await expect(
+      service.changePassword({
+        userUuid,
+        currentPassword: 'CurrentPassword123',
+        newPassword: 'NewSecurePassword123',
+        confirmation: 'NewSecurePassword123',
+      }),
+    ).rejects.toBeInstanceOf(ConcurrentPasswordChangeError);
+    expect(sessions.revokeAllForSecurityEvent).not.toHaveBeenCalled();
   });
 
   it('generates high-entropy reset tokens and persists only their digest', () => {
