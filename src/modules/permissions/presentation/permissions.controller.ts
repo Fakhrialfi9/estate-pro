@@ -14,6 +14,10 @@ import {
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/auth.module.js';
 import {
+  PERMISSION_MANAGE_PERMISSION,
+  PERMISSION_READ_PERMISSION,
+} from '../application/policies/permission-authorization.policy.js';
+import {
   PermissionService,
   type PermissionMutationAuditContext,
 } from '../application/services/permission.service.js';
@@ -21,10 +25,8 @@ import type { PermissionActor } from '../application/policies/permission-authori
 import { CreatePermissionDto } from './dto/create-permission.dto.js';
 import { UpdatePermissionDto } from './dto/update-permission.dto.js';
 import { PermissionQueryDto } from './dto/permission-query.dto.js';
-import {
-  PermissionReadAccessGuard,
-  PermissionManageAccessGuard,
-} from '../security/permission-management-access.guard.js';
+import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
+import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { PermissionSerializer } from './permission.serializer.js';
 
 type AuthenticatedRequest = Request & {
@@ -32,17 +34,18 @@ type AuthenticatedRequest = Request & {
 };
 
 @Controller('permissions')
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class PermissionsController {
   constructor(private readonly permissions: PermissionService) {}
 
-  @UseGuards(JwtAuthGuard, PermissionReadAccessGuard)
+  @RequirePermissions(PERMISSION_READ_PERMISSION, PERMISSION_MANAGE_PERMISSION)
   @Get(':uuid')
   async get(@Req() request: AuthenticatedRequest, @Param('uuid') uuid: string) {
     const permission = await this.permissions.get(this.actor(request), uuid);
     return PermissionSerializer.one(permission);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionReadAccessGuard)
+  @RequirePermissions(PERMISSION_READ_PERMISSION, PERMISSION_MANAGE_PERMISSION)
   @Get()
   async list(
     @Req() request: AuthenticatedRequest,
@@ -57,7 +60,7 @@ export class PermissionsController {
     );
   }
 
-  @UseGuards(JwtAuthGuard, PermissionManageAccessGuard)
+  @RequirePermissions(PERMISSION_MANAGE_PERMISSION)
   @Post()
   async create(
     @Req() request: AuthenticatedRequest,
@@ -73,7 +76,7 @@ export class PermissionsController {
     return PermissionSerializer.one(permission);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionManageAccessGuard)
+  @RequirePermissions(PERMISSION_MANAGE_PERMISSION)
   @Put(':uuid')
   async update(
     @Req() request: AuthenticatedRequest,
@@ -91,7 +94,7 @@ export class PermissionsController {
     return PermissionSerializer.one(permission);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionManageAccessGuard)
+  @RequirePermissions(PERMISSION_MANAGE_PERMISSION)
   @Delete(':uuid')
   async remove(
     @Req() request: AuthenticatedRequest,

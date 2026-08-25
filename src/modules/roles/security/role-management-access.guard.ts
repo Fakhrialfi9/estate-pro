@@ -13,7 +13,7 @@ import {
 import {
   USER_AUTHORIZATION_REPOSITORY,
   type UserAuthorizationRepository,
-} from '../domain/repositories/user-authorization.repository.js';
+} from '../../../common/security/authorization.repository.js';
 
 interface RoleClaims {
   sub: string;
@@ -25,33 +25,25 @@ abstract class BaseRoleAccessGuard implements CanActivate {
   protected abstract readonly requiredPermission: string;
 
   protected constructor(
-    protected readonly authorization?: UserAuthorizationRepository,
+    protected readonly authorization: UserAuthorizationRepository,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean | Promise<boolean> {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
       .switchToHttp()
       .getRequest<RoleAuthenticatedRequest>();
     if (!request.user?.sub) throw new UnauthorizedException();
 
-    const tokenPermissions = request.user.permissions;
-    if (tokenPermissions !== undefined) {
-      if (!tokenPermissions.includes(this.requiredPermission)) {
-        throw new ForbiddenException();
-      }
-      return true;
-    }
+    const snapshot = await this.authorization.getAuthorizationSnapshot(
+      request.user.sub,
+    );
+    if (!snapshot) throw new UnauthorizedException();
+    request.user.permissions = [...snapshot.permissionCodes];
 
-    if (!this.authorization) throw new ForbiddenException();
-    return this.authorization
-      .listPermissionCodes(request.user.sub)
-      .then((permissions) => {
-        request.user!.permissions = [...permissions];
-        if (!permissions.includes(this.requiredPermission)) {
-          throw new ForbiddenException();
-        }
-        return true;
-      });
+    if (!snapshot.permissionCodes.includes(this.requiredPermission)) {
+      throw new ForbiddenException();
+    }
+    return true;
   }
 }
 
@@ -61,43 +53,31 @@ export class RoleReadAccessGuard extends BaseRoleAccessGuard {
 
   constructor(
     @Inject(USER_AUTHORIZATION_REPOSITORY)
-    authorization?: UserAuthorizationRepository,
+    authorization: UserAuthorizationRepository,
   ) {
     super(authorization);
   }
 
-  override canActivate(context: ExecutionContext): boolean | Promise<boolean> {
+  override async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
       .switchToHttp()
       .getRequest<RoleAuthenticatedRequest>();
     if (!request.user?.sub) throw new UnauthorizedException();
 
-    const tokenPermissions = request.user.permissions;
-    if (tokenPermissions !== undefined) {
-      const permissions = new Set(tokenPermissions);
-      if (
-        !permissions.has(ROLE_READ_PERMISSION) &&
-        !permissions.has(ROLE_MANAGE_PERMISSION)
-      ) {
-        throw new ForbiddenException();
-      }
-      return true;
-    }
+    const snapshot = await this.authorization.getAuthorizationSnapshot(
+      request.user.sub,
+    );
+    if (!snapshot) throw new UnauthorizedException();
+    request.user.permissions = [...snapshot.permissionCodes];
 
-    if (!this.authorization) throw new ForbiddenException();
-    return this.authorization
-      .listPermissionCodes(request.user.sub)
-      .then((permissions) => {
-        request.user!.permissions = [...permissions];
-        const permissionSet = new Set(permissions);
-        if (
-          !permissionSet.has(ROLE_READ_PERMISSION) &&
-          !permissionSet.has(ROLE_MANAGE_PERMISSION)
-        ) {
-          throw new ForbiddenException();
-        }
-        return true;
-      });
+    const permissionSet = new Set(snapshot.permissionCodes);
+    if (
+      !permissionSet.has(ROLE_READ_PERMISSION) &&
+      !permissionSet.has(ROLE_MANAGE_PERMISSION)
+    ) {
+      throw new ForbiddenException();
+    }
+    return true;
   }
 }
 
@@ -107,7 +87,7 @@ export class RoleManageAccessGuard extends BaseRoleAccessGuard {
 
   constructor(
     @Inject(USER_AUTHORIZATION_REPOSITORY)
-    authorization?: UserAuthorizationRepository,
+    authorization: UserAuthorizationRepository,
   ) {
     super(authorization);
   }

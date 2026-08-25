@@ -14,21 +14,23 @@ import {
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/auth.module.js';
 import {
+  ROLE_MANAGE_PERMISSION,
+  ROLE_READ_PERMISSION,
+} from '../application/policies/role-authorization.policy.js';
+import {
   RolePermissionService,
   type RolePermissionMutationAuditContext,
 } from '../application/services/role-permission.service.js';
 import { RoleService } from '../application/services/role.service.js';
 import type { RoleActor } from '../application/policies/role-authorization.policy.js';
 import type { RolePermissionListQuery } from '../domain/repositories/role-permission.repository.js';
+import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
+import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { CreateRoleDto } from './dto/create-role.dto.js';
 import { UpdateRoleDto } from './dto/update-role.dto.js';
 import { RoleQueryDto } from './dto/role-query.dto.js';
 import { AssignRolePermissionDto } from './dto/assign-role-permission.dto.js';
 import { RolePermissionQueryDto } from '../application/dto/role-permission-query.dto.js';
-import {
-  RoleReadAccessGuard,
-  RoleManageAccessGuard,
-} from '../security/role-management-access.guard.js';
 import { RoleSerializer } from './role.serializer.js';
 import { RolePermissionSerializer } from './role-permission.serializer.js';
 
@@ -37,20 +39,21 @@ type AuthenticatedRequest = Request & {
 };
 
 @Controller('roles')
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class RolesController {
   constructor(
     private readonly roles: RoleService,
     private readonly rolePermissions: RolePermissionService,
   ) {}
 
-  @UseGuards(JwtAuthGuard, RoleReadAccessGuard)
+  @RequirePermissions(ROLE_READ_PERMISSION)
   @Get(':uuid')
   async get(@Req() request: AuthenticatedRequest, @Param('uuid') uuid: string) {
     const role = await this.roles.get(this.actor(request), uuid);
     return RoleSerializer.one(role);
   }
 
-  @UseGuards(JwtAuthGuard, RoleReadAccessGuard)
+  @RequirePermissions(ROLE_READ_PERMISSION)
   @Get()
   async list(
     @Req() request: AuthenticatedRequest,
@@ -65,7 +68,7 @@ export class RolesController {
     );
   }
 
-  @UseGuards(JwtAuthGuard, RoleReadAccessGuard)
+  @RequirePermissions(ROLE_READ_PERMISSION)
   @Get(':uuid/permissions')
   async listPermissions(
     @Req() request: AuthenticatedRequest,
@@ -80,7 +83,7 @@ export class RolesController {
     return RolePermissionSerializer.list(result.role, result.assignments);
   }
 
-  @UseGuards(JwtAuthGuard, RoleManageAccessGuard)
+  @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Post(':uuid/permissions')
   async assignPermission(
     @Req() request: AuthenticatedRequest,
@@ -98,7 +101,7 @@ export class RolesController {
     return RolePermissionSerializer.assignment(result);
   }
 
-  @UseGuards(JwtAuthGuard, RoleManageAccessGuard)
+  @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Delete(':uuid/permissions/:permissionUuid')
   async removePermission(
     @Req() request: AuthenticatedRequest,
@@ -116,7 +119,7 @@ export class RolesController {
     return { success: true };
   }
 
-  @UseGuards(JwtAuthGuard, RoleManageAccessGuard)
+  @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Post()
   async create(
     @Req() request: AuthenticatedRequest,
@@ -132,7 +135,7 @@ export class RolesController {
     return RoleSerializer.one(role);
   }
 
-  @UseGuards(JwtAuthGuard, RoleManageAccessGuard)
+  @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Put(':uuid')
   async update(
     @Req() request: AuthenticatedRequest,
@@ -149,7 +152,7 @@ export class RolesController {
     return RoleSerializer.one(role);
   }
 
-  @UseGuards(JwtAuthGuard, RoleManageAccessGuard)
+  @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Delete(':uuid')
   async remove(
     @Req() request: AuthenticatedRequest,

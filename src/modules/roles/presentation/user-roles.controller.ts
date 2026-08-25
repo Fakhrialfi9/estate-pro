@@ -12,15 +12,14 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/auth.module.js';
+import { ROLE_MANAGE_PERMISSION, ROLE_READ_PERMISSION } from '../application/policies/role-authorization.policy.js';
 import type { RoleActor } from '../application/policies/role-authorization.policy.js';
 import {
   UserRoleService,
   type UserRoleMutationAuditContext,
 } from '../application/services/user-role.service.js';
-import {
-  RoleReadAccessGuard,
-  RoleManageAccessGuard,
-} from '../security/role-management-access.guard.js';
+import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
+import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { AssignUserRoleDto } from './dto/assign-user-role.dto.js';
 import { UserRoleQueryDto } from './dto/user-role-query.dto.js';
 
@@ -29,10 +28,11 @@ type AuthenticatedRequest = Request & {
 };
 
 @Controller({ path: 'users', version: '1' })
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class UserRolesController {
   constructor(private readonly userRoles: UserRoleService) {}
 
-  @UseGuards(JwtAuthGuard, RoleReadAccessGuard)
+  @RequirePermissions(ROLE_READ_PERMISSION)
   @Get(':userUuid/roles')
   async list(
     @Req() request: AuthenticatedRequest,
@@ -42,7 +42,7 @@ export class UserRolesController {
     return this.userRoles.list(this.actor(request), userUuid, query);
   }
 
-  @UseGuards(JwtAuthGuard, RoleManageAccessGuard)
+  @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Post(':userUuid/roles')
   async assign(
     @Req() request: AuthenticatedRequest,
@@ -69,7 +69,7 @@ export class UserRolesController {
     };
   }
 
-  @UseGuards(JwtAuthGuard, RoleManageAccessGuard)
+  @RequirePermissions(ROLE_MANAGE_PERMISSION)
   @Delete(':userUuid/roles/:roleUuid')
   async remove(
     @Req() request: AuthenticatedRequest,
