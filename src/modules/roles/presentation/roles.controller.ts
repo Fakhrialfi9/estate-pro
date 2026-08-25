@@ -81,11 +81,11 @@ export class RolesController {
     );
   }
 
-  @RequirePermissions(ROLE_UPDATE_PERMISSION)
+  @RequirePermissions(ROLE_READ_PERMISSION)
   @Get(':uuid/permissions')
   @ApiOperation({
     summary: 'List role permissions',
-    description: `Requires permission ${ROLE_UPDATE_PERMISSION}.`,
+    description: `Requires permission ${ROLE_READ_PERMISSION}.`,
   })
   async listPermissions(
     @Req() request: AuthenticatedRequest,
