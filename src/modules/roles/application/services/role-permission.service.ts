@@ -1,10 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PermissionNotFoundException } from '../../../permissions/domain/errors/permission.errors.js';
-import type { PermissionEntity } from '../../../permissions/domain/entities/permission.entity.js';
+import { PermissionsModule } from '../../../permissions/permissions.module.js';
+import type { PermissionRepository } from '../../../permissions/permissions.module.js';
 import {
   PERMISSION_REPOSITORY,
-  type PermissionRepository,
-} from '../../../permissions/domain/repositories/permission.repository.js';
+  PermissionAuthorizationPolicy,
+  PermissionNotFoundException,
+} from '../../../permissions/permissions.module.js';
 import {
   ROLE_REPOSITORY,
   type RoleRepository,
@@ -29,7 +30,6 @@ import {
   RoleAuthorizationPolicy,
   type RoleActor,
 } from '../policies/role-authorization.policy.js';
-import { PermissionAuthorizationPolicy } from '../../../permissions/application/policies/permission-authorization.policy.js';
 import {
   SECURITY_AUDIT_REPOSITORY,
   type SecurityAuditRepository,
@@ -40,6 +40,20 @@ export interface RolePermissionMutationAuditContext {
   ipAddress?: string | undefined;
   userAgent?: string | undefined;
   requestId?: string | undefined;
+}
+
+export interface RolePermissionPermissionView {
+  uuid: string;
+  name: string;
+  code: string;
+  module: string;
+  domain: string;
+  action: string;
+}
+
+export interface RolePermissionAssignmentView {
+  role: RoleEntity;
+  permission: RolePermissionPermissionView;
 }
 
 const UUID_PATTERN =
@@ -65,7 +79,7 @@ export class RolePermissionService {
     roleUuid: string,
     permissionUuid: string,
     context: RolePermissionMutationAuditContext,
-  ): Promise<{ role: RoleEntity; permission: PermissionEntity }> {
+  ): Promise<RolePermissionAssignmentView> {
     this.requireRoleManage(actor, 'assign');
     this.validateRoleUuid(roleUuid);
     this.validatePermissionUuid(permissionUuid);
@@ -104,7 +118,17 @@ export class RolePermissionService {
       ...context,
     });
 
-    return { role, permission };
+    return {
+      role,
+      permission: {
+        uuid: permission.uuid,
+        name: permission.name,
+        code: permission.code,
+        module: permission.module,
+        domain: permission.domain,
+        action: permission.action,
+      },
+    };
   }
 
   async remove(
@@ -186,7 +210,9 @@ export class RolePermissionService {
   private enforceProtectedPolicy(
     actor: RoleActor,
     role: RoleEntity,
-    permission: PermissionEntity,
+    permission: ReturnType<PermissionRepository['findByUuid']> extends Promise<infer T>
+      ? Exclude<T, null>
+      : never,
   ): void {
     this.rolePolicy.canManage(actor, role.isSystem);
     if (permission.isSystem) {

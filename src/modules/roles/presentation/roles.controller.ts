@@ -95,7 +95,7 @@ export class RolesController {
       dto.permissionUuid,
       this.auditContext(request, userAgent, requestId),
     );
-    return RolePermissionSerializer.assignment(result.role, result.permission);
+    return RolePermissionSerializer.assignment(result);
   }
 
   @UseGuards(JwtAuthGuard, RoleManageAccessGuard)

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { PERMISSION_REPOSITORY } from './domain/repositories/permission.repository.js';
+import type { PermissionRepository } from './domain/repositories/permission.repository.js';
+import { PermissionNotFoundException } from './domain/errors/permission.errors.js';
 import { PrismaPermissionRepository } from './infrastructure/persistence/prisma-permission.repository.js';
 import { PermissionAuthorizationPolicy } from './application/policies/permission-authorization.policy.js';
 import { PermissionService } from './application/services/permission.service.js';
@@ -30,3 +32,10 @@ import {
   ],
 })
 export class PermissionsModule {}
+
+export {
+  PERMISSION_REPOSITORY,
+  PermissionAuthorizationPolicy,
+  PermissionNotFoundException,
+};
+export type { PermissionRepository };
