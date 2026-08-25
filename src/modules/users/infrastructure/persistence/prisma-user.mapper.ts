@@ -38,7 +38,9 @@ export const PrismaUserMapper = {
     });
   },
 
-  toPersistence(data: Omit<UserPersistenceData, 'deletedAt'>): UserPersistenceData {
+  toPersistence(
+    data: Omit<UserPersistenceData, 'deletedAt'>,
+  ): UserPersistenceData {
     return {
       ...(data.username !== undefined ? { username: data.username } : {}),
       ...(data.email !== undefined ? { email: data.email } : {}),

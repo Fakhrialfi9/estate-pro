@@ -105,11 +105,20 @@ export class PrismaUserRepository implements UserRepository {
     return record ? PrismaUserMapper.toDomain(record) : null;
   }
 
-  async findDuplicateIdentity(data: CreateUserData | UserUpdate, excludeUuid?: string) {
+  async findDuplicateIdentity(
+    data: CreateUserData | UserUpdate,
+    excludeUuid?: string,
+  ) {
     const identities = [
-      data.username !== undefined && data.username !== null ? { username: data.username } : null,
-      data.email !== undefined && data.email !== null ? { email: data.email } : null,
-      data.phone !== undefined && data.phone !== null ? { phone: data.phone } : null,
+      data.username !== undefined && data.username !== null
+        ? { username: data.username }
+        : null,
+      data.email !== undefined && data.email !== null
+        ? { email: data.email }
+        : null,
+      data.phone !== undefined && data.phone !== null
+        ? { phone: data.phone }
+        : null,
     ].filter(
       (
         value,
