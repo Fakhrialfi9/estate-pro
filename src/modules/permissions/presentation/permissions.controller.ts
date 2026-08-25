@@ -41,14 +41,20 @@ type AuthenticatedRequest = Request & {
 export class PermissionsController {
   constructor(private readonly permissions: PermissionService) {}
 
-  @RequirePermissionsAny(PERMISSION_READ_PERMISSION, PERMISSION_MANAGE_PERMISSION)
+  @RequirePermissionsAny(
+    PERMISSION_READ_PERMISSION,
+    PERMISSION_MANAGE_PERMISSION,
+  )
   @Get(':uuid')
   async get(@Req() request: AuthenticatedRequest, @Param('uuid') uuid: string) {
     const permission = await this.permissions.get(this.actor(request), uuid);
     return PermissionSerializer.one(permission);
   }
 
-  @RequirePermissionsAny(PERMISSION_READ_PERMISSION, PERMISSION_MANAGE_PERMISSION)
+  @RequirePermissionsAny(
+    PERMISSION_READ_PERMISSION,
+    PERMISSION_MANAGE_PERMISSION,
+  )
   @Get()
   async list(
     @Req() request: AuthenticatedRequest,
