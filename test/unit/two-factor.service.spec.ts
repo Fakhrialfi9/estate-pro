@@ -14,7 +14,9 @@ import { TwoFactorService } from '../../src/modules/auth/application/services/tw
 
 const key = '01234567890123456789012345678901';
 
-type TestCredentialRepository = ConstructorParameters<typeof TwoFactorService>[4];
+type TestCredentialRepository = ConstructorParameters<
+  typeof TwoFactorService
+>[4];
 
 function createHarness() {
   let enabled = false;
