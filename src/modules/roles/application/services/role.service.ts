@@ -33,9 +33,9 @@ import {
 } from '../../../../common/audit/security-audit.port.js';
 
 export interface RoleMutationAuditContext {
-  ipAddress?: string;
-  userAgent?: string;
-  requestId?: string;
+  ipAddress?: string | undefined;
+  userAgent?: string | undefined;
+  requestId?: string | undefined;
 }
 
 @Injectable()
