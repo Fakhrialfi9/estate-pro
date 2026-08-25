@@ -142,13 +142,7 @@ export class PrismaSecurityAuditRepository
     const actorUuid =
       event.actorUuid ?? (event as SecurityAuditEvent).userUuid ?? null;
     const subjectUuid = event.subjectUuid ?? null;
-    const inferredActorType = actorUuid
-      ? ADMIN_RESOURCE_TYPES.has(resourceType ?? '')
-        ? 'ADMINISTRATIVE'
-        : 'AUTHENTICATED'
-      : event.system
-        ? 'SYSTEM'
-        : 'ANONYMOUS';
+    const inferredActorType = this.inferActorType(event, resourceType, actorUuid);
     const actorType = event.actorType ?? inferredActorType;
     const safeIp =
       event.ipAddress && isIP(event.ipAddress) !== 0 ? event.ipAddress : null;
@@ -321,5 +315,29 @@ export class PrismaSecurityAuditRepository
       ),
       total,
     };
+  }
+
+  private inferActorType(
+    event: SecurityAuditEvent | AuditLogWriteEvent,
+    resourceType: string,
+    actorUuid: string | null,
+  ): 'AUTHENTICATED' | 'ADMINISTRATIVE' | 'SYSTEM' | 'ANONYMOUS' {
+    if (!actorUuid) return event.system ? 'SYSTEM' : 'ANONYMOUS';
+
+    // `actorUuid` explicitly represents the authenticated principal.
+    // `userUuid` is kept as the legacy/admin actor field used by role and
+    // permission management services. Never infer administrative intent from
+    // the resource type alone: user-management operations are authenticated
+    // mutations and must remain `AUTHENTICATED` unless the caller explicitly
+    // provides `actorType: 'ADMINISTRATIVE'`.
+    if (event.actorUuid) return 'AUTHENTICATED';
+    if (
+      event.userUuid &&
+      ADMIN_RESOURCE_TYPES.has(resourceType) &&
+      !event.actorType
+    ) {
+      return 'ADMINISTRATIVE';
+    }
+    return 'AUTHENTICATED';
   }
 }
