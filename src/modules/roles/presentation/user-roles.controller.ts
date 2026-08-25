@@ -12,7 +12,10 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/auth.module.js';
-import { ROLE_MANAGE_PERMISSION, ROLE_READ_PERMISSION } from '../application/policies/role-authorization.policy.js';
+import {
+  ROLE_MANAGE_PERMISSION,
+  ROLE_READ_PERMISSION,
+} from '../application/policies/role-authorization.policy.js';
 import type { RoleActor } from '../application/policies/role-authorization.policy.js';
 import {
   UserRoleService,

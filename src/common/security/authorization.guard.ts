@@ -35,10 +35,11 @@ export class AuthorizationGuard implements CanActivate {
     );
     if (isPublic === true) return true;
 
-    const permissions = this.reflector.getAllAndOverride<AuthorizationRequirement>(
-      AUTHORIZATION_PERMISSIONS_METADATA,
-      [context.getHandler(), context.getClass()],
-    );
+    const permissions =
+      this.reflector.getAllAndOverride<AuthorizationRequirement>(
+        AUTHORIZATION_PERMISSIONS_METADATA,
+        [context.getHandler(), context.getClass()],
+      );
     const roles = this.reflector.getAllAndOverride<AuthorizationRequirement>(
       AUTHORIZATION_ROLES_METADATA,
       [context.getHandler(), context.getClass()],

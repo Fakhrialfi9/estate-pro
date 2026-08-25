@@ -15,7 +15,8 @@ export class AuthorizationService {
   ) {}
 
   async resolve(userUuid: string): Promise<AuthorizationSnapshot> {
-    const snapshot = await this.authorization.getAuthorizationSnapshot(userUuid);
+    const snapshot =
+      await this.authorization.getAuthorizationSnapshot(userUuid);
     if (!snapshot) throw new ForbiddenException();
     return snapshot;
   }
