@@ -26,6 +26,10 @@ export type UserSortField =
   | 'createdAt'
   | 'updatedAt';
 
+export type UserCredentialCreation = {
+  passwordHash: string;
+};
+
 export interface UserListQuery {
   page: number;
   limit: number;
@@ -45,6 +49,10 @@ export interface UserListResult {
 
 export interface UserRepository {
   create(data: CreateUserData): Promise<UserEntity>;
+  createWithCredential(
+    data: CreateUserData,
+    credential: UserCredentialCreation,
+  ): Promise<UserEntity>;
   findByUuid(uuid: string): Promise<UserEntity | null>;
   findByEmail(email: string): Promise<UserEntity | null>;
   findByUsername(username: string): Promise<UserEntity | null>;
