@@ -206,9 +206,9 @@ describe('Authorization and RBAC E2E', () => {
       .get(`/api/v1/users/${targetUuid}/roles`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    expect(JSON.stringify(bodyOf<Record<string, unknown>>(targetRoles))).toContain(
-      roleUuid,
-    );
+    expect(
+      JSON.stringify(bodyOf<Record<string, unknown>>(targetRoles)),
+    ).toContain(roleUuid);
 
     await httpRequest()
       .delete(`/api/v1/users/${targetUuid}/roles/${roleUuid}`)

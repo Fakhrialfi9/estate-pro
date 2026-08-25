@@ -11,7 +11,12 @@ import { PasswordHasherService } from '../../src/modules/auth/application/servic
 import { JwtService } from '@nestjs/jwt';
 
 const PASSWORD = 'Strong-Test-Password-123!';
-type UserResponse = { uuid: string; email: string; password?: string; passwordHash?: string };
+type UserResponse = {
+  uuid: string;
+  email: string;
+  password?: string;
+  passwordHash?: string;
+};
 type UserListResponse = { items: Array<{ uuid: string }> };
 type ProfileResponse = { firstName: string; locale: string };
 type LoginResponse = { accessToken: string };
