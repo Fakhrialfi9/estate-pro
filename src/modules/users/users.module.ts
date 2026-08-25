@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { AuditModule } from '../audit/audit.module.js';
+import { RolesModule } from '../roles/roles.module.js';
 import { PasswordHasherService } from '../../common/security/password-hasher.service.js';
 import { USER_REPOSITORY } from './domain/repositories/user.repository.js';
 import { PrismaUserRepository } from './infrastructure/persistence/prisma-user.repository.js';
@@ -26,7 +27,7 @@ import { CredentialsController } from './credentials/presentation/credentials.co
 import { serializeUser } from './application/serializers/user.serializer.js';
 
 @Module({
-  imports: [DatabaseModule, AuditModule],
+  imports: [DatabaseModule, AuditModule, RolesModule],
   controllers: [UsersController, UserProfileController, CredentialsController],
   providers: [
     UserManagementService,
