@@ -20,7 +20,13 @@ const UUID_PATTERN =
 const CODE_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const MAX_NAME_LENGTH = 100;
 const MAX_CODE_LENGTH = 100;
-const PROTECTED_CODES = new Set(['admin', 'owner', 'super-admin', 'system']);
+
+export const PROTECTED_ROLE_CODES = [
+  'admin',
+  'owner',
+  'super-admin',
+  'system',
+] as const;
 
 export const normalizeRoleName = (value: string): string =>
   value.normalize('NFKC').trim().replace(/\s+/gu, ' ');
@@ -96,7 +102,12 @@ export class RoleEntity {
     ) {
       throw new Error('Invalid role code');
     }
-    if (snapshot.isSystem !== PROTECTED_CODES.has(snapshot.code)) {
+    if (
+      snapshot.isSystem !==
+      PROTECTED_ROLE_CODES.includes(
+        snapshot.code as (typeof PROTECTED_ROLE_CODES)[number],
+      )
+    ) {
       throw new Error('Invalid role protection state');
     }
     if (snapshot.description !== null && snapshot.description.length > 5000) {
@@ -109,4 +120,6 @@ export class RoleEntity {
 }
 
 export const isProtectedRoleCode = (code: string): boolean =>
-  PROTECTED_CODES.has(normalizeRoleCode(code));
+  PROTECTED_ROLE_CODES.includes(
+    normalizeRoleCode(code) as (typeof PROTECTED_ROLE_CODES)[number],
+  );
