@@ -7,19 +7,16 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
-import {
-  configuration,
-  configurationValidationSchema,
-} from './config/configuration.js';
+import { configuration, configurationValidationSchema } from './config/configuration.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { LoggingModule } from './infrastructure/logging/logger.module.js';
 import { ObservabilityModule } from './infrastructure/observability/observability.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthController } from './modules/health/health.controller.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { UsersModule } from './modules/users/users.module.js';
 
-const shouldSkipThrottling = (context: ExecutionContext): boolean =>
-  context.getClass() === HealthController;
+const shouldSkipThrottling = (context: ExecutionContext): boolean => context.getClass() === HealthController;
 
 @Module({
   imports: [
@@ -28,42 +25,32 @@ const shouldSkipThrottling = (context: ExecutionContext): boolean =>
       cache: true,
       load: configuration,
       validationSchema: configurationValidationSchema,
-      validationOptions: {
-        abortEarly: false,
-        allowUnknown: true,
-      },
+      validationOptions: { abortEarly: false, allowUnknown: true },
     }),
     LoggingModule,
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        throttlers: [
-          {
-            name: 'default',
-            ttl: configService.getOrThrow<number>('rateLimit.ttl'),
-            limit: configService.getOrThrow<number>('rateLimit.limit'),
-          },
-        ],
+        throttlers: [{
+          name: 'default',
+          ttl: configService.getOrThrow<number>('rateLimit.ttl'),
+          limit: configService.getOrThrow<number>('rateLimit.limit'),
+        }],
         skipIf: shouldSkipThrottling,
       }),
     }),
     AuthModule,
     DatabaseModule,
     HealthModule,
+    UsersModule,
     ObservabilityModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
-    {
-      provide: APP_FILTER,
-      useClass: GlobalExceptionFilter,
-    },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
 })
 export class AppModule {}
