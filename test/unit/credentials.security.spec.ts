@@ -51,7 +51,10 @@ describe('credential security', () => {
   it('creates credentials without returning password material', async () => {
     const findByUserUuid = vi.fn().mockResolvedValue(null);
     const create = vi.fn().mockResolvedValue({ passwordHash: 'hash' });
-    const repository = { findByUserUuid, create } as unknown as CredentialRepository;
+    const repository = {
+      findByUserUuid,
+      create,
+    } as unknown as CredentialRepository;
     const hash = vi.fn().mockResolvedValue('argon2-hash');
     const hasher = { hash } as unknown as PasswordHasherService;
     const service = new CredentialService(repository, hasher);
@@ -71,7 +74,10 @@ describe('credential security', () => {
       .fn()
       .mockResolvedValue({ userUuid, passwordHash: 'old-hash' });
     const updatePassword = vi.fn().mockResolvedValue(undefined);
-    const repository = { findByUserUuid, updatePassword } as unknown as CredentialRepository;
+    const repository = {
+      findByUserUuid,
+      updatePassword,
+    } as unknown as CredentialRepository;
     const verify = vi.fn().mockResolvedValue(true);
     const hash = vi.fn().mockResolvedValue('new-argon2-hash');
     const hasher = { verify, hash } as unknown as PasswordHasherService;
@@ -134,7 +140,8 @@ describe('credential security', () => {
     });
     let requestedUser: UserEntity | null = null;
     const users = {
-      findByEmail: (): Promise<UserEntity | null> => Promise.resolve(requestedUser),
+      findByEmail: (): Promise<UserEntity | null> =>
+        Promise.resolve(requestedUser),
     } as unknown as UserRepository;
     let createdResetToken: {
       userUuid: string;
@@ -142,7 +149,8 @@ describe('credential security', () => {
       expiresAt: Date;
     } | null = null;
     const credentials = {
-      findByUserUuid: (): Promise<CredentialEntity> => Promise.resolve(credential),
+      findByUserUuid: (): Promise<CredentialEntity> =>
+        Promise.resolve(credential),
       createResetToken: (
         resetUserUuid: string,
         tokenDigest: string,
@@ -179,9 +187,11 @@ describe('credential security', () => {
     expect(createdResetToken).toBeNull();
 
     requestedUser = user;
-    await expect(service.requestByEmail('member@example.com')).resolves.toEqual({
-      accepted: true,
-    });
+    await expect(service.requestByEmail('member@example.com')).resolves.toEqual(
+      {
+        accepted: true,
+      },
+    );
     expect(createdResetToken?.userUuid).toBe(userUuid);
     expect(createdResetToken?.tokenDigest).toMatch(/^[a-f0-9]{64}$/);
     expect(createdResetToken?.expiresAt).toBeInstanceOf(Date);
@@ -193,7 +203,9 @@ describe('credential security', () => {
       .fn()
       .mockResolvedValueOnce(userUuid)
       .mockResolvedValueOnce(null);
-    const credentials = { resetPasswordAtomically } as unknown as CredentialRepository;
+    const credentials = {
+      resetPasswordAtomically,
+    } as unknown as CredentialRepository;
     const users = {} as UserRepository;
     const hash = vi.fn().mockResolvedValue('new-argon2-hash');
     const hasher = { hash } as unknown as PasswordHasherService;
