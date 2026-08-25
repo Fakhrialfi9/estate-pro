@@ -3,8 +3,10 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
-import { UserManagementService } from '../../../application/services/user-management.service.js';
 import type { AuthenticatedPrincipal } from '../application/types/authenticated-principal.js';
+import type { UserIdentityReader } from '../application/types/user-identity-reader.js';
+import { USER_IDENTITY_READER } from '../application/types/user-identity-reader.js';
+import { Inject } from '@nestjs/common';
 
 export type AuthenticatedRequest = Request & { user?: AuthenticatedPrincipal };
 
@@ -13,7 +15,7 @@ export class ProfileAuthenticationGuard implements CanActivate {
   constructor(
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
-    private readonly users: UserManagementService,
+    @Inject(USER_IDENTITY_READER) private readonly users: UserIdentityReader,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
