@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Response as SuperTestResponse } from 'supertest';
 import request from 'supertest';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
@@ -32,6 +32,10 @@ const httpRequest = () => request(app.getHttpServer());
 const bodyOf = <T>(response: SuperTestResponse): T =>
   response.body as unknown as T;
 
+function hashSessionId(sessionId: string): string {
+  return createHash('sha256').update(sessionId, 'utf8').digest('hex');
+}
+
 async function tokenFor(
   sub: string,
   permissions: string[] = ['users:manage'],
@@ -44,7 +48,7 @@ async function tokenFor(
   await prisma.authenticationUserSession.create({
     data: {
       userId: user.id,
-      sessionId,
+      sessionId: hashSessionId(sessionId),
       expiresAt: new Date(Date.now() + 60 * 60 * 1000),
     },
   });
