@@ -172,6 +172,7 @@ function createHarness() {
   const config = new ConfigService({
     auth: {
       twoFactor: {
+        encryptionKey: key,
         otpLockoutThreshold: 5,
         otpLockoutDurationMs: 900000,
         recoveryCodeCount: 3,
