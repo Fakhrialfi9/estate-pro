@@ -28,6 +28,10 @@ export class AuditLogService implements SecurityAuditRepository {
       resourceType ?? 'authentication',
       event.changes,
     );
+    const safeReason =
+      event.reason !== undefined
+        ? sanitizeAuditReason(event.reason)
+        : null;
     const writeEvent: AuditLogWriteEvent = {
       action: event.action,
       ...(event.actorUuid !== undefined ? { actorUuid: event.actorUuid } : {}),
@@ -46,9 +50,7 @@ export class AuditLogService implements SecurityAuditRepository {
       ...(event.userAgent !== undefined ? { userAgent: event.userAgent } : {}),
       ...(event.requestId !== undefined ? { requestId: event.requestId } : {}),
       ...(event.result !== undefined ? { result: event.result } : {}),
-      ...(event.reason !== undefined
-        ? { reason: sanitizeAuditReason(event.reason) ?? undefined }
-        : {}),
+      ...(safeReason !== null ? { reason: safeReason } : {}),
       ...(safeChanges.length > 0 ? { changes: safeChanges } : {}),
       ...(event.system !== undefined ? { system: event.system } : {}),
     };
