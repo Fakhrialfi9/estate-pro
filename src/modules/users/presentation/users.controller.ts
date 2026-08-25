@@ -1,10 +1,31 @@
-import { BadRequestException, Body, ConflictException, Controller, Delete, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  ConflictException,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { UserManagementAccessGuard } from '../security/user-management-access.guard.js';
 import { CreateUserDto } from '../application/dto/create-user.dto.js';
 import { UpdateUserDto } from '../application/dto/update-user.dto.js';
 import { UserQueryDto } from '../application/dto/user-query.dto.js';
-import { DuplicateUserError, InvalidUserError, UserNotFoundError } from '../domain/errors/user.errors.js';
-import type { UserFilterField, UserSortField } from '../domain/repositories/user.repository.js';
+import {
+  DuplicateUserError,
+  InvalidUserError,
+  UserNotFoundError,
+} from '../domain/errors/user.errors.js';
+import type {
+  UserFilterField,
+  UserSortField,
+} from '../domain/repositories/user.repository.js';
 import { UserManagementService } from '../application/services/user-management.service.js';
 import { serializeUser } from '../application/serializers/user.serializer.js';
 
@@ -20,7 +41,9 @@ export class UsersController {
         ...(dto.username !== undefined ? { username: dto.username } : {}),
         ...(dto.email !== undefined ? { email: dto.email } : {}),
         ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-        ...(dto.status !== undefined ? { status: this.normalizeStatus(dto.status) } : {}),
+        ...(dto.status !== undefined
+          ? { status: this.normalizeStatus(dto.status) }
+          : {}),
       });
       return serializeUser(user);
     } catch (error: unknown) {
@@ -38,7 +61,9 @@ export class UsersController {
       dto.filterValue !== undefined &&
       !['true', 'false'].includes(dto.filterValue.toLowerCase())
     ) {
-      throw new BadRequestException('isActive filterValue must be true or false');
+      throw new BadRequestException(
+        'isActive filterValue must be true or false',
+      );
     }
 
     const result = await this.users.list({
@@ -99,7 +124,9 @@ export class UsersController {
         ...(dto.username !== undefined ? { username: dto.username } : {}),
         ...(dto.email !== undefined ? { email: dto.email } : {}),
         ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-        ...(dto.status !== undefined ? { status: this.normalizeStatus(dto.status) } : {}),
+        ...(dto.status !== undefined
+          ? { status: this.normalizeStatus(dto.status) }
+          : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       });
       return serializeUser(user);
