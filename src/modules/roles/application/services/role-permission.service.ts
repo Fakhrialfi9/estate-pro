@@ -25,6 +25,8 @@ import {
 } from '../../domain/errors/role-permission.errors.js';
 import {
   RoleAuthorizationPolicy,
+  ROLE_READ_PERMISSION,
+  ROLE_UPDATE_PERMISSION,
   type RoleActor,
 } from '../policies/role-authorization.policy.js';
 import {
@@ -77,7 +79,7 @@ export class RolePermissionService {
     permissionUuid: string,
     context: RolePermissionMutationAuditContext,
   ): Promise<RolePermissionAssignmentView> {
-    this.requireRoleManage(actor, 'assign');
+    this.requireRoleUpdate(actor, 'assign');
     this.validateRoleUuid(roleUuid);
     this.validatePermissionUuid(permissionUuid);
 
@@ -134,7 +136,7 @@ export class RolePermissionService {
     permissionUuid: string,
     context: RolePermissionMutationAuditContext,
   ): Promise<void> {
-    this.requireRoleManage(actor, 'remove');
+    this.requireRoleUpdate(actor, 'remove');
     this.validateRoleUuid(roleUuid);
     this.validatePermissionUuid(permissionUuid);
 
@@ -188,12 +190,12 @@ export class RolePermissionService {
     };
   }
 
-  private requireRoleManage(
+  private requireRoleUpdate(
     actor: RoleActor,
     operation: 'assign' | 'remove',
   ): void {
     try {
-      this.rolePolicy.canManage(actor);
+      this.rolePolicy.canManage(actor, ROLE_UPDATE_PERMISSION);
     } catch (error: unknown) {
       if (error instanceof ForbiddenRoleOperationException) {
         throw operation === 'assign'
@@ -207,13 +209,10 @@ export class RolePermissionService {
   private enforceProtectedPolicy(
     actor: RoleActor,
     role: RoleEntity,
-    permission: ReturnType<PermissionRepository['findByUuid']> extends Promise<
-      infer T
-    >
-      ? Exclude<T, null>
-      : never,
+    permission: Awaited<ReturnType<PermissionRepository['findByUuid']>>,
   ): void {
-    this.rolePolicy.canManage(actor, role.isSystem);
+    if (!permission) throw new PermissionNotFoundException();
+    this.rolePolicy.canManage(actor, ROLE_UPDATE_PERMISSION, role.isSystem);
     if (permission.isSystem) {
       this.permissionPolicy.canManageProtected(actor);
     }
