@@ -5,7 +5,10 @@ import type {
   CreateUserProfileData,
   UserProfileRepository,
 } from '../../domain/repositories/user-profile.repository.js';
-import { DuplicateUserProfileError, UserProfileNotFoundError } from '../../domain/errors/user-profile.errors.js';
+import {
+  DuplicateUserProfileError,
+  UserProfileNotFoundError,
+} from '../../domain/errors/user-profile.errors.js';
 import { UserNotFoundError } from '../../domain/errors/user.errors.js';
 import {
   PrismaUserProfileMapper,
@@ -14,13 +17,23 @@ import {
 } from './prisma-user-profile.mapper.js';
 
 type UserDelegate = {
-  findUnique(args: { where: { uuid: string }; select: { id: true } }): Promise<{ id: bigint } | null>;
+  findUnique(args: {
+    where: { uuid: string };
+    select: { id: true };
+  }): Promise<{ id: bigint } | null>;
 };
 
 type ProfileDelegate = {
-  findUnique(args: { where: { userId: bigint } }): Promise<UserProfilePersistenceRecord | null>;
-  create(args: { data: UserProfilePersistenceData }): Promise<UserProfilePersistenceRecord>;
-  update(args: { where: { userId: bigint }; data: UserProfilePersistenceData }): Promise<UserProfilePersistenceRecord>;
+  findUnique(args: {
+    where: { userId: bigint };
+  }): Promise<UserProfilePersistenceRecord | null>;
+  create(args: {
+    data: UserProfilePersistenceData;
+  }): Promise<UserProfilePersistenceRecord>;
+  update(args: {
+    where: { userId: bigint };
+    data: UserProfilePersistenceData;
+  }): Promise<UserProfilePersistenceRecord>;
 };
 
 type PrismaPersistenceClient = {
@@ -46,14 +59,18 @@ export class PrismaUserProfileRepository implements UserProfileRepository {
     });
     if (!user) throw new UserNotFoundError();
 
-    const existing = await this.profiles.findUnique({ where: { userId: user.id } });
+    const existing = await this.profiles.findUnique({
+      where: { userId: user.id },
+    });
     if (existing) throw new DuplicateUserProfileError();
 
     try {
       const record = await this.profiles.create({
         data: PrismaUserProfileMapper.toPersistence(
           {
-            ...(data.firstName !== undefined ? { firstName: data.firstName } : {}),
+            ...(data.firstName !== undefined
+              ? { firstName: data.firstName }
+              : {}),
             ...(data.lastName !== undefined ? { lastName: data.lastName } : {}),
             ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl } : {}),
             ...(data.avatarThumbnailUrl !== undefined
@@ -75,15 +92,23 @@ export class PrismaUserProfileRepository implements UserProfileRepository {
   }
 
   async findByUserUuid(userUuid: string) {
-    const user = await this.users.findUnique({ where: { uuid: userUuid }, select: { id: true } });
+    const user = await this.users.findUnique({
+      where: { uuid: userUuid },
+      select: { id: true },
+    });
     if (!user) return null;
 
-    const record = await this.profiles.findUnique({ where: { userId: user.id } });
+    const record = await this.profiles.findUnique({
+      where: { userId: user.id },
+    });
     return record ? PrismaUserProfileMapper.toDomain(record, userUuid) : null;
   }
 
   async updateByUserUuid(userUuid: string, changes: UserProfileUpdate) {
-    const user = await this.users.findUnique({ where: { uuid: userUuid }, select: { id: true } });
+    const user = await this.users.findUnique({
+      where: { uuid: userUuid },
+      select: { id: true },
+    });
     if (!user) throw new UserNotFoundError();
 
     try {

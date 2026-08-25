@@ -30,7 +30,9 @@ export class ProfileAuthenticationGuard implements CanActivate {
         issuer: this.config.getOrThrow<string>('auth.jwt.issuer'),
         audience: this.config.getOrThrow<string>('auth.jwt.audience'),
         algorithms: [
-          this.config.getOrThrow<'HS256' | 'HS384' | 'HS512'>('auth.jwt.algorithm'),
+          this.config.getOrThrow<'HS256' | 'HS384' | 'HS512'>(
+            'auth.jwt.algorithm',
+          ),
         ],
       });
 

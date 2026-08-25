@@ -78,7 +78,10 @@ export class UserProfileController {
     if (error instanceof UserProfileAccessDeniedError) {
       throw new ForbiddenException('Profile ownership violation');
     }
-    if (error instanceof UserNotFoundError || error instanceof UserProfileNotFoundError) {
+    if (
+      error instanceof UserNotFoundError ||
+      error instanceof UserProfileNotFoundError
+    ) {
       throw new NotFoundException('Profile or user not found');
     }
     if (error instanceof DuplicateUserProfileError) {

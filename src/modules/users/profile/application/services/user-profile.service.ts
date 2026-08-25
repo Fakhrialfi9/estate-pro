@@ -18,7 +18,8 @@ import { UserProfileOwnershipPolicy } from '../policies/user-profile-ownership.p
 @Injectable()
 export class UserProfileService {
   constructor(
-    @Inject(USER_PROFILE_REPOSITORY) private readonly profiles: UserProfileRepository,
+    @Inject(USER_PROFILE_REPOSITORY)
+    private readonly profiles: UserProfileRepository,
     private readonly users: UserManagementService,
     private readonly ownership: UserProfileOwnershipPolicy,
   ) {}
@@ -86,17 +87,31 @@ export class UserProfileService {
       ...(data.avatarThumbnailUrl !== undefined
         ? { avatarThumbnailUrl: normalizeNullable(data.avatarThumbnailUrl) }
         : {}),
-      ...(data.timezone !== undefined ? { timezone: data.timezone.trim() } : {}),
+      ...(data.timezone !== undefined
+        ? { timezone: data.timezone.trim() }
+        : {}),
       ...(data.locale !== undefined ? { locale: data.locale.trim() } : {}),
     };
 
-    if (normalized.firstName !== undefined && normalized.firstName !== null && normalized.firstName.length > 100) {
+    if (
+      normalized.firstName !== undefined &&
+      normalized.firstName !== null &&
+      normalized.firstName.length > 100
+    ) {
       throw new InvalidUserProfileError('Invalid firstName');
     }
-    if (normalized.lastName !== undefined && normalized.lastName !== null && normalized.lastName.length > 100) {
+    if (
+      normalized.lastName !== undefined &&
+      normalized.lastName !== null &&
+      normalized.lastName.length > 100
+    ) {
       throw new InvalidUserProfileError('Invalid lastName');
     }
-    if (normalized.imageUrl !== undefined && normalized.imageUrl !== null && normalized.imageUrl.length > 500) {
+    if (
+      normalized.imageUrl !== undefined &&
+      normalized.imageUrl !== null &&
+      normalized.imageUrl.length > 500
+    ) {
       throw new InvalidUserProfileError('Invalid imageUrl');
     }
     if (
@@ -106,10 +121,16 @@ export class UserProfileService {
     ) {
       throw new InvalidUserProfileError('Invalid avatarThumbnailUrl');
     }
-    if (normalized.timezone !== undefined && (!normalized.timezone || normalized.timezone.length > 100)) {
+    if (
+      normalized.timezone !== undefined &&
+      (!normalized.timezone || normalized.timezone.length > 100)
+    ) {
       throw new InvalidUserProfileError('Invalid timezone');
     }
-    if (normalized.locale !== undefined && !/^[a-z]{2}(?:-[A-Z]{2})?$/.test(normalized.locale)) {
+    if (
+      normalized.locale !== undefined &&
+      !/^[a-z]{2}(?:-[A-Z]{2})?$/.test(normalized.locale)
+    ) {
       throw new InvalidUserProfileError('Invalid locale');
     }
 

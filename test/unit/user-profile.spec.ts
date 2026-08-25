@@ -68,7 +68,9 @@ describe('UserProfile domain and application', () => {
   it('rejects invalid profile input', async () => {
     const { service } = createService();
     await expect(
-      service.create({ sub: userUuid }, userUuid, { firstName: 'x'.repeat(101) }),
+      service.create({ sub: userUuid }, userUuid, {
+        firstName: 'x'.repeat(101),
+      }),
     ).rejects.toBeInstanceOf(InvalidUserProfileError);
   });
 
@@ -91,12 +93,16 @@ describe('UserProfile domain and application', () => {
   it('reads a profile successfully', async () => {
     const { service, repository } = createService();
     repository.findByUserUuid.mockResolvedValueOnce(profile());
-    await expect(service.get({ sub: userUuid }, userUuid)).resolves.toBe(profile());
+    await expect(service.get({ sub: userUuid }, userUuid)).resolves.toBe(
+      profile(),
+    );
   });
 
   it('handles profile not found', async () => {
     const { service } = createService();
-    await expect(service.get({ sub: userUuid }, userUuid)).rejects.toBeInstanceOf(UserProfileNotFoundError);
+    await expect(
+      service.get({ sub: userUuid }, userUuid),
+    ).rejects.toBeInstanceOf(UserProfileNotFoundError);
   });
 
   it('updates a profile successfully', async () => {
@@ -105,14 +111,18 @@ describe('UserProfile domain and application', () => {
     await expect(
       service.update({ sub: userUuid }, userUuid, { firstName: 'Updated' }),
     ).resolves.toBeInstanceOf(UserProfileEntity);
-    expect(repository.updateByUserUuid).toHaveBeenCalledWith(userUuid, { firstName: 'Updated' });
+    expect(repository.updateByUserUuid).toHaveBeenCalledWith(userUuid, {
+      firstName: 'Updated',
+    });
   });
 
   it('supports partial updates', async () => {
     const { service, repository } = createService();
     repository.findByUserUuid.mockResolvedValueOnce(profile());
     await service.update({ sub: userUuid }, userUuid, { locale: 'en' });
-    expect(repository.updateByUserUuid).toHaveBeenCalledWith(userUuid, { locale: 'en' });
+    expect(repository.updateByUserUuid).toHaveBeenCalledWith(userUuid, {
+      locale: 'en',
+    });
   });
 
   it('rejects invalid update data', async () => {
@@ -124,13 +134,21 @@ describe('UserProfile domain and application', () => {
   });
 
   it('allows self update', () => {
-    expect(() => new UserProfileOwnershipPolicy().assertCanManage({ sub: userUuid }, userUuid)).not.toThrow();
+    expect(() =>
+      new UserProfileOwnershipPolicy().assertCanManage(
+        { sub: userUuid },
+        userUuid,
+      ),
+    ).not.toThrow();
   });
 
   it('blocks cross-user update without privilege', () => {
-    expect(() => new UserProfileOwnershipPolicy().assertCanManage({ sub: userUuid }, otherUuid)).toThrow(
-      UserProfileAccessDeniedError,
-    );
+    expect(() =>
+      new UserProfileOwnershipPolicy().assertCanManage(
+        { sub: userUuid },
+        otherUuid,
+      ),
+    ).toThrow(UserProfileAccessDeniedError);
   });
 
   it('allows privileged cross-user update', () => {
@@ -147,8 +165,13 @@ describe('UserProfile domain and application', () => {
       password: 'secret',
       passwordHash: 'hash',
     });
-    const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: true });
-    expect(errors.map((error) => error.property)).toEqual(expect.arrayContaining(['password', 'passwordHash']));
+    const errors = await validate(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+    expect(errors.map((error) => error.property)).toEqual(
+      expect.arrayContaining(['password', 'passwordHash']),
+    );
   });
 
   it('rejects security fields through the update DTO contract', async () => {
@@ -157,15 +180,24 @@ describe('UserProfile domain and application', () => {
       twoFactorSecret: 'secret',
       securityState: 'enabled',
     });
-    const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: true });
+    const errors = await validate(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
     expect(errors.map((error) => error.property)).toEqual(
-      expect.arrayContaining(['refreshToken', 'twoFactorSecret', 'securityState']),
+      expect.arrayContaining([
+        'refreshToken',
+        'twoFactorSecret',
+        'securityState',
+      ]),
     );
   });
 
   it('serializes only public profile fields', () => {
     const result = serializeUserProfile(profile());
-    expect(result).toEqual(expect.objectContaining({ userUuid, firstName: 'Muhammad' }));
+    expect(result).toEqual(
+      expect.objectContaining({ userUuid, firstName: 'Muhammad' }),
+    );
     expect(result).not.toHaveProperty('id');
     expect(result).not.toHaveProperty('password');
     expect(result).not.toHaveProperty('passwordHash');
@@ -206,9 +238,15 @@ describe('UserProfile domain and application', () => {
   });
 
   it('keeps the transaction boundary independent for profile lifecycle', () => {
-    expect(USER_PROFILE_TRANSACTION_POLICY.userAndProfileCreateAtomic).toBe(false);
-    expect(USER_PROFILE_TRANSACTION_POLICY.userAndProfileUpdateAtomic).toBe(false);
-    expect(USER_PROFILE_TRANSACTION_POLICY.profileLifecycleIndependent).toBe(true);
+    expect(USER_PROFILE_TRANSACTION_POLICY.userAndProfileCreateAtomic).toBe(
+      false,
+    );
+    expect(USER_PROFILE_TRANSACTION_POLICY.userAndProfileUpdateAtomic).toBe(
+      false,
+    );
+    expect(USER_PROFILE_TRANSACTION_POLICY.profileLifecycleIndependent).toBe(
+      true,
+    );
   });
 
   it('does not require a persistence transaction for profile CRUD', () => {

@@ -69,13 +69,17 @@ export class UserProfileEntity {
   }
 
   update(changes: UserProfileUpdate): void {
-    if (changes.firstName !== undefined) this.snapshot.firstName = changes.firstName;
-    if (changes.lastName !== undefined) this.snapshot.lastName = changes.lastName;
-    if (changes.imageUrl !== undefined) this.snapshot.imageUrl = changes.imageUrl;
+    if (changes.firstName !== undefined)
+      this.snapshot.firstName = changes.firstName;
+    if (changes.lastName !== undefined)
+      this.snapshot.lastName = changes.lastName;
+    if (changes.imageUrl !== undefined)
+      this.snapshot.imageUrl = changes.imageUrl;
     if (changes.avatarThumbnailUrl !== undefined) {
       this.snapshot.avatarThumbnailUrl = changes.avatarThumbnailUrl;
     }
-    if (changes.timezone !== undefined) this.snapshot.timezone = changes.timezone;
+    if (changes.timezone !== undefined)
+      this.snapshot.timezone = changes.timezone;
     if (changes.locale !== undefined) this.snapshot.locale = changes.locale;
 
     UserProfileEntity.validateSnapshot(this.snapshot);
@@ -86,7 +90,8 @@ export class UserProfileEntity {
   }
 
   private static validateSnapshot(snapshot: UserProfileSnapshot): void {
-    if (!/^\d+$/.test(snapshot.id)) throw new Error('Invalid profile identifier');
+    if (!/^\d+$/.test(snapshot.id))
+      throw new Error('Invalid profile identifier');
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
         snapshot.userUuid,
@@ -94,9 +99,21 @@ export class UserProfileEntity {
     ) {
       throw new Error('Invalid user UUID');
     }
-    UserProfileEntity.validateOptionalString(snapshot.firstName, 100, 'firstName');
-    UserProfileEntity.validateOptionalString(snapshot.lastName, 100, 'lastName');
-    UserProfileEntity.validateOptionalString(snapshot.imageUrl, 500, 'imageUrl');
+    UserProfileEntity.validateOptionalString(
+      snapshot.firstName,
+      100,
+      'firstName',
+    );
+    UserProfileEntity.validateOptionalString(
+      snapshot.lastName,
+      100,
+      'lastName',
+    );
+    UserProfileEntity.validateOptionalString(
+      snapshot.imageUrl,
+      500,
+      'imageUrl',
+    );
     UserProfileEntity.validateOptionalString(
       snapshot.avatarThumbnailUrl,
       500,
