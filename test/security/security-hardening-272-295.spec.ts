@@ -206,10 +206,10 @@ describe('STEP 274', () => {
       password: 'wrong',
     });
     expect(known.audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'AUTHENTICATION_FAILURE' }),
+      expect.objectContaining({ action: 'LOGIN_FAILURE' }),
     );
     expect(unknown.audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'AUTHENTICATION_FAILURE' }),
+      expect.objectContaining({ action: 'LOGIN_FAILURE' }),
     );
     expect(unknown.hasher.hash).toHaveBeenCalledOnce();
   });
