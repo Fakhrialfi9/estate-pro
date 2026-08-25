@@ -25,7 +25,6 @@ import {
 } from '../../domain/errors/role-permission.errors.js';
 import {
   RoleAuthorizationPolicy,
-  ROLE_READ_PERMISSION,
   ROLE_UPDATE_PERMISSION,
   type RoleActor,
 } from '../policies/role-authorization.policy.js';
