@@ -167,18 +167,22 @@ export class RoleService {
       dependency.userAssignments > 0 ||
       dependency.permissionAssignments > 0
     ) {
-      await this.audit.record({
-        action: 'ROLE_DELETE_BLOCKED',
-        userUuid: actor.userUuid,
-        entityType: 'AuthorizationRole',
-        entityUuid: role.uuid,
-        changes: [{ field: 'reason', oldValue: null, newValue: 'ROLE_IN_USE' }],
-        ...context,
-      });
+      await this.recordRoleDeleteBlocked(actor, role, context);
       throw new RoleInUseException();
     }
 
-    await this.roles.delete(uuid);
+    try {
+      await this.roles.delete(uuid);
+    } catch (error: unknown) {
+      const code = (error as { code?: string }).code;
+      if (code === 'P2003') {
+        await this.recordRoleDeleteBlocked(actor, role, context);
+        throw new RoleInUseException();
+      }
+      if (code === 'P2025') throw new RoleNotFoundException();
+      throw error;
+    }
+
     await this.audit.record({
       action: 'ROLE_DELETED',
       userUuid: actor.userUuid,
@@ -239,6 +243,21 @@ export class RoleService {
           ]
         : []),
     ];
+  }
+
+  private async recordRoleDeleteBlocked(
+    actor: RoleActor,
+    role: RoleEntity,
+    context: RoleMutationAuditContext,
+  ): Promise<void> {
+    await this.audit.record({
+      action: 'ROLE_DELETE_BLOCKED',
+      userUuid: actor.userUuid,
+      entityType: 'AuthorizationRole',
+      entityUuid: role.uuid,
+      changes: [{ field: 'reason', oldValue: null, newValue: 'ROLE_IN_USE' }],
+      ...context,
+    });
   }
 
   private async recordSecurityAttempt(
