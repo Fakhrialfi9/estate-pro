@@ -20,26 +20,34 @@ const context = (request: {
 const repository = (
   permissions: string[],
   roles: string[] = ['user'],
-): UserAuthorizationRepository => ({
-  listPermissionCodes: vi.fn().mockResolvedValue(permissions),
-  getAuthorizationSnapshot: vi.fn().mockResolvedValue({
+) => {
+  const listPermissionCodes = vi.fn().mockResolvedValue(permissions);
+  const getAuthorizationSnapshot = vi.fn().mockResolvedValue({
     userUuid: actorUuid,
     roleCodes: roles,
     permissionCodes: permissions,
-  }),
-});
+  });
+  const authorization: UserAuthorizationRepository = {
+    listPermissionCodes,
+    getAuthorizationSnapshot,
+  };
+  return { authorization, getAuthorizationSnapshot };
+};
 
 describe('Role access guards', () => {
   it('rejects management without roles:manage', async () => {
+    const { authorization } = repository([]);
     await expect(
-      new RoleManageAccessGuard(repository([])).canActivate({
-        user: { sub: actorUuid },
-      } as Parameters<typeof context>[0] as never),
+      new RoleManageAccessGuard(authorization).canActivate(
+        context({ user: { sub: actorUuid } }),
+      ),
     ).rejects.toThrow();
   });
 
   it('allows management with authoritative roles:manage', async () => {
-    const authorization = repository(['roles:manage']);
+    const { authorization, getAuthorizationSnapshot } = repository([
+      'roles:manage',
+    ]);
     const request = {
       user: { sub: actorUuid, permissions: ['spoofed:admin'] },
     };
@@ -48,36 +56,35 @@ describe('Role access guards', () => {
       new RoleManageAccessGuard(authorization).canActivate(context(request)),
     ).resolves.toBe(true);
 
-    expect(authorization.getAuthorizationSnapshot).toHaveBeenCalledWith(
-      actorUuid,
-    );
+    expect(getAuthorizationSnapshot).toHaveBeenCalledWith(actorUuid);
     expect(request.user.permissions).toEqual(['roles:manage']);
   });
 
   it('allows read with roles:read or roles:manage', async () => {
+    const read = repository(['roles:read']);
     await expect(
-      new RoleReadAccessGuard(repository(['roles:read'])).canActivate(
+      new RoleReadAccessGuard(read.authorization).canActivate(
         context({ user: { sub: actorUuid } }),
       ),
     ).resolves.toBe(true);
 
+    const manage = repository(['roles:manage']);
     await expect(
-      new RoleReadAccessGuard(repository(['roles:manage'])).canActivate(
+      new RoleReadAccessGuard(manage.authorization).canActivate(
         context({ user: { sub: actorUuid } }),
       ),
     ).resolves.toBe(true);
   });
 
   it('returns 401 semantics when the authenticated principal is missing', async () => {
+    const { authorization } = repository(['roles:read']);
     await expect(
-      new RoleReadAccessGuard(repository(['roles:read'])).canActivate(
-        context({}),
-      ),
+      new RoleReadAccessGuard(authorization).canActivate(context({})),
     ).rejects.toThrow();
   });
 
   it('resolves authoritative permissions even when the token has no permission claim', async () => {
-    const authorization = repository([
+    const { authorization, getAuthorizationSnapshot } = repository([
       'roles:manage',
       'roles:manage:protected',
     ]);
@@ -88,9 +95,7 @@ describe('Role access guards', () => {
     );
 
     expect(result).toBe(true);
-    expect(authorization.getAuthorizationSnapshot).toHaveBeenCalledWith(
-      actorUuid,
-    );
+    expect(getAuthorizationSnapshot).toHaveBeenCalledWith(actorUuid);
     expect(request.user.permissions).toEqual([
       'roles:manage',
       'roles:manage:protected',
@@ -98,14 +103,12 @@ describe('Role access guards', () => {
   });
 
   it('does not trust a spoofed permission claim on the request', async () => {
-    const authorization = repository([]);
+    const { authorization, getAuthorizationSnapshot } = repository([]);
     const request = { user: { sub: actorUuid, permissions: ['roles:manage'] } };
 
     await expect(
       new RoleManageAccessGuard(authorization).canActivate(context(request)),
     ).rejects.toThrow();
-    expect(authorization.getAuthorizationSnapshot).toHaveBeenCalledWith(
-      actorUuid,
-    );
+    expect(getAuthorizationSnapshot).toHaveBeenCalledWith(actorUuid);
   });
 });

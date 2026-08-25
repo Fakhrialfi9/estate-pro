@@ -77,10 +77,13 @@ describe('AuthorizationService', () => {
 });
 
 describe('AuthorizationGuard', () => {
+  const resolve = vi.fn();
+  const assertPermissions = vi.fn();
+  const assertRoles = vi.fn();
   const authorization = {
-    resolve: vi.fn(),
-    assertPermissions: vi.fn(),
-    assertRoles: vi.fn(),
+    resolve,
+    assertPermissions,
+    assertRoles,
   } as unknown as AuthorizationService;
   const reflector = new Reflector();
   const guard = new AuthorizationGuard(reflector, authorization);
@@ -128,9 +131,7 @@ describe('AuthorizationGuard', () => {
       { values: ['users:read'], match: 'AND' },
       handler,
     );
-    (authorization.resolve as ReturnType<typeof vi.fn>).mockResolvedValue(
-      snapshot(['users:read'], ['user']),
-    );
+    resolve.mockResolvedValue(snapshot(['users:read'], ['user']));
     const req = request({
       sub: '7e9d9c67-30a5-4d2c-a8df-70755f96ad35',
       permissions: ['admin:all'],
@@ -146,9 +147,7 @@ describe('AuthorizationGuard', () => {
       { values: ['users:read'], match: 'AND' },
       handler,
     );
-    (authorization.resolve as ReturnType<typeof vi.fn>).mockResolvedValue(
-      snapshot(['users:read'], ['user']),
-    );
+    resolve.mockResolvedValue(snapshot(['users:read'], ['user']));
     const req = request({
       sub: '7e9d9c67-30a5-4d2c-a8df-70755f96ad35',
       permissions: ['admin:all'],
@@ -156,11 +155,10 @@ describe('AuthorizationGuard', () => {
     req.body = { userId: 'spoofed-user' };
 
     await expect(guard.canActivate(context(req, handler))).resolves.toBe(true);
-    expect(authorization.resolve).toHaveBeenCalledWith(req.user?.sub);
+    expect(resolve).toHaveBeenCalledWith(req.user?.sub);
   });
 
   it('supports explicit role decorators and OR permission decorators', () => {
-    const target: Record<string, unknown> = {};
     expect(() => RequireRoles('admin')).not.toThrow();
     expect(() => RequireRolesAny('admin', 'auditor')).not.toThrow();
     expect(() =>
@@ -168,7 +166,6 @@ describe('AuthorizationGuard', () => {
     ).not.toThrow();
     expect(() => RequirePermissions('users:read')).not.toThrow();
     expect(Public).toBeTypeOf('function');
-    expect(target).toBeDefined();
   });
 
   it('fails closed when resolution fails', async () => {
@@ -178,9 +175,7 @@ describe('AuthorizationGuard', () => {
       { values: ['users:read'], match: 'AND' },
       handler,
     );
-    (authorization.resolve as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('database unavailable'),
-    );
+    resolve.mockRejectedValue(new Error('database unavailable'));
     await expect(
       guard.canActivate(context(request({ sub: 'u' }), handler)),
     ).rejects.toThrow(ForbiddenException);
@@ -193,12 +188,8 @@ describe('AuthorizationGuard', () => {
       { values: ['unknown:permission'], match: 'AND' },
       handler,
     );
-    (authorization.resolve as ReturnType<typeof vi.fn>).mockResolvedValue(
-      snapshot(['users:read'], ['user']),
-    );
-    (
-      authorization.assertPermissions as ReturnType<typeof vi.fn>
-    ).mockImplementation(() => {
+    resolve.mockResolvedValue(snapshot(['users:read'], ['user']));
+    assertPermissions.mockImplementation(() => {
       throw new ForbiddenException();
     });
     await expect(
