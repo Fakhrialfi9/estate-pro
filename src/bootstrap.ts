@@ -1,3 +1,4 @@
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
@@ -24,7 +25,7 @@ export const configureApplication = (app: NestExpressApplication): void => {
   const apiVersion = configuredApiVersion.replace(/^v/i, '');
 
   app.enableVersioning({
-    type: 0,
+    type: VersioningType.URI,
     defaultVersion: apiVersion,
   });
 
