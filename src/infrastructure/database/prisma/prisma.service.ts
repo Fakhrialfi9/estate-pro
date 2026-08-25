@@ -34,8 +34,7 @@ export class PrismaService
   }
 
   async onModuleInit(): Promise<void> {
-    // Prisma establishes the adapter connection lazily on the first query.
-    // Avoid forcing a blocking database connection during Nest bootstrap.
+    await this.$connect();
   }
 
   async onModuleDestroy(): Promise<void> {
