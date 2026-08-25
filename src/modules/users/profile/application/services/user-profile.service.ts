@@ -69,6 +69,7 @@ export class UserProfileService {
     data: Omit<CreateUserProfileData, 'userUuid'> | UserProfileUpdate,
   ): UserProfileUpdate {
     const normalizeNullable = (value: string | null): string | null => {
+      if (value === null) return null;
       const normalized = value.trim();
       return normalized.length > 0 ? normalized : null;
     };
@@ -76,22 +77,16 @@ export class UserProfileService {
     const normalized: UserProfileUpdate = {};
 
     if (data.firstName !== undefined) {
-      normalized.firstName =
-        data.firstName === null ? null : normalizeNullable(data.firstName);
+      normalized.firstName = normalizeNullable(data.firstName);
     }
     if (data.lastName !== undefined) {
-      normalized.lastName =
-        data.lastName === null ? null : normalizeNullable(data.lastName);
+      normalized.lastName = normalizeNullable(data.lastName);
     }
     if (data.imageUrl !== undefined) {
-      normalized.imageUrl =
-        data.imageUrl === null ? null : normalizeNullable(data.imageUrl);
+      normalized.imageUrl = normalizeNullable(data.imageUrl);
     }
     if (data.avatarThumbnailUrl !== undefined) {
-      normalized.avatarThumbnailUrl =
-        data.avatarThumbnailUrl === null
-          ? null
-          : normalizeNullable(data.avatarThumbnailUrl);
+      normalized.avatarThumbnailUrl = normalizeNullable(data.avatarThumbnailUrl);
     }
     if (data.timezone !== undefined) {
       normalized.timezone = data.timezone.trim();
