@@ -85,6 +85,8 @@ npm run check:runtime
 
 Dependency security is validated before application tests with `npm audit --audit-level=high`. Phase 1 keeps production/runtime dependencies and security-sensitive framework packages on supported fixed releases; Prisma remains on the current Prisma 7 line rather than being downgraded solely to satisfy a development-tool advisory.
 
+Dependency lock refresh is performed once on the security-dependency update commit and then the normal validation workflow remains read-only.
+
 For a combined local health check, the repository also provides:
 
 ```bash
@@ -113,3 +115,5 @@ GitHub Actions validates the `main` branch. The normal validation gate is read-o
 - Keep changes production-ready and minimal.
 - Do not weaken tests or security controls to obtain a green build.
 - Do not commit secrets, credentials, database dumps, temporary files, or generated artifacts that are not part of the source contract.
+
+<!-- [refresh-lock] security dependency lock refresh gate -->
