@@ -29,7 +29,7 @@ export interface AuditLogView {
   userAgent: string | null;
   requestId: string | null;
   createdAt: Date;
-  changes: readonly AuditLogChange[];
+  changes: readonly SecurityAuditChange[];
 }
 
 export interface AuditLogQueryResult {
