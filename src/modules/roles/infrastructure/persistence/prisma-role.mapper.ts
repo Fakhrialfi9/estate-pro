@@ -1,4 +1,4 @@
-import { RoleEntity } from '../../domain/entities/role.entity.js';
+import { isProtectedRoleCode, RoleEntity } from '../../domain/entities/role.entity.js';
 
 export interface RolePersistenceRecord {
   uuid: string;
@@ -27,9 +27,7 @@ export const PrismaRoleMapper = {
       isActive: record.isActive,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
-      isSystem: ['admin', 'owner', 'super-admin', 'system'].includes(
-        record.code,
-      ),
+      isSystem: isProtectedRoleCode(record.code),
     });
   },
   toPersistence(data: RolePersistenceData): RolePersistenceData {
