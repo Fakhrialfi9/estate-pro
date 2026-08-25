@@ -27,15 +27,15 @@ const makeUser = (
   });
 
 const repo = (): UserRepository => ({
-  create: vi.fn(async () => makeUser()),
-  findByUuid: vi.fn(async () => null),
-  findByEmail: vi.fn(async () => null),
-  findByUsername: vi.fn(async () => null),
-  findByPhone: vi.fn(async () => null),
-  findDuplicateIdentity: vi.fn(async () => null),
-  list: vi.fn(async () => ({ items: [], total: 0, page: 1, limit: 20 })),
-  update: vi.fn(async () => makeUser()),
-  softDelete: vi.fn(async () => undefined),
+  create: vi.fn(() => Promise.resolve(makeUser())),
+  findByUuid: vi.fn(() => Promise.resolve(null)),
+  findByEmail: vi.fn(() => Promise.resolve(null)),
+  findByUsername: vi.fn(() => Promise.resolve(null)),
+  findByPhone: vi.fn(() => Promise.resolve(null)),
+  findDuplicateIdentity: vi.fn(() => Promise.resolve(null)),
+  list: vi.fn(() => Promise.resolve({ items: [], total: 0, page: 1, limit: 20 })),
+  update: vi.fn(() => Promise.resolve(makeUser())),
+  softDelete: vi.fn(() => Promise.resolve(undefined)),
 });
 
 describe('UserManagementService', () => {
@@ -44,7 +44,7 @@ describe('UserManagementService', () => {
     const service = new UserManagementService(repository);
     const result = await service.create({ email: ' JOHN@EXAMPLE.COM ' });
     expect(result.email).toBe('john@example.com');
-    expect(repository.create).toHaveBeenCalledWith({
+    expect(vi.mocked(repository.create)).toHaveBeenCalledWith({
       email: 'john@example.com',
       username: null,
       phone: null,
@@ -64,7 +64,7 @@ describe('UserManagementService', () => {
     await expect(
       service.create({ email: 'john@example.com' }),
     ).rejects.toBeInstanceOf(DuplicateUserError);
-    expect(repository.create).not.toHaveBeenCalled();
+    expect(vi.mocked(repository.create)).not.toHaveBeenCalled();
   });
 
   it('rejects updates to missing users', async () => {
