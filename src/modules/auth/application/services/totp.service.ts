@@ -21,12 +21,12 @@ export class TotpService {
     const counter = Buffer.alloc(8);
     counter.writeBigUInt64BE(timeStep);
     const digest = createHmac('sha1', key).update(counter).digest();
-    const offset = digest[digest.length - 1] & 0x0f;
+    const offset = (digest[digest.length - 1] ?? 0) & 0x0f;
     const binary =
-      ((digest[offset] & 0x7f) << 24) |
-      (digest[offset + 1] << 16) |
-      (digest[offset + 2] << 8) |
-      digest[offset + 3];
+      (((digest[offset] ?? 0) & 0x7f) << 24) |
+      ((digest[offset + 1] ?? 0) << 16) |
+      ((digest[offset + 2] ?? 0) << 8) |
+      (digest[offset + 3] ?? 0);
     return String(binary % 10 ** DIGITS).padStart(DIGITS, '0');
   }
 
@@ -71,11 +71,11 @@ export class TotpService {
       value = (value << 8) | byte;
       bits += 8;
       while (bits >= 5) {
-        output += BASE32_ALPHABET[(value >>> (bits - 5)) & 31];
+        output += BASE32_ALPHABET[(value >>> (bits - 5)) & 31] ?? '';
         bits -= 5;
       }
     }
-    if (bits > 0) output += BASE32_ALPHABET[(value << (5 - bits)) & 31];
+    if (bits > 0) output += BASE32_ALPHABET[(value << (5 - bits)) & 31] ?? '';
     return output;
   }
 
