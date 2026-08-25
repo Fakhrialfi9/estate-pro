@@ -31,6 +31,11 @@ export interface CreateCredentialCommand {
   confirmation: string;
 }
 
+export interface PrepareCredentialCommand {
+  password: string;
+  confirmation: string;
+}
+
 @Injectable()
 export class CredentialService {
   private readonly policy = new PasswordPolicy();
@@ -43,12 +48,21 @@ export class CredentialService {
     private readonly hasher: PasswordHasherService,
   ) {}
 
-  async create(command: CreateCredentialCommand): Promise<void> {
+  async preparePasswordHash(
+    command: PrepareCredentialCommand,
+  ): Promise<string> {
     this.assertPassword(command.password, command.confirmation);
+    return this.hasher.hash(command.password);
+  }
+
+  async create(command: CreateCredentialCommand): Promise<void> {
+    const hash = await this.preparePasswordHash({
+      password: command.password,
+      confirmation: command.confirmation,
+    });
     const existing = await this.credentials.findByUserUuid(command.userUuid);
     if (existing) throw new CredentialAlreadyExistsError();
 
-    const hash = await this.hasher.hash(command.password);
     await this.credentials.create(command.userUuid, hash);
   }
 
