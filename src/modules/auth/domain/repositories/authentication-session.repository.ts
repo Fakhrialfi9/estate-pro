@@ -3,8 +3,8 @@ import type { SessionAuditContext } from '../../../../common/security/session-se
 
 export interface AuthenticationSessionCreation {
   sessionId: string;
-  ipAddress?: string;
-  userAgent?: string;
+  ipAddress?: string | undefined;
+  userAgent?: string | undefined;
   expiresAt: Date;
 }
 
@@ -25,11 +25,7 @@ export interface AuthenticationSessionRepository {
   ): Promise<SessionSnapshot | null>;
   findById(userUuid: string, id: string): Promise<SessionSnapshot | null>;
   list(userUuid: string, query: SessionListQuery): Promise<SessionSnapshot[]>;
-  revokeBySecret(
-    userUuid: string,
-    sessionId: string,
-    now: Date,
-  ): Promise<boolean>;
+  revokeBySecret(userUuid: string, sessionId: string, now: Date): Promise<boolean>;
   revokeById(userUuid: string, id: string, now: Date): Promise<boolean>;
   revokeAll(userUuid: string, now: Date): Promise<number>;
   isActive(userUuid: string, sessionId: string, now: Date): Promise<boolean>;
