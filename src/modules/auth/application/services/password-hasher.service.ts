@@ -35,7 +35,6 @@ export class PasswordHasherService {
   needsRehash(passwordHash: string): boolean {
     const config = this.getConfig();
     return argon2.needsRehash(passwordHash, {
-      type: argon2.argon2id,
       memoryCost: config.memoryCost,
       timeCost: config.timeCost,
       parallelism: config.parallelism,
