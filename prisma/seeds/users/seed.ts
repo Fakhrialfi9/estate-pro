@@ -13,26 +13,49 @@ export async function seedAdminUser(
     ...ARGON2_CONFIG,
   });
 
-  const user = await client.authenticationUser.upsert({
-    where: { email: ADMIN_USER.email },
-    update: {
-      username: ADMIN_USER.username,
-      phone: ADMIN_USER.phone,
-      status: ADMIN_USER.status,
-      isActive: true,
-      isVerified: true,
-      deletedAt: null,
-    },
-    create: {
-      uuid: randomUUID(),
-      username: ADMIN_USER.username,
-      email: ADMIN_USER.email,
-      phone: ADMIN_USER.phone,
-      status: ADMIN_USER.status,
-      isActive: true,
-      isVerified: true,
-    },
-  });
+  const [userByEmail, userByUsername] = await Promise.all([
+    client.authenticationUser.findUnique({
+      where: { email: ADMIN_USER.email },
+      select: { id: true },
+    }),
+    client.authenticationUser.findUnique({
+      where: { username: ADMIN_USER.username },
+      select: { id: true },
+    }),
+  ]);
+
+  if (userByEmail && userByUsername && userByEmail.id !== userByUsername.id) {
+    throw new Error(
+      `Seed admin identity conflict: email ${ADMIN_USER.email} and username ${ADMIN_USER.username} belong to different users.`,
+    );
+  }
+
+  const existingUserId = userByEmail?.id ?? userByUsername?.id;
+
+  const user = existingUserId
+    ? await client.authenticationUser.update({
+        where: { id: existingUserId },
+        data: {
+          username: ADMIN_USER.username,
+          email: ADMIN_USER.email,
+          phone: ADMIN_USER.phone,
+          status: ADMIN_USER.status,
+          isActive: true,
+          isVerified: true,
+          deletedAt: null,
+        },
+      })
+    : await client.authenticationUser.create({
+        data: {
+          uuid: randomUUID(),
+          username: ADMIN_USER.username,
+          email: ADMIN_USER.email,
+          phone: ADMIN_USER.phone,
+          status: ADMIN_USER.status,
+          isActive: true,
+          isVerified: true,
+        },
+      });
 
   await client.authenticationUserCredential.upsert({
     where: { userId: user.id },
