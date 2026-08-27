@@ -1,5 +1,6 @@
-import { beforeAll, afterAll, describe, expect, it } from 'vitest';
-import { Prisma } from '@prisma/client';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { ConfigService } from '@nestjs/config';
+import { Prisma } from '../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 
 type ExplainRow = {
@@ -16,7 +17,22 @@ describe('Property critical query plans', () => {
   let prisma: PrismaService;
 
   beforeAll(async () => {
-    prisma = new PrismaService();
+    const config = new ConfigService({
+      database: {
+        host: process.env.DATABASE_HOST ?? '127.0.0.1',
+        port: Number(process.env.DATABASE_PORT ?? 3306),
+        username: process.env.DATABASE_USER ?? 'test',
+        password: process.env.DATABASE_PASSWORD ?? 'test-password',
+        name: process.env.DATABASE_NAME ?? 'estate_pro_test',
+        pool: {
+          connectionLimit: 2,
+          connectTimeoutMs: 5000,
+          acquireTimeoutMs: 10000,
+          idleTimeoutSec: 30,
+        },
+      },
+    });
+    prisma = new PrismaService(config);
     await prisma.$connect();
   });
 
