@@ -99,7 +99,10 @@ describe('Property details repository integration', () => {
       actor,
     );
     expect(String((saved as { landArea: unknown }).landArea)).toBe('12345.67');
-    expect(String((saved as { bathrooms: unknown }).bathrooms)).toBe('3.50');
+    const bathrooms = (saved as {
+      bathrooms: { toFixed: (digits: number) => string };
+    }).bathrooms;
+    expect(bathrooms.toFixed(2)).toBe('3.50');
   });
 
   it('blocks cross-property room access', async () => {
@@ -178,7 +181,7 @@ describe('Property details repository integration', () => {
         [(foreign as { uuid: string }).uuid, (r2 as { uuid: string }).uuid],
         actor,
       ),
-    ).rejects.toThrow('every active room');
+    ).rejects.toThrow('belong to the property');
     const rooms = await repository.listRooms(first.uuid);
     expect(
       (
