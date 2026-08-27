@@ -58,6 +58,14 @@ const dbCode = (error: unknown): string => {
   return typeof value === 'string' ? value : '';
 };
 const mapError = (error: unknown): never => {
+  if (
+    error instanceof MasterConcurrencyError ||
+    error instanceof MasterConflictError ||
+    error instanceof MasterHierarchyError ||
+    error instanceof MasterInUseError ||
+    error instanceof MasterNotFoundError
+  )
+    throw error;
   const code = dbCode(error);
   if (code === 'P2002')
     throw new MasterConflictError('A unique property value already exists');
