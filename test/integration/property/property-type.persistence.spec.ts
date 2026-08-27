@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { ConfigModule } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
+import databaseConfig from '../../../src/config/database.config.js';
 import { DatabaseModule } from '../../../src/infrastructure/database/database.module.js';
 import { PrismaService } from '../../../src/infrastructure/database/prisma/prisma.service.js';
 import { PrismaPropertyTypeRepository } from '../../../src/modules/property/infrastructure/persistence/prisma-property-type.repository.js';
@@ -13,7 +15,14 @@ describe('PropertyType persistence integration', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [DatabaseModule],
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          cache: true,
+          load: [databaseConfig],
+        }),
+        DatabaseModule,
+      ],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
