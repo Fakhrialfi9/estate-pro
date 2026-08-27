@@ -10,6 +10,8 @@ import { catchError, finalize, throwError } from 'rxjs';
 
 type PropertyHttpRequest = Pick<Request, 'path' | 'method'>;
 
+const asUnknown = (value: unknown): unknown => value;
+
 const isPropertyHttpRequest = (
   value: unknown,
 ): value is PropertyHttpRequest => {
@@ -74,7 +76,7 @@ const statusClassOf = (status: number): string =>
 @Injectable()
 export class PropertyMetricsInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler) {
-    const rawRequest = context.switchToHttp().getRequest<unknown>();
+    const rawRequest = asUnknown(context.switchToHttp().getRequest());
     if (!isPropertyHttpRequest(rawRequest)) return next.handle();
     const request = rawRequest;
     const path = request.path;
