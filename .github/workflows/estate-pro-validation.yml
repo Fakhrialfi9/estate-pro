@@ -65,6 +65,12 @@ jobs:
         run: npm run test:security:baseline
       - name: Format source
         run: npm run format
+      - name: Format diagnostics
+        run: |
+          npx prettier src/modules/property/listing/infrastructure/listing.repository.ts > /tmp/listing.repository.formatted.ts
+          if ! diff -u src/modules/property/listing/infrastructure/listing.repository.ts /tmp/listing.repository.formatted.ts; then
+            true
+          fi
       - name: Commit formatting changes
         run: |
           if ! git diff --quiet; then
