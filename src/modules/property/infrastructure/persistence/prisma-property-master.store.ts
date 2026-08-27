@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../prisma/generated/prisma/client.js';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import {
   normalizeCode,
   normalizeSlug,
   type ActorContext,
+  type AvailabilityStatus,
   type FacilityCategory,
   type PageRequest,
   type PropertyStatus,
@@ -21,6 +21,7 @@ import type {
   MasterQuery,
   PropertyMasterRepository,
 } from '../../domain/repositories/property-master.repository.js';
+import type { PageResult } from '../../domain/property-master.types.js';
 
 type Row = Record<string, unknown>;
 type Delegate = {
@@ -84,10 +85,9 @@ const orderOf = (q: PageRequest, allowed: readonly string[]): Row[] => {
     { uuid: 'asc' },
   ];
 };
-const availabilityStatus = (value: unknown): Prisma.AvailabilityStatus => {
+const availabilityStatus = (value: unknown): AvailabilityStatus => {
   const status = text(value, 'AVAILABLE');
-  if (status === 'AVAILABLE') return Prisma.AvailabilityStatus.AVAILABLE;
-  if (status === 'UNAVAILABLE') return Prisma.AvailabilityStatus.UNAVAILABLE;
+  if (status === 'AVAILABLE' || status === 'UNAVAILABLE') return status;
   throw new MasterHierarchyError('Invalid availability status');
 };
 
@@ -181,11 +181,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
     return result;
   }
 
-  async listCategories(
-    query: MasterQuery,
-  ): Promise<
-    import('../../domain/property-master.types.js').PageResult<unknown>
-  > {
+  async listCategories(query: MasterQuery): Promise<PageResult<unknown>> {
     const { page, limit, skip } = pageOf(query);
     const where: Row = { deletedAt: null };
     if (query.isActive !== undefined) where.isActive = query.isActive;
@@ -309,11 +305,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
     return result;
   }
 
-  async listSubcategories(
-    query: MasterQuery,
-  ): Promise<
-    import('../../domain/property-master.types.js').PageResult<unknown>
-  > {
+  async listSubcategories(query: MasterQuery): Promise<PageResult<unknown>> {
     const { page, limit, skip } = pageOf(query);
     const where: Row = { deletedAt: null };
     if (query.isActive !== undefined) where.isActive = query.isActive;
@@ -464,9 +456,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
   async listLocations(
     level: string,
     query: MasterQuery,
-  ): Promise<
-    import('../../domain/property-master.types.js').PageResult<unknown>
-  > {
+  ): Promise<PageResult<unknown>> {
     const { page, limit, skip } = pageOf(query);
     const where: Row = { deletedAt: null };
     if (query.isActive !== undefined) where.isActive = query.isActive;
@@ -620,11 +610,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
     if (!r) throw new MasterNotFoundError();
     return r;
   }
-  async listFacilities(
-    query: MasterQuery,
-  ): Promise<
-    import('../../domain/property-master.types.js').PageResult<unknown>
-  > {
+  async listFacilities(query: MasterQuery): Promise<PageResult<unknown>> {
     const { page, limit, skip } = pageOf(query);
     const where: Row = { deletedAt: null };
     if (query.isActive !== undefined) where.isActive = query.isActive;
@@ -790,11 +776,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
     if (!r) throw new MasterNotFoundError('Property not found');
     return r;
   }
-  async listProperties(
-    q: MasterQuery,
-  ): Promise<
-    import('../../domain/property-master.types.js').PageResult<unknown>
-  > {
+  async listProperties(q: MasterQuery): Promise<PageResult<unknown>> {
     const { page, limit, skip } = pageOf(q);
     const where: Row = { deletedAt: null };
     if (q.status) where.status = q.status;
