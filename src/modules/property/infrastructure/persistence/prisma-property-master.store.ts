@@ -678,7 +678,9 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
       where: { uuid: text(input.typeUuid), deletedAt: null, isActive: true },
     });
     if (!type)
-      throw new MasterHierarchyError('Property type not found or inactive');
+      throw new MasterHierarchyError(
+        'Property type not found or inactive',
+      );
 
     const category = await client.propertyCategory.findFirst({
       where: {
