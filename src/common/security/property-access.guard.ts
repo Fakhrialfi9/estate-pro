@@ -51,7 +51,6 @@ export class PropertyAccessGuard implements CanActivate {
           where: {
             uuid: pathUuid as string,
             property: {
-              deletedAt: null,
               OR: [
                 { createdBy: principalUuid },
                 {
@@ -65,12 +64,14 @@ export class PropertyAccessGuard implements CanActivate {
               ],
             },
           },
-          select: { id: true },
+          select: {
+            id: true,
+            property: { select: { deletedAt: true } },
+          },
         })
       : await this.prisma.property.findFirst({
           where: {
             uuid: propertyUuid,
-            deletedAt: null,
             OR: [
               { createdBy: principalUuid },
               {
@@ -83,7 +84,7 @@ export class PropertyAccessGuard implements CanActivate {
               },
             ],
           },
-          select: { id: true },
+          select: { id: true, deletedAt: true },
         });
 
     if (!accessible) throw new ForbiddenException();
