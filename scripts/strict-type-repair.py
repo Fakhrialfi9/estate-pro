@@ -49,7 +49,8 @@ def wrap_data_after(path: str, anchor: str) -> None:
     opening = data_pos + len('data: ')
     closing = matching_brace(text, opening)
     text = text[:data_pos] + 'data: omitUndefined({' + text[data_pos + len('data: {'):]
-    text = text[:closing + len('data: omitUndefined({') - len('data: {') + 1] + ')' + text[closing + len('data: omitUndefined({') - len('data: {') + 1:]
+    closing += len('data: omitUndefined({') - len('data: {')
+    text = text[:closing + 1] + ')' + text[closing + 1:]
     p.write_text(text)
 
 
@@ -59,8 +60,38 @@ def ensure_import(path: str, statement: str) -> None:
     if statement not in text:
         p.write_text(statement + text)
 
+# Common helper used only at persistence boundaries.
+helper = ROOT / 'src/common/omit-undefined.ts'
+helper.parent.mkdir(parents=True, exist_ok=True)
+helper.write_text('''type DeepDefined<T> = T extends Date
+  ? T
+  : T extends readonly (infer U)[]
+    ? readonly DeepDefined<U>[]
+    : T extends object
+      ? { [K in keyof T]-?: DeepDefined<Exclude<T[K], undefined>> }
+      : Exclude<T, undefined>;
+
+const clean = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(clean);
+  if (value instanceof Date) return value;
+  if (value && typeof value === 'object') {
+    const input = value as Record<string, unknown>;
+    const output: Record<string, unknown> = {};
+    for (const key of Object.keys(input)) {
+      const item = input[key];
+      if (item !== undefined) output[key] = clean(item);
+    }
+    return output;
+  }
+  return value;
+};
+
+export const omitUndefined = <T extends object>(input: T): DeepDefined<T> =>
+  clean(input) as DeepDefined<T>;
+''')
+
 # ---------------------------------------------------------------------------
-# Domain / application contracts
+# Domain / application contracts.
 # ---------------------------------------------------------------------------
 replace_all('src/common/security/property-access.guard.ts', [('uuid: pathUuid,', 'uuid: propertyUuid,')])
 replace_all('src/modules/property/application/property-details.service.ts', [
@@ -84,11 +115,13 @@ text = patch.sub("""changes:
           : undefined,""", text, count=1)
 p.write_text(text)
 
+# Security audit change type + optional derived slug inputs.
 replace_all('src/modules/property/application/property-master.service.ts', [
     ("import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';", "import type { SecurityAuditChange, SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';"),
     ('      slug: string;\n', '      slug?: string;\n'),
 ])
 
+# Strict indexed access in domain helpers.
 replace_all('src/modules/property/domain/property-extras.ts', [
     ("const [w, f = ''] = this.amount.split('.');", "const [w = '0', f = ''] = this.amount.split('.');"),
     ("const [w, f = ''] = v.split('.'),", "const [w = '0', f = ''] = v.split('.'),"),
@@ -99,7 +132,7 @@ replace_all('src/modules/property/listing/domain/listing.types.ts', [
 ])
 
 # ---------------------------------------------------------------------------
-# Prisma details / extras: wrap patch-shaped data at the persistence boundary.
+# Prisma persistence boundaries.
 # ---------------------------------------------------------------------------
 for path in (
     'src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts',
@@ -108,53 +141,56 @@ for path in (
 ):
     ensure_import(path, "import { omitUndefined } from '../../../../common/omit-undefined.js';\n")
 
-replace_all('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts', [
-    (': current?.yearBuilt,', ': (current?.yearBuilt ?? null),'),
-    (': current?.yearRenovated,', ': (current?.yearRenovated ?? null),'),
-    ('data: common,', 'data: omitUndefined(common),'),
-    ('data: scalar,', 'data: omitUndefined(scalar),'),
-    ('facilityId: { in: facilityIds },', 'facilityId: { in: Array.from(facilityIds) },'),
-    ('inputs[index].available', 'inputs[index]!.available'),
-    ('inputs[index].quantity', 'inputs[index]!.quantity'),
-    ('inputs[index].notes', 'inputs[index]!.notes'),
-])
-wrap_data_after('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts', 'return tx.propertyRoom.update({')
-wrap_data_after('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts', 'return tx.propertyFacility.update({')
+p = ROOT / 'src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts'
+text = p.read_text()
+text = text.replace(': current?.yearBuilt,', ': (current?.yearBuilt ?? null),').replace(': current?.yearRenovated,', ': (current?.yearRenovated ?? null),')
+text = text.replace('data: common,', 'data: omitUndefined(common),').replace('data: scalar,', 'data: omitUndefined(scalar),')
+text = text.replace('facilityId: { in: facilityIds },', 'facilityId: { in: Array.from(facilityIds) },')
+text = text.replace('inputs[index].available', 'inputs[index]!.available').replace('inputs[index].quantity', 'inputs[index]!.quantity').replace('inputs[index].notes', 'inputs[index]!.notes')
+text = text.replace('            data,\n          });', '            data: omitUndefined(data),\n          });')
+wrap_data_after(str(p), 'return tx.propertyBuilding.update({')
+p.write_text(text)
 
-replace_all('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts', [
-    ('ownerReference: p.ownerReference,', 'ownerReference: p.ownerReference ?? null,'),
-    ('ownerReferenceHash:\n                  owner === undefined || owner === null\n                    ? null\n                    : hashSensitive(owner),\n                ownerReferenceMasked:\n                  owner === undefined || owner === null\n                    ? null\n                    : maskSensitive(owner),\n                ...data,', '...omitUndefined(data),'),
-    ('where: { id: c.id }, data })', 'where: { id: c.id }, data: omitUndefined(data) })'),
-    ('where: { id: c.id },\n                  data,', 'where: { id: c.id },\n                  data: omitUndefined(data),'),
-])
-wrap_data_after('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts', 'const r = await tx.propertyCertificate.create({')
-wrap_data_after('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts', 'const r = await tx.propertyCertificate.update({')
-wrap_data_after('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts', 'const r = await tx.propertyMedia.create({')
-wrap_data_after('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts', 'const r = await tx.propertyMedia.update({')
+p = ROOT / 'src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts'
+text = p.read_text()
+text = text.replace('ownerReference: p.ownerReference,', 'ownerReference: p.ownerReference ?? null,')
+text = text.replace('ownerReferenceHash:\n                  owner === undefined || owner === null\n                    ? null\n                    : hashSensitive(owner),\n                ownerReferenceMasked:\n                  owner === undefined || owner === null\n                    ? null\n                    : maskSensitive(owner),\n                ...data,', '...omitUndefined(data),')
+text = text.replace('where: { id: c.id }, data })', 'where: { id: c.id }, data: omitUndefined(data) })')
+text = text.replace('where: { id: c.id },\n                  data,', 'where: { id: c.id },\n                  data: omitUndefined(data),')
+# Utility and SEO create data inherit optional patch fields; clean before the Prisma boundary.
+text = text.replace(
+    '              data: {\n                uuid: randomUUID(),\n                propertyId: id,\n                createdBy: sid(a),\n                ...data,\n              },',
+    '              data: omitUndefined({\n                uuid: randomUUID(),\n                propertyId: id,\n                createdBy: sid(a),\n                ...data,\n              }),',
+)
+p.write_text(text)
 
 # ---------------------------------------------------------------------------
-# Master store / presentation contracts.
+# Property master persistence contracts.
 # ---------------------------------------------------------------------------
 p = ROOT / 'src/modules/property/infrastructure/persistence/prisma-property-master.store.ts'
 text = p.read_text()
 text = text.replace('  PageResult,\n', '')
 if "import type { PageResult } from '../../domain/property-master.types.js';" not in text:
-    text = text.replace(
-        "import type {\n  MasterQuery,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';\n",
-        "import type {\n  MasterQuery,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';\nimport type { PageResult } from '../../domain/property-master.types.js';\n",
-        1,
-    )
+    marker = "import type {\n  MasterQuery,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';\n"
+    if marker in text:
+        text = text.replace(marker, marker + "import type { PageResult } from '../../domain/property-master.types.js';\n", 1)
 text = text.replace('const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];', "const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');")
+text = text.replace(
+    'return this.prisma.facility.update({ where: { id: current.id }, data });',
+    "const id = current.id;\n      if (typeof id !== 'number' && typeof id !== 'bigint') throw new MasterNotFoundError('Facility id is invalid');\n      return this.prisma.facility.update({ where: { id }, data });",
+)
 p.write_text(text)
 
+# ---------------------------------------------------------------------------
+# Presentation layer.
+# ---------------------------------------------------------------------------
 for filename in ('property-lifecycle.controller.ts', 'property-master.controller.ts'):
     p = ROOT / 'src/modules/property/presentation' / filename
     text = p.read_text()
     old = """const actor = (\n  r: AuthenticatedRequest,\n  userAgent?: string,\n  requestId?: string,\n) => ({ actorUuid: r.user?.sub, ipAddress: r.ip, userAgent, requestId });\n"""
     new = """const actor = (\n  r: AuthenticatedRequest,\n  userAgent?: string,\n  requestId?: string,\n) => {\n  const actorUuid = r.user?.sub;\n  if (!actorUuid) throw new ForbiddenException('Authenticated user is required');\n  return {\n    actorUuid,\n    ipAddress: r.ip ?? 'unknown',\n    ...(userAgent !== undefined ? { userAgent } : {}),\n    ...(requestId !== undefined ? { requestId } : {}),\n  };\n};\n"""
     if old in text:
-        text = text.replace('  BadRequestException,\n', '  BadRequestException,\n  ForbiddenException,\n', 1)
-        text = text.replace(old, new, 1)
+        text = text.replace('  BadRequestException,\n', '  BadRequestException,\n  ForbiddenException,\n', 1).replace(old, new, 1)
     if filename == 'property-master.controller.ts':
         marker = 'type RecordValue = Record<string, unknown>;\n'
         if marker in text and 'const toRecord = ' not in text:
@@ -175,20 +211,13 @@ for filename in ('property-lifecycle.controller.ts', 'property-master.controller
     p.write_text(text)
 
 # ---------------------------------------------------------------------------
-# Listing repository. run() already maps/throws persistence errors; the
-# chained catches were widening T to T | Error and defeating that contract.
+# Listing repository. Use conditional spreads for optional relations and
+# construct numeric filters only with defined bounds.
 # ---------------------------------------------------------------------------
 p = ROOT / 'src/modules/property/listing/infrastructure/listing.repository.ts'
 text = p.read_text()
+# Redundant catches turn T into T | Error although run() already throws mapped errors.
 text = re.sub(r'\n\s*\.catch\(\(error: unknown\) => this\.mapError\(error\)\),', ',', text)
-# Explicitly omit undefined at the three patch-heavy Prisma boundaries.
-wrap_data_after('src/modules/property/listing/infrastructure/listing.repository.ts', 'const price = input.price')
-wrap_data_after('src/modules/property/listing/infrastructure/listing.repository.ts', 'const price = input.price\n            ? await this.normalizePricing')
-wrap_data_after('src/modules/property/listing/infrastructure/listing.repository.ts', 'const data: Prisma.PropertyListingUpdateManyMutationInput = {')
-wrap_data_after('src/modules/property/listing/infrastructure/listing.repository.ts', 'return tx.propertyListing.create({')
-# The first wrapper above may already have been applied to the duplicate create;
-# conditional nested relations are handled directly below.
-text = p.read_text()
 text = text.replace(
 """              price: price
                 ? {
@@ -214,32 +243,61 @@ text = text.replace(
                 : {}),"""
 )
 text = text.replace(
-"""            engagements: viewerUserUuid
-              ? {
-                  where: { userUuid: viewerUserUuid },
-                  select: { isSaved: true, viewedAt: true },
-                }
-              : undefined,""",
-"""            ...(viewerUserUuid
-              ? {
-                  engagements: {
-                    where: { userUuid: viewerUserUuid },
-                    select: { isSaved: true, viewedAt: true },
-                  },
-                }
-              : {}),"""
+"""              price: source.price
+                ? {
+                    create: {""",
+"""              ...(source.price
+                ? {
+                    price: {
+                      create: {""", 1)
+text = text.replace('                  }\n                : undefined,\n              paymentOptions:', '                    },\n                  }\n                : {}),\n              paymentOptions:', 1)
+# Transition data explicitly contains undefined optional timestamps.
+text = text.replace('          const data: Prisma.PropertyListingUpdateManyMutationInput = {', '          const data: Prisma.PropertyListingUpdateManyMutationInput = omitUndefined({', 1)
+text = text.replace('            version: { increment: 1 },\n          };\n          if (to === \'PUBLISHED\')', '            version: { increment: 1 },\n          });\n          if (to === \'PUBLISHED\')', 1)
+# Search relation filters.
+text = text.replace(
+"""          country: query.countryUuid
+            ? { is: { uuid: query.countryUuid } }
+            : undefined,""",
+"""          ...(query.countryUuid
+            ? { country: { is: { uuid: query.countryUuid } } }
+            : {}),"""
 )
-for key, name in (('country','countryUuid'),('province','provinceUuid'),('city','cityUuid'),('district','districtUuid')):
-    text = text.replace(
-        f'          {key}: query.{name}\n            ? {{ is: {{ uuid: query.{name} }} }}\n            : undefined,',
-        f'          ...(query.{name} ? {{ {key}: {{ is: {{ uuid: query.{name} }} }} }} : {{}}),',
-    )
+text = text.replace(
+"""          province: query.provinceUuid
+            ? { is: { uuid: query.provinceUuid } }
+            : undefined,""",
+"""          ...(query.provinceUuid
+            ? { province: { is: { uuid: query.provinceUuid } } }
+            : {}),"""
+)
+text = text.replace(
+"""          city: query.cityUuid ? { is: { uuid: query.cityUuid } } : undefined,""",
+"""          ...(query.cityUuid
+            ? { city: { is: { uuid: query.cityUuid } } }
+            : {}),"""
+)
+text = text.replace(
+"""          district: query.districtUuid
+            ? { is: { uuid: query.districtUuid } }
+            : undefined,""",
+"""          ...(query.districtUuid
+            ? { district: { is: { uuid: query.districtUuid } } }
+            : {}),"""
+)
 for field, mn, mx in (('landArea','minLandArea','maxLandArea'),('buildingArea','minBuildingArea','maxBuildingArea'),('bedrooms','minBedrooms','maxBedrooms'),('bathrooms','minBathrooms','maxBathrooms')):
     pattern = rf'{field}:\n\s+query\.{mn}[^\n]*\n\s+\? \{{ gte: query\.{mn}, lte: query\.{mx} \}}\n\s+: undefined,'
-    repl = f"...(query.{mn} !== undefined || query.{mx} !== undefined ? {{ {field}: omitUndefined({{ ...(query.{mn} !== undefined ? {{ gte: query.{mn} }} : {{}}), ...(query.{mx} !== undefined ? {{ lte: query.{mx} }} : {{}}) }}) }} : {{}}),"
-    text = re.sub(pattern, repl, text, count=1, flags=re.MULTILINE)
+    replacement = f"...({{ {field}: omitUndefined({{ ...(query.{mn} !== undefined ? {{ gte: query.{mn} }} : {{}}), ...(query.{mx} !== undefined ? {{ lte: query.{mx} }} : {{}}) }}) }}),"
+    text = re.sub(pattern, replacement, text, count=1, flags=re.MULTILINE)
 text = text.replace(
     'is: { maxPrice: { gte: query.minPrice, lte: query.maxPrice } },',
     'is: { maxPrice: omitUndefined({ ...(query.minPrice !== undefined ? { gte: query.minPrice } : {}), ...(query.maxPrice !== undefined ? { lte: query.maxPrice } : {}) }) },',
 )
+p.write_text(text)
+
+# Keep PageResult available through the existing repository contract.
+p = ROOT / 'src/modules/property/domain/repositories/property-master.repository.ts'
+text = p.read_text()
+if "export type { PageResult } from '../property-master.types.js';" not in text:
+    text = "export type { PageResult } from '../property-master.types.js';\n" + text
 p.write_text(text)
