@@ -111,6 +111,8 @@ async function createProperty() {
       propertyCategoryId: categoryId,
       title: 'Detail E2E Property',
       slug: `detail-e2e-${randomUUID()}`,
+      createdBy: actor.uuid,
+      updatedBy: actor.uuid,
     },
   });
 }
@@ -128,6 +130,8 @@ describe('Property detail child APIs', () => {
   });
 
   beforeEach(async () => {
+    actor = await makeActor(true);
+    denied = await makeActor(false);
     const createdType = await prisma.propertyType.create({
       data: {
         uuid: randomUUID(),
@@ -162,8 +166,6 @@ describe('Property detail child APIs', () => {
       },
     });
     facilityUuid = facility.uuid;
-    actor = await makeActor(true);
-    denied = await makeActor(false);
   });
 
   afterAll(async () => {
@@ -175,24 +177,12 @@ describe('Property detail child APIs', () => {
     await prisma.property.deleteMany();
     await prisma.propertyCategory.deleteMany({ where: { id: categoryId } });
     await prisma.propertyType.deleteMany({ where: { id: typeId } });
-    await prisma.facility.deleteMany({
-      where: { code: { startsWith: 'E2E-F-' } },
-    });
-    await prisma.authorizationUserRole.deleteMany({
-      where: { user: { email: { contains: '@detail-e2e.test' } } },
-    });
-    await prisma.authorizationRolePermission.deleteMany({
-      where: { role: { code: { startsWith: 'detail-e2e-' } } },
-    });
-    await prisma.authorizationRole.deleteMany({
-      where: { code: { startsWith: 'detail-e2e-' } },
-    });
-    await prisma.authenticationUserSession.deleteMany({
-      where: { user: { email: { contains: '@detail-e2e.test' } } },
-    });
-    await prisma.authenticationUser.deleteMany({
-      where: { email: { contains: '@detail-e2e.test' } },
-    });
+    await prisma.facility.deleteMany({ where: { code: { startsWith: 'E2E-F-' } } });
+    await prisma.authorizationUserRole.deleteMany({ where: { user: { email: { contains: '@detail-e2e.test' } } } });
+    await prisma.authorizationRolePermission.deleteMany({ where: { role: { code: { startsWith: 'detail-e2e-' } } } });
+    await prisma.authorizationRole.deleteMany({ where: { code: { startsWith: 'detail-e2e-' } } });
+    await prisma.authenticationUserSession.deleteMany({ where: { user: { email: { contains: '@detail-e2e.test' } } } });
+    await prisma.authenticationUser.deleteMany({ where: { email: { contains: '@detail-e2e.test' } } });
     await app.close();
   });
 
@@ -229,35 +219,17 @@ describe('Property detail child APIs', () => {
     await http(app)
       .patch(`/api/v1/property/properties/${propertyUuid}/location`)
       .set('Authorization', `Bearer ${actor.token}`)
-      .send({
-        latitude: '-6.2000000',
-        longitude: '106.8166667',
-        mapProvider: 'GOOGLE_MAPS',
-        coordinateAccuracy: 'ROOFTOP',
-        mapUrl: 'https://maps.google.com/?q=-6.2,106.8166',
-      })
+      .send({ latitude: '-6.2000000', longitude: '106.8166667', mapProvider: 'GOOGLE_MAPS', coordinateAccuracy: 'ROOFTOP', mapUrl: 'https://maps.google.com/?q=-6.2,106.8166' })
       .expect(200);
     await http(app)
       .patch(`/api/v1/property/properties/${propertyUuid}/building`)
       .set('Authorization', `Bearer ${actor.token}`)
-      .send({
-        hasPool: true,
-        poolLengthM: '10.00',
-        poolWidthM: '4.00',
-        poolDepthM: '1.50',
-        smartHome: true,
-      })
+      .send({ hasPool: true, poolLengthM: '10.00', poolWidthM: '4.00', poolDepthM: '1.50', smartHome: true })
       .expect(200);
     const room = await http(app)
       .post(`/api/v1/property/properties/${propertyUuid}/rooms`)
       .set('Authorization', `Bearer ${actor.token}`)
-      .send({
-        roomType: 'MASTER_BEDROOM',
-        name: 'Master Suite',
-        floor: 1,
-        area: '25.50',
-        hasBathroom: true,
-      })
+      .send({ roomType: 'MASTER_BEDROOM', name: 'Master Suite', floor: 1, area: '25.50', hasBathroom: true })
       .expect(201);
     const roomUuid = (room.body as Body).data?.uuid;
     expect(roomUuid).toBeTruthy();
@@ -272,16 +244,12 @@ describe('Property detail child APIs', () => {
       .send({ facilityUuid, quantity: 2, available: true, notes: 'E2E' })
       .expect(201);
     await http(app)
-      .patch(
-        `/api/v1/property/properties/${propertyUuid}/facilities/${facilityUuid}`,
-      )
+      .patch(`/api/v1/property/properties/${propertyUuid}/facilities/${facilityUuid}`)
       .set('Authorization', `Bearer ${actor.token}`)
       .send({ quantity: 3, available: false })
       .expect(200);
     await http(app)
-      .delete(
-        `/api/v1/property/properties/${propertyUuid}/facilities/${facilityUuid}`,
-      )
+      .delete(`/api/v1/property/properties/${propertyUuid}/facilities/${facilityUuid}`)
       .set('Authorization', `Bearer ${actor.token}`)
       .expect(204);
   });
