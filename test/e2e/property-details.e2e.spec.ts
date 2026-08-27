@@ -6,7 +6,7 @@ import request from 'supertest';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
-import { JwtService } from '@nestjs/jwt';
+import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
 
 type AuthContext = { uuid: string; token: string };
 type Body = { data?: { uuid?: string } };
@@ -33,7 +33,7 @@ const http = (app: NestExpressApplication) => request(app.getHttpServer());
 
 let app: NestExpressApplication;
 let prisma: PrismaService;
-let jwt: JwtService;
+let tokens: JwtTokenService;
 let actor: AuthContext;
 let denied: AuthContext;
 let typeId: bigint;
@@ -96,7 +96,7 @@ async function makeActor(grant: boolean): Promise<AuthContext> {
   }
   return {
     uuid: user.uuid,
-    token: jwt.sign({ sub: user.uuid, sid: sessionId }),
+    token: await tokens.issueAccessToken(user.uuid, sessionId),
   };
 }
 
@@ -123,7 +123,7 @@ describe('Property detail child APIs', () => {
     configureApplication(app);
     await app.init();
     prisma = app.get(PrismaService);
-    jwt = app.get(JwtService);
+    tokens = app.get(JwtTokenService);
   });
 
   beforeEach(async () => {
