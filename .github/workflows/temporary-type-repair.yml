@@ -2,14 +2,14 @@ name: Temporary Type Repair
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   repair:
-    if: github.event.head_commit.message != 'chore: apply strict type repairs'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,151 +18,42 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Repair strict TypeScript errors and remove Python files
+          cache: npm
+      - name: Apply strict type repairs
         shell: bash
         run: |
           set -euo pipefail
-          node <<'NODE'
-          const fs = require('node:fs');
 
-          const replaceOnce = (file, oldText, newText) => {
-            const text = fs.readFileSync(file, 'utf8');
-            const count = text.split(oldText).length - 1;
-            if (count !== 1) throw new Error(`${file}: expected exactly one target block, found ${count}`);
-            fs.writeFileSync(file, text.replace(oldText, newText));
-          };
+          perl -0pi -e "s/const \[w, f = ''\] = this\.amount\.split\('\.\');/const [w = '0', f = ''] = this.amount.split('.');/" src/modules/property/domain/property-extras.ts
+          perl -0pi -e "s/const \[w, f = ''\] = v\.split\('\.'\),/const [w = '0', f = ''] = v.split('.'),/" src/modules/property/domain/property-extras.ts
+          perl -0pi -e 's/const \[a, b\] = o;/const [a = 0, b = 0] = o;/' src/modules/property/domain/property-extras.ts
+          perl -0pi -e "s/const \[whole, fraction = ''\] = normalized\.split\('\.'\);/const [whole = '0', fraction = ''] = normalized.split('.');/" src/modules/property/listing/domain/listing.types.ts
+          perl -0pi -e 's/inputs\[index\]\.available/inputs[index]!.available/g; s/inputs\[index\]\.quantity/inputs[index]!.quantity/g; s/inputs\[index\]\.notes/inputs[index]!.notes/g' src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts
 
-          const replaceAllExact = (file, oldText, newText, expected) => {
-            const text = fs.readFileSync(file, 'utf8');
-            const count = text.split(oldText).length - 1;
-            if (count !== expected) throw new Error(`${file}: expected ${expected} occurrences, found ${count}`);
-            fs.writeFileSync(file, text.split(oldText).join(newText));
-          };
+          perl -0pi -e 's/type FacilityCategory,\n  type PageRequest,/type AvailabilityStatus,\n  type FacilityCategory,\n  type PageRequest,/' src/modules/property/infrastructure/persistence/prisma-property-master.store.ts
+          perl -0pi -e 's/  MasterQuery,\n  PageResult,\n  PropertyMasterRepository,/  MasterQuery,\n  PropertyMasterRepository,/' src/modules/property/infrastructure/persistence/prisma-property-master.store.ts
+          perl -0pi -e "s/const field = q\.sortBy && allowed\.includes\(q\.sortBy\) \? q\.sortBy : allowed\[0\];/const field = q.sortBy \&\& allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');/" src/modules/property/infrastructure/persistence/prisma-property-master.store.ts
+          perl -0pi -e "s/      return this\.prisma\.facility\.update\(\{ where: \{ id: current\.id \}, data \}\);/      const id = current.id;\n      if (typeof id !== 'number' \&\& typeof id !== 'bigint')\n        throw new MasterNotFoundError('Facility id is invalid');\n      return this.prisma.facility.update({ where: { id }, data });/" src/modules/property/infrastructure/persistence/prisma-property-master.store.ts
+          perl -0pi -e "s/availabilityStatus: text\(input\.availabilityStatus, 'AVAILABLE'\),/availabilityStatus: text(input.availabilityStatus, 'AVAILABLE') as AvailabilityStatus,/" src/modules/property/infrastructure/persistence/prisma-property-master.store.ts
 
-          replaceAllExact('src/modules/property/domain/property-extras.ts', "const [w, f = ''] = this.amount.split('.')", "const [w = '0', f = ''] = this.amount.split('.')", 1);
-          replaceAllExact('src/modules/property/domain/property-extras.ts', "const [w, f = ''] = v.split('.')", "const [w = '0', f = ''] = v.split('.')", 1);
-          replaceAllExact('src/modules/property/domain/property-extras.ts', "const [a, b] = o;", "const [a = 0, b = 0] = o;", 1);
+          perl -0pi -e 's/        \}\)\n        \.catch\(\(error: unknown\) => this\.mapError\(error\)\),\n    \);\n  \}\n\n  async expireDue/        }),\n    );\n  }\n\n  async expireDue/' src/modules/property/listing/infrastructure/listing.repository.ts
+          perl -0pi -e 's/      slug: string;\n      description\?: string;/      slug?: string;\n      description?: string;/g' src/modules/property/application/property-master.service.ts
+          perl -0pi -e 's/      slug: string;\n      category: FacilityCategory;/      slug?: string;\n      category: FacilityCategory;/' src/modules/property/application/property-master.service.ts
 
-          replaceAllExact('src/modules/property/listing/domain/listing.types.ts', "const [whole, fraction = ''] = normalized.split('.')", "const [whole = '0', fraction = ''] = normalized.split('.')", 1);
+          perl -0pi -e 's/createCategory\(d, actor\(r, ua, rid\)\)/createCategory({ ...d }, actor(r, ua, rid))/g' src/modules/property/presentation/property-master.controller.ts
+          perl -0pi -e 's/updateCategory\(uuid, d\.version, d, actor\(r, ua, rid\)\)/updateCategory(uuid, d.version, { ...d }, actor(r, ua, rid))/g' src/modules/property/presentation/property-master.controller.ts
+          perl -0pi -e 's/createSubcategory\(d, actor\(r, ua, rid\)\)/createSubcategory({ ...d }, actor(r, ua, rid))/g' src/modules/property/presentation/property-master.controller.ts
+          perl -0pi -e 's/updateSubcategory\(uuid, d\.version, d, actor\(r, ua, rid\)\)/updateSubcategory(uuid, d.version, { ...d }, actor(r, ua, rid))/g' src/modules/property/presentation/property-master.controller.ts
+          perl -0pi -e 's/createLocation\(levelOf\(level\), d, actor\(r, ua, rid\)\)/createLocation(levelOf(level), { ...d }, actor(r, ua, rid))/g' src/modules/property/presentation/property-master.controller.ts
+          perl -0pi -e 's/updateLocation\(levelOf\(level\), uuid, d\.version, d, actor\(r, ua, rid\)\)/updateLocation(levelOf(level), uuid, d.version, { ...d }, actor(r, ua, rid))/g' src/modules/property/presentation/property-master.controller.ts
+          perl -0pi -e 's/createFacility\(d, actor\(r, ua, rid\)\)/createFacility({ ...d }, actor(r, ua, rid))/g' src/modules/property/presentation/property-master.controller.ts
+          perl -0pi -e 's/updateFacility\(uuid, d\.version, d, actor\(r, ua, rid\)\)/updateFacility(uuid, d.version, { ...d }, actor(r, ua, rid))/g' src/modules/property/presentation/property-master.controller.ts
+          perl -0pi -e 's/createProperty\(d, actor\(r, ua, rid\)\)/createProperty({ ...d }, actor(r, ua, rid))/g' src/modules/property/presentation/property-master.controller.ts
+          perl -0pi -e 's/updateProperty\(uuid, d\.version, d, actor\(r, ua, rid\)\)/updateProperty(uuid, d.version, { ...d }, actor(r, ua, rid))/g' src/modules/property/presentation/property-master.controller.ts
 
-          replaceOnce(
-            'src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts',
-            `          await tx.propertyFacility.createMany({
-            data: ids.map((facilityId, index) => ({
-              propertyId,
-              facilityId,
-              available: inputs[index].available ?? true,
-              quantity: inputs[index].quantity ?? null,
-              notes: trim(inputs[index].notes) ?? null,
-            })),
-          });`,
-            `          await tx.propertyFacility.createMany({
-            data: ids.map((facilityId, index) => {
-              const input = inputs[index];
-              if (!input)
-                throw new PropertyDetailInvalidStateError(
-                  'Facility input is missing for the resolved facility id',
-                );
-              return {
-                propertyId,
-                facilityId,
-                available: input.available ?? true,
-                quantity: input.quantity ?? null,
-                notes: trim(input.notes) ?? null,
-              };
-            }),
-          });`,
-          );
-
-          replaceOnce(
-            'src/modules/property/infrastructure/persistence/prisma-property-master.store.ts',
-            `  type FacilityCategory,
-  type PageRequest,`,
-            `  type AvailabilityStatus,
-  type FacilityCategory,
-  type PageRequest,`,
-          );
-          replaceOnce(
-            'src/modules/property/infrastructure/persistence/prisma-property-master.store.ts',
-            `  MasterQuery,
-  PageResult,
-  PropertyMasterRepository,`,
-            `  MasterQuery,
-  PropertyMasterRepository,`,
-          );
-          replaceOnce(
-            'src/modules/property/infrastructure/persistence/prisma-property-master.store.ts',
-            `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];`,
-            `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');`,
-          );
-          replaceOnce(
-            'src/modules/property/infrastructure/persistence/prisma-property-master.store.ts',
-            `      return this.prisma.facility.update({ where: { id: current.id }, data });`,
-            `      const id = current.id;
-      if (typeof id !== 'number' && typeof id !== 'bigint')
-        throw new MasterNotFoundError('Facility id is invalid');
-      return this.prisma.facility.update({ where: { id }, data });`,
-          );
-          replaceOnce(
-            'src/modules/property/infrastructure/persistence/prisma-property-master.store.ts',
-            `            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE'),`,
-            `            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE') as AvailabilityStatus,`,
-          );
-
-          replaceOnce(
-            'src/modules/property/listing/infrastructure/listing.repository.ts',
-            `        })
-        .catch((error: unknown) => this.mapError(error)),
-    );
-  }
-
-  async expireDue`,
-            `        }),
-    );
-  }
-
-  async expireDue`,
-          );
-
-          replaceAllExact('src/modules/property/application/property-master.service.ts', `      slug: string;
-      description?: string;`, `      slug?: string;
-      description?: string;`, 2);
-          replaceOnce('src/modules/property/application/property-master.service.ts', `      slug: string;
-      category: FacilityCategory;`, `      slug?: string;
-      category: FacilityCategory;`);
-
-          const controller = 'src/modules/property/presentation/property-master.controller.ts';
-          for (const [oldText, newText] of [
-            [`this.service.createCategory(d, actor(r, ua, rid))`, `this.service.createCategory({ ...d }, actor(r, ua, rid))`],
-            [`.updateCategory(uuid, d.version, d, actor(r, ua, rid))`, `.updateCategory(uuid, d.version, { ...d }, actor(r, ua, rid))`],
-            [`this.service.createSubcategory(d, actor(r, ua, rid))`, `this.service.createSubcategory({ ...d }, actor(r, ua, rid))`],
-            [`.updateSubcategory(uuid, d.version, d, actor(r, ua, rid))`, `.updateSubcategory(uuid, d.version, { ...d }, actor(r, ua, rid))`],
-            [`.createLocation(levelOf(level), d, actor(r, ua, rid))`, `.createLocation(levelOf(level), { ...d }, actor(r, ua, rid))`],
-            [`.updateLocation(levelOf(level), uuid, d.version, d, actor(r, ua, rid))`, `.updateLocation(levelOf(level), uuid, d.version, { ...d }, actor(r, ua, rid))`],
-            [`this.service.createFacility(d, actor(r, ua, rid))`, `this.service.createFacility({ ...d }, actor(r, ua, rid))`],
-            [`.updateFacility(uuid, d.version, d, actor(r, ua, rid))`, `.updateFacility(uuid, d.version, { ...d }, actor(r, ua, rid))`],
-            [`this.service.createProperty(d, actor(r, ua, rid))`, `this.service.createProperty({ ...d }, actor(r, ua, rid))`],
-            [`.updateProperty(uuid, d.version, d, actor(r, ua, rid))`, `.updateProperty(uuid, d.version, { ...d }, actor(r, ua, rid))`],
-          ]) replaceOnce(controller, oldText, newText);
-
-          const pyFiles = [];
-          const walk = (dir) => {
-            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-              if (entry.name === '.git' || entry.name === 'node_modules') continue;
-              const full = `${dir}/${entry.name}`;
-              if (entry.isDirectory()) walk(full);
-              else if (entry.name.endsWith('.py')) pyFiles.push(full);
-            }
-          };
-          walk('.');
-          for (const file of pyFiles) fs.rmSync(file);
-          NODE
-
-          find . -type f -name '*.py' -not -path './.git/*' -print
-          if find . -type f -name '*.py' -not -path './.git/*' -print -quit | grep -q .; then
-            echo 'Python files remain' >&2
-            exit 1
-          fi
+          while IFS= read -r -d '' file; do
+            git rm -f -- "$file"
+          done < <(find . -type f -name '*.py' -not -path './.git/*' -print0)
 
           npm ci
           npm run format:check
