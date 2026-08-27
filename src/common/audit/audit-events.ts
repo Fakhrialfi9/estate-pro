@@ -48,6 +48,17 @@ export const AUDIT_ACTIONS = {
   PROPERTY_TYPE_CREATED: 'PROPERTY_TYPE_CREATED',
   PROPERTY_TYPE_UPDATED: 'PROPERTY_TYPE_UPDATED',
   PROPERTY_TYPE_DELETED: 'PROPERTY_TYPE_DELETED',
+  PROPERTY_SPECIFICATIONS_UPDATED: 'property.specifications.update',
+  PROPERTY_LOCATION_UPDATED: 'property.location.update',
+  PROPERTY_BUILDING_UPDATED: 'property.building.update',
+  PROPERTY_ROOM_CREATED: 'property.room.create',
+  PROPERTY_ROOM_UPDATED: 'property.room.update',
+  PROPERTY_ROOM_DELETED: 'property.room.delete',
+  PROPERTY_ROOMS_REORDERED: 'property.rooms.reorder',
+  PROPERTY_FACILITY_ATTACHED: 'property.facility.attach',
+  PROPERTY_FACILITY_UPDATED: 'property.facility.update',
+  PROPERTY_FACILITY_DETACHED: 'property.facility.detach',
+  PROPERTY_FACILITIES_BULK_ATTACHED: 'property.facility.bulk_attach',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
@@ -67,5 +78,10 @@ export const AUDIT_RESOURCE_TYPES = [
   'audit_log',
   'property',
   'property_type',
+  'property_specification',
+  'property_location',
+  'property_building',
+  'property_room',
+  'property_facility',
 ] as const;
 export const AUDIT_RESULT_VALUES = ['SUCCESS', 'FAILURE'] as const;
