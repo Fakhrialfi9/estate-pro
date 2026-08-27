@@ -117,9 +117,6 @@ export interface PropertyMasterRepository {
     patch: Record<string, unknown>,
     actor: ActorContext,
   ): Promise<unknown>;
-  verifyProperty(uuid: string, version: number, actor: ActorContext): Promise<unknown>;
-  publishProperty(uuid: string, version: number, actor: ActorContext): Promise<unknown>;
-  archiveProperty(uuid: string, version: number, actor: ActorContext): Promise<unknown>;
   deleteProperty(uuid: string, actor: ActorContext): Promise<void>;
   restoreProperty(uuid: string, actor: ActorContext): Promise<unknown>;
   duplicateProperty(uuid: string, actor: ActorContext): Promise<unknown>;
