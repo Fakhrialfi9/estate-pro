@@ -1,7 +1,8 @@
 import { prepareTestDatabase } from '../database/setup.js';
 
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET ??= 'estate-pro-integration-test-secret-32-chars-minimum';
+process.env.JWT_SECRET ??=
+  'estate-pro-integration-test-secret-32-chars-minimum';
 process.env.JWT_EXPIRES_IN ??= '15m';
 process.env.JWT_ISSUER ??= 'estate-pro-api-test';
 process.env.JWT_AUDIENCE ??= 'estate-pro-client';

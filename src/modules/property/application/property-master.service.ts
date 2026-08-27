@@ -30,8 +30,10 @@ import {
   MasterStateError,
 } from '../domain/errors.js';
 
-const isNamedMasterError = (error: unknown, names: readonly string[]): boolean =>
-  error instanceof Error && names.includes(error.name);
+const isNamedMasterError = (
+  error: unknown,
+  names: readonly string[],
+): boolean => error instanceof Error && names.includes(error.name);
 
 const isMasterError = (
   error: unknown,
@@ -267,7 +269,10 @@ export class PropertyMasterService {
 
   async createProperty(input: Record<string, unknown>, actor: ActorContext) {
     try {
-      assertAvailability(toDate(input.availableFrom), toDate(input.availableTo));
+      assertAvailability(
+        toDate(input.availableFrom),
+        toDate(input.availableTo),
+      );
       const result = await this.run(() =>
         this.repository.createProperty(input, actor),
       );
