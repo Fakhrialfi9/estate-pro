@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ConfigModule } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
@@ -12,6 +12,7 @@ describe('PropertyType persistence integration', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let repository: PrismaPropertyTypeRepository;
+  const createdTypeUuids = new Set<string>();
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -30,13 +31,22 @@ describe('PropertyType persistence integration', () => {
     repository = new PrismaPropertyTypeRepository(prisma);
   });
 
-  beforeEach(async () => {
-    await prisma.propertyType.deleteMany();
-  });
-
   afterAll(async () => {
+    if (createdTypeUuids.size > 0) {
+      await prisma.propertyType.deleteMany({
+        where: { uuid: { in: [...createdTypeUuids] } },
+      });
+    }
     await app.close();
   });
+
+  const createTracked = async (
+    input: Parameters<typeof repository.create>[0],
+  ) => {
+    const created = await repository.create(input);
+    createdTypeUuids.add(created.uuid);
+    return created;
+  };
 
   const data = (
     overrides: Partial<Parameters<typeof repository.create>[0]> = {},
@@ -52,7 +62,7 @@ describe('PropertyType persistence integration', () => {
   });
 
   it('creates and reads persisted records', async () => {
-    const created = await repository.create(data());
+    const created = await createTracked(data());
     const found = await repository.findById(created.uuid);
     expect(found?.uuid).toBe(created.uuid);
     expect(found?.code).toBe(created.code);
@@ -60,10 +70,10 @@ describe('PropertyType persistence integration', () => {
   });
 
   it('lists with pagination, filtering and deterministic sorting', async () => {
-    await repository.create(
+    await createTracked(
       data({ code: 'HOUSE', slug: 'house', sortOrder: 20 }),
     );
-    await repository.create(
+    await createTracked(
       data({ code: 'VILLA', slug: 'villa', sortOrder: 10 }),
     );
     const result = await repository.list({
@@ -80,7 +90,7 @@ describe('PropertyType persistence integration', () => {
   });
 
   it('updates a persisted record', async () => {
-    const created = await repository.create(data());
+    const created = await createTracked(data());
     const updated = await repository.update(created.uuid, {
       name: 'Town House',
       sortOrder: 25,
@@ -91,7 +101,7 @@ describe('PropertyType persistence integration', () => {
 
   it('enforces unique code and slug at the database boundary', async () => {
     const first = data({ code: 'DUPLICATE', slug: 'duplicate' });
-    await repository.create(first);
+    await createTracked(first);
     await expect(
       repository.create({ ...first, name: 'Second' }),
     ).rejects.toThrow('Property type code is already in use.');
@@ -101,7 +111,7 @@ describe('PropertyType persistence integration', () => {
   });
 
   it('soft-deletes and excludes records from normal reads', async () => {
-    const created = await repository.create(data());
+    const created = await createTracked(data());
     await repository.softDelete(created.uuid);
     expect(await repository.findById(created.uuid)).toBeNull();
     const result = await repository.list({
