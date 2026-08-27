@@ -3,17 +3,40 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 
-type ExplainRow = Record<string, unknown>;
+type ExplainObjectRow = Record<string, unknown>;
+type ExplainRow = ExplainObjectRow | readonly unknown[];
 
-const explainField = (row: ExplainRow | undefined, field: string): unknown => {
+const EXPLAIN_COLUMNS = [
+  'id',
+  'select_type',
+  'table',
+  'partitions',
+  'type',
+  'possible_keys',
+  'key',
+  'key_len',
+  'ref',
+  'rows',
+  'filtered',
+  'Extra',
+] as const;
+
+const explainField = (
+  row: ExplainRow | undefined,
+  field: (typeof EXPLAIN_COLUMNS)[number] | string,
+): unknown => {
   if (!row) return undefined;
+
+  if (Array.isArray(row)) {
+    const index = EXPLAIN_COLUMNS.findIndex(
+      (column) => column.toLowerCase() === field.toLowerCase(),
+    );
+    return index >= 0 ? row[index] : undefined;
+  }
 
   const expected = field.toLowerCase();
   const directValue = row[field];
   if (directValue !== undefined) return directValue;
-
-  const caseInsensitiveValue = row[expected] ?? row[field.toUpperCase()];
-  if (caseInsensitiveValue !== undefined) return caseInsensitiveValue;
 
   const entry = Object.entries(row).find(
     ([key]) => key.toLowerCase() === expected,
