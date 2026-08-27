@@ -6,7 +6,7 @@ import type {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { metrics } from '@opentelemetry/api';
-import { finalize, catchError, throwError } from 'rxjs';
+import { catchError, finalize, throwError } from 'rxjs';
 
 const meter = metrics.getMeter('estate-pro.property');
 const requestCounter = meter.createCounter('property_requests_total', {
@@ -30,44 +30,62 @@ const mediaCounter = meter.createCounter('property_media_operations_total', {
   description: 'Property media operations',
 });
 
+const isPropertyPath = (path: string): boolean =>
+  path === '/property' || path.startsWith('/property/') || path.includes('/property/');
+
 const operationOf = (path: string): string => {
-  if (path.includes('/search') || path.includes('/listings')) return 'search';
+  if (path.includes('/listings/search') || path.endsWith('/listings')) return 'listing';
   if (path.includes('/publish')) return 'publish';
   if (path.includes('/media')) return 'media';
   if (path.includes('/properties')) return 'property';
   return 'property_master';
 };
 
-const statusCodeOf = (response: Response): number => response.statusCode;
+const statusCodeOfError = (error: unknown): number => {
+  if (!error || typeof error !== 'object') return 500;
+  const candidate = error as { getStatus?: unknown };
+  if (typeof candidate.getStatus !== 'function') return 500;
+  const status = candidate.getStatus();
+  return typeof status === 'number' && Number.isInteger(status) ? status : 500;
+};
+
+const statusClassOf = (status: number): string =>
+  status >= 500 ? '5xx' : status >= 400 ? '4xx' : '2xx';
 
 @Injectable()
 export class PropertyMetricsInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler) {
     const request = context.switchToHttp().getRequest<Request>();
-    const response = context.switchToHttp().getResponse<Response>();
     const path = request.route?.path ?? request.path;
+
+    if (!isPropertyPath(path)) return next.handle();
+
+    const response = context.switchToHttp().getResponse<Response>();
     const operation = operationOf(path);
     const startedAt = performance.now();
 
     return next.handle().pipe(
       catchError((error: unknown) => {
+        const status = statusCodeOfError(error);
         errorCounter.add(1, {
           operation,
           method: request.method,
-          status: error instanceof Error ? '5xx' : '4xx',
+          status_class: statusClassOf(status),
         });
         return throwError(() => error);
       }),
       finalize(() => {
         const durationMs = performance.now() - startedAt;
+        const status = statusCodeOf(response);
         const attributes = {
           operation,
           method: request.method,
-          status: String(statusCodeOf(response)),
+          status: String(status),
+          status_class: statusClassOf(status),
         };
         requestCounter.add(1, attributes);
         requestDuration.record(durationMs, attributes);
-        if (operation === 'search') searchDuration.record(durationMs, attributes);
+        if (operation === 'listing') searchDuration.record(durationMs, attributes);
         if (operation === 'publish') publishCounter.add(1, attributes);
         if (operation === 'media') mediaCounter.add(1, attributes);
       }),
