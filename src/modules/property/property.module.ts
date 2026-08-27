@@ -3,6 +3,7 @@ import { AuthorizationGuard } from '../../common/security/authorization.guard.js
 import { AuthorizationModule } from '../../common/security/authorization.module.js';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { AuditModule } from '../audit/audit.module.js';
+import { ListingModule } from './listing/listing.module.js';
 import { PROPERTY_TYPE_REPOSITORY } from './domain/repositories/property-type.repository.js';
 import { PrismaPropertyTypeRepository } from './infrastructure/persistence/prisma-property-type.repository.js';
 import { CreatePropertyTypeUseCase } from './application/use-cases/create-property-type.use-case.js';
@@ -25,45 +26,13 @@ import { PropertyExtrasService } from './application/property-extras.service.js'
 import { PropertyExtrasController } from './presentation/property-extras.controller.js';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, AuthorizationModule],
-  controllers: [
-    PropertyTypesController,
-    PropertyMasterController,
-    PropertyDetailsController,
-    PropertyExtrasController,
-  ],
-  providers: [
-    AuthorizationGuard,
-    CreatePropertyTypeUseCase,
-    DeletePropertyTypeUseCase,
-    GetPropertyTypeUseCase,
-    ListPropertyTypesUseCase,
-    UpdatePropertyTypeUseCase,
-    {
-      provide: PROPERTY_TYPE_REPOSITORY,
-      useClass: PrismaPropertyTypeRepository,
-    },
-    PropertyMasterService,
-    {
-      provide: PROPERTY_MASTER_REPOSITORY,
-      useClass: PrismaPropertyMasterStore,
-    },
-    PropertyDetailsService,
-    {
-      provide: PROPERTY_DETAILS_REPOSITORY,
-      useClass: PrismaPropertyDetailsRepository,
-    },
-    PropertyExtrasService,
-    {
-      provide: PROPERTY_EXTRAS_REPOSITORY,
-      useClass: PrismaPropertyExtrasRepository,
-    },
-  ],
-  exports: [
-    PROPERTY_TYPE_REPOSITORY,
-    PROPERTY_MASTER_REPOSITORY,
-    PROPERTY_DETAILS_REPOSITORY,
-    PROPERTY_EXTRAS_REPOSITORY,
-  ],
+  imports: [DatabaseModule, AuditModule, AuthorizationModule, ListingModule],
+  controllers: [PropertyTypesController, PropertyMasterController, PropertyDetailsController, PropertyExtrasController],
+  providers: [AuthorizationGuard, CreatePropertyTypeUseCase, DeletePropertyTypeUseCase, GetPropertyTypeUseCase, ListPropertyTypesUseCase, UpdatePropertyTypeUseCase,
+    { provide: PROPERTY_TYPE_REPOSITORY, useClass: PrismaPropertyTypeRepository }, PropertyMasterService,
+    { provide: PROPERTY_MASTER_REPOSITORY, useClass: PrismaPropertyMasterStore }, PropertyDetailsService,
+    { provide: PROPERTY_DETAILS_REPOSITORY, useClass: PrismaPropertyDetailsRepository }, PropertyExtrasService,
+    { provide: PROPERTY_EXTRAS_REPOSITORY, useClass: PrismaPropertyExtrasRepository }],
+  exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY, PROPERTY_DETAILS_REPOSITORY, PROPERTY_EXTRAS_REPOSITORY],
 })
 export class PropertyModule {}
