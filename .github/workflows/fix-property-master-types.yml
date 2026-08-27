@@ -1,0 +1,73 @@
+name: Fix Property Master Types
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Repair property master typing
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'src/modules/property/infrastructure/persistence/prisma-property-master.store.ts';
+          let s = fs.readFileSync(file, 'utf8');
+
+          s = s.replace(
+            "import { Prisma } from '../../../../prisma/generated/prisma/client.js';\n",
+            ''
+          );
+          s = s.replace(
+            "  type ActorContext,\n  type FacilityCategory,\n  type PageRequest,\n  type PropertyStatus,",
+            "  type ActorContext,\n  type AvailabilityStatus,\n  type FacilityCategory,\n  type PageRequest,\n  type PropertyStatus,"
+          );
+          s = s.replace(
+            "const availabilityStatus = (value: unknown): Prisma.AvailabilityStatus => {\n  const status = text(value, 'AVAILABLE');\n  if (status === 'AVAILABLE') return Prisma.AvailabilityStatus.AVAILABLE;\n  if (status === 'UNAVAILABLE') return Prisma.AvailabilityStatus.UNAVAILABLE;\n  throw new MasterHierarchyError('Invalid availability status');\n};",
+            "const availabilityStatus = (value: unknown): AvailabilityStatus => {\n  const status = text(value, 'AVAILABLE');\n  if (status === 'AVAILABLE' || status === 'UNAVAILABLE') return status;\n  throw new MasterHierarchyError('Invalid availability status');\n};"
+          );
+          s = s.replaceAll(
+            "Promise<\n    import('../../domain/property-master.types.js').PageResult<unknown>\n  >",
+            'Promise<PageResult<unknown>>'
+          );
+          s = s.replace(
+            "  MasterQuery,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';",
+            "  MasterQuery,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';\nimport type { PageResult } from '../../domain/property-master.types.js';"
+          );
+
+          fs.writeFileSync(file, s);
+          NODE
+      - name: Format repaired source
+        run: npx prettier --write src/modules/property/infrastructure/persistence/prisma-property-master.store.ts
+      - name: Format check
+        run: npm run format:check
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Commit repair
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/modules/property/infrastructure/persistence/prisma-property-master.store.ts
+          git add -u scripts
+          git rm -f .github/workflows/repair-property-types.yml .github/workflows/fix-property-types.yml .github/workflows/fix-property-master-types.yml || true
+          git commit -m 'fix: resolve property master prisma typing and lint errors' || exit 0
+          git push origin HEAD:main
