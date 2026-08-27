@@ -48,6 +48,15 @@ model Property {
   building PropertyBuilding?
   rooms PropertyRoom[]
   facilities PropertyFacility[]
+  utilities PropertyUtility?
+  legal PropertyLegal?
+  certificates PropertyCertificate[]
+  financial PropertyFinancial?
+  features PropertyFeatures?
+  security PropertySecurity?
+  environment PropertyEnvironment?
+  seo PropertySeo?
+  media PropertyMedia[]
   @@index([status, deletedAt, updatedAt, id])
   @@index([availabilityStatus, availableFrom, availableTo])
   @@index([propertyTypeId, propertyCategoryId, propertySubcategoryId])
