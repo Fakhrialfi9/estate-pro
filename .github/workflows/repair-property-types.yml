@@ -39,26 +39,10 @@ jobs:
             fs.writeFileSync(file, text.split(from).join(to));
           };
 
-          replaceIfPresent(
-            'src/modules/property/domain/property-extras.ts',
-            "const [w, f = ''] = this.amount.split('.')",
-            "const [w = '0', f = ''] = this.amount.split('.')",
-          );
-          replaceIfPresent(
-            'src/modules/property/domain/property-extras.ts',
-            "const [w, f = ''] = v.split('.')",
-            "const [w = '0', f = ''] = v.split('.')",
-          );
-          replaceIfPresent(
-            'src/modules/property/domain/property-extras.ts',
-            'const [a, b] = o;',
-            'const [a, b = 0] = o;',
-          );
-          replaceIfPresent(
-            'src/modules/property/listing/domain/listing.types.ts',
-            "const [whole, fraction = ''] = normalized.split('.')",
-            "const [whole = '0', fraction = ''] = normalized.split('.')",
-          );
+          replaceIfPresent('src/modules/property/domain/property-extras.ts', "const [w, f = ''] = this.amount.split('.')", "const [w = '0', f = ''] = this.amount.split('.')");
+          replaceIfPresent('src/modules/property/domain/property-extras.ts', "const [w, f = ''] = v.split('.')", "const [w = '0', f = ''] = v.split('.')");
+          replaceIfPresent('src/modules/property/domain/property-extras.ts', 'const [a, b] = o;', 'const [a, b = 0] = o;');
+          replaceIfPresent('src/modules/property/listing/domain/listing.types.ts', "const [whole, fraction = ''] = normalized.split('.')", "const [whole = '0', fraction = ''] = normalized.split('.')");
 
           replaceIfPresent(
             'src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts',
@@ -92,69 +76,22 @@ jobs:
           const store = 'src/modules/property/infrastructure/persistence/prisma-property-master.store.ts';
           replaceIfPresent(
             store,
-            `  type ActorContext,
-  type FacilityCategory,
-  type PageRequest,
-  type PropertyStatus,`,
-            `  type ActorContext,
-  type FacilityCategory,
-  type PageRequest,
-  type PageResult,
-  type PropertyStatus,`,
+            `import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';`,
+            `import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
+          import { Prisma } from '../../../../prisma/generated/prisma/client.js';`,
           );
-          replaceIfPresent(
-            store,
-            `import type {
-  MasterQuery,
-  PageResult,
-  PropertyMasterRepository,
-} from '../../domain/repositories/property-master.repository.js';`,
-            `import type {
-  MasterQuery,
-  PropertyMasterRepository,
-} from '../../domain/repositories/property-master.repository.js';`,
-          );
-          replaceIfPresent(
-            store,
-            "import { Injectable } from '@nestjs/common';\nimport { randomUUID } from 'node:crypto';",
-            "import { Injectable } from '@nestjs/common';\nimport { randomUUID } from 'node:crypto';",
-          );
-          replaceIfPresent(
-            store,
-            `const text = (value: unknown, fallback = ''): string =>
-  typeof value === 'string' ? value : fallback;`,
-            `const text = (value: unknown, fallback = ''): string =>
-  typeof value === 'string' ? value : fallback;
+          replaceIfPresent(store, `  type ActorContext,\n  type FacilityCategory,\n  type PageRequest,\n  type PropertyStatus,`, `  type ActorContext,\n  type FacilityCategory,\n  type PageRequest,\n  type PageResult,\n  type PropertyStatus,`);
+          replaceIfPresent(store, `import type {\n  MasterQuery,\n  PageResult,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';`, `import type {\n  MasterQuery,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';`);
+          replaceIfPresent(store, `const text = (value: unknown, fallback = ''): string =>\n  typeof value === 'string' ? value : fallback;`, `const text = (value: unknown, fallback = ''): string =>\n  typeof value === 'string' ? value : fallback;\n\nconst availabilityStatus = (value: unknown): Prisma.AvailabilityStatus => {\n  const status = text(value, 'AVAILABLE');\n  if (status === 'AVAILABLE') return Prisma.AvailabilityStatus.AVAILABLE;\n  if (status === 'UNAVAILABLE') return Prisma.AvailabilityStatus.UNAVAILABLE;\n  throw new MasterHierarchyError('Invalid availability status');\n};`);
+          replaceIfPresent(store, `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];`, `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');`);
+          replaceIfPresent(store, `      return this.prisma.facility.update({ where: { id: current.id }, data });`, `      const id = current.id;\n      if (typeof id !== 'number' && typeof id !== 'bigint')\n        throw new MasterNotFoundError('Facility id is invalid');\n      return this.prisma.facility.update({ where: { id }, data });`);
+          replaceIfPresent(store, `            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE'),`, `            availabilityStatus: availabilityStatus(input.availabilityStatus),`);
+          replaceIfPresent(store, `    slug: string;\n    description?: string;\n    icon?: string;\n    isActive?: boolean;\n    sortOrder?: number;`, `    slug?: string;\n    description?: string;\n    icon?: string;\n    isActive?: boolean;\n    sortOrder?: number;`);
+          replaceIfPresent(store, `    slug: string;\n    description?: string;\n    isActive?: boolean;\n    sortOrder?: number;`, `    slug?: string;\n    description?: string;\n    isActive?: boolean;\n    sortOrder?: number;`);
+          replaceIfPresent(store, `    slug: string;\n    category: FacilityCategory;\n    icon?: string;`, `    slug?: string;\n    category: FacilityCategory;\n    icon?: string;`);
 
-const availabilityStatus = (value: unknown): 'AVAILABLE' | 'UNAVAILABLE' => {
-  const status = text(value, 'AVAILABLE');
-  if (status !== 'AVAILABLE' && status !== 'UNAVAILABLE')
-    throw new MasterHierarchyError('Invalid availability status');
-  return status;
-};`,
-          );
           replaceIfPresent(
-            store,
-            `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];`,
-            `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');`,
-          );
-          replaceIfPresent(
-            store,
-            `      return this.prisma.facility.update({ where: { id: current.id }, data });`,
-            `      const id = current.id;
-      if (typeof id !== 'number' && typeof id !== 'bigint')
-        throw new MasterNotFoundError('Facility id is invalid');
-      return this.prisma.facility.update({ where: { id }, data });`,
-          );
-          replaceIfPresent(
-            store,
-            `            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE'),`,
-            `            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE') as never,`,
-          );
-
-          const listing = 'src/modules/property/listing/infrastructure/listing.repository.ts';
-          replaceIfPresent(
-            listing,
+            'src/modules/property/listing/infrastructure/listing.repository.ts',
             `        })
         .catch((error: unknown) => this.mapError(error)),
     );
