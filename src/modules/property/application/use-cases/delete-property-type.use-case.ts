@@ -32,10 +32,10 @@ export class DeletePropertyTypeUseCase {
 
     await this.repository.softDelete(uuid);
     await this.audit.record({
-      action: 'PROPERTY_DELETED',
+      action: 'PROPERTY_TYPE_DELETED',
       actorUuid: context.actorUuid,
       userUuid: context.actorUuid,
-      entityType: 'property',
+      entityType: 'property_type',
       entityUuid: propertyType.uuid,
       ipAddress: context.ipAddress,
       userAgent: context.userAgent,
