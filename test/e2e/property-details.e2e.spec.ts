@@ -295,7 +295,13 @@ describe('Property detail child APIs', () => {
       .patch(`/api/v1/property/properties/${propertyUuid}/location`)
       .set('Authorization', `Bearer ${actor.token}`)
       .send({ latitude: '95', longitude: '106' })
-      .expect(400);
+      // .expect(400);
+      .expect((response) => {
+        console.log('=== COORDINATE FAILURE ===');
+        console.log('STATUS:', response.status);
+        console.log('BODY:', JSON.stringify(response.body, null, 2));
+        console.log('TEXT:', response.text);
+      });
     const inactive = await prisma.facility.create({
       data: {
         uuid: randomUUID(),

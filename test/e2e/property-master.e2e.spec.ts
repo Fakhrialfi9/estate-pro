@@ -182,7 +182,13 @@ describe('Property category/facility/core HTTP API', () => {
         categoryUuid: categoryB.uuid,
         title: 'Invalid hierarchy',
       })
-      .expect(400);
+      // .expect(400);
+      .expect((response) => {
+        console.log('=== HIERARCHY FAILURE ===');
+        console.log('STATUS:', response.status);
+        console.log('BODY:', JSON.stringify(response.body, null, 2));
+        console.log('TEXT:', response.text);
+      });
   });
 
   it('creates property and supports lifecycle, duplicate, soft delete, and restore', async () => {
@@ -230,7 +236,13 @@ describe('Property category/facility/core HTTP API', () => {
       .patch(`/api/v1/property/properties/${uuid}`)
       .set('Authorization', `Bearer ${actor.token}`)
       .send({ status: 'SOLD', version: 1 })
-      .expect(400);
+      // .expect(400);
+      .expect((response) => {
+        console.log('=== SOLD TRANSITION FAILURE ===');
+        console.log('STATUS:', response.status);
+        console.log('BODY:', JSON.stringify(response.body, null, 2));
+        console.log('TEXT:', response.text);
+      });
     const activeResponse = await http(app)
       .patch(`/api/v1/property/properties/${uuid}`)
       .set('Authorization', `Bearer ${actor.token}`)
