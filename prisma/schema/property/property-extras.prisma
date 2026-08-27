@@ -1,18 +1,124 @@
-enum UtilityWaterSource { PDAM WELL SPRING RAINWATER TANKER OTHER UNKNOWN }
-enum UtilityGasType { LPG NATURAL_GAS PIPED_GAS NONE OTHER }
-enum UtilitySewageType { SEPTIC_TANK SEWER BIOLOGICAL_TREATMENT NONE OTHER }
-enum UtilityDrainageType { OPEN_DRAIN CLOSED_DRAIN SOAKAWAY STORMWATER NONE OTHER }
-enum UtilityDrainageCondition { EXCELLENT GOOD FAIR POOR UNKNOWN }
-enum UtilityBackupPowerType { GENERATOR BATTERY UPS SOLAR_BATTERY NONE OTHER }
-enum LegalOwnershipType { INDIVIDUAL COMPANY JOINT GOVERNMENT FOUNDATION COOPERATIVE OTHER }
-enum LegalOwnershipStatus { UNKNOWN PENDING VERIFIED DISPUTED REJECTED }
-enum LegalVerificationStatus { UNVERIFIED PENDING VERIFIED REJECTED }
-enum CertificateType { SHM HGB HGU PBG IMB SLF GIRIK AJB PPJB OTHER }
-enum CertificateStatus { UNKNOWN PENDING VALID EXPIRED REVOKED }
-enum InvestmentRating { A B C D E NOT_RATED }
-enum PropertyRobotsPolicy { INDEX_FOLLOW NOINDEX_FOLLOW INDEX_NOFOLLOW NOINDEX_NOFOLLOW }
-enum PropertyMediaType { IMAGE VIDEO FLOOR_PLAN VIRTUAL_TOUR }
-enum PropertyMediaCategory { EXTERIOR INTERIOR BEDROOM BATHROOM KITCHEN LIVING_ROOM FLOOR_PLAN LOCATION AMENITIES DOCUMENT VIRTUAL_TOUR OTHER }
+enum UtilityWaterSource {
+  PDAM
+  WELL
+  SPRING
+  RAINWATER
+  TANKER
+  OTHER
+  UNKNOWN
+}
+enum UtilityGasType {
+  LPG
+  NATURAL_GAS
+  PIPED_GAS
+  NONE
+  OTHER
+}
+enum UtilitySewageType {
+  SEPTIC_TANK
+  SEWER
+  BIOLOGICAL_TREATMENT
+  NONE
+  OTHER
+}
+enum UtilityDrainageType {
+  OPEN_DRAIN
+  CLOSED_DRAIN
+  SOAKAWAY
+  STORMWATER
+  NONE
+  OTHER
+}
+enum UtilityDrainageCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  UNKNOWN
+}
+enum UtilityBackupPowerType {
+  GENERATOR
+  BATTERY
+  UPS
+  SOLAR_BATTERY
+  NONE
+  OTHER
+}
+enum LegalOwnershipType {
+  INDIVIDUAL
+  COMPANY
+  JOINT
+  GOVERNMENT
+  FOUNDATION
+  COOPERATIVE
+  OTHER
+}
+enum LegalOwnershipStatus {
+  UNKNOWN
+  PENDING
+  VERIFIED
+  DISPUTED
+  REJECTED
+}
+enum LegalVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+enum CertificateType {
+  SHM
+  HGB
+  HGU
+  PBG
+  IMB
+  SLF
+  GIRIK
+  AJB
+  PPJB
+  OTHER
+}
+enum CertificateStatus {
+  UNKNOWN
+  PENDING
+  VALID
+  EXPIRED
+  REVOKED
+}
+enum InvestmentRating {
+  A
+  B
+  C
+  D
+  E
+  NOT_RATED
+}
+enum PropertyRobotsPolicy {
+  INDEX_FOLLOW
+  NOINDEX_FOLLOW
+  INDEX_NOFOLLOW
+  NOINDEX_NOFOLLOW
+}
+enum PropertyMediaType {
+  IMAGE
+  VIDEO
+  FLOOR_PLAN
+  VIRTUAL_TOUR
+}
+enum PropertyMediaCategory {
+  EXTERIOR
+  INTERIOR
+  BEDROOM
+  BATHROOM
+  KITCHEN
+  LIVING_ROOM
+  FLOOR_PLAN
+  LOCATION
+  AMENITIES
+  DOCUMENT
+  VIRTUAL_TOUR
+  OTHER
+}
 
 model PropertyUtility {
   id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
@@ -103,8 +209,8 @@ model PropertyFinancial {
   investmentRating InvestmentRating @default(NOT_RATED) @map("investment_rating")
   createdBy String? @map("created_by") @db.Char(36)
   updatedBy String? @map("updated_by") @db.Char(36)
-  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   @@index([currency, investmentRating])
   @@map("property_financials")
