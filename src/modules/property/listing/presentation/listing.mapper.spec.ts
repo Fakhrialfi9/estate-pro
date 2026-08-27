@@ -34,7 +34,7 @@ describe('listing read model mapper', () => {
           price: {
             uuid: 'price-uuid',
             currency: 'IDR',
-            minPrice: { toString: () => '1000000.00' },
+            minPrice: { toFixed: () => '1000000.00' },
             maxPrice: null,
             pricePerSqm: null,
           },
@@ -87,7 +87,7 @@ describe('listing read model mapper', () => {
           verifiedAt: new Date(),
           price: {
             currency: 'IDR',
-            minPrice: { toString: () => '1.00' },
+            minPrice: { toFixed: () => '1.00' },
             maxPrice: null,
             pricePerSqm: null,
           },
