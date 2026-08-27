@@ -13,6 +13,7 @@ import {
   type AuthorizationRequirement,
 } from './authorization.decorators.js';
 import { AuthorizationService } from './authorization.service.js';
+import { PropertyAccessGuard } from './property-access.guard.js';
 
 type AuthorizationRequest = Request & {
   user?: {
@@ -26,6 +27,7 @@ export class AuthorizationGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly authorization: AuthorizationService,
+    private readonly propertyAccess: PropertyAccessGuard,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -69,6 +71,8 @@ export class AuthorizationGuard implements CanActivate {
         sub: snapshot.userUuid,
         permissions: [...snapshot.permissionCodes],
       };
+
+      await this.propertyAccess.canActivate(context);
       return true;
     } catch (error: unknown) {
       if (error instanceof UnauthorizedException) throw error;
