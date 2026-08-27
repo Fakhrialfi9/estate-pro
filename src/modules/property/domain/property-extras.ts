@@ -255,7 +255,7 @@ export class Money {
   }
   toMinorUnits() {
     const [w = '0', f = ''] = this.amount.split('.');
-    return BigInt(w) * 100n + BigInt(f.padEnd(2, '0'));
+    return BigInt(w || '0') * 100n + BigInt(f.padEnd(2, '0') || '0');
   }
   round(scale = 2) {
     if (!Number.isInteger(scale) || scale < 0 || scale > 2)
@@ -263,7 +263,7 @@ export class Money {
     const [w = '0', f = ''] = this.amount.split('.');
     if (f.length <= scale) return new Money(this.amount, this.currency);
     let u =
-      BigInt(w) * 10n ** BigInt(scale) +
+      BigInt(w || '0') * 10n ** BigInt(scale) +
       BigInt((f.slice(0, scale) || '').padEnd(scale, '0') || '0');
     if ((f[scale] ?? '0') >= '5') u++;
     const d = 10n ** BigInt(scale),
@@ -466,7 +466,7 @@ export const maskSensitive = (v: string, n = 4) => {
 const normalizeDecimal = (v: string) => {
   const [w = '0', f = ''] = v.split('.'),
     x = f.replace(/0+$/, '');
-  return x ? `${BigInt(w)}.${x}` : BigInt(w).toString();
+  return x ? `${BigInt(w || '0')}.${x}` : BigInt(w || '0').toString();
 };
 const nonNeg = (v: string | null | undefined, f: string, i = 16) => {
   if (v == null) return;
