@@ -95,11 +95,10 @@ describe('listing read model mapper', () => {
         },
       },
     ]);
-    expect(output[0]).toEqual(
-      expect.objectContaining({
-        uuid: 'p',
-        listing: expect.objectContaining({ verified: true, views: '4' }),
-      }),
-    );
+    expect(output[0]).toMatchObject({ uuid: 'p' });
+    expect(output[0]?.listing).toMatchObject({
+      verified: true,
+      views: '4',
+    });
   });
 });
