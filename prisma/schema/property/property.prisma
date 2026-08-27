@@ -1,5 +1,16 @@
-enum PropertyStatus { DRAFT IN_REVIEW ACTIVE ARCHIVED SOLD RENTED }
-enum AvailabilityStatus { AVAILABLE UNAVAILABLE }
+enum PropertyStatus {
+  DRAFT
+  IN_REVIEW
+  ACTIVE
+  ARCHIVED
+  SOLD
+  RENTED
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  UNAVAILABLE
+}
 
 model Property {
   id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
@@ -40,6 +51,7 @@ model Property {
   @@index([deletedAt])
   @@map("properties")
 }
+
 model PropertyFacility {
   propertyId BigInt @map("property_id") @db.UnsignedBigInt
   facilityId BigInt @map("facility_id") @db.UnsignedBigInt
