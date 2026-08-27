@@ -14,56 +14,29 @@ const permissions = [
   'property-types.update',
   'property-types.delete',
 ] as const;
-const http = (app: INestApplication) => request(app.getHttpServer());
+type SuperTestRequestTarget = Parameters<typeof request>[0];
+const http = (app: INestApplication) =>
+  request(app.getHttpServer() as unknown as SuperTestRequestTarget);
 
 async function makeActor(prisma: PrismaService, grant: boolean) {
   const user = await prisma.authenticationUser.create({
     data: {
-      uuid: randomUUID(),
-      email: `${randomUUID()}@example.com`,
-      status: 'active',
-      isActive: true,
+      uuid: randomUUID(), email: `${randomUUID()}@example.com`, status: 'active', isActive: true,
     },
   });
   const sessionId = randomUUID();
   await prisma.authenticationUserSession.create({
-    data: {
-      userId: user.id,
-      sessionId,
-      expiresAt: new Date(Date.now() + 3600000),
-    },
+    data: { userId: user.id, sessionId, expiresAt: new Date(Date.now() + 3600000) },
   });
   if (grant) {
-    const rows = await Promise.all(
-      permissions.map((code) =>
-        prisma.authorizationPermission.upsert({
-          where: { code },
-          update: {},
-          create: {
-            uuid: randomUUID(),
-            name: code,
-            code,
-            module: 'property',
-            domain: 'property-types',
-            action: code.split('.')[1] ?? 'manage',
-          },
-        }),
-      ),
-    );
+    const rows = await Promise.all(permissions.map((code) => prisma.authorizationPermission.upsert({
+      where: { code }, update: {}, create: { uuid: randomUUID(), name: code, code, module: 'property', domain: 'property-types', action: code.split('.')[1] ?? 'manage' },
+    })));
     const role = await prisma.authorizationRole.create({
-      data: {
-        uuid: randomUUID(),
-        name: 'E2E Property Type Manager',
-        code: `e2e-${randomUUID()}`,
-        isActive: true,
-      },
+      data: { uuid: randomUUID(), name: 'E2E Property Type Manager', code: `e2e-${randomUUID()}`, isActive: true },
     });
-    await prisma.authorizationRolePermission.createMany({
-      data: rows.map((row) => ({ roleId: role.id, permissionId: row.id })),
-    });
-    await prisma.authorizationUserRole.create({
-      data: { userId: user.id, roleId: role.id, assignedBy: user.id },
-    });
+    await prisma.authorizationRolePermission.createMany({ data: rows.map((row) => ({ roleId: role.id, permissionId: row.id })) });
+    await prisma.authorizationUserRole.create({ data: { userId: user.id, roleId: role.id, assignedBy: user.id } });
   }
   return { uuid: user.uuid, sessionId };
 }
@@ -74,120 +47,52 @@ describe('Property Types HTTP API', () => {
   let jwt: JwtService;
   let admin: { uuid: string; sessionId: string };
   let denied: { uuid: string; sessionId: string };
-
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     configureApplication(app as Parameters<typeof configureApplication>[0]);
     await app.init();
     prisma = app.get(PrismaService);
     jwt = app.get(JwtService);
   });
-
   beforeEach(async () => {
-    await prisma.auditLogChange.deleteMany();
-    await prisma.auditLog.deleteMany();
-    await prisma.authorizationUserRole.deleteMany();
-    await prisma.authorizationRolePermission.deleteMany();
-    await prisma.authorizationRole.deleteMany();
-    await prisma.authorizationPermission.deleteMany();
-    await prisma.authenticationUserSession.deleteMany();
-    await prisma.authenticationUser.deleteMany();
+    await prisma.auditLogChange.deleteMany(); await prisma.auditLog.deleteMany();
+    await prisma.authorizationUserRole.deleteMany(); await prisma.authorizationRolePermission.deleteMany();
+    await prisma.authorizationRole.deleteMany(); await prisma.authorizationPermission.deleteMany();
+    await prisma.authenticationUserSession.deleteMany(); await prisma.authenticationUser.deleteMany();
     await prisma.propertyType.deleteMany();
-    admin = await makeActor(prisma, true);
-    denied = await makeActor(prisma, false);
+    admin = await makeActor(prisma, true); denied = await makeActor(prisma, false);
   });
-
   afterAll(async () => app.close());
   const auth = (actor: { uuid: string; sessionId: string }) =>
     `Bearer ${jwt.sign({ sub: actor.uuid, sid: actor.sessionId })}`;
-  const payload = {
-    code: 'HOUSE',
-    name: 'House',
-    slug: 'house',
-    description: 'Residential',
-    icon: 'house',
-    isActive: true,
-    sortOrder: 10,
-  };
-
+  const payload = { code: 'HOUSE', name: 'House', slug: 'house', description: 'Residential', icon: 'house', isActive: true, sortOrder: 10 };
   it('rejects anonymous and forbidden access', async () => {
     await http(app).get('/api/v1/property-types').expect(401);
-    await http(app)
-      .get('/api/v1/property-types')
-      .set('Authorization', auth(denied))
-      .expect(403);
+    await http(app).get('/api/v1/property-types').set('Authorization', auth(denied)).expect(403);
   });
-
   it('rejects validation errors and duplicate identifiers', async () => {
-    const bad = await http(app)
-      .post('/api/v1/property-types')
-      .set('Authorization', auth(admin))
-      .send({ ...payload, unknown: true });
+    const bad = await http(app).post('/api/v1/property-types').set('Authorization', auth(admin)).send({ ...payload, unknown: true });
     expect(bad.status).toBe(400);
-    await http(app)
-      .post('/api/v1/property-types')
-      .set('Authorization', auth(admin))
-      .send(payload)
-      .expect(201);
-    await http(app)
-      .post('/api/v1/property-types')
-      .set('Authorization', auth(admin))
-      .send(payload)
-      .expect(409);
+    await http(app).post('/api/v1/property-types').set('Authorization', auth(admin)).send(payload).expect(201);
+    await http(app).post('/api/v1/property-types').set('Authorization', auth(admin)).send(payload).expect(409);
   });
-
   it('supports create, get, list, update and soft-delete', async () => {
-    const created = await http(app)
-      .post('/api/v1/property-types')
-      .set('Authorization', auth(admin))
-      .send(payload)
-      .expect(201);
+    const created = await http(app).post('/api/v1/property-types').set('Authorization', auth(admin)).send(payload).expect(201);
     const uuid = created.body.uuid as string;
     expect(created.body).toMatchObject({ code: 'HOUSE', slug: 'house' });
-    await http(app)
-      .get(`/api/v1/property-types/${uuid}`)
-      .set('Authorization', auth(admin))
-      .expect(200);
-    const list = await http(app)
-      .get('/api/v1/property-types')
-      .query({ sortBy: 'sortOrder', sortDirection: 'asc' })
-      .set('Authorization', auth(admin))
-      .expect(200);
+    await http(app).get(`/api/v1/property-types/${uuid}`).set('Authorization', auth(admin)).expect(200);
+    const list = await http(app).get('/api/v1/property-types').query({ sortBy: 'sortOrder', sortDirection: 'asc' }).set('Authorization', auth(admin)).expect(200);
     expect(list.body.meta.total).toBe(1);
-    const updated = await http(app)
-      .patch(`/api/v1/property-types/${uuid}`)
-      .set('Authorization', auth(admin))
-      .send({ name: 'Town House', sortOrder: 20 })
-      .expect(200);
+    const updated = await http(app).patch(`/api/v1/property-types/${uuid}`).set('Authorization', auth(admin)).send({ name: 'Town House', sortOrder: 20 }).expect(200);
     expect(updated.body.name).toBe('Town House');
-    await http(app)
-      .delete(`/api/v1/property-types/${uuid}`)
-      .set('Authorization', auth(admin))
-      .expect(204);
-    await http(app)
-      .get(`/api/v1/property-types/${uuid}`)
-      .set('Authorization', auth(admin))
-      .expect(404);
-    const afterDelete = await http(app)
-      .get('/api/v1/property-types')
-      .set('Authorization', auth(admin))
-      .expect(200);
+    await http(app).delete(`/api/v1/property-types/${uuid}`).set('Authorization', auth(admin)).expect(204);
+    await http(app).get(`/api/v1/property-types/${uuid}`).set('Authorization', auth(admin)).expect(404);
+    const afterDelete = await http(app).get('/api/v1/property-types').set('Authorization', auth(admin)).expect(200);
     expect(afterDelete.body.meta.total).toBe(0);
   });
-
   it('rejects invalid boolean filter and update by forbidden actor', async () => {
-    await http(app)
-      .get('/api/v1/property-types')
-      .query({ filterField: 'isActive', filterValue: 'maybe' })
-      .set('Authorization', auth(admin))
-      .expect(400);
-    await http(app)
-      .patch(`/api/v1/property-types/${randomUUID()}`)
-      .set('Authorization', auth(denied))
-      .send({ name: 'Blocked' })
-      .expect(403);
+    await http(app).get('/api/v1/property-types').query({ filterField: 'isActive', filterValue: 'maybe' }).set('Authorization', auth(admin)).expect(400);
+    await http(app).patch(`/api/v1/property-types/${randomUUID()}`).set('Authorization', auth(denied)).send({ name: 'Blocked' }).expect(403);
   });
 });
