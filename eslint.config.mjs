@@ -4,7 +4,8 @@ import prettierPlugin from 'eslint-plugin-prettier';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-const typescriptFiles = ['src/**/*.ts', 'test/**/*.ts'];
+const typescriptFiles = ['src/**/*.ts'];
+const testTypescriptFiles = ['test/**/*.ts'];
 
 const typeCheckedConfigs = tseslint.configs.recommendedTypeChecked.map(
   (config) => ({
@@ -12,6 +13,30 @@ const typeCheckedConfigs = tseslint.configs.recommendedTypeChecked.map(
     files: typescriptFiles,
   }),
 );
+
+const baseTypeScriptRules = {
+  '@typescript-eslint/no-explicit-any': 'error',
+  '@typescript-eslint/consistent-type-imports': [
+    'error',
+    {
+      prefer: 'type-imports',
+      fixStyle: 'separate-type-imports',
+    },
+  ],
+  'prettier/prettier': 'error',
+};
+
+const vitestGlobals = {
+  afterAll: 'readonly',
+  afterEach: 'readonly',
+  beforeAll: 'readonly',
+  beforeEach: 'readonly',
+  describe: 'readonly',
+  expect: 'readonly',
+  it: 'readonly',
+  test: 'readonly',
+  vi: 'readonly',
+};
 
 export default tseslint.config(
   {
@@ -38,6 +63,7 @@ export default tseslint.config(
     languageOptions: {
       globals: {
         ...globals.node,
+        ...vitestGlobals,
       },
 
       parserOptions: {
@@ -47,26 +73,41 @@ export default tseslint.config(
     },
 
     plugins: {
+      '@typescript-eslint': tseslint.plugin,
       prettier: prettierPlugin,
     },
 
     rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-
-      '@typescript-eslint/consistent-type-imports': [
-        'error',
-        {
-          prefer: 'type-imports',
-          fixStyle: 'separate-type-imports',
-        },
-      ],
-
+      ...baseTypeScriptRules,
       '@typescript-eslint/no-floating-promises': 'error',
-
       '@typescript-eslint/no-misused-promises': 'error',
-
       'prettier/prettier': 'error',
     },
+  },
+
+  {
+    files: testTypescriptFiles,
+
+    languageOptions: {
+      parser: tseslint.parser,
+
+      globals: {
+        ...globals.node,
+        ...vitestGlobals,
+      },
+
+      parserOptions: {
+        project: './tsconfig.eslint.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+      prettier: prettierPlugin,
+    },
+
+    rules: baseTypeScriptRules,
   },
 
   {

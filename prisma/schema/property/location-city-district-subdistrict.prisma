@@ -1,0 +1,63 @@
+model City {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  provinceId BigInt @map("province_id") @db.UnsignedBigInt
+  code String @db.VarChar(30)
+  name String @db.VarChar(150)
+  slug String @db.VarChar(160)
+  isActive Boolean @default(true) @map("is_active")
+  sortOrder Int @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  province Province @relation(fields: [provinceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  districts District[]
+  propertyLocations PropertyLocation[]
+  @@unique([provinceId, code])
+  @@unique([provinceId, slug])
+  @@index([provinceId])
+  @@index([isActive, deletedAt, sortOrder])
+  @@map("cities")
+}
+model District {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  cityId BigInt @map("city_id") @db.UnsignedBigInt
+  code String @db.VarChar(30)
+  name String @db.VarChar(150)
+  slug String @db.VarChar(160)
+  isActive Boolean @default(true) @map("is_active")
+  sortOrder Int @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  city City @relation(fields: [cityId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  subdistricts Subdistrict[]
+  propertyLocations PropertyLocation[]
+  @@unique([cityId, code])
+  @@unique([cityId, slug])
+  @@index([cityId])
+  @@index([isActive, deletedAt, sortOrder])
+  @@map("districts")
+}
+model Subdistrict {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  districtId BigInt @map("district_id") @db.UnsignedBigInt
+  code String @db.VarChar(30)
+  name String @db.VarChar(150)
+  slug String @db.VarChar(160)
+  isActive Boolean @default(true) @map("is_active")
+  sortOrder Int @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  district District @relation(fields: [districtId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  properties Property[]
+  propertyLocations PropertyLocation[]
+  @@unique([districtId, code])
+  @@unique([districtId, slug])
+  @@index([districtId])
+  @@index([isActive, deletedAt, sortOrder])
+  @@map("subdistricts")
+}

@@ -6,6 +6,6 @@
     "noEmit": true,
     "rootDir": "."
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"],
-  "exclude": ["node_modules", "dist", "coverage", "prisma/generated"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "prisma/generated/**/*.ts"],
+  "exclude": ["node_modules", "dist", "coverage"]
 }

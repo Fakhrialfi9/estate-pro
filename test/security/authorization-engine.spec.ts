@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthorizationGuard } from '../../src/common/security/authorization.guard.js';
+import type { PropertyAccessGuard } from '../../src/common/security/property-access.guard.js';
 import {
   AUTHORIZATION_PERMISSIONS_METADATA,
   RequirePermissions,
@@ -126,13 +127,19 @@ describe('AuthorizationGuard', () => {
   const resolve = vi.fn();
   const assertPermissions = vi.fn();
   const assertRoles = vi.fn();
+  const canActivate = vi.fn().mockResolvedValue(true);
+  const propertyAccess = { canActivate } as unknown as PropertyAccessGuard;
   const authorization = {
     resolve,
     assertPermissions,
     assertRoles,
   } as unknown as AuthorizationService;
   const reflector = new Reflector();
-  const guard = new AuthorizationGuard(reflector, authorization);
+  const guard = new AuthorizationGuard(
+    reflector,
+    authorization,
+    propertyAccess,
+  );
 
   const request = (user?: { sub?: string; permissions?: string[] }) => ({
     user,
@@ -156,6 +163,7 @@ describe('AuthorizationGuard', () => {
     await expect(guard.canActivate(context(request(), handler))).resolves.toBe(
       true,
     );
+    expect(canActivate).not.toHaveBeenCalled();
   });
 
   it('returns 401 when protected route has no authenticated identity', async () => {
@@ -170,7 +178,7 @@ describe('AuthorizationGuard', () => {
     ).rejects.toThrow(UnauthorizedException);
   });
 
-  it('resolves authoritative permissions and ignores spoofed request permissions', async () => {
+  it('resolves authoritative permissions and enforces object authorization', async () => {
     const handler = {};
     Reflect.defineMetadata(
       AUTHORIZATION_PERMISSIONS_METADATA,
@@ -184,6 +192,7 @@ describe('AuthorizationGuard', () => {
     });
     await expect(guard.canActivate(context(req, handler))).resolves.toBe(true);
     expect(req.user?.permissions).toEqual(['users:read']);
+    expect(canActivate).toHaveBeenCalledOnce();
   });
 
   it('ignores spoofed userId from request input because identity comes from principal', async () => {

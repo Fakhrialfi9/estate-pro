@@ -1,10 +1,21 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Length, Matches, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class UpdatePropertyTypeDto {
   @IsOptional()
   @IsString()
   @Length(1, 50)
-  @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]*$/, { message: 'code must contain only letters, numbers, underscores, or hyphens' })
+  @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]*$/, {
+    message: 'code must contain only letters, numbers, underscores, or hyphens',
+  })
   code?: string;
 
   @IsOptional()
@@ -15,7 +26,9 @@ export class UpdatePropertyTypeDto {
   @IsOptional()
   @IsString()
   @Length(1, 100)
-  @Matches(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/, { message: 'slug must be a valid slug' })
+  @Matches(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/, {
+    message: 'slug must be a valid slug',
+  })
   slug?: string;
 
   @IsOptional()

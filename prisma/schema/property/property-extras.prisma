@@ -1,0 +1,320 @@
+enum UtilityWaterSource {
+  PDAM
+  WELL
+  SPRING
+  RAINWATER
+  TANKER
+  OTHER
+  UNKNOWN
+}
+enum UtilityGasType {
+  LPG
+  NATURAL_GAS
+  PIPED_GAS
+  NONE
+  OTHER
+}
+enum UtilitySewageType {
+  SEPTIC_TANK
+  SEWER
+  BIOLOGICAL_TREATMENT
+  NONE
+  OTHER
+}
+enum UtilityDrainageType {
+  OPEN_DRAIN
+  CLOSED_DRAIN
+  SOAKAWAY
+  STORMWATER
+  NONE
+  OTHER
+}
+enum UtilityDrainageCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  UNKNOWN
+}
+enum UtilityBackupPowerType {
+  GENERATOR
+  BATTERY
+  UPS
+  SOLAR_BATTERY
+  NONE
+  OTHER
+}
+enum LegalOwnershipType {
+  INDIVIDUAL
+  COMPANY
+  JOINT
+  GOVERNMENT
+  FOUNDATION
+  COOPERATIVE
+  OTHER
+}
+enum LegalOwnershipStatus {
+  UNKNOWN
+  PENDING
+  VERIFIED
+  DISPUTED
+  REJECTED
+}
+enum LegalVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+enum CertificateType {
+  SHM
+  HGB
+  HGU
+  PBG
+  IMB
+  SLF
+  GIRIK
+  AJB
+  PPJB
+  OTHER
+}
+enum CertificateStatus {
+  UNKNOWN
+  PENDING
+  VALID
+  EXPIRED
+  REVOKED
+}
+enum InvestmentRating {
+  A
+  B
+  C
+  D
+  E
+  NOT_RATED
+}
+enum PropertyRobotsPolicy {
+  INDEX_FOLLOW
+  NOINDEX_FOLLOW
+  INDEX_NOFOLLOW
+  NOINDEX_NOFOLLOW
+}
+enum PropertyMediaType {
+  IMAGE
+  VIDEO
+  FLOOR_PLAN
+  VIRTUAL_TOUR
+}
+enum PropertyMediaCategory {
+  EXTERIOR
+  INTERIOR
+  BEDROOM
+  BATHROOM
+  KITCHEN
+  LIVING_ROOM
+  FLOOR_PLAN
+  LOCATION
+  AMENITIES
+  DOCUMENT
+  VIRTUAL_TOUR
+  OTHER
+}
+
+model PropertyUtility {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  propertyId BigInt @unique @map("property_id") @db.UnsignedBigInt
+  electricityProvider String? @map("electricity_provider") @db.VarChar(120)
+  electricityCapacityKva Decimal? @map("electricity_capacity_kva") @db.Decimal(10, 2)
+  electricityMeterNumberMasked String? @map("electricity_meter_number_masked") @db.VarChar(32)
+  waterSource UtilityWaterSource @default(UNKNOWN) @map("water_source")
+  waterBackupSource UtilityWaterSource? @map("water_backup_source")
+  gasType UtilityGasType @default(NONE) @map("gas_type")
+  internetFiber Boolean @default(false) @map("internet_fiber")
+  internetProviders Json? @map("internet_providers")
+  sewageType UtilitySewageType @default(NONE) @map("sewage_type")
+  drainageType UtilityDrainageType @default(NONE) @map("drainage_type")
+  drainageCondition UtilityDrainageCondition @default(UNKNOWN) @map("drainage_condition")
+  backupPowerType UtilityBackupPowerType @default(NONE) @map("backup_power_type")
+  backupPowerCapacityKva Decimal? @map("backup_power_capacity_kva") @db.Decimal(10, 2)
+  createdBy String? @map("created_by") @db.Char(36)
+  updatedBy String? @map("updated_by") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  @@map("property_utilities")
+}
+model PropertyLegal {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  propertyId BigInt @unique @map("property_id") @db.UnsignedBigInt
+  ownershipType LegalOwnershipType @default(OTHER) @map("ownership_type")
+  ownershipStatus LegalOwnershipStatus @default(UNKNOWN) @map("ownership_status")
+  ownerReferenceHash String? @map("owner_reference_hash") @db.Char(64)
+  ownerReferenceMasked String? @map("owner_reference_masked") @db.VarChar(128)
+  verificationStatus LegalVerificationStatus @default(UNVERIFIED) @map("verification_status")
+  verifiedAt DateTime? @map("verified_at")
+  verifiedBy String? @map("verified_by") @db.Char(36)
+  verificationSource String? @map("verification_source") @db.VarChar(120)
+  zoningZone String? @map("zoning_zone") @db.VarChar(120)
+  allowedUse String? @map("allowed_use") @db.VarChar(500)
+  buildingCoverageRatio Decimal? @map("building_coverage_ratio") @db.Decimal(8, 4)
+  floorAreaRatio Decimal? @map("floor_area_ratio") @db.Decimal(8, 4)
+  disputes Json?
+  encumbrances Json?
+  createdBy String? @map("created_by") @db.Char(36)
+  updatedBy String? @map("updated_by") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  @@index([verificationStatus, ownershipStatus])
+  @@map("property_legal")
+}
+model PropertyCertificate {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  propertyId BigInt @map("property_id") @db.UnsignedBigInt
+  type CertificateType
+  numberHash String @map("number_hash") @db.Char(64)
+  numberMasked String @map("number_masked") @db.VarChar(100)
+  status CertificateStatus @default(UNKNOWN)
+  issueDate DateTime? @map("issue_date") @db.Date
+  expiryDate DateTime? @map("expiry_date") @db.Date
+  issuer String? @db.VarChar(200)
+  createdBy String? @map("created_by") @db.Char(36)
+  updatedBy String? @map("updated_by") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  @@unique([propertyId, numberHash])
+  @@index([propertyId, type, deletedAt])
+  @@index([status, expiryDate])
+  @@map("property_certificates")
+}
+model PropertyFinancial {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  propertyId BigInt @unique @map("property_id") @db.UnsignedBigInt
+  askingPrice Decimal? @map("asking_price") @db.Decimal(24, 2)
+  currency String @default("IDR") @db.Char(3)
+  negotiable Boolean @default(false)
+  annualPropertyTax Decimal? @map("annual_property_tax") @db.Decimal(24, 2)
+  monthlyMaintenance Decimal? @map("monthly_maintenance") @db.Decimal(24, 2)
+  monthlyUtilityCost Decimal? @map("monthly_utility_cost") @db.Decimal(24, 2)
+  monthlyServiceCharges Decimal? @map("monthly_service_charges") @db.Decimal(24, 2)
+  rentalYield Decimal? @map("rental_yield") @db.Decimal(8, 4)
+  annualRentalIncome Decimal? @map("annual_rental_income") @db.Decimal(24, 2)
+  capitalGrowth Decimal? @map("capital_growth") @db.Decimal(8, 4)
+  investmentRating InvestmentRating @default(NOT_RATED) @map("investment_rating")
+  createdBy String? @map("created_by") @db.Char(36)
+  updatedBy String? @map("updated_by") @db.Char(36)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  @@index([currency, investmentRating])
+  @@map("property_financials")
+}
+model PropertyFeatures {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  propertyId BigInt @unique @map("property_id") @db.UnsignedBigInt
+  petFriendly Boolean @default(false) @map("pet_friendly")
+  childFriendly Boolean @default(false) @map("child_friendly")
+  wheelchairAccessible Boolean @default(false) @map("wheelchair_accessible")
+  elderlyFriendly Boolean @default(false) @map("elderly_friendly")
+  smokingAllowed Boolean @default(false) @map("smoking_allowed")
+  eventsAllowed Boolean @default(false) @map("events_allowed")
+  rentalAllowed Boolean @default(true) @map("rental_allowed")
+  createdBy String? @map("created_by") @db.Char(36)
+  updatedBy String? @map("updated_by") @db.Char(36)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  @@map("property_features")
+}
+model PropertySecurity {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  propertyId BigInt @unique @map("property_id") @db.UnsignedBigInt
+  securityGuard Boolean @default(false) @map("security_guard")
+  cctv Boolean @default(false)
+  accessControl Boolean @default(false) @map("access_control")
+  gatedCommunity Boolean @default(false) @map("gated_community")
+  smartLock Boolean @default(false) @map("smart_lock")
+  alarmSystem Boolean @default(false) @map("alarm_system")
+  createdBy String? @map("created_by") @db.Char(36)
+  updatedBy String? @map("updated_by") @db.Char(36)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  @@map("property_security")
+}
+model PropertyEnvironment {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  propertyId BigInt @unique @map("property_id") @db.UnsignedBigInt
+  greenBuilding Boolean @default(false) @map("green_building")
+  solarPower Boolean @default(false) @map("solar_power")
+  rainwaterHarvesting Boolean @default(false) @map("rainwater_harvesting")
+  waterSaving Boolean @default(false) @map("water_saving")
+  greenCertification String? @map("green_certification") @db.VarChar(200)
+  createdBy String? @map("created_by") @db.Char(36)
+  updatedBy String? @map("updated_by") @db.Char(36)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  @@map("property_environment")
+}
+model PropertySeo {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  propertyId BigInt @unique @map("property_id") @db.UnsignedBigInt
+  title String? @db.VarChar(60)
+  description String? @db.VarChar(160)
+  keywords Json?
+  canonicalUrl String? @map("canonical_url") @db.VarChar(1000)
+  ogImageUrl String? @map("og_image_url") @db.VarChar(1000)
+  robots PropertyRobotsPolicy @default(INDEX_FOLLOW)
+  metadataVersion String @default("1.0") @map("metadata_version") @db.VarChar(20)
+  schemaType String? @map("schema_type") @db.VarChar(80)
+  source String? @db.VarChar(120)
+  tags Json?
+  customFields Json? @map("custom_fields")
+  createdBy String? @map("created_by") @db.Char(36)
+  updatedBy String? @map("updated_by") @db.Char(36)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  @@map("property_seo")
+}
+model PropertyMedia {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  propertyId BigInt @map("property_id") @db.UnsignedBigInt
+  type PropertyMediaType
+  category PropertyMediaCategory @default(OTHER)
+  url String @db.VarChar(2048)
+  thumbnailUrl String? @map("thumbnail_url") @db.VarChar(2048)
+  mimeType String @map("mime_type") @db.VarChar(120)
+  extension String? @db.VarChar(10)
+  fileSizeBytes Int? @map("file_size_bytes") @db.UnsignedInt
+  widthPx Int? @map("width_px") @db.UnsignedInt
+  heightPx Int? @map("height_px") @db.UnsignedInt
+  durationMs Int? @map("duration_ms") @db.UnsignedInt
+  sortOrder Int @default(0) @map("sort_order")
+  isCover Boolean @default(false) @map("is_cover")
+  metadata Json?
+  provider String? @db.VarChar(80)
+  storageKey String? @map("storage_key") @db.VarChar(500)
+  createdBy String? @map("created_by") @db.Char(36)
+  updatedBy String? @map("updated_by") @db.Char(36)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime? @map("deleted_at")
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  @@index([propertyId, deletedAt, sortOrder, id])
+  @@index([propertyId, type, deletedAt])
+  @@index([propertyId, isCover, deletedAt])
+  @@map("property_media")
+}

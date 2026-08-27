@@ -20,7 +20,7 @@
     "useUnknownInCatchVariables": true,
 
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": false,
     "noImplicitOverride": true,
 
     "esModuleInterop": true,

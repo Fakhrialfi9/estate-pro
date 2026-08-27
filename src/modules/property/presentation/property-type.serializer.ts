@@ -13,7 +13,9 @@ export interface PropertyTypeResponse {
   updatedAt: string;
 }
 
-export const serializePropertyType = (propertyType: PropertyTypeEntity): PropertyTypeResponse => ({
+export const serializePropertyType = (
+  propertyType: PropertyTypeEntity,
+): PropertyTypeResponse => ({
   uuid: propertyType.uuid,
   code: propertyType.code,
   name: propertyType.name,
@@ -26,7 +28,12 @@ export const serializePropertyType = (propertyType: PropertyTypeEntity): Propert
   updatedAt: propertyType.updatedAt.toISOString(),
 });
 
-export const serializePropertyTypeList = (items: PropertyTypeEntity[], total: number, page: number, limit: number) => ({
+export const serializePropertyTypeList = (
+  items: PropertyTypeEntity[],
+  total: number,
+  page: number,
+  limit: number,
+) => ({
   items: items.map(serializePropertyType),
   meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
 });

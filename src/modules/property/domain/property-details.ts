@@ -99,26 +99,9 @@ export const VENTILATION_TYPES = [
 ] as const;
 export type VentilationType = (typeof VENTILATION_TYPES)[number];
 
-export class PropertyDetailNotFoundError extends Error {
-  constructor(message = 'Property detail not found') {
-    super(message);
-    this.name = PropertyDetailNotFoundError.name;
-  }
-}
-
-export class PropertyDetailConflictError extends Error {
-  constructor(message = 'Property detail conflict') {
-    super(message);
-    this.name = PropertyDetailConflictError.name;
-  }
-}
-
-export class PropertyDetailInvalidStateError extends Error {
-  constructor(message = 'Invalid property detail') {
-    super(message);
-    this.name = PropertyDetailInvalidStateError.name;
-  }
-}
+export class PropertyDetailNotFoundError extends Error {}
+export class PropertyDetailConflictError extends Error {}
+export class PropertyDetailInvalidStateError extends Error {}
 
 const numberValue = (
   value: string | number | null | undefined,
@@ -311,7 +294,7 @@ export const assertPoolInvariants = (input: {
   if (input.hasPool)
     dimensions.forEach((value, index) =>
       assertPositive(
-        ['poolLengthM', 'poolWidthM', 'poolDepthM'][index] ?? 'poolDimension',
+        ['poolLengthM', 'poolWidthM', 'poolDepthM'][index] as string,
         value as string | number,
       ),
     );
