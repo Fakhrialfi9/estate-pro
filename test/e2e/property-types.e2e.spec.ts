@@ -99,6 +99,7 @@ describe('Property Types HTTP API', () => {
     await prisma.authorizationPermission.deleteMany();
     await prisma.authenticationUserSession.deleteMany();
     await prisma.authenticationUser.deleteMany();
+    await prisma.property.deleteMany();
     await prisma.propertySubcategory.deleteMany();
     await prisma.propertyCategory.deleteMany();
     await prisma.propertyType.deleteMany();
