@@ -114,10 +114,16 @@ export class PropertyDetailsService {
     const result = await this.run(() =>
       this.repository.createRoom(propertyUuid, input, actor),
     );
-    await this.record('property.room.create', 'property_room', propertyUuid, actor, {
-      roomType: input.roomType,
-      floor: input.floor,
-    });
+    await this.record(
+      'property.room.create',
+      'property_room',
+      propertyUuid,
+      actor,
+      {
+        roomType: input.roomType,
+        floor: input.floor,
+      },
+    );
     return result;
   }
 
@@ -130,7 +136,13 @@ export class PropertyDetailsService {
     const result = await this.run(() =>
       this.repository.updateRoom(propertyUuid, roomUuid, patch, actor),
     );
-    await this.record('property.room.update', 'property_room', roomUuid, actor, patch);
+    await this.record(
+      'property.room.update',
+      'property_room',
+      roomUuid,
+      actor,
+      patch,
+    );
     return result;
   }
 
@@ -139,7 +151,9 @@ export class PropertyDetailsService {
     roomUuid: string,
     actor: PropertyDetailsActor,
   ): Promise<void> {
-    await this.run(() => this.repository.deleteRoom(propertyUuid, roomUuid, actor));
+    await this.run(() =>
+      this.repository.deleteRoom(propertyUuid, roomUuid, actor),
+    );
     await this.record('property.room.delete', 'property_room', roomUuid, actor);
   }
 
@@ -153,9 +167,15 @@ export class PropertyDetailsService {
     const result = await this.run(() =>
       this.repository.reorderRooms(propertyUuid, roomUuids, actor),
     );
-    await this.record('property.rooms.reorder', 'property', propertyUuid, actor, {
-      count: roomUuids.length,
-    });
+    await this.record(
+      'property.rooms.reorder',
+      'property',
+      propertyUuid,
+      actor,
+      {
+        count: roomUuids.length,
+      },
+    );
     return result;
   }
 
@@ -171,9 +191,15 @@ export class PropertyDetailsService {
     const result = await this.run(() =>
       this.repository.attachFacility(propertyUuid, input, actor),
     );
-    await this.record('property.facility.attach', 'property_facility', propertyUuid, actor, {
-      facilityUuid: input.facilityUuid,
-    });
+    await this.record(
+      'property.facility.attach',
+      'property_facility',
+      propertyUuid,
+      actor,
+      {
+        facilityUuid: input.facilityUuid,
+      },
+    );
     return result;
   }
 
@@ -184,12 +210,23 @@ export class PropertyDetailsService {
     actor: PropertyDetailsActor,
   ): Promise<unknown> {
     const result = await this.run(() =>
-      this.repository.updateFacilityAssignment(propertyUuid, facilityUuid, patch, actor),
+      this.repository.updateFacilityAssignment(
+        propertyUuid,
+        facilityUuid,
+        patch,
+        actor,
+      ),
     );
-    await this.record('property.facility.update', 'property_facility', propertyUuid, actor, {
-      facilityUuid,
-      ...patch,
-    });
+    await this.record(
+      'property.facility.update',
+      'property_facility',
+      propertyUuid,
+      actor,
+      {
+        facilityUuid,
+        ...patch,
+      },
+    );
     return result;
   }
 
@@ -198,10 +235,18 @@ export class PropertyDetailsService {
     facilityUuid: string,
     actor: PropertyDetailsActor,
   ): Promise<void> {
-    await this.run(() => this.repository.detachFacility(propertyUuid, facilityUuid, actor));
-    await this.record('property.facility.detach', 'property_facility', propertyUuid, actor, {
-      facilityUuid,
-    });
+    await this.run(() =>
+      this.repository.detachFacility(propertyUuid, facilityUuid, actor),
+    );
+    await this.record(
+      'property.facility.detach',
+      'property_facility',
+      propertyUuid,
+      actor,
+      {
+        facilityUuid,
+      },
+    );
   }
 
   async bulkAttachFacilities(
@@ -210,7 +255,9 @@ export class PropertyDetailsService {
     actor: PropertyDetailsActor,
   ): Promise<unknown[]> {
     if (new Set(facilityUuids).size !== facilityUuids.length)
-      throw new BadRequestException('facilityUuids must not contain duplicates');
+      throw new BadRequestException(
+        'facilityUuids must not contain duplicates',
+      );
     const result = await this.run(() =>
       this.repository.bulkAttachFacilities(
         propertyUuid,
@@ -218,9 +265,15 @@ export class PropertyDetailsService {
         actor,
       ),
     );
-    await this.record('property.facility.bulk_attach', 'property', propertyUuid, actor, {
-      count: facilityUuids.length,
-    });
+    await this.record(
+      'property.facility.bulk_attach',
+      'property',
+      propertyUuid,
+      actor,
+      {
+        count: facilityUuids.length,
+      },
+    );
     return result;
   }
 
