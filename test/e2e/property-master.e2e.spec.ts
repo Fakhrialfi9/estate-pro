@@ -10,14 +10,25 @@ import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.s
 import { JwtService } from '@nestjs/jwt';
 
 const PERMISSIONS = [
-  'property-categories.create','property-categories.read','property-categories.update','property-categories.delete',
-  'property-subcategories.create','property-subcategories.read','property-subcategories.update','property-subcategories.delete',
-  'properties.create','properties.read','properties.update','properties.delete',
+  'property-categories.create',
+  'property-categories.read',
+  'property-categories.update',
+  'property-categories.delete',
+  'property-subcategories.create',
+  'property-subcategories.read',
+  'property-subcategories.update',
+  'property-subcategories.delete',
+  'properties.create',
+  'properties.read',
+  'properties.update',
+  'properties.delete',
 ] as const;
 const http = (app: INestApplication) =>
   request(app.getHttpServer() as unknown as Parameters<typeof request>[0]);
 const bodyAs = <T>(response: Response): T => response.body as unknown as T;
-type Created = { data: { uuid: string; status?: string; propertyCategory?: { uuid: string } } };
+type Created = {
+  data: { uuid: string; status?: string; propertyCategory?: { uuid: string } };
+};
 let app: INestApplication;
 let prisma: PrismaService;
 let jwt: JwtService;
@@ -25,16 +36,61 @@ let actor: { uuid: string; token: string };
 let denied: { uuid: string; token: string };
 
 async function makeActor(grant: boolean) {
-  const user = await prisma.authenticationUser.create({ data: { uuid: randomUUID(), email: `${randomUUID()}@e2e.test`, status: 'active', isActive: true } });
+  const user = await prisma.authenticationUser.create({
+    data: {
+      uuid: randomUUID(),
+      email: `${randomUUID()}@e2e.test`,
+      status: 'active',
+      isActive: true,
+    },
+  });
   const sessionId = randomUUID();
-  await prisma.authenticationUserSession.create({ data: { userId: user.id, sessionId, expiresAt: new Date(Date.now() + 3600000) } });
+  await prisma.authenticationUserSession.create({
+    data: {
+      userId: user.id,
+      sessionId,
+      expiresAt: new Date(Date.now() + 3600000),
+    },
+  });
   if (grant) {
-    const permissions = await Promise.all(PERMISSIONS.map((code) => prisma.authorizationPermission.upsert({ where: { code }, update: {}, create: { uuid: randomUUID(), name: code, code, module: 'property', domain: code.split('.')[0], action: code.split('.')[1] ?? 'manage' } })));
-    const role = await prisma.authorizationRole.create({ data: { uuid: randomUUID(), name: `E2E ${randomUUID()}`, code: `e2e-${randomUUID()}`, isActive: true } });
-    await prisma.authorizationRolePermission.createMany({ data: permissions.map((permission) => ({ roleId: role.id, permissionId: permission.id })) });
-    await prisma.authorizationUserRole.create({ data: { userId: user.id, roleId: role.id, assignedBy: user.id } });
+    const permissions = await Promise.all(
+      PERMISSIONS.map((code) =>
+        prisma.authorizationPermission.upsert({
+          where: { code },
+          update: {},
+          create: {
+            uuid: randomUUID(),
+            name: code,
+            code,
+            module: 'property',
+            domain: code.split('.')[0],
+            action: code.split('.')[1] ?? 'manage',
+          },
+        }),
+      ),
+    );
+    const role = await prisma.authorizationRole.create({
+      data: {
+        uuid: randomUUID(),
+        name: `E2E ${randomUUID()}`,
+        code: `e2e-${randomUUID()}`,
+        isActive: true,
+      },
+    });
+    await prisma.authorizationRolePermission.createMany({
+      data: permissions.map((permission) => ({
+        roleId: role.id,
+        permissionId: permission.id,
+      })),
+    });
+    await prisma.authorizationUserRole.create({
+      data: { userId: user.id, roleId: role.id, assignedBy: user.id },
+    });
   }
-  return { uuid: user.uuid, token: jwt.sign({ sub: user.uuid, sid: sessionId }) };
+  return {
+    uuid: user.uuid,
+    token: jwt.sign({ sub: user.uuid, sid: sessionId }),
+  };
 }
 
 async function cleanup() {
@@ -53,47 +109,154 @@ async function cleanup() {
 
 describe('Property category/facility/core HTTP API', () => {
   beforeAll(async () => {
-    const ref = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const ref = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = ref.createNestApplication();
-    configureApplication(app as unknown as Parameters<typeof configureApplication>[0]);
+    configureApplication(
+      app as unknown as Parameters<typeof configureApplication>[0],
+    );
     await app.init();
     prisma = app.get(PrismaService);
     jwt = app.get(JwtService);
   });
-  beforeEach(async () => { await cleanup(); actor = await makeActor(true); denied = await makeActor(false); });
+  beforeEach(async () => {
+    await cleanup();
+    actor = await makeActor(true);
+    denied = await makeActor(false);
+  });
   afterAll(async () => app.close());
 
   it('denies anonymous and unauthorized actors', async () => {
     await http(app).get('/api/v1/property/categories').expect(401);
-    await http(app).get('/api/v1/property/categories').set('Authorization', `Bearer ${denied.token}`).expect(403);
+    await http(app)
+      .get('/api/v1/property/categories')
+      .set('Authorization', `Bearer ${denied.token}`)
+      .expect(403);
   });
 
   it('enforces type -> category hierarchy for property creation', async () => {
-    const typeA = await prisma.propertyType.create({ data: { uuid: randomUUID(), code: `TYPE-${randomUUID().slice(0, 8)}`, name: 'House', slug: `house-${randomUUID()}` } });
-    const typeB = await prisma.propertyType.create({ data: { uuid: randomUUID(), code: `TYPE-${randomUUID().slice(0, 8)}`, name: 'Commercial', slug: `commercial-${randomUUID()}` } });
-    const categoryB = await prisma.propertyCategory.create({ data: { uuid: randomUUID(), propertyTypeId: typeB.id, code: `OFF-${randomUUID().slice(0, 6)}`, name: 'Office', slug: `office-${randomUUID()}` } });
-    const created = await http(app).post('/api/v1/property/categories').set('Authorization', `Bearer ${actor.token}`).send({ typeUuid: typeA.uuid, code: 'RES', name: 'Residential', slug: 'residential' }).expect(201);
+    const typeA = await prisma.propertyType.create({
+      data: {
+        uuid: randomUUID(),
+        code: `TYPE-${randomUUID().slice(0, 8)}`,
+        name: 'House',
+        slug: `house-${randomUUID()}`,
+      },
+    });
+    const typeB = await prisma.propertyType.create({
+      data: {
+        uuid: randomUUID(),
+        code: `TYPE-${randomUUID().slice(0, 8)}`,
+        name: 'Commercial',
+        slug: `commercial-${randomUUID()}`,
+      },
+    });
+    const categoryB = await prisma.propertyCategory.create({
+      data: {
+        uuid: randomUUID(),
+        propertyTypeId: typeB.id,
+        code: `OFF-${randomUUID().slice(0, 6)}`,
+        name: 'Office',
+        slug: `office-${randomUUID()}`,
+      },
+    });
+    const created = await http(app)
+      .post('/api/v1/property/categories')
+      .set('Authorization', `Bearer ${actor.token}`)
+      .send({
+        typeUuid: typeA.uuid,
+        code: 'RES',
+        name: 'Residential',
+        slug: 'residential',
+      })
+      .expect(201);
     const category = bodyAs<Created>(created).data;
     expect(category.uuid).toBeTruthy();
-    await http(app).post('/api/v1/property/properties').set('Authorization', `Bearer ${actor.token}`).send({ typeUuid: typeA.uuid, categoryUuid: categoryB.uuid, title: 'Invalid hierarchy' }).expect(400);
+    await http(app)
+      .post('/api/v1/property/properties')
+      .set('Authorization', `Bearer ${actor.token}`)
+      .send({
+        typeUuid: typeA.uuid,
+        categoryUuid: categoryB.uuid,
+        title: 'Invalid hierarchy',
+      })
+      .expect(400);
   });
 
   it('creates property and supports lifecycle, duplicate, soft delete, and restore', async () => {
-    const type = await prisma.propertyType.create({ data: { uuid: randomUUID(), code: `TYPE-${randomUUID().slice(0, 8)}`, name: 'House', slug: `house-${randomUUID()}` } });
-    const category = await prisma.propertyCategory.create({ data: { uuid: randomUUID(), propertyTypeId: type.id, code: `RES-${randomUUID().slice(0, 6)}`, name: 'Residential', slug: `res-${randomUUID()}` } });
-    const sub = await prisma.propertySubcategory.create({ data: { uuid: randomUUID(), propertyCategoryId: category.id, code: `VIL-${randomUUID().slice(0, 6)}`, name: 'Villa', slug: `vil-${randomUUID()}` } });
-    const createdResponse = await http(app).post('/api/v1/property/properties').set('Authorization', `Bearer ${actor.token}`).send({ typeUuid: type.uuid, categoryUuid: category.uuid, subcategoryUuid: sub.uuid, title: 'Ocean Villa', slug: 'ocean-villa', status: 'DRAFT' }).expect(201);
+    const type = await prisma.propertyType.create({
+      data: {
+        uuid: randomUUID(),
+        code: `TYPE-${randomUUID().slice(0, 8)}`,
+        name: 'House',
+        slug: `house-${randomUUID()}`,
+      },
+    });
+    const category = await prisma.propertyCategory.create({
+      data: {
+        uuid: randomUUID(),
+        propertyTypeId: type.id,
+        code: `RES-${randomUUID().slice(0, 6)}`,
+        name: 'Residential',
+        slug: `res-${randomUUID()}`,
+      },
+    });
+    const sub = await prisma.propertySubcategory.create({
+      data: {
+        uuid: randomUUID(),
+        propertyCategoryId: category.id,
+        code: `VIL-${randomUUID().slice(0, 6)}`,
+        name: 'Villa',
+        slug: `vil-${randomUUID()}`,
+      },
+    });
+    const createdResponse = await http(app)
+      .post('/api/v1/property/properties')
+      .set('Authorization', `Bearer ${actor.token}`)
+      .send({
+        typeUuid: type.uuid,
+        categoryUuid: category.uuid,
+        subcategoryUuid: sub.uuid,
+        title: 'Ocean Villa',
+        slug: 'ocean-villa',
+        status: 'DRAFT',
+      })
+      .expect(201);
     const created = bodyAs<Created>(createdResponse).data;
     const uuid = created.uuid;
-    await http(app).patch(`/api/v1/property/properties/${uuid}`).set('Authorization', `Bearer ${actor.token}`).send({ status: 'SOLD', version: 1 }).expect(400);
-    const activeResponse = await http(app).patch(`/api/v1/property/properties/${uuid}`).set('Authorization', `Bearer ${actor.token}`).send({ status: 'IN_REVIEW', version: 1 }).expect(200);
+    await http(app)
+      .patch(`/api/v1/property/properties/${uuid}`)
+      .set('Authorization', `Bearer ${actor.token}`)
+      .send({ status: 'SOLD', version: 1 })
+      .expect(400);
+    const activeResponse = await http(app)
+      .patch(`/api/v1/property/properties/${uuid}`)
+      .set('Authorization', `Bearer ${actor.token}`)
+      .send({ status: 'IN_REVIEW', version: 1 })
+      .expect(200);
     const active = bodyAs<Created>(activeResponse).data;
     expect(active.status).toBe('IN_REVIEW');
-    const duplicateResponse = await http(app).post(`/api/v1/property/properties/${uuid}/duplicate`).set('Authorization', `Bearer ${actor.token}`).expect(201);
+    const duplicateResponse = await http(app)
+      .post(`/api/v1/property/properties/${uuid}/duplicate`)
+      .set('Authorization', `Bearer ${actor.token}`)
+      .expect(201);
     expect(bodyAs<Created>(duplicateResponse).data.uuid).not.toBe(uuid);
-    await http(app).delete(`/api/v1/property/properties/${uuid}`).set('Authorization', `Bearer ${actor.token}`).expect(204);
-    await http(app).get(`/api/v1/property/properties/${uuid}`).set('Authorization', `Bearer ${actor.token}`).expect(404);
-    await http(app).post(`/api/v1/property/properties/${uuid}/restore`).set('Authorization', `Bearer ${actor.token}`).expect(201);
-    await http(app).get(`/api/v1/property/properties/${uuid}`).set('Authorization', `Bearer ${actor.token}`).expect(200);
+    await http(app)
+      .delete(`/api/v1/property/properties/${uuid}`)
+      .set('Authorization', `Bearer ${actor.token}`)
+      .expect(204);
+    await http(app)
+      .get(`/api/v1/property/properties/${uuid}`)
+      .set('Authorization', `Bearer ${actor.token}`)
+      .expect(404);
+    await http(app)
+      .post(`/api/v1/property/properties/${uuid}/restore`)
+      .set('Authorization', `Bearer ${actor.token}`)
+      .expect(201);
+    await http(app)
+      .get(`/api/v1/property/properties/${uuid}`)
+      .set('Authorization', `Bearer ${actor.token}`)
+      .expect(200);
   });
 });
