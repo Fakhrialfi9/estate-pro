@@ -25,8 +25,7 @@ const decimalValue = (value: unknown): string | null => {
   )
     return String(value);
 
-  if (typeof value === 'object' && isDecimalLike(value))
-    return value.toFixed();
+  if (typeof value === 'object' && isDecimalLike(value)) return value.toFixed();
 
   return null;
 };
