@@ -69,7 +69,7 @@ const statusCodeOfError = (error: unknown): number => {
   const candidate = error as StatusError;
   const getStatus = candidate.getStatus;
   if (!getStatus) return 500;
-  const status = getStatus();
+  const status = getStatus.call(candidate);
   return typeof status === 'number' && Number.isInteger(status) ? status : 500;
 };
 
