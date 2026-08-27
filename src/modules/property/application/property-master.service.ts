@@ -5,6 +5,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AUDIT_ACTIONS } from '../../../common/audit/audit-events.js';
+import { SECURITY_AUDIT_REPOSITORY } from '../../../common/audit/security-audit.port.js';
+import type {
+  SecurityAuditChange,
+  SecurityAuditRepository,
+} from '../../../common/audit/security-audit.port.js';
 import {
   assertAvailability,
   assertTransition,
@@ -35,12 +41,55 @@ const toDate = (value: unknown): Date | null => {
 const toStatus = (value: unknown, fallback: PropertyStatus): PropertyStatus =>
   typeof value === 'string' ? (value as PropertyStatus) : fallback;
 
+const auditScalar = (
+  value: unknown,
+): string | boolean | number | null | undefined => {
+  if (value === null || value === undefined) return value ?? null;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'bigint') return value.toString();
+  if (
+    typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    (typeof value === 'number' && Number.isFinite(value))
+  )
+    return value;
+  return undefined;
+};
+
+const diff = (
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): readonly SecurityAuditChange[] => {
+  const fields = [
+    'businessCode',
+    'referenceNumber',
+    'title',
+    'slug',
+    'shortDescription',
+    'status',
+    'availabilityStatus',
+    'availableFrom',
+    'availableTo',
+    'version',
+  ] as const;
+  return fields.flatMap((field) => {
+    const oldValue = auditScalar(before[field]);
+    const newValue = auditScalar(after[field]);
+    if (oldValue === undefined || newValue === undefined || oldValue === newValue)
+      return [];
+    return [{ field, oldValue, newValue }];
+  });
+};
+
 @Injectable()
 export class PropertyMasterService {
   constructor(
     @Inject(PROPERTY_MASTER_REPOSITORY)
     private readonly repository: PropertyMasterRepository,
+    @Inject(SECURITY_AUDIT_REPOSITORY)
+    private readonly audit: SecurityAuditRepository,
   ) {}
+
   createCategory(
     input: {
       typeUuid: string;
@@ -181,10 +230,18 @@ export class PropertyMasterService {
   deleteFacility(uuid: string, actor: ActorContext) {
     return this.run(() => this.repository.deleteFacility(uuid, actor));
   }
+
   async createProperty(input: Record<string, unknown>, actor: ActorContext) {
     assertAvailability(toDate(input.availableFrom), toDate(input.availableTo));
-    return this.run(() => this.repository.createProperty(input, actor));
+    const result = await this.run(() => this.repository.createProperty(input, actor));
+    const record = result as Record<string, unknown>;
+    await this.recordAudit(AUDIT_ACTIONS.PROPERTY_CREATED, record.uuid, actor, [
+      { field: 'title', oldValue: null, newValue: auditScalar(record.title) ?? null },
+      { field: 'status', oldValue: null, newValue: auditScalar(record.status) ?? null },
+    ]);
+    return result;
   }
+
   getProperty(uuid: string) {
     return this.run(() => this.repository.getProperty(uuid));
   }
@@ -199,6 +256,7 @@ export class PropertyMasterService {
   ) {
     return this.repository.listProperties(query);
   }
+
   async updateProperty(
     uuid: string,
     version: number,
@@ -219,19 +277,68 @@ export class PropertyMasterService {
         ? toDate(patch.availableTo)
         : toDate(currentRecord.availableTo);
     assertAvailability(from, to);
-    return this.run(() =>
+    const result = await this.run(() =>
       this.repository.updateProperty(uuid, version, patch, actor),
     );
+    const updatedRecord = result as Record<string, unknown>;
+    await this.recordAudit(
+      AUDIT_ACTIONS.PROPERTY_UPDATED,
+      uuid,
+      actor,
+      diff(currentRecord, updatedRecord),
+    );
+    if (currentStatus !== nextStatus) {
+      const action =
+        nextStatus === 'ACTIVE'
+          ? AUDIT_ACTIONS.PROPERTY_PUBLISHED
+          : nextStatus === 'ARCHIVED'
+            ? AUDIT_ACTIONS.PROPERTY_ARCHIVED
+            : undefined;
+      if (action) await this.recordAudit(action, uuid, actor);
+      if (nextStatus === 'ACTIVE' && currentStatus === 'IN_REVIEW')
+        await this.recordAudit(AUDIT_ACTIONS.PROPERTY_VERIFIED, uuid, actor);
+    }
+    return result;
   }
-  deleteProperty(uuid: string, actor: ActorContext) {
-    return this.run(() => this.repository.deleteProperty(uuid, actor));
+
+  async deleteProperty(uuid: string, actor: ActorContext) {
+    await this.run(() => this.repository.deleteProperty(uuid, actor));
+    await this.recordAudit(AUDIT_ACTIONS.PROPERTY_DELETED, uuid, actor);
   }
-  restoreProperty(uuid: string, actor: ActorContext) {
-    return this.run(() => this.repository.restoreProperty(uuid, actor));
+  async restoreProperty(uuid: string, actor: ActorContext) {
+    const result = await this.run(() => this.repository.restoreProperty(uuid, actor));
+    await this.recordAudit(AUDIT_ACTIONS.PROPERTY_RESTORED, uuid, actor);
+    return result;
   }
-  duplicateProperty(uuid: string, actor: ActorContext) {
-    return this.run(() => this.repository.duplicateProperty(uuid, actor));
+  async duplicateProperty(uuid: string, actor: ActorContext) {
+    const result = await this.run(() => this.repository.duplicateProperty(uuid, actor));
+    const record = result as Record<string, unknown>;
+    await this.recordAudit(AUDIT_ACTIONS.PROPERTY_DUPLICATED, record.uuid ?? uuid, actor);
+    return result;
   }
+
+  private async recordAudit(
+    action: string,
+    entityUuid: unknown,
+    actor: ActorContext,
+    changes?: readonly SecurityAuditChange[],
+  ): Promise<void> {
+    if (typeof entityUuid !== 'string' || !entityUuid) return;
+    await this.audit.record({
+      action,
+      actorUuid: actor.actorUuid,
+      subjectUuid: actor.actorUuid,
+      actorType: actor.actorUuid ? 'AUTHENTICATED' : 'SYSTEM',
+      entityType: 'property',
+      entityUuid,
+      ipAddress: actor.ipAddress,
+      userAgent: actor.userAgent,
+      requestId: actor.requestId,
+      result: 'SUCCESS',
+      changes,
+    });
+  }
+
   private async run<T>(fn: () => Promise<T>): Promise<T> {
     try {
       return await fn();
