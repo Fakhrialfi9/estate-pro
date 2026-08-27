@@ -22,7 +22,11 @@ import { PropertyDetailsController } from './presentation/property-details.contr
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule],
-  controllers: [PropertyTypesController, PropertyMasterController, PropertyDetailsController],
+  controllers: [
+    PropertyTypesController,
+    PropertyMasterController,
+    PropertyDetailsController,
+  ],
   providers: [
     AuthorizationGuard,
     CreatePropertyTypeUseCase,
@@ -45,6 +49,10 @@ import { PropertyDetailsController } from './presentation/property-details.contr
       useClass: PrismaPropertyDetailsRepository,
     },
   ],
-  exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY, PROPERTY_DETAILS_REPOSITORY],
+  exports: [
+    PROPERTY_TYPE_REPOSITORY,
+    PROPERTY_MASTER_REPOSITORY,
+    PROPERTY_DETAILS_REPOSITORY,
+  ],
 })
 export class PropertyModule {}

@@ -99,7 +99,9 @@ export type RoomCreateInput = {
   hasAirConditioning?: boolean;
   sortOrder?: number;
 };
-export type RoomUpdateInput = Partial<Omit<RoomCreateInput, 'roomType'>> & { roomType?: RoomType };
+export type RoomUpdateInput = Partial<Omit<RoomCreateInput, 'roomType'>> & {
+  roomType?: RoomType;
+};
 
 export type FacilityAssignmentInput = {
   facilityUuid: string;
@@ -110,21 +112,69 @@ export type FacilityAssignmentInput = {
 
 export type PropertyDetailsRepository = {
   getSpecifications(propertyUuid: string): Promise<unknown>;
-  upsertSpecifications(propertyUuid: string, patch: SpecificationPatch, actor: PropertyDetailsActor): Promise<unknown>;
+  upsertSpecifications(
+    propertyUuid: string,
+    patch: SpecificationPatch,
+    actor: PropertyDetailsActor,
+  ): Promise<unknown>;
   getLocation(propertyUuid: string): Promise<unknown>;
-  updateLocation(propertyUuid: string, patch: LocationPatch, actor: PropertyDetailsActor): Promise<unknown>;
+  updateLocation(
+    propertyUuid: string,
+    patch: LocationPatch,
+    actor: PropertyDetailsActor,
+  ): Promise<unknown>;
   getBuilding(propertyUuid: string): Promise<unknown>;
-  updateBuilding(propertyUuid: string, patch: BuildingPatch, actor: PropertyDetailsActor): Promise<unknown>;
+  updateBuilding(
+    propertyUuid: string,
+    patch: BuildingPatch,
+    actor: PropertyDetailsActor,
+  ): Promise<unknown>;
   listRooms(propertyUuid: string): Promise<unknown[]>;
-  createRoom(propertyUuid: string, input: RoomCreateInput, actor: PropertyDetailsActor): Promise<unknown>;
-  updateRoom(propertyUuid: string, roomUuid: string, patch: RoomUpdateInput, actor: PropertyDetailsActor): Promise<unknown>;
-  deleteRoom(propertyUuid: string, roomUuid: string, actor: PropertyDetailsActor): Promise<void>;
-  reorderRooms(propertyUuid: string, roomUuids: string[], actor: PropertyDetailsActor): Promise<unknown[]>;
+  createRoom(
+    propertyUuid: string,
+    input: RoomCreateInput,
+    actor: PropertyDetailsActor,
+  ): Promise<unknown>;
+  updateRoom(
+    propertyUuid: string,
+    roomUuid: string,
+    patch: RoomUpdateInput,
+    actor: PropertyDetailsActor,
+  ): Promise<unknown>;
+  deleteRoom(
+    propertyUuid: string,
+    roomUuid: string,
+    actor: PropertyDetailsActor,
+  ): Promise<void>;
+  reorderRooms(
+    propertyUuid: string,
+    roomUuids: string[],
+    actor: PropertyDetailsActor,
+  ): Promise<unknown[]>;
   listPropertyFacilities(propertyUuid: string): Promise<unknown[]>;
-  attachFacility(propertyUuid: string, input: FacilityAssignmentInput, actor: PropertyDetailsActor): Promise<unknown>;
-  updateFacilityAssignment(propertyUuid: string, facilityUuid: string, patch: Omit<FacilityAssignmentInput, 'facilityUuid'>, actor: PropertyDetailsActor): Promise<unknown>;
-  detachFacility(propertyUuid: string, facilityUuid: string, actor: PropertyDetailsActor): Promise<void>;
-  bulkAttachFacilities(propertyUuid: string, inputs: FacilityAssignmentInput[], actor: PropertyDetailsActor): Promise<unknown[]>;
+  attachFacility(
+    propertyUuid: string,
+    input: FacilityAssignmentInput,
+    actor: PropertyDetailsActor,
+  ): Promise<unknown>;
+  updateFacilityAssignment(
+    propertyUuid: string,
+    facilityUuid: string,
+    patch: Omit<FacilityAssignmentInput, 'facilityUuid'>,
+    actor: PropertyDetailsActor,
+  ): Promise<unknown>;
+  detachFacility(
+    propertyUuid: string,
+    facilityUuid: string,
+    actor: PropertyDetailsActor,
+  ): Promise<void>;
+  bulkAttachFacilities(
+    propertyUuid: string,
+    inputs: FacilityAssignmentInput[],
+    actor: PropertyDetailsActor,
+  ): Promise<unknown[]>;
 };
 
-export const PROPERTY_DETAILS_REPOSITORY = Symbol('PROPERTY_DETAILS_REPOSITORY');
+export const PROPERTY_DETAILS_REPOSITORY = Symbol(
+  'PROPERTY_DETAILS_REPOSITORY',
+);
