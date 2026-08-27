@@ -24,7 +24,7 @@ const hasGlobalPropertyAccess = (
 };
 
 const requestPathOf = (request: PropertyAccessRequest): string =>
-  request.path ?? request.route?.path ?? request.originalUrl ?? request.url ?? '';
+  request.route?.path ?? request.originalUrl ?? request.url ?? '';
 
 @Injectable()
 export class PropertyAccessGuard implements CanActivate {
@@ -55,7 +55,6 @@ export class PropertyAccessGuard implements CanActivate {
           where: {
             uuid: pathUuid as string,
             property: {
-              deletedAt: null,
               OR: [
                 { createdBy: principalUuid },
                 {
@@ -77,7 +76,6 @@ export class PropertyAccessGuard implements CanActivate {
       : await this.prisma.property.findFirst({
           where: {
             uuid: propertyUuid,
-            deletedAt: null,
             OR: [
               { createdBy: principalUuid },
               {
