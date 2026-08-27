@@ -29,6 +29,7 @@ import {
   LocationDto,
   LocationUpdateDto,
   PropertyDto,
+  PropertyLifecycleDto,
   PropertyUpdateDto,
   SubcategoryDto,
 } from './property-master.dto.js';
@@ -79,7 +80,7 @@ const listResponse = (r: {
   page: number;
   limit: number;
 }) => ({
-  items: sanitize(r.items),
+  data: sanitize(r.items),
   meta: {
     page: r.page,
     limit: r.limit,
@@ -199,10 +200,9 @@ export class PropertyMasterController {
       .createLocation(levelOf(level), d, actor(r, ua, rid))
       .then(response);
   }
-  @Get('locations/:level') @RequirePermissions('locations.read') listLocation(
-    @Param('level') level: string,
-    @Query() q: ListQuery,
-  ) {
+  @Get('locations/:level')
+  @RequirePermissions('locations.read')
+  listLocation(@Param('level') level: string, @Query() q: ListQuery) {
     return this.service.listLocations(levelOf(level), q).then(listResponse);
   }
   @Get('locations/:level/:uuid')
@@ -247,7 +247,9 @@ export class PropertyMasterController {
   ) {
     return this.service.children(levelOf(level), uuid).then(response);
   }
-  @Post('facilities') @RequirePermissions('facilities.create') createFacility(
+  @Post('facilities')
+  @RequirePermissions('facilities.create')
+  createFacility(
     @Req() r: AuthenticatedRequest,
     @Body() d: FacilityDto,
     @Headers('user-agent') ua?: string,
@@ -255,14 +257,14 @@ export class PropertyMasterController {
   ) {
     return this.service.createFacility(d, actor(r, ua, rid)).then(response);
   }
-  @Get('facilities') @RequirePermissions('facilities.read') listFacility(
-    @Query() q: ListQuery,
-  ) {
+  @Get('facilities')
+  @RequirePermissions('facilities.read')
+  listFacility(@Query() q: ListQuery) {
     return this.service.listFacilities(q).then(listResponse);
   }
-  @Get('facilities/:uuid') @RequirePermissions('facilities.read') getFacility(
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-  ) {
+  @Get('facilities/:uuid')
+  @RequirePermissions('facilities.read')
+  getFacility(@Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string) {
     return this.service.getFacility(uuid).then(response);
   }
   @Patch('facilities/:uuid')
@@ -289,7 +291,9 @@ export class PropertyMasterController {
   ) {
     await this.service.deleteFacility(uuid, actor(r, ua, rid));
   }
-  @Post('properties') @RequirePermissions('properties.create') createProperty(
+  @Post('properties')
+  @RequirePermissions('properties.create')
+  createProperty(
     @Req() r: AuthenticatedRequest,
     @Body() d: PropertyDto,
     @Headers('user-agent') ua?: string,
@@ -297,14 +301,14 @@ export class PropertyMasterController {
   ) {
     return this.service.createProperty(d, actor(r, ua, rid)).then(response);
   }
-  @Get('properties') @RequirePermissions('properties.read') listProperty(
-    @Query() q: ListQuery,
-  ) {
+  @Get('properties')
+  @RequirePermissions('properties.read')
+  listProperty(@Query() q: ListQuery) {
     return this.service.listProperties(q).then(listResponse);
   }
-  @Get('properties/:uuid') @RequirePermissions('properties.read') getProperty(
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-  ) {
+  @Get('properties/:uuid')
+  @RequirePermissions('properties.read')
+  getProperty(@Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string) {
     return this.service.getProperty(uuid).then(response);
   }
   @Patch('properties/:uuid')
@@ -318,6 +322,34 @@ export class PropertyMasterController {
   ) {
     return this.service
       .updateProperty(uuid, d.version, d, actor(r, ua, rid))
+      .then(response);
+  }
+  @Post('properties/:uuid/verify')
+  @RequirePermissions('properties.verify')
+  @ApiOperation({ summary: 'Verify a property in review' })
+  verifyProperty(
+    @Req() r: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Body() d: PropertyLifecycleDto,
+    @Headers('user-agent') ua?: string,
+    @Headers('x-request-id') rid?: string,
+  ) {
+    return this.service
+      .verifyProperty(uuid, d.version, actor(r, ua, rid))
+      .then(response);
+  }
+  @Post('properties/:uuid/publish')
+  @RequirePermissions('properties.publish')
+  @ApiOperation({ summary: 'Publish a verified property' })
+  publishProperty(
+    @Req() r: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Body() d: PropertyLifecycleDto,
+    @Headers('user-agent') ua?: string,
+    @Headers('x-request-id') rid?: string,
+  ) {
+    return this.service
+      .publishProperty(uuid, d.version, actor(r, ua, rid))
       .then(response);
   }
   @Delete('properties/:uuid')
