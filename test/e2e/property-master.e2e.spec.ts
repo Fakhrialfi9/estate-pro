@@ -95,8 +95,8 @@ async function makeActor(grant: boolean) {
 
 async function cleanup() {
   await prisma.propertyFacility.deleteMany();
-  await prisma.propertySubcategory.deleteMany();
   await prisma.property.deleteMany();
+  await prisma.propertySubcategory.deleteMany();
   await prisma.propertyCategory.deleteMany();
   await prisma.propertyType.deleteMany();
   await prisma.authorizationUserRole.deleteMany();
