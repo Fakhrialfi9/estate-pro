@@ -27,4 +27,4 @@ jobs:
             src/modules/property/application/property-extras.service.ts \
             src/modules/property/application/property-lifecycle.service.ts \
             src/modules/property/application/property-master.service.ts \
-            test/unit/property/property-lifecycle.service.ts
+            test/unit/property/property-lifecycle.service.spec.ts

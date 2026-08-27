@@ -7,10 +7,7 @@ import {
 } from '@nestjs/common';
 import { AUDIT_ACTIONS } from '../../../common/audit/audit-events.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../common/audit/security-audit.port.js';
-import type {
-  SecurityAuditChange,
-  SecurityAuditRepository,
-} from '../../../common/audit/security-audit.port.js';
+import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';
 import {
   assertAvailability,
   assertTransition,
@@ -315,10 +312,9 @@ export class PropertyMasterService {
   }
 
   async verifyProperty(uuid: string, version: number, actor: ActorContext) {
-    const current = (await this.run(() => this.repository.getProperty(uuid))) as Record<
-      string,
-      unknown
-    >;
+    const current = (await this.run(() =>
+      this.repository.getProperty(uuid),
+    )) as Record<string, unknown>;
     if (toStatus(current.status, 'DRAFT') !== 'IN_REVIEW') {
       throw new BadRequestException(
         'Only properties in IN_REVIEW can be verified',
@@ -342,10 +338,9 @@ export class PropertyMasterService {
   }
 
   async publishProperty(uuid: string, version: number, actor: ActorContext) {
-    const current = (await this.run(() => this.repository.getProperty(uuid))) as Record<
-      string,
-      unknown
-    >;
+    const current = (await this.run(() =>
+      this.repository.getProperty(uuid),
+    )) as Record<string, unknown>;
     if (toStatus(current.status, 'DRAFT') !== 'IN_REVIEW') {
       throw new BadRequestException(
         'Only properties in IN_REVIEW can be published',
