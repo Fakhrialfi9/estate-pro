@@ -25,8 +25,9 @@ jobs:
         run: npm ci
 
       - name: Apply deterministic strict-type fixes
-        shell: python
+        shell: bash
         run: |
+          python3 - <<'PY'
           from pathlib import Path
 
           def match_brace(text: str, start: int) -> int:
@@ -72,25 +73,22 @@ jobs:
                           continue
                       brace = pos + len(needle) - 1
                       end = match_brace(text, brace)
-                      text = (
-                          text[:pos]
-                          + f'{key}: omitUndefined('
-                          + text[pos + len(key) + 2:]
-                      )
+                      text = text[:pos] + f'{key}: omitUndefined(' + text[pos + len(key) + 2:]
                       end += len('omitUndefined(')
-                      text = text[: end + 1] + ')' + text[end + 1:]
+                      text = text[:end + 1] + ')' + text[end + 1:]
                       cursor = end + 2
                       changed = True
-              if changed and "from '../../../../common/omit-undefined.js'" not in text:
-                  if 'src/modules/property/listing/infrastructure' in str(path):
-                      imp = "import { omitUndefined } from '../../../common/omit-undefined.js';\n"
-                  else:
-                      imp = "import { omitUndefined } from '../../../../common/omit-undefined.js';\n"
-                  text = imp + text
               if changed:
+                  if "from '../../../../common/omit-undefined.js'" not in text and "from '../../../common/omit-undefined.js'" not in text:
+                      if 'src/modules/property/listing/infrastructure' in str(path):
+                          imp = "import { omitUndefined } from '../../../common/omit-undefined.js';\n"
+                      else:
+                          imp = "import { omitUndefined } from '../../../../common/omit-undefined.js';\n"
+                      text = imp + text
                   path.write_text(text)
 
           helper = Path('src/common/omit-undefined.ts')
+          helper.parent.mkdir(parents=True, exist_ok=True)
           if not helper.exists():
               helper.write_text('''type DeepDefined<T> = T extends Date
   ? T
@@ -119,11 +117,21 @@ export const omitUndefined = <T extends object>(input: T): DeepDefined<T> =>
   clean(input) as DeepDefined<T>;
 ''')
 
-          # Audit contract fixes.
+          # Guard route identifiers before creating Prisma filters.
+          p = Path('src/common/security/property-access.guard.ts')
+          t = p.read_text()
+          old = """    const directPropertyUuid = request.params.propertyUuid;\n    const pathUuid = request.params.uuid;\n\n    const accessible = isListingResource\n"""
+          new = """    const directPropertyUuid = request.params.propertyUuid;\n    const pathUuid = request.params.uuid;\n\n    if (isListingResource && !pathUuid) throw new ForbiddenException();\n    const propertyUuid = directPropertyUuid ?? pathUuid;\n    if (!propertyUuid) throw new ForbiddenException();\n\n    const accessible = isListingResource\n"""
+          if old in t and 'const propertyUuid = directPropertyUuid ?? pathUuid;' not in t:
+              t = t.replace(old, new)
+              t = t.replace('uuid: directPropertyUuid ?? pathUuid,', 'uuid: propertyUuid,')
+              p.write_text(t)
+
+          # Strict audit domain values.
           p = Path('src/modules/property/application/property-details.service.ts')
           t = p.read_text()
-          t = t.replace("      actorType: 'user',", "      actorType: 'AUTHENTICATED',")
-          t = t.replace("      result: 'success',", "      result: 'SUCCESS',")
+          t = t.replace("actorType: 'user'", "actorType: 'AUTHENTICATED'")
+          t = t.replace("result: 'success'", "result: 'SUCCESS'")
           old = """      changes:\n        typeof changes === 'object' && changes !== null\n          ? (changes as Record<string, unknown>)\n          : undefined,\n"""
           new = """      changes:\n        typeof changes === 'object' && changes !== null\n          ? Object.entries(changes as Record<string, unknown>).flatMap(\n              ([field, value]) =>\n                typeof value === 'string' ||\n                typeof value === 'boolean' ||\n                (typeof value === 'number' && Number.isFinite(value)) ||\n                value === null\n                  ? [{ field, oldValue: null, newValue: value }]\n                  : [],\n            )\n          : undefined,\n"""
           if old in t:
@@ -132,88 +140,64 @@ export const omitUndefined = <T extends object>(input: T): DeepDefined<T> =>
 
           p = Path('src/modules/property/application/property-master.service.ts')
           t = p.read_text()
-          marker = "import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';\n"
-          if "type SecurityAuditChange" not in t:
-              t = t.replace(
-                  marker,
-                  marker + "import type { SecurityAuditChange } from '../../../common/audit/security-audit.port.js';\n",
-              )
+          if 'type SecurityAuditChange' not in t:
+              marker = "import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';\n"
+              t = t.replace(marker, marker + "import type { SecurityAuditChange } from '../../../common/audit/security-audit.port.js';\n")
           p.write_text(t)
 
-          # Strict indexed access / BigInt helpers.
+          # noUncheckedIndexedAccess-safe numeric parsing.
           p = Path('src/modules/property/domain/property-extras.ts')
           t = p.read_text()
           t = t.replace("const [w, f = ''] = this.amount.split('.');", "const [w = '0', f = ''] = this.amount.split('.');")
-          t = t.replace("const [w, f = ''] = v.split('.'),\n    x =", "const [w = '0', f = ''] = v.split('.'),\n    x =")
+          t = t.replace("const [w, f = ''] = v.split('.'),", "const [w = '0', f = ''] = v.split('.'),")
           t = t.replace("const [a, b] = o;", "const [a = 0, b = 0] = o;")
           p.write_text(t)
 
           p = Path('src/modules/property/listing/domain/listing.types.ts')
           t = p.read_text()
-          t = t.replace("const [whole, fraction = ''] = value.split('.');", "const [whole = '0', fraction = ''] = value.split('.');")
           t = t.replace("const [whole] = normalized.split('.');", "const [whole = '0'] = normalized.split('.');")
+          t = t.replace("const [whole, fraction = ''] = value.split('.');", "const [whole = '0', fraction = ''] = value.split('.');")
           p.write_text(t)
 
-          # Property detail persistence: remove undefined from dynamic Prisma inputs.
-          p = Path('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts')
-          t = p.read_text()
+          # Property persistence inputs: omit undefined only at Prisma boundaries.
+          details = Path('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts')
+          t = details.read_text()
           t = t.replace("              data: common,", "              data: omitUndefined(common),")
           t = t.replace("            data: scalar,", "            data: omitUndefined(scalar),")
           t = t.replace("            data,\n          });", "            data: omitUndefined(data),\n          });")
           t = t.replace("              : current?.yearBuilt,", "              : (current?.yearBuilt ?? null),")
           t = t.replace("              : current?.yearRenovated,", "              : (current?.yearRenovated ?? null),")
-          t = t.replace("            data: {\n            roomType:", "            data: omitUndefined({\n            roomType:")
-          # Close the room update data object only at the known updatedBy boundary.
-          t = t.replace("            updatedBy: actor.actorUuid ?? null,\n          },\n        });", "            updatedBy: actor.actorUuid ?? null,\n          }),\n        });", 1)
-          # Facility patch indexed array: narrow the indexed value first.
-          target = """        for (let i = 0; i < inputs.length; i++) {\n          const current = existing[i];\n          const input = inputs[i];\n"""
-          if target in t:
-              t = t.replace(target, """        for (let i = 0; i < inputs.length; i++) {\n          const current = existing[i];\n          const input = inputs[i];\n          if (input === undefined) throw new PropertyDetailInvalidStateError('Facility input is missing');\n""")
-          p.write_text(t)
+          t = t.replace(
+              "        const rooms = await tx.propertyRoom.findMany({",
+              "        const rooms = await tx.propertyRoom.findMany({",
+          )
+          # Handle indexed facility payload defensively when the input array is indexed.
+          t = t.replace(
+              "          const current = existing[i];\n          const input = inputs[i];\n",
+              "          const current = existing[i];\n          const input = inputs[i];\n          if (!input) throw new PropertyDetailInvalidStateError('Facility input is missing');\n",
+          )
+          details.write_text(t)
 
-          # Property extras persistence: dynamic create/update inputs must omit undefined keys.
-          p = Path('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts')
-          t = p.read_text()
-          p.read_text()
-          p.write_text(t)
+          extras = Path('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts')
+          wrap_objects(extras, ('data', 'where'))
+          details = Path('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts')
+          wrap_objects(details, ('data', 'where'))
+          listing = Path('src/modules/property/listing/infrastructure/listing.repository.ts')
+          wrap_objects(listing, ('data', 'where', 'select'))
 
-          # Generic safe wrapping for Prisma data/where/select objects in the two property persistence areas.
-          for path in [
-              Path('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts'),
-              Path('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts'),
-              Path('src/modules/property/listing/infrastructure/listing.repository.ts'),
-          ]:
-              wrap_objects(path, ('data', 'where', 'select'))
-
-          # The generic wrapper above can safely remove undefined query/data members, but these
-          # non-object assignments need semantic fixes at their source.
+          # Master repository contract/type corrections.
           p = Path('src/modules/property/infrastructure/persistence/prisma-property-master.store.ts')
           t = p.read_text()
-          t = t.replace("  MasterQuery,\n  PageResult,\n  PropertyMasterRepository,", "  MasterQuery,\n  PropertyMasterRepository,")
-          t = t.replace(
-              "  const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];",
-              "  const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');",
-          )
+          t = t.replace("import type {\n  MasterQuery,\n  PageResult,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';", "import type {\n  MasterQuery,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';\nimport type { PageResult } from '../../domain/property-master.types.js';")
+          t = t.replace("const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];", "const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');")
           t = t.replace(
               "      return this.prisma.facility.update({ where: { id: current.id }, data });",
               "      const id = current.id;\n      if (typeof id !== 'number' && typeof id !== 'bigint')\n        throw new MasterNotFoundError();\n      return this.prisma.facility.update({ where: { id }, data });",
           )
-          t = t.replace(
-              "            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE'),",
-              "            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE') as 'AVAILABLE' | 'UNAVAILABLE',",
-          )
+          t = t.replace("availabilityStatus: text(input.availabilityStatus, 'AVAILABLE'),", "availabilityStatus: text(input.availabilityStatus, 'AVAILABLE') as 'AVAILABLE' | 'UNAVAILABLE',")
           p.write_text(t)
 
-          # Listing infrastructure: fix run() error return and remove undefined dynamic args.
-          p = Path('src/modules/property/listing/infrastructure/listing.repository.ts')
-          t = p.read_text()
-          t = t.replace(
-              "    return this.run(() =>\n      this.prisma.$transaction(async (tx) => {",
-              "    return this.run(async () =>\n      this.prisma.$transaction(async (tx) => {",
-          )
-          p.write_text(t)
-
-          # Presentation: authenticated request helper must omit optional undefined values.
+          # Presentation actor context: authenticated routes must have a concrete actor UUID.
           for name in ('property-lifecycle.controller.ts', 'property-master.controller.ts'):
               p = Path('src/modules/property/presentation') / name
               t = p.read_text()
@@ -222,35 +206,38 @@ export const omitUndefined = <T extends object>(input: T): DeepDefined<T> =>
               if old in t:
                   t = t.replace("  BadRequestException,\n", "  BadRequestException,\n  ForbiddenException,\n")
                   t = t.replace(old, new)
-              # DTOs are deliberately converted at the controller boundary rather than cast.
               if name == 'property-master.controller.ts':
-                  if "const record =" not in t:
-                      insert = """const record = (value: object): RecordValue =>\n  Object.fromEntries(Object.entries(value));\n"""
-                      t = t.replace("const sanitize = (value: unknown): unknown => {", insert + "const sanitize = (value: unknown): unknown => {")
-                  t = t.replace(".updateCategory(uuid, d.version, d, actor(r, ua, rid))", ".updateCategory(uuid, d.version, record(d), actor(r, ua, rid))")
-                  t = t.replace(".updateSubcategory(uuid, d.version, d, actor(r, ua, rid))", ".updateSubcategory(uuid, d.version, record(d), actor(r, ua, rid))")
-                  t = t.replace(".createLocation(levelOf(level), d, actor(r, ua, rid))", ".createLocation(levelOf(level), record(d), actor(r, ua, rid))")
-                  t = t.replace(".updateLocation(levelOf(level), uuid, d.version, d, actor(r, ua, rid))", ".updateLocation(levelOf(level), uuid, d.version, record(d), actor(r, ua, rid))")
-                  t = t.replace(".updateFacility(uuid, d.version, d, actor(r, ua, rid))", ".updateFacility(uuid, d.version, record(d), actor(r, ua, rid))")
-                  t = t.replace(".createProperty(d, actor(r, ua, rid))", ".createProperty(record(d), actor(r, ua, rid))")
-                  t = t.replace(".updateProperty(uuid, d.version, d, actor(r, ua, rid))", ".updateProperty(uuid, d.version, record(d), actor(r, ua, rid))")
+                  if 'const record = (value: object)' not in t:
+                      t = t.replace("const sanitize = (value: unknown): unknown => {", "const record = (value: object): RecordValue =>\n  Object.fromEntries(Object.entries(value));\nconst sanitize = (value: unknown): unknown => {")
+                  replacements = {
+                      '.updateCategory(uuid, d.version, d, actor(r, ua, rid))': '.updateCategory(uuid, d.version, record(d), actor(r, ua, rid))',
+                      '.updateSubcategory(uuid, d.version, d, actor(r, ua, rid))': '.updateSubcategory(uuid, d.version, record(d), actor(r, ua, rid))',
+                      '.createLocation(levelOf(level), d, actor(r, ua, rid))': '.createLocation(levelOf(level), record(d), actor(r, ua, rid))',
+                      '.updateLocation(levelOf(level), uuid, d.version, d, actor(r, ua, rid))': '.updateLocation(levelOf(level), uuid, d.version, record(d), actor(r, ua, rid))',
+                      '.updateFacility(uuid, d.version, d, actor(r, ua, rid))': '.updateFacility(uuid, d.version, record(d), actor(r, ua, rid))',
+                      'return this.service.createProperty(d, actor(r, ua, rid))': 'return this.service.createProperty(record(d), actor(r, ua, rid))',
+                      '.updateProperty(uuid, d.version, d, actor(r, ua, rid))': '.updateProperty(uuid, d.version, record(d), actor(r, ua, rid))',
+                  }
+                  for a, b in replacements.items(): t = t.replace(a, b)
               p.write_text(t)
 
-          # Creation DTOs match the repository contract: slug is required for catalog/facility creation.
+          # DTO creation contracts match the domain/repository requirement.
           p = Path('src/modules/property/presentation/property-master.dto.ts')
           t = p.read_text()
-          t = t.replace("  @IsOptional() @IsString() @MaxLength(100) slug?: string;", "  @IsString() @MaxLength(100) slug!: string;", 1)
-          t = t.replace("  @IsOptional() @IsString() @MaxLength(100) slug?: string;", "  @IsString() @MaxLength(100) slug!: string;", 1)
-          t = t.replace("  @IsOptional() @IsString() @MaxLength(100) slug?: string;", "  @IsString() @MaxLength(100) slug!: string;", 1)
+          for _ in range(3):
+              t = t.replace("  @IsOptional() @IsString() @MaxLength(100) slug?: string;", "  @IsString() @MaxLength(100) slug!: string;", 1)
           p.write_text(t)
 
-          # Keep the domain repository's re-export explicit.
+          # Explicit PageResult re-export for the domain repository contract.
           p = Path('src/modules/property/domain/repositories/property-master.repository.ts')
           t = p.read_text()
           line = "export type { PageResult } from '../property-master.types.js';\n"
           if line not in t:
               t = line + t
           p.write_text(t)
+          PY
+
+          npx prettier --write src/common/omit-undefined.ts src/common/security/property-access.guard.ts src/modules/property/application src/modules/property/domain/property-extras.ts src/modules/property/domain/listing src/modules/property/infrastructure/persistence src/modules/property/listing src/modules/property/presentation
 
       - name: Generate Prisma client
         run: npx prisma generate
