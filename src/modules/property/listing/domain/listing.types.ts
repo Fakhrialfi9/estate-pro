@@ -141,7 +141,7 @@ export function derivePricePerSqm(basePrice: string, areaSqm: string): string {
   const numerator = scaled(basePrice, 2);
   const denominator = scaled(areaSqm, 4);
   if (denominator <= 0n) throw new Error('Area must be greater than zero');
-  const scaledResult = (numerator * 100000000n) / denominator;
+  const scaledResult = (numerator * 1000000n) / denominator;
   return `${scaledResult / 10000n}.${(scaledResult % 10000n).toString().padStart(4, '0')}`;
 }
 export function assertPublishable(input: {
