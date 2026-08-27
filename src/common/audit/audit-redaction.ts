@@ -18,6 +18,15 @@ const ALLOWED_FIELDS: Record<string, ReadonlySet<string>> = {
   AuthorizationRolePermission: new Set(['permission']),
   role_permission: new Set(['permission']),
   user_role: new Set(['targetUserUuid', 'roleUuid']),
+  property: new Set([
+    'code',
+    'name',
+    'slug',
+    'description',
+    'icon',
+    'isActive',
+    'sortOrder',
+  ]),
   AuthenticationSession: new Set(['reason']),
   session: new Set(['reason']),
   two_factor: new Set(['enabled', 'reason']),
@@ -87,14 +96,9 @@ export const sanitizeAuditChanges = (
 
 export const sanitizeAuditReason = (reason?: string): string | null => {
   if (!reason) return null;
-
   const normalized = reason.trim().slice(0, 100);
   if (!normalized) return null;
-
-  if (/^[A-Z][A-Z0-9_]{1,99}$/.test(normalized)) {
-    return normalized;
-  }
-
+  if (/^[A-Z][A-Z0-9_]{1,99}$/.test(normalized)) return normalized;
   return SENSITIVE_FIELD_PATTERN.test(normalized) ? null : normalized;
 };
 

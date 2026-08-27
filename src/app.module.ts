@@ -18,6 +18,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthController } from './modules/health/health.controller.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { PermissionsModule } from './modules/permissions/permissions.module.js';
+import { PropertyModule } from './modules/property/property.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { SystemModule } from './modules/system/system.module.js';
@@ -56,6 +57,7 @@ const shouldSkipThrottling = (context: ExecutionContext): boolean =>
     UsersModule,
     RolesModule,
     PermissionsModule,
+    PropertyModule,
     SystemModule,
     ObservabilityModule,
   ],
