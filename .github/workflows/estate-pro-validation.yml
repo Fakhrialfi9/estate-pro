@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
@@ -43,27 +43,6 @@ jobs:
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_test.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
       - name: Install dependencies
         run: npm ci
-      - name: Deterministic strict type repair
-        if: ${{ !startsWith(github.event.head_commit.message, '[type-fix]') }}
-        run: |
-          python3 scripts/strict-type-repair.py
-          npx prettier --write \
-            src/common/omit-undefined.ts \
-            src/common/security \
-            src/modules/property/application \
-            src/modules/property/domain \
-            src/modules/property/infrastructure \
-            src/modules/property/listing \
-            src/modules/property/presentation
-          npm run prisma:generate
-          npm run typecheck
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src
-          if ! git diff --cached --quiet; then
-            git commit -m '[type-fix] repair strict property type contracts'
-            git push origin HEAD:main
-          fi
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
       - name: Generate Prisma client
