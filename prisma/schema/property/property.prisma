@@ -57,7 +57,7 @@ model Property {
   environment PropertyEnvironment?
   seo PropertySeo?
   media PropertyMedia[]
-  listings PropertyListing[]
+  listing PropertyListing?
   agentAssignments PropertyAgentAssignment[]
   owner PropertyOwner?
   @@index([status, deletedAt, updatedAt, id])
