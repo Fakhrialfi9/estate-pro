@@ -10,7 +10,7 @@ CREATE TABLE `property_types` (
     `is_active` BOOLEAN NOT NULL DEFAULT true,
     `sort_order` INTEGER NOT NULL DEFAULT 0,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL,
     `deleted_at` DATETIME(3) NULL,
     UNIQUE INDEX `property_types_uuid_key`(`uuid`),
     UNIQUE INDEX `property_types_code_key`(`code`),
