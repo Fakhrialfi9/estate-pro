@@ -98,7 +98,7 @@ export function assertListingTransition(
 }
 export function assertPricingInvariants(input: ListingPricingInput): void {
   if (!/^[A-Z]{3}$/.test(input.currency))
-    throw new Error('Currency must be a 3-letter ISO-style code');
+    throw new Error('currency must be a 3-letter ISO-style code');
   const min = input.minPrice == null ? null : scaled(input.minPrice, 2);
   const max = input.maxPrice == null ? null : scaled(input.maxPrice, 2);
   if ((min !== null && min === 0n) || (max !== null && max === 0n))
@@ -141,7 +141,7 @@ export function derivePricePerSqm(basePrice: string, areaSqm: string): string {
   const numerator = scaled(basePrice, 2);
   const denominator = scaled(areaSqm, 4);
   if (denominator <= 0n) throw new Error('Area must be greater than zero');
-  const scaledResult = (numerator * 10000n) / denominator;
+  const scaledResult = (numerator * 100000000n) / denominator;
   return `${scaledResult / 10000n}.${(scaledResult % 10000n).toString().padStart(4, '0')}`;
 }
 export function assertPublishable(input: {
