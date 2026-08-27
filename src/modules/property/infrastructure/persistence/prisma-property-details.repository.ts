@@ -888,13 +888,20 @@ export class PrismaPropertyDetailsRepository
               'One or more facilities are already attached to the property',
             );
           await tx.propertyFacility.createMany({
-            data: ids.map((facilityId, index) => ({
-              propertyId,
-              facilityId,
-              available: inputs[index].available ?? true,
-              quantity: inputs[index].quantity ?? null,
-              notes: trim(inputs[index].notes) ?? null,
-            })),
+            data: ids.map((facilityId, index) => {
+              const input = inputs[index];
+              if (!input)
+                throw new PropertyDetailInvalidStateError(
+                  'Facility input is missing for the resolved facility id',
+                );
+              return {
+                propertyId,
+                facilityId,
+                available: input.available ?? true,
+                quantity: input.quantity ?? null,
+                notes: trim(input.notes) ?? null,
+              };
+            }),
           });
         }
         return tx.propertyFacility.findMany({
