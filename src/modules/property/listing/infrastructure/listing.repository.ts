@@ -111,66 +111,64 @@ export class PrismaListingRepository implements ListingRepository {
       throw new ListingValidationError('Listing code is required');
     if (input.payments) this.validatePayments(input.payments);
     return this.run(() =>
-      this.prisma
-        .$transaction(async (tx) => {
-          const property = await this.propertyByUuid(tx, input.propertyUuid);
-          const price = input.price
-            ? await this.normalizePricing(input.price, property.id, tx)
-            : undefined;
-          return tx.propertyListing.create({
-            data: {
-              uuid: randomUUID(),
-              propertyId: property.id,
-              listingCode: trim(input.listingCode),
-              transactionType: input.transactionType,
-              status: 'DRAFT',
-              visibility: input.visibility ?? 'PRIVATE',
-              featured: input.featured ?? false,
-              premium: input.premium ?? false,
-              expiresAt: input.expiresAt ?? null,
-              createdBy: actorId(actor),
-              updatedBy: actorId(actor),
-              price: price
-                ? {
-                    create: {
-                      uuid: randomUUID(),
-                      ...price,
-                      createdBy: actorId(actor),
-                      updatedBy: actorId(actor),
-                    },
-                  }
-                : undefined,
-              paymentOptions: input.payments?.length
-                ? {
-                    create: input.payments.map((payment) => ({
-                      uuid: randomUUID(),
-                      optionType: payment.optionType,
-                      downPaymentAmount: payment.downPaymentAmount ?? null,
-                      downPaymentPercent: payment.downPaymentPercent ?? null,
-                      installmentAmount: payment.installmentAmount ?? null,
-                      tenorMonths: payment.tenorMonths ?? null,
-                      notes: payment.notes?.trim() || null,
-                      createdBy: actorId(actor),
-                      updatedBy: actorId(actor),
-                    })),
-                  }
-                : undefined,
-              analytics: { create: {} },
-            },
-            select: {
-              uuid: true,
-              listingCode: true,
-              transactionType: true,
-              status: true,
-              visibility: true,
-              featured: true,
-              premium: true,
-              version: true,
-              property: { select: { uuid: true } },
-            },
-          });
-        })
-        .catch((error: unknown) => this.mapError(error)),
+      this.prisma.$transaction(async (tx) => {
+        const property = await this.propertyByUuid(tx, input.propertyUuid);
+        const price = input.price
+          ? await this.normalizePricing(input.price, property.id, tx)
+          : undefined;
+        return tx.propertyListing.create({
+          data: {
+            uuid: randomUUID(),
+            propertyId: property.id,
+            listingCode: trim(input.listingCode),
+            transactionType: input.transactionType,
+            status: 'DRAFT',
+            visibility: input.visibility ?? 'PRIVATE',
+            featured: input.featured ?? false,
+            premium: input.premium ?? false,
+            expiresAt: input.expiresAt ?? null,
+            createdBy: actorId(actor),
+            updatedBy: actorId(actor),
+            price: price
+              ? {
+                  create: {
+                    uuid: randomUUID(),
+                    ...price,
+                    createdBy: actorId(actor),
+                    updatedBy: actorId(actor),
+                  },
+                }
+              : undefined,
+            paymentOptions: input.payments?.length
+              ? {
+                  create: input.payments.map((payment) => ({
+                    uuid: randomUUID(),
+                    optionType: payment.optionType,
+                    downPaymentAmount: payment.downPaymentAmount ?? null,
+                    downPaymentPercent: payment.downPaymentPercent ?? null,
+                    installmentAmount: payment.installmentAmount ?? null,
+                    tenorMonths: payment.tenorMonths ?? null,
+                    notes: payment.notes?.trim() || null,
+                    createdBy: actorId(actor),
+                    updatedBy: actorId(actor),
+                  })),
+                }
+              : undefined,
+            analytics: { create: {} },
+          },
+          select: {
+            uuid: true,
+            listingCode: true,
+            transactionType: true,
+            status: true,
+            visibility: true,
+            featured: true,
+            premium: true,
+            version: true,
+            property: { select: { uuid: true } },
+          },
+        });
+      }),
     );
   }
 
@@ -228,80 +226,78 @@ export class PrismaListingRepository implements ListingRepository {
   ): Promise<unknown> {
     if (input.payments) this.validatePayments(input.payments);
     return this.run(() =>
-      this.prisma
-        .$transaction(async (tx) => {
-          const current = await tx.propertyListing.findFirst({
-            where: { uuid },
-            select: { id: true, version: true },
-          });
-          if (!current) throw new ListingNotFoundError('Listing not found');
-          if (current.version !== version)
-            throw new ListingConflictError('Listing version conflict');
-          const price = input.price
-            ? await this.normalizePricing(input.price, current.id, tx)
-            : undefined;
-          const changed = await tx.propertyListing.updateMany({
-            where: { uuid, version },
-            data: {
-              listingCode: input.listingCode?.trim(),
-              transactionType: input.transactionType,
-              visibility: input.visibility,
-              featured: input.featured,
-              premium: input.premium,
-              expiresAt: input.expiresAt,
+      this.prisma.$transaction(async (tx) => {
+        const current = await tx.propertyListing.findFirst({
+          where: { uuid },
+          select: { id: true, version: true },
+        });
+        if (!current) throw new ListingNotFoundError('Listing not found');
+        if (current.version !== version)
+          throw new ListingConflictError('Listing version conflict');
+        const price = input.price
+          ? await this.normalizePricing(input.price, current.id, tx)
+          : undefined;
+        const changed = await tx.propertyListing.updateMany({
+          where: { uuid, version },
+          data: {
+            listingCode: input.listingCode?.trim(),
+            transactionType: input.transactionType,
+            visibility: input.visibility,
+            featured: input.featured,
+            premium: input.premium,
+            expiresAt: input.expiresAt,
+            updatedBy: actorId(actor),
+            version: { increment: 1 },
+          },
+        });
+        if (changed.count !== 1)
+          throw new ListingConflictError('Listing was modified concurrently');
+        if (price)
+          await tx.propertyListingPrice.upsert({
+            where: { listingId: current.id },
+            create: {
+              uuid: randomUUID(),
+              listingId: current.id,
+              ...price,
+              createdBy: actorId(actor),
               updatedBy: actorId(actor),
-              version: { increment: 1 },
             },
+            update: { ...price, updatedBy: actorId(actor) },
           });
-          if (changed.count !== 1)
-            throw new ListingConflictError('Listing was modified concurrently');
-          if (price)
-            await tx.propertyListingPrice.upsert({
-              where: { listingId: current.id },
-              create: {
+        if (input.payments) {
+          await tx.propertyListingPaymentOption.deleteMany({
+            where: { listingId: current.id },
+          });
+          if (input.payments.length)
+            await tx.propertyListingPaymentOption.createMany({
+              data: input.payments.map((payment) => ({
                 uuid: randomUUID(),
                 listingId: current.id,
-                ...price,
+                optionType: payment.optionType,
+                downPaymentAmount: payment.downPaymentAmount ?? null,
+                downPaymentPercent: payment.downPaymentPercent ?? null,
+                installmentAmount: payment.installmentAmount ?? null,
+                tenorMonths: payment.tenorMonths ?? null,
+                notes: payment.notes?.trim() || null,
                 createdBy: actorId(actor),
                 updatedBy: actorId(actor),
-              },
-              update: { ...price, updatedBy: actorId(actor) },
+              })),
             });
-          if (input.payments) {
-            await tx.propertyListingPaymentOption.deleteMany({
-              where: { listingId: current.id },
-            });
-            if (input.payments.length)
-              await tx.propertyListingPaymentOption.createMany({
-                data: input.payments.map((payment) => ({
-                  uuid: randomUUID(),
-                  listingId: current.id,
-                  optionType: payment.optionType,
-                  downPaymentAmount: payment.downPaymentAmount ?? null,
-                  downPaymentPercent: payment.downPaymentPercent ?? null,
-                  installmentAmount: payment.installmentAmount ?? null,
-                  tenorMonths: payment.tenorMonths ?? null,
-                  notes: payment.notes?.trim() || null,
-                  createdBy: actorId(actor),
-                  updatedBy: actorId(actor),
-                })),
-              });
-          }
-          return tx.propertyListing.findUniqueOrThrow({
-            where: { uuid },
-            select: {
-              uuid: true,
-              listingCode: true,
-              status: true,
-              visibility: true,
-              featured: true,
-              premium: true,
-              version: true,
-              expiresAt: true,
-            },
-          });
-        })
-        .catch((error: unknown) => this.mapError(error)),
+        }
+        return tx.propertyListing.findUniqueOrThrow({
+          where: { uuid },
+          select: {
+            uuid: true,
+            listingCode: true,
+            status: true,
+            visibility: true,
+            featured: true,
+            premium: true,
+            version: true,
+            expiresAt: true,
+          },
+        });
+      }),
     );
   }
 
@@ -313,104 +309,102 @@ export class PrismaListingRepository implements ListingRepository {
     reason?: string,
   ): Promise<unknown> {
     return this.run(() =>
-      this.prisma
-        .$transaction(async (tx) => {
-          const current = await tx.propertyListing.findFirst({
-            where: { uuid },
-            select: {
-              id: true,
-              uuid: true,
-              version: true,
-              status: true,
-              visibility: true,
-              expiresAt: true,
-              propertyId: true,
-              price: { select: { id: true } },
+      this.prisma.$transaction(async (tx) => {
+        const current = await tx.propertyListing.findFirst({
+          where: { uuid },
+          select: {
+            id: true,
+            uuid: true,
+            version: true,
+            status: true,
+            visibility: true,
+            expiresAt: true,
+            propertyId: true,
+            price: { select: { id: true } },
+          },
+        });
+        if (!current) throw new ListingNotFoundError('Listing not found');
+        if (current.version !== version)
+          throw new ListingConflictError('Listing version conflict');
+        assertListingTransition(current.status, to);
+        if (to === 'DRAFT' && current.status === 'IN_REVIEW' && !reason)
+          throw new ListingValidationError('Rejection reason is required');
+        if (to === 'PUBLISHED') {
+          const property = await tx.property.findUniqueOrThrow({
+            where: { id: current.propertyId },
+            select: { status: true },
+          });
+          const primaryAgent = await tx.propertyAgentAssignment.findFirst({
+            where: {
+              propertyId: current.propertyId,
+              isPrimary: true,
+              unassignedAt: null,
+            },
+            select: { id: true },
+          });
+          assertPublishable({
+            propertyStatus: property.status,
+            visibility: 'PUBLIC',
+            hasPrice: current.price !== null,
+            hasPrimaryAgent: primaryAgent !== null,
+            expiresAt: current.expiresAt,
+          });
+        }
+        const data: Prisma.PropertyListingUpdateManyMutationInput = {
+          status: to,
+          rejectionReason: to === 'DRAFT' ? (reason ?? null) : null,
+          verifiedAt: to === 'VERIFIED' ? new Date() : undefined,
+          verifiedBy: to === 'VERIFIED' ? actorId(actor) : undefined,
+          publishedAt:
+            to === 'PUBLISHED'
+              ? new Date()
+              : to === 'UNPUBLISHED'
+                ? null
+                : undefined,
+          updatedBy: actorId(actor),
+          version: { increment: 1 },
+        };
+        if (to === 'PUBLISHED') data.visibility = 'PUBLIC';
+        if (to === 'UNPUBLISHED') data.visibility = 'PRIVATE';
+        const changed = await tx.propertyListing.updateMany({
+          where: { uuid, version },
+          data,
+        });
+        if (changed.count !== 1)
+          throw new ListingConflictError('Listing was modified concurrently');
+        if (to === 'SOLD' || to === 'RENTED') {
+          const property = await tx.property.findUniqueOrThrow({
+            where: { id: current.propertyId },
+            select: { version: true },
+          });
+          const propertyChanged = await tx.property.updateMany({
+            where: { id: current.propertyId, version: property.version },
+            data: {
+              status: to === 'SOLD' ? 'SOLD' : 'RENTED',
+              availabilityStatus: 'UNAVAILABLE',
+              updatedBy: actorId(actor),
+              version: { increment: 1 },
             },
           });
-          if (!current) throw new ListingNotFoundError('Listing not found');
-          if (current.version !== version)
-            throw new ListingConflictError('Listing version conflict');
-          assertListingTransition(current.status, to);
-          if (to === 'DRAFT' && current.status === 'IN_REVIEW' && !reason)
-            throw new ListingValidationError('Rejection reason is required');
-          if (to === 'PUBLISHED') {
-            const property = await tx.property.findUniqueOrThrow({
-              where: { id: current.propertyId },
-              select: { status: true },
-            });
-            const primaryAgent = await tx.propertyAgentAssignment.findFirst({
-              where: {
-                propertyId: current.propertyId,
-                isPrimary: true,
-                unassignedAt: null,
-              },
-              select: { id: true },
-            });
-            assertPublishable({
-              propertyStatus: property.status,
-              visibility: current.visibility,
-              hasPrice: current.price !== null,
-              hasPrimaryAgent: primaryAgent !== null,
-              expiresAt: current.expiresAt,
-            });
-          }
-          const data: Prisma.PropertyListingUpdateManyMutationInput = {
-            status: to,
-            rejectionReason: to === 'DRAFT' ? (reason ?? null) : null,
-            verifiedAt: to === 'VERIFIED' ? new Date() : undefined,
-            verifiedBy: to === 'VERIFIED' ? actorId(actor) : undefined,
-            publishedAt:
-              to === 'PUBLISHED'
-                ? new Date()
-                : to === 'UNPUBLISHED'
-                  ? null
-                  : undefined,
-            updatedBy: actorId(actor),
-            version: { increment: 1 },
-          };
-          if (to === 'PUBLISHED') data.visibility = 'PUBLIC';
-          if (to === 'UNPUBLISHED') data.visibility = 'PRIVATE';
-          const changed = await tx.propertyListing.updateMany({
-            where: { uuid, version },
-            data,
-          });
-          if (changed.count !== 1)
-            throw new ListingConflictError('Listing was modified concurrently');
-          if (to === 'SOLD' || to === 'RENTED') {
-            const property = await tx.property.findUniqueOrThrow({
-              where: { id: current.propertyId },
-              select: { version: true },
-            });
-            const propertyChanged = await tx.property.updateMany({
-              where: { id: current.propertyId, version: property.version },
-              data: {
-                status: to === 'SOLD' ? 'SOLD' : 'RENTED',
-                availabilityStatus: 'UNAVAILABLE',
-                updatedBy: actorId(actor),
-                version: { increment: 1 },
-              },
-            });
-            if (propertyChanged.count !== 1)
-              throw new ListingConflictError(
-                'Property was modified concurrently',
-              );
-          }
-          return tx.propertyListing.findUniqueOrThrow({
-            where: { uuid },
-            select: {
-              uuid: true,
-              status: true,
-              visibility: true,
-              version: true,
-              verifiedAt: true,
-              publishedAt: true,
-              expiresAt: true,
-              rejectionReason: true,
-            },
-          });
-        })
-        .catch((error: unknown) => this.mapError(error)),
+          if (propertyChanged.count !== 1)
+            throw new ListingConflictError(
+              'Property was modified concurrently',
+            );
+        }
+        return tx.propertyListing.findUniqueOrThrow({
+          where: { uuid },
+          select: {
+            uuid: true,
+            status: true,
+            visibility: true,
+            version: true,
+            verifiedAt: true,
+            publishedAt: true,
+            expiresAt: true,
+            rejectionReason: true,
+          },
+        });
+      }),
     );
   }
 
@@ -446,93 +440,91 @@ export class PrismaListingRepository implements ListingRepository {
 
   async duplicate(uuid: string, actor: ListingActor): Promise<unknown> {
     return this.run(() =>
-      this.prisma
-        .$transaction(async (tx) => {
-          const source = await tx.propertyListing.findFirst({
-            where: { uuid },
-            include: { property: true, price: true, paymentOptions: true },
-          });
-          if (!source) throw new ListingNotFoundError('Listing not found');
-          const suffix = randomUUID().slice(0, 8);
-          const property = await tx.property.create({
-            data: {
-              uuid: randomUUID(),
-              businessCode:
-                `${source.property.businessCode}-CP-${suffix}`.slice(0, 40),
-              referenceNumber:
-                `${source.property.referenceNumber}-CP-${suffix}`.slice(0, 80),
-              propertyTypeId: source.property.propertyTypeId,
-              propertyCategoryId: source.property.propertyCategoryId,
-              propertySubcategoryId: source.property.propertySubcategoryId,
-              subdistrictId: source.property.subdistrictId,
-              title: `${source.property.title} (Copy)`.slice(0, 200),
-              slug: `${source.property.slug}-copy-${suffix}`.slice(0, 220),
-              shortDescription: source.property.shortDescription,
-              description: source.property.description,
-              status: 'DRAFT',
-              availabilityStatus: 'AVAILABLE',
-              availableFrom: source.property.availableFrom,
-              availableTo: source.property.availableTo,
-              version: 1,
-              createdBy: actorId(actor),
-              updatedBy: actorId(actor),
-            },
-            select: { id: true, uuid: true },
-          });
-          return tx.propertyListing.create({
-            data: {
-              uuid: randomUUID(),
-              propertyId: property.id,
-              listingCode: `${source.listingCode}-CP-${suffix}`.slice(0, 80),
-              transactionType: source.transactionType,
-              status: 'DRAFT',
-              visibility: 'PRIVATE',
-              featured: false,
-              premium: false,
-              expiresAt: null,
-              createdBy: actorId(actor),
-              updatedBy: actorId(actor),
-              price: source.price
-                ? {
-                    create: {
-                      uuid: randomUUID(),
-                      priceType: source.price.priceType,
-                      currency: source.price.currency,
-                      minPrice: source.price.minPrice,
-                      maxPrice: source.price.maxPrice,
-                      pricePerSqm: source.price.pricePerSqm,
-                      createdBy: actorId(actor),
-                      updatedBy: actorId(actor),
-                    },
-                  }
-                : undefined,
-              paymentOptions: source.paymentOptions.length
-                ? {
-                    create: source.paymentOptions.map((payment) => ({
-                      uuid: randomUUID(),
-                      optionType: payment.optionType,
-                      downPaymentAmount: payment.downPaymentAmount,
-                      downPaymentPercent: payment.downPaymentPercent,
-                      installmentAmount: payment.installmentAmount,
-                      tenorMonths: payment.tenorMonths,
-                      notes: payment.notes,
-                      createdBy: actorId(actor),
-                      updatedBy: actorId(actor),
-                    })),
-                  }
-                : undefined,
-              analytics: { create: {} },
-            },
-            select: {
-              uuid: true,
-              listingCode: true,
-              status: true,
-              version: true,
-              property: { select: { uuid: true } },
-            },
-          });
-        })
-        .catch((error: unknown) => this.mapError(error)),
+      this.prisma.$transaction(async (tx) => {
+        const source = await tx.propertyListing.findFirst({
+          where: { uuid },
+          include: { property: true, price: true, paymentOptions: true },
+        });
+        if (!source) throw new ListingNotFoundError('Listing not found');
+        const suffix = randomUUID().slice(0, 8);
+        const property = await tx.property.create({
+          data: {
+            uuid: randomUUID(),
+            businessCode:
+              `${source.property.businessCode}-CP-${suffix}`.slice(0, 40),
+            referenceNumber:
+              `${source.property.referenceNumber}-CP-${suffix}`.slice(0, 80),
+            propertyTypeId: source.property.propertyTypeId,
+            propertyCategoryId: source.property.propertyCategoryId,
+            propertySubcategoryId: source.property.propertySubcategoryId,
+            subdistrictId: source.property.subdistrictId,
+            title: `${source.property.title} (Copy)`.slice(0, 200),
+            slug: `${source.property.slug}-copy-${suffix}`.slice(0, 220),
+            shortDescription: source.property.shortDescription,
+            description: source.property.description,
+            status: 'DRAFT',
+            availabilityStatus: 'AVAILABLE',
+            availableFrom: source.property.availableFrom,
+            availableTo: source.property.availableTo,
+            version: 1,
+            createdBy: actorId(actor),
+            updatedBy: actorId(actor),
+          },
+          select: { id: true, uuid: true },
+        });
+        return tx.propertyListing.create({
+          data: {
+            uuid: randomUUID(),
+            propertyId: property.id,
+            listingCode: `${source.listingCode}-CP-${suffix}`.slice(0, 80),
+            transactionType: source.transactionType,
+            status: 'DRAFT',
+            visibility: 'PRIVATE',
+            featured: false,
+            premium: false,
+            expiresAt: null,
+            createdBy: actorId(actor),
+            updatedBy: actorId(actor),
+            price: source.price
+              ? {
+                  create: {
+                    uuid: randomUUID(),
+                    priceType: source.price.priceType,
+                    currency: source.price.currency,
+                    minPrice: source.price.minPrice,
+                    maxPrice: source.price.maxPrice,
+                    pricePerSqm: source.price.pricePerSqm,
+                    createdBy: actorId(actor),
+                    updatedBy: actorId(actor),
+                  },
+                }
+              : undefined,
+            paymentOptions: source.paymentOptions.length
+              ? {
+                  create: source.paymentOptions.map((payment) => ({
+                    uuid: randomUUID(),
+                    optionType: payment.optionType,
+                    downPaymentAmount: payment.downPaymentAmount,
+                    downPaymentPercent: payment.downPaymentPercent,
+                    installmentAmount: payment.installmentAmount,
+                    tenorMonths: payment.tenorMonths,
+                    notes: payment.notes,
+                    createdBy: actorId(actor),
+                    updatedBy: actorId(actor),
+                  })),
+                }
+              : undefined,
+            analytics: { create: {} },
+          },
+          select: {
+            uuid: true,
+            listingCode: true,
+            status: true,
+            version: true,
+            property: { select: { uuid: true } },
+          },
+        });
+      }),
     );
   }
 
@@ -544,50 +536,48 @@ export class PrismaListingRepository implements ListingRepository {
     actor: ListingActor,
   ): Promise<unknown> {
     return this.run(() =>
-      this.prisma
-        .$transaction(async (tx) => {
-          const property = await this.propertyByUuid(tx, propertyUuid);
-          if (!agentUserUuid || !agentDisplayName.trim())
-            throw new ListingValidationError(
-              'Agent reference and display name are required',
-            );
-          if (primary)
-            await tx.propertyAgentAssignment.updateMany({
-              where: { propertyId: property.id, unassignedAt: null },
-              data: { isPrimary: false, updatedBy: actorId(actor) },
-            });
-          return tx.propertyAgentAssignment.upsert({
-            where: {
-              propertyId_agentUserUuid: {
-                propertyId: property.id,
-                agentUserUuid,
-              },
-            },
-            create: {
-              uuid: randomUUID(),
+      this.prisma.$transaction(async (tx) => {
+        const property = await this.propertyByUuid(tx, propertyUuid);
+        if (!agentUserUuid || !agentDisplayName.trim())
+          throw new ListingValidationError(
+            'Agent reference and display name are required',
+          );
+        if (primary)
+          await tx.propertyAgentAssignment.updateMany({
+            where: { propertyId: property.id, unassignedAt: null },
+            data: { isPrimary: false, updatedBy: actorId(actor) },
+          });
+        return tx.propertyAgentAssignment.upsert({
+          where: {
+            propertyId_agentUserUuid: {
               propertyId: property.id,
               agentUserUuid,
-              agentDisplayName: agentDisplayName.trim(),
-              isPrimary: primary,
-              createdBy: actorId(actor),
-              updatedBy: actorId(actor),
             },
-            update: {
-              agentDisplayName: agentDisplayName.trim(),
-              isPrimary: primary,
-              unassignedAt: null,
-              updatedBy: actorId(actor),
-            },
-            select: {
-              uuid: true,
-              agentUserUuid: true,
-              agentDisplayName: true,
-              isPrimary: true,
-              assignedAt: true,
-            },
-          });
-        })
-        .catch((error: unknown) => this.mapError(error)),
+          },
+          create: {
+            uuid: randomUUID(),
+            propertyId: property.id,
+            agentUserUuid,
+            agentDisplayName: agentDisplayName.trim(),
+            isPrimary: primary,
+            createdBy: actorId(actor),
+            updatedBy: actorId(actor),
+          },
+          update: {
+            agentDisplayName: agentDisplayName.trim(),
+            isPrimary: primary,
+            unassignedAt: null,
+            updatedBy: actorId(actor),
+          },
+          select: {
+            uuid: true,
+            agentUserUuid: true,
+            agentDisplayName: true,
+            isPrimary: true,
+            assignedAt: true,
+          },
+        });
+      }),
     );
   }
 
@@ -600,42 +590,40 @@ export class PrismaListingRepository implements ListingRepository {
     actor: ListingActor,
   ): Promise<unknown> {
     return this.run(() =>
-      this.prisma
-        .$transaction(async (tx) => {
-          const property = await this.propertyByUuid(tx, propertyUuid);
-          const assignment = await tx.propertyAgentAssignment.findFirst({
-            where: {
-              uuid: assignmentUuid,
-              propertyId: property.id,
-              unassignedAt: null,
-            },
-            select: { id: true },
+      this.prisma.$transaction(async (tx) => {
+        const property = await this.propertyByUuid(tx, propertyUuid);
+        const assignment = await tx.propertyAgentAssignment.findFirst({
+          where: {
+            uuid: assignmentUuid,
+            propertyId: property.id,
+            unassignedAt: null,
+          },
+          select: { id: true },
+        });
+        if (!assignment)
+          throw new ListingNotFoundError('Agent assignment not found');
+        if (primary)
+          await tx.propertyAgentAssignment.updateMany({
+            where: { propertyId: property.id, unassignedAt: null },
+            data: { isPrimary: false, updatedBy: actorId(actor) },
           });
-          if (!assignment)
-            throw new ListingNotFoundError('Agent assignment not found');
-          if (primary)
-            await tx.propertyAgentAssignment.updateMany({
-              where: { propertyId: property.id, unassignedAt: null },
-              data: { isPrimary: false, updatedBy: actorId(actor) },
-            });
-          return tx.propertyAgentAssignment.update({
-            where: { id: assignment.id },
-            data: {
-              agentUserUuid,
-              agentDisplayName: agentDisplayName.trim(),
-              isPrimary: primary,
-              updatedBy: actorId(actor),
-            },
-            select: {
-              uuid: true,
-              agentUserUuid: true,
-              agentDisplayName: true,
-              isPrimary: true,
-              assignedAt: true,
-            },
-          });
-        })
-        .catch((error: unknown) => this.mapError(error)),
+        return tx.propertyAgentAssignment.update({
+          where: { id: assignment.id },
+          data: {
+            agentUserUuid,
+            agentDisplayName: agentDisplayName.trim(),
+            isPrimary: primary,
+            updatedBy: actorId(actor),
+          },
+          select: {
+            uuid: true,
+            agentUserUuid: true,
+            agentDisplayName: true,
+            isPrimary: true,
+            assignedAt: true,
+          },
+        });
+      }),
     );
   }
 
@@ -646,41 +634,39 @@ export class PrismaListingRepository implements ListingRepository {
     actor: ListingActor,
   ): Promise<unknown> {
     return this.run(() =>
-      this.prisma
-        .$transaction(async (tx) => {
-          const property = await this.propertyByUuid(tx, propertyUuid);
-          if (!ownerDisplayName.trim())
-            throw new ListingValidationError('Owner display name is required');
-          return tx.propertyOwner.upsert({
-            where: { propertyId: property.id },
-            create: {
-              uuid: randomUUID(),
-              propertyId: property.id,
-              ownerType,
-              displayNameMasked: maskOwner(ownerDisplayName),
-              referenceHash: hashOwner(ownerDisplayName),
-              companyNameMasked:
-                ownerType === 'COMPANY' ? maskOwner(ownerDisplayName) : null,
-              createdBy: actorId(actor),
-              updatedBy: actorId(actor),
-            },
-            update: {
-              ownerType,
-              displayNameMasked: maskOwner(ownerDisplayName),
-              referenceHash: hashOwner(ownerDisplayName),
-              companyNameMasked:
-                ownerType === 'COMPANY' ? maskOwner(ownerDisplayName) : null,
-              updatedBy: actorId(actor),
-            },
-            select: {
-              uuid: true,
-              ownerType: true,
-              displayNameMasked: true,
-              companyNameMasked: true,
-            },
-          });
-        })
-        .catch((error: unknown) => this.mapError(error)),
+      this.prisma.$transaction(async (tx) => {
+        const property = await this.propertyByUuid(tx, propertyUuid);
+        if (!ownerDisplayName.trim())
+          throw new ListingValidationError('Owner display name is required');
+        return tx.propertyOwner.upsert({
+          where: { propertyId: property.id },
+          create: {
+            uuid: randomUUID(),
+            propertyId: property.id,
+            ownerType,
+            displayNameMasked: maskOwner(ownerDisplayName),
+            referenceHash: hashOwner(ownerDisplayName),
+            companyNameMasked:
+              ownerType === 'COMPANY' ? maskOwner(ownerDisplayName) : null,
+            createdBy: actorId(actor),
+            updatedBy: actorId(actor),
+          },
+          update: {
+            ownerType,
+            displayNameMasked: maskOwner(ownerDisplayName),
+            referenceHash: hashOwner(ownerDisplayName),
+            companyNameMasked:
+              ownerType === 'COMPANY' ? maskOwner(ownerDisplayName) : null,
+            updatedBy: actorId(actor),
+          },
+          select: {
+            uuid: true,
+            ownerType: true,
+            displayNameMasked: true,
+            companyNameMasked: true,
+          },
+        });
+      }),
     );
   }
 
