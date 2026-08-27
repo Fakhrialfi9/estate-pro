@@ -19,7 +19,14 @@ const decimalValue = (value: unknown): string | null => {
     typeof value === 'bigint'
   )
     return String(value);
-  return String(value);
+
+  if (typeof value === 'object' && 'toString' in value) {
+    const candidate = value.toString;
+    if (typeof candidate === 'function' && candidate !== Object.prototype.toString)
+      return candidate.call(value);
+  }
+
+  return null;
 };
 export interface PropertyDetailViewer {
   readonly canReadSensitive: boolean;
