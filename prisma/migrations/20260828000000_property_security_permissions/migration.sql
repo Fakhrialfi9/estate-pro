@@ -7,16 +7,6 @@ FROM (
   UNION ALL SELECT 'Archive Properties', 'properties.archive', 'properties', 'archive'
   UNION ALL SELECT 'Manage Properties', 'properties.manage', 'properties', 'manage'
   UNION ALL SELECT 'Read Sensitive Property Data', 'properties.sensitive.read', 'properties', 'sensitive.read'
-  UNION ALL SELECT 'Read Property Legal', 'property-legal.read', 'property-legal', 'read'
-  UNION ALL SELECT 'Update Property Legal', 'property-legal.update', 'property-legal', 'update'
-  UNION ALL SELECT 'Read Property Financial', 'property-financial.read', 'property-financial', 'read'
-  UNION ALL SELECT 'Update Property Financial', 'property-financial.update', 'property-financial', 'update'
-  UNION ALL SELECT 'Read Property Media', 'property-media.read', 'property-media', 'read'
-  UNION ALL SELECT 'Create Property Media', 'property-media.create', 'property-media', 'create'
-  UNION ALL SELECT 'Update Property Media', 'property-media.update', 'property-media', 'update'
-  UNION ALL SELECT 'Delete Property Media', 'property-media.delete', 'property-media', 'delete'
-  UNION ALL SELECT 'Reorder Property Media', 'property-media.reorder', 'property-media', 'reorder'
-  UNION ALL SELECT 'Set Property Media Cover', 'property-media.set-cover', 'property-media', 'set-cover'
   UNION ALL SELECT 'Assign Property Agent', 'property-agents.assign', 'property-agents', 'assign'
   UNION ALL SELECT 'Change Property Agent', 'property-agents.change', 'property-agents', 'change'
   UNION ALL SELECT 'Manage Property Owners', 'property-owners.manage', 'property-owners', 'manage'
@@ -31,13 +21,17 @@ INSERT INTO authorization_role_permissions
   (role_id, permission_id, created_at, updated_at)
 SELECT r.id, p.id, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)
 FROM authorization_roles r
-JOIN authorization_permissions p
+CROSS JOIN authorization_permissions p
 WHERE r.code = 'ADMIN'
   AND p.code IN (
     'properties.verify',
     'properties.publish',
     'properties.archive',
-    'properties.manage'
+    'properties.manage',
+    'properties.sensitive.read',
+    'property-agents.assign',
+    'property-agents.change',
+    'property-owners.manage'
   )
   AND NOT EXISTS (
     SELECT 1
