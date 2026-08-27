@@ -20,13 +20,10 @@ const decimalValue = (value: unknown): string | null => {
   )
     return String(value);
 
-  if (typeof value === 'object' && 'toString' in value) {
-    const candidate = value.toString;
-    if (
-      typeof candidate === 'function' &&
-      candidate !== Object.prototype.toString
-    )
-      return candidate.call(value);
+  if (typeof value === 'object') {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null)
+      return value.toString();
   }
 
   return null;
