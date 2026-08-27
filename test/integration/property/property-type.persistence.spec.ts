@@ -70,23 +70,25 @@ describe('PropertyType persistence integration', () => {
   });
 
   it('lists with pagination, filtering and deterministic sorting', async () => {
+    const token = randomUUID().slice(0, 8);
     await createTracked(
-      data({ code: 'HOUSE', slug: 'house', sortOrder: 20 }),
+      data({ code: `HOUSE_${token}`, slug: `house-${token}`, sortOrder: 20 }),
     );
     await createTracked(
-      data({ code: 'VILLA', slug: 'villa', sortOrder: 10 }),
+      data({ code: `VILLA_${token}`, slug: `villa-${token}`, sortOrder: 10 }),
     );
     const result = await repository.list({
       page: 1,
       limit: 1,
       filterField: 'isActive',
       filterValue: true,
+      search: token,
       sortBy: 'sortOrder',
       sortDirection: 'asc',
     });
     expect(result.total).toBe(2);
     expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.code).toBe('VILLA');
+    expect(result.items[0]?.code).toBe(`VILLA_${token}`);
   });
 
   it('updates a persisted record', async () => {
@@ -117,6 +119,7 @@ describe('PropertyType persistence integration', () => {
     const result = await repository.list({
       page: 1,
       limit: 20,
+      search: created.code,
       sortBy: 'createdAt',
       sortDirection: 'desc',
     });
