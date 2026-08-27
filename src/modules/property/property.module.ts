@@ -11,10 +11,14 @@ import { GetPropertyTypeUseCase } from './application/use-cases/get-property-typ
 import { ListPropertyTypesUseCase } from './application/use-cases/list-property-types.use-case.js';
 import { UpdatePropertyTypeUseCase } from './application/use-cases/update-property-type.use-case.js';
 import { PropertyTypesController } from './presentation/property-types.controller.js';
+import { PropertyMasterService } from './application/property-master.service.js';
+import { PropertyMasterController } from './presentation/property-master.controller.js';
+import { PROPERTY_MASTER_REPOSITORY } from './domain/repositories/property-master.repository.js';
+import { PrismaPropertyMasterRepository } from './infrastructure/persistence/prisma-property-master.repository.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule],
-  controllers: [PropertyTypesController],
+  controllers: [PropertyTypesController, PropertyMasterController],
   providers: [
     AuthorizationGuard,
     CreatePropertyTypeUseCase,
@@ -22,11 +26,10 @@ import { PropertyTypesController } from './presentation/property-types.controlle
     GetPropertyTypeUseCase,
     ListPropertyTypesUseCase,
     UpdatePropertyTypeUseCase,
-    {
-      provide: PROPERTY_TYPE_REPOSITORY,
-      useClass: PrismaPropertyTypeRepository,
-    },
+    { provide: PROPERTY_TYPE_REPOSITORY, useClass: PrismaPropertyTypeRepository },
+    PropertyMasterService,
+    { provide: PROPERTY_MASTER_REPOSITORY, useClass: PrismaPropertyMasterRepository },
   ],
-  exports: [PROPERTY_TYPE_REPOSITORY],
+  exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY],
 })
 export class PropertyModule {}
