@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
@@ -33,16 +33,6 @@ jobs:
           cache: npm
       - name: Pin npm
         run: npm install --global npm@11.18.0
-      - name: Synchronize lockfile
-        run: |
-          npm install --package-lock-only --ignore-scripts --no-audit
-          if ! git diff --quiet -- package-lock.json; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore(deps): refresh lockfile"
-            git push origin main
-          fi
       - name: Install MariaDB
         run: |
           sudo apt-get update
@@ -63,23 +53,6 @@ jobs:
         run: npm run prisma:status
       - name: Security baseline
         run: npm run test:security:baseline
-      - name: Format source
-        run: npm run format
-      - name: Format diagnostics
-        run: |
-          npx prettier src/modules/property/listing/infrastructure/listing.repository.ts > /tmp/listing.repository.formatted.ts
-          if ! diff -u src/modules/property/listing/infrastructure/listing.repository.ts /tmp/listing.repository.formatted.ts; then
-            true
-          fi
-      - name: Commit formatting changes
-        run: |
-          if ! git diff --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add src test
-            git commit -m "style(property): format implementation and tests"
-            git push origin main
-          fi
       - name: Format check
         run: npm run format:check
       - name: Lint
