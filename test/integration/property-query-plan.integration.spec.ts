@@ -25,9 +25,6 @@ const EXPLAIN_FIELD_INDEX: Readonly<Record<string, number>> = Object.fromEntries
   EXPLAIN_COLUMNS.map((column, index) => [column.toLowerCase(), index]),
 );
 
-const isArrayLikeRow = (row: ExplainRow): row is readonly unknown[] =>
-  Array.isArray(row);
-
 const explainField = (
   row: ExplainRow | undefined,
   field: (typeof EXPLAIN_COLUMNS)[number] | string,
@@ -35,19 +32,31 @@ const explainField = (
   if (!row) return undefined;
 
   const normalizedField = field.toLowerCase();
+  const fieldIndex = EXPLAIN_FIELD_INDEX[normalizedField];
 
-  if (isArrayLikeRow(row)) {
-    const index = EXPLAIN_FIELD_INDEX[normalizedField];
-    return index === undefined ? undefined : row[index];
+  if (Array.isArray(row)) {
+    return fieldIndex === undefined ? undefined : row[fieldIndex];
   }
 
   const directValue = row[field];
   if (directValue !== undefined) return directValue;
 
-  const entry = Object.entries(row).find(
+  const namedEntry = Object.entries(row).find(
     ([key]) => key.toLowerCase() === normalizedField,
   );
-  return entry?.[1];
+  if (namedEntry) return namedEntry[1];
+
+  // Some MariaDB driver-adapter versions materialize raw rows as objects whose
+  // enumerable keys are numeric indexes instead of SQL column names.
+  if (fieldIndex !== undefined) {
+    const indexedEntries = Object.entries(row)
+      .filter(([key]) => /^\d+$/.test(key))
+      .sort(([left], [right]) => Number(left) - Number(right));
+
+    return indexedEntries[fieldIndex]?.[1];
+  }
+
+  return undefined;
 };
 
 describe('Property critical query plans', () => {
