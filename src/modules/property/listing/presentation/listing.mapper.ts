@@ -11,6 +11,9 @@ const dateValue = (value: unknown): string | null =>
     : typeof value === 'string'
       ? value
       : null;
+type DecimalLike = { readonly toFixed: (fractionDigits?: number) => string };
+const isDecimalLike = (value: object): value is DecimalLike =>
+  'toFixed' in value && typeof value.toFixed === 'function';
 const decimalValue = (value: unknown): string | null => {
   if (value === null || value === undefined) return null;
   if (
@@ -20,11 +23,8 @@ const decimalValue = (value: unknown): string | null => {
   )
     return String(value);
 
-  if (typeof value === 'object') {
-    const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null)
-      return value.toString();
-  }
+  if (typeof value === 'object' && isDecimalLike(value))
+    return value.toFixed();
 
   return null;
 };
