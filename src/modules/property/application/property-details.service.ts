@@ -27,6 +27,11 @@ import {
 } from '../domain/property-details.js';
 import type { PropertyDetailsActor } from '../domain/property-details.js';
 
+const isNamedDetailError = (
+  error: unknown,
+  names: readonly string[],
+): boolean => error instanceof Error && names.includes(error.name);
+
 @Injectable()
 export class PropertyDetailsService {
   constructor(
@@ -315,12 +320,27 @@ export class PropertyDetailsService {
     try {
       return await operation();
     } catch (error: unknown) {
-      if (error instanceof PropertyDetailNotFoundError)
-        throw new NotFoundException(error.message);
-      if (error instanceof PropertyDetailConflictError)
-        throw new ConflictException(error.message);
-      if (error instanceof PropertyDetailInvalidStateError)
-        throw new BadRequestException(error.message);
+      if (
+        error instanceof PropertyDetailNotFoundError ||
+        isNamedDetailError(error, ['PropertyDetailNotFoundError'])
+      )
+        throw new NotFoundException(
+          error instanceof Error ? error.message : 'Property detail not found',
+        );
+      if (
+        error instanceof PropertyDetailConflictError ||
+        isNamedDetailError(error, ['PropertyDetailConflictError'])
+      )
+        throw new ConflictException(
+          error instanceof Error ? error.message : 'Property detail conflict',
+        );
+      if (
+        error instanceof PropertyDetailInvalidStateError ||
+        isNamedDetailError(error, ['PropertyDetailInvalidStateError'])
+      )
+        throw new BadRequestException(
+          error instanceof Error ? error.message : 'Invalid property detail',
+        );
       throw error;
     }
   }
