@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { PropertyLifecycleService } from '../../../src/modules/property/application/property-lifecycle.service.js';
 import type { PropertyLifecycleRepository } from '../../../src/modules/property/domain/repositories/property-lifecycle.repository.js';
 import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
+import { MasterConcurrencyError } from '../../../src/modules/property/domain/errors.js';
 
 const actor = {
   actorUuid: '11111111-1111-4111-8111-111111111111',
@@ -84,10 +85,11 @@ describe('PropertyLifecycleService', () => {
 
   it('maps optimistic concurrency failures to HTTP 409', async () => {
     vi.mocked(repository.verify).mockRejectedValueOnce(
-      new Error('Property version conflict'),
+      new MasterConcurrencyError('Property version conflict'),
     );
 
-    await expect(service.verify('55555555-5555-4555-8555-555555555555', 2, actor))
-      .rejects.toThrow(ConflictException);
+    await expect(
+      service.verify('55555555-5555-4555-8555-555555555555', 2, actor),
+    ).rejects.toThrow(ConflictException);
   });
 });
