@@ -20,10 +20,34 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           helper = Path('src/common/omit-undefined.ts')
-          helper.write_text('''type DeepDefined<T> = T extends Date\n  ? T\n  : T extends readonly (infer U)[]\n    ? readonly DeepDefined<U>[]\n    : T extends object\n      ? { [K in keyof T]-?: DeepDefined<Exclude<T[K], undefined>> }\n      : Exclude<T, undefined>;\n\nconst clean = (value: unknown): unknown => {\n  if (Array.isArray(value)) return value.map(clean);\n  if (value instanceof Date) return value;\n  if (value && typeof value === 'object') {\n    const input = value as Record<string, unknown>;\n    const output: Record<string, unknown> = {};\n    for (const key of Object.keys(input)) {\n      const item = input[key];\n      if (item !== undefined) output[key] = clean(item);\n    }\n    return output;\n  }\n  return value;\n};\n\nexport const omitUndefined = <T extends object>(input: T): DeepDefined<T> =>\n  clean(input) as DeepDefined<T>;\n''')
+          helper.write_text('''type DeepDefined<T> = T extends Date
+  ? T
+  : T extends readonly (infer U)[]
+    ? readonly DeepDefined<U>[]
+    : T extends object
+      ? { [K in keyof T]-?: DeepDefined<Exclude<T[K], undefined>> }
+      : Exclude<T, undefined>;
+
+const clean = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(clean);
+  if (value instanceof Date) return value;
+  if (value && typeof value === 'object') {
+    const input = value as Record<string, unknown>;
+    const output: Record<string, unknown> = {};
+    for (const key of Object.keys(input)) {
+      const item = input[key];
+      if (item !== undefined) output[key] = clean(item);
+    }
+    return output;
+  }
+  return value;
+};
+
+export const omitUndefined = <T extends object>(input: T): DeepDefined<T> =>
+  clean(input) as DeepDefined<T>;
+''')
 
           def matching_brace(text: str, start: int) -> int:
               depth = 0
@@ -32,15 +56,11 @@ jobs:
               while i < len(text):
                   c = text[i]
                   if quote:
-                      if c == '\\\\':
+                      if c == '\\':
                           i += 2
                           continue
                       if c == quote:
                           quote = None
-                      elif quote == '`' and c == '$' and i + 1 < len(text) and text[i + 1] == '{':
-                          depth += 1
-                          i += 2
-                          continue
                       i += 1
                       continue
                   if c in "'\"`":
@@ -48,18 +68,22 @@ jobs:
                       i += 1
                       continue
                   if c == '/' and i + 1 < len(text) and text[i + 1] == '/':
-                      i = text.find('\\n', i + 2)
-                      if i < 0: return len(text) - 1
+                      i = text.find(chr(10), i + 2)
+                      if i < 0:
+                          return len(text) - 1
                       continue
                   if c == '/' and i + 1 < len(text) and text[i + 1] == '*':
                       i = text.find('*/', i + 2)
-                      if i < 0: return len(text) - 1
+                      if i < 0:
+                          return len(text) - 1
                       i += 2
                       continue
-                  if c == '{': depth += 1
+                  if c == '{':
+                      depth += 1
                   elif c == '}':
                       depth -= 1
-                      if depth == 0: return i
+                      if depth == 0:
+                          return i
                   i += 1
               return -1
 
@@ -75,12 +99,13 @@ jobs:
                       needle = f'{key}: {{'
                       while True:
                           found = text.find(needle, pos)
-                          if found < 0: break
+                          if found < 0:
+                              break
                           brace = found + len(needle) - 1
                           end = matching_brace(text, brace)
-                          if end < 0: break
-                          before = text[max(0, found - 40):found]
-                          if 'omitUndefined(' not in text[max(0, found - 20):brace + 1]:
+                          if end < 0:
+                              break
+                          if 'omitUndefined(' not in text[max(0, found - 24):brace + 1]:
                               text = text[:found] + f'{key}: omitUndefined(' + text[found + len(key) + 2:]
                               end += len('omitUndefined(')
                               text = text[:end + 1] + ')' + text[end + 1:]
@@ -88,22 +113,19 @@ jobs:
                               pos = end + 2
                           else:
                               pos = end + 1
-                  if changed and "omitUndefined" not in text.split('\\n', 10)[0:10]:
-                      rel = '../../../../common/omit-undefined.js'
-                      text = f"import {{ omitUndefined }} from '{rel}';\\n" + text
+                  if changed:
+                      text = f"import {{ omitUndefined }} from '../../../../common/omit-undefined.js';" + chr(10) + text
                       path.write_text(text)
 
-          # Preserve repository contract exports.
           repo = Path('src/modules/property/domain/repositories/property-master.repository.ts')
           txt = repo.read_text()
           if 'export type { PageResult }' not in txt:
-              txt = "export type { PageResult } from '../property-master.types.js';\\n" + txt
-              repo.write_text(txt)
+              repo.write_text("export type { PageResult } from '../property-master.types.js';" + chr(10) + txt)
 
           store = Path('src/modules/property/infrastructure/persistence/prisma-property-master.store.ts')
           txt = store.read_text()
-          txt = txt.replace("  type PageRequest,\\n  type PropertyStatus,", "  type PageRequest,\\n  type PageResult,\\n  type PropertyStatus,")
-          txt = txt.replace("  MasterQuery,\\n  PageResult,\\n  PropertyMasterRepository,", "  MasterQuery,\\n  PropertyMasterRepository,")
+          txt = txt.replace("  type PageRequest,\n  type PropertyStatus,", "  type PageRequest,\n  type PageResult,\n  type PropertyStatus,")
+          txt = txt.replace("  MasterQuery,\n  PageResult,\n  PropertyMasterRepository,", "  MasterQuery,\n  PropertyMasterRepository,")
           txt = txt.replace("const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];", "const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');")
           store.write_text(txt)
           PY
