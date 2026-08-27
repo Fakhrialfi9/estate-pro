@@ -239,7 +239,9 @@ export class PropertyMasterService {
 
   async createProperty(input: Record<string, unknown>, actor: ActorContext) {
     assertAvailability(toDate(input.availableFrom), toDate(input.availableTo));
-    const result = await this.run(() => this.repository.createProperty(input, actor));
+    const result = await this.run(() =>
+      this.repository.createProperty(input, actor),
+    );
     const record = result as Record<string, unknown>;
     await this.recordAudit(AUDIT_ACTIONS.PROPERTY_CREATED, record.uuid, actor, [
       {
@@ -376,7 +378,9 @@ export class PropertyMasterService {
     await this.recordAudit(AUDIT_ACTIONS.PROPERTY_DELETED, uuid, actor);
   }
   async restoreProperty(uuid: string, actor: ActorContext) {
-    const result = await this.run(() => this.repository.restoreProperty(uuid, actor));
+    const result = await this.run(() =>
+      this.repository.restoreProperty(uuid, actor),
+    );
     await this.recordAudit(AUDIT_ACTIONS.PROPERTY_RESTORED, uuid, actor);
     return result;
   }

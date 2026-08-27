@@ -9,10 +9,7 @@ import { AUDIT_ACTIONS } from '../../../common/audit/audit-events.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../common/audit/security-audit.port.js';
 import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';
 import { MasterConcurrencyError, MasterNotFoundError } from '../domain/errors.js';
-import type {
-  ActorContext,
-  PropertyStatus,
-} from '../domain/property-master.types.js';
+import type { ActorContext, PropertyStatus } from '../domain/property-master.types.js';
 import { assertTransition } from '../domain/property-master.types.js';
 import { PROPERTY_LIFECYCLE_REPOSITORY } from '../domain/repositories/property-lifecycle.repository.js';
 import type { PropertyLifecycleRepository } from '../domain/repositories/property-lifecycle.repository.js';

@@ -36,7 +36,10 @@ const isPropertyPath = (path: string): boolean =>
   path.includes('/property/');
 
 const operationOf = (path: string, method: string): string => {
-  if (path.includes('/search') || (path.endsWith('/listings') && method === 'GET')) {
+  if (
+    path.includes('/search') ||
+    (path.endsWith('/listings') && method === 'GET')
+  ) {
     return 'search';
   }
   if (path.includes('/publish')) return 'publish';
@@ -88,7 +91,8 @@ export class PropertyMetricsInterceptor implements NestInterceptor {
         };
         requestCounter.add(1, attributes);
         requestDuration.record(durationMs, attributes);
-        if (operation === 'search') searchDuration.record(durationMs, attributes);
+        if (operation === 'search')
+          searchDuration.record(durationMs, attributes);
         if (operation === 'publish') publishCounter.add(1, attributes);
         if (operation === 'media') mediaCounter.add(1, attributes);
       }),

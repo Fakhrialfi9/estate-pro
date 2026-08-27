@@ -149,7 +149,11 @@ export class PropertyExtrasService {
       'property_certificate',
       cid,
       a,
-      { type: p.type, status: p.status, numberChanged: p.number !== undefined },
+      {
+        type: p.type,
+        status: p.status,
+        numberChanged: p.number !== undefined,
+      },
     );
     return r;
   }
