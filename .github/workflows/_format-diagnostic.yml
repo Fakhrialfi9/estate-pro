@@ -1,0 +1,29 @@
+name: Estate Pro Format Diagnostic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Render canonical formatting
+        run: |
+          npx prettier --write \
+            src/modules/property/application/property-extras.service.ts \
+            src/modules/property/application/property-lifecycle.service.ts \
+            src/modules/property/application/property-master.service.ts \
+            test/unit/property/property-lifecycle.service.spec.ts
+          git diff --no-color -- \
+            src/modules/property/application/property-extras.service.ts \
+            src/modules/property/application/property-lifecycle.service.ts \
+            src/modules/property/application/property-master.service.ts \
+            test/unit/property/property-lifecycle.service.spec.ts
