@@ -101,7 +101,6 @@ jobs:
           npm ci
           npx prettier --write \
             src/modules/property/domain/property-extras.ts \
-            src/modules/property/domain/repositories/property-master.repository.ts \
             src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts \
             src/modules/property/infrastructure/persistence/prisma-property-master.store.ts \
             src/modules/property/listing/domain/listing.types.ts \
@@ -109,6 +108,7 @@ jobs:
             src/modules/property/application/property-master.service.ts \
             src/modules/property/presentation/property-master.controller.ts
           npm run format:check
+          export DATABASE_URL='mysql://root@127.0.0.1:3306/estatepro'
           npm run lint
           npm run typecheck
 
