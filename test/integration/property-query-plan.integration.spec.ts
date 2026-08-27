@@ -3,14 +3,15 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 
-type ExplainRow = {
-  id: number;
-  select_type: string;
-  table: string;
-  type: string;
-  possible_keys: string | null;
-  key: string | null;
-  rows: number;
+type ExplainRow = Record<string, unknown>;
+
+const explainField = (row: ExplainRow | undefined, field: string): unknown => {
+  if (!row) return undefined;
+  const expected = field.toLowerCase();
+  const entry = Object.entries(row).find(
+    ([key]) => key.toLowerCase() === expected,
+  );
+  return entry?.[1];
 };
 
 describe('Property critical query plans', () => {
@@ -46,8 +47,8 @@ describe('Property critical query plans', () => {
     );
 
     expect(plan).toHaveLength(1);
-    expect(plan[0]?.table).toBe('properties');
-    expect(plan[0]?.possible_keys).toEqual(expect.any(String));
+    expect(explainField(plan[0], 'table')).toBe('properties');
+    expect(explainField(plan[0], 'possible_keys')).toEqual(expect.any(String));
   });
 
   it('can explain the property location/filter query', async () => {
@@ -56,7 +57,7 @@ describe('Property critical query plans', () => {
     );
 
     expect(plan).toHaveLength(1);
-    expect(plan[0]?.table).toBe('properties');
-    expect(plan[0]?.possible_keys).toEqual(expect.any(String));
+    expect(explainField(plan[0], 'table')).toBe('properties');
+    expect(explainField(plan[0], 'possible_keys')).toEqual(expect.any(String));
   });
 });
