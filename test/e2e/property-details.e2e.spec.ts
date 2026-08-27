@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import type { Server as HttpServer } from 'node:http';
 import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
@@ -30,7 +31,8 @@ const PERMISSIONS = [
   'property-facilities.detach',
   'property-facilities.bulk-attach',
 ] as const;
-const http = (app: NestExpressApplication) => request(app.getHttpServer());
+const http = (app: NestExpressApplication) =>
+  request(app.getHttpServer() as unknown as HttpServer);
 
 let app: NestExpressApplication;
 let prisma: PrismaService;
