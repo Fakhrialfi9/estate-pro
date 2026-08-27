@@ -5,7 +5,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { SecurityAuditRepository, SecurityAuditChange } from '../../../common/audit/security-audit.port.js';
+import type {
+  SecurityAuditChange,
+  SecurityAuditRepository,
+} from '../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../common/audit/security-audit.port.js';
 import { PROPERTY_DETAILS_REPOSITORY } from '../domain/repositories/property-details.repository.js';
 import type {
@@ -45,7 +48,13 @@ export class PropertyDetailsService {
     const result = await this.run(() =>
       this.repository.upsertSpecifications(propertyUuid, patch, actor),
     );
-    await this.record('property.specifications.update', 'property_specification', propertyUuid, actor, patch);
+    await this.record(
+      'property.specifications.update',
+      'property_specification',
+      propertyUuid,
+      actor,
+      patch,
+    );
     return result;
   }
 
@@ -61,7 +70,13 @@ export class PropertyDetailsService {
     const result = await this.run(() =>
       this.repository.updateLocation(propertyUuid, patch, actor),
     );
-    await this.record('property.location.update', 'property_location', propertyUuid, actor, patch);
+    await this.record(
+      'property.location.update',
+      'property_location',
+      propertyUuid,
+      actor,
+      patch,
+    );
     return result;
   }
 
@@ -77,7 +92,13 @@ export class PropertyDetailsService {
     const result = await this.run(() =>
       this.repository.updateBuilding(propertyUuid, patch, actor),
     );
-    await this.record('property.building.update', 'property_building', propertyUuid, actor, patch);
+    await this.record(
+      'property.building.update',
+      'property_building',
+      propertyUuid,
+      actor,
+      patch,
+    );
     return result;
   }
 
@@ -192,6 +213,7 @@ export class PropertyDetailsService {
       throw new BadRequestException('facilityUuids must not contain duplicates');
     const result = await this.run(() =>
       this.repository.bulkAttachFacilities(
+        propertyUuid,
         facilityUuids.map((facilityUuid) => ({ facilityUuid })),
         actor,
       ),
