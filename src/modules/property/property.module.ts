@@ -19,14 +19,14 @@ import { PROPERTY_DETAILS_REPOSITORY } from './domain/repositories/property-deta
 import { PrismaPropertyDetailsRepository } from './infrastructure/persistence/prisma-property-details.repository.js';
 import { PropertyDetailsService } from './application/property-details.service.js';
 import { PropertyDetailsController } from './presentation/property-details.controller.js';
+import { PROPERTY_EXTRAS_REPOSITORY } from './domain/repositories/property-extras.repository.js';
+import { PrismaPropertyExtrasRepository } from './infrastructure/persistence/prisma-property-extras.repository.js';
+import { PropertyExtrasService } from './application/property-extras.service.js';
+import { PropertyExtrasController } from './presentation/property-extras.controller.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule],
-  controllers: [
-    PropertyTypesController,
-    PropertyMasterController,
-    PropertyDetailsController,
-  ],
+  controllers: [PropertyTypesController, PropertyMasterController, PropertyDetailsController, PropertyExtrasController],
   providers: [
     AuthorizationGuard,
     CreatePropertyTypeUseCase,
@@ -34,25 +34,14 @@ import { PropertyDetailsController } from './presentation/property-details.contr
     GetPropertyTypeUseCase,
     ListPropertyTypesUseCase,
     UpdatePropertyTypeUseCase,
-    {
-      provide: PROPERTY_TYPE_REPOSITORY,
-      useClass: PrismaPropertyTypeRepository,
-    },
+    { provide: PROPERTY_TYPE_REPOSITORY, useClass: PrismaPropertyTypeRepository },
     PropertyMasterService,
-    {
-      provide: PROPERTY_MASTER_REPOSITORY,
-      useClass: PrismaPropertyMasterStore,
-    },
+    { provide: PROPERTY_MASTER_REPOSITORY, useClass: PrismaPropertyMasterStore },
     PropertyDetailsService,
-    {
-      provide: PROPERTY_DETAILS_REPOSITORY,
-      useClass: PrismaPropertyDetailsRepository,
-    },
+    { provide: PROPERTY_DETAILS_REPOSITORY, useClass: PrismaPropertyDetailsRepository },
+    PropertyExtrasService,
+    { provide: PROPERTY_EXTRAS_REPOSITORY, useClass: PrismaPropertyExtrasRepository },
   ],
-  exports: [
-    PROPERTY_TYPE_REPOSITORY,
-    PROPERTY_MASTER_REPOSITORY,
-    PROPERTY_DETAILS_REPOSITORY,
-  ],
+  exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY, PROPERTY_DETAILS_REPOSITORY, PROPERTY_EXTRAS_REPOSITORY],
 })
 export class PropertyModule {}
