@@ -15,10 +15,17 @@ const PERMISSIONS = [
   'properties.delete',
 ] as const;
 
+type Actor = {
+  uuid: string;
+  userId: bigint;
+  roleId: bigint;
+  token: string;
+};
+
 async function createActor(
   prisma: PrismaService,
   jwt: JwtService,
-): Promise<{ uuid: string; token: string }> {
+): Promise<Actor> {
   const user = await prisma.authenticationUser.create({
     data: {
       uuid: randomUUID(),
@@ -68,15 +75,20 @@ async function createActor(
   await prisma.authorizationUserRole.create({
     data: { userId: user.id, roleId: role.id, assignedBy: user.id },
   });
-  return { uuid: user.uuid, token: jwt.sign({ sub: user.uuid, sid: sessionId }) };
+  return {
+    uuid: user.uuid,
+    userId: user.id,
+    roleId: role.id,
+    token: jwt.sign({ sub: user.uuid, sid: sessionId }),
+  };
 }
 
 describe('Property object-level authorization', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwt: JwtService;
-  let owner: { uuid: string; token: string };
-  let other: { uuid: string; token: string };
+  let owner: Actor;
+  let other: Actor;
   let typeId: bigint;
   let categoryId: bigint;
   let propertyUuid: string;
@@ -124,21 +136,31 @@ describe('Property object-level authorization', () => {
   });
 
   afterAll(async () => {
-    await prisma.propertyAgentAssignment.deleteMany({
-      where: { propertyId: (await prisma.property.findFirstOrThrow({ where: { uuid: propertyUuid } })).id },
+    const property = await prisma.property.findFirst({
+      where: { uuid: propertyUuid },
+      select: { id: true },
     });
-    await prisma.property.deleteMany({ where: { uuid: propertyUuid } });
+    if (property) {
+      await prisma.propertyAgentAssignment.deleteMany({
+        where: { propertyId: property.id },
+      });
+      await prisma.property.delete({ where: { id: property.id } });
+    }
     await prisma.propertyCategory.deleteMany({ where: { id: categoryId } });
     await prisma.propertyType.deleteMany({ where: { id: typeId } });
-    await prisma.authorizationUserRole.deleteMany({
-      where: { userId: { in: [owner.uuid, other.uuid] } },
-    });
-    await prisma.authenticationUserSession.deleteMany({
-      where: { user: { uuid: { in: [owner.uuid, other.uuid] } } },
-    });
-    await prisma.authenticationUser.deleteMany({
-      where: { uuid: { in: [owner.uuid, other.uuid] } },
-    });
+    for (const actor of [owner, other]) {
+      await prisma.authorizationUserRole.deleteMany({
+        where: { userId: actor.userId, roleId: actor.roleId },
+      });
+      await prisma.authorizationRolePermission.deleteMany({
+        where: { roleId: actor.roleId },
+      });
+      await prisma.authorizationRole.delete({ where: { id: actor.roleId } });
+      await prisma.authenticationUserSession.deleteMany({
+        where: { userId: actor.userId },
+      });
+      await prisma.authenticationUser.delete({ where: { id: actor.userId } });
+    }
     await app.close();
   });
 
@@ -172,15 +194,11 @@ describe('Property object-level authorization', () => {
       where: { uuid: propertyUuid },
       select: { id: true },
     });
-    const agent = await prisma.authenticationUser.findFirstOrThrow({
-      where: { uuid: other.uuid },
-      select: { uuid: true },
-    });
     await prisma.propertyAgentAssignment.create({
       data: {
         uuid: randomUUID(),
         propertyId: property.id,
-        agentUserUuid: agent.uuid,
+        agentUserUuid: other.uuid,
         agentDisplayName: 'Authorized Agent',
         isPrimary: true,
         createdBy: owner.uuid,
