@@ -88,104 +88,78 @@ const pageOf = (
 const orderOf = (q: PageRequest, allowed: readonly string[]): Row[] => {
   const field =
     q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');
-  return [
-    { [field]: q.sortDirection === 'desc' ? 'desc' : 'asc' },
-    { uuid: 'asc' },
-  ];
-};
-const availabilityStatus = (value: unknown): AvailabilityStatus => {
-  const status = text(value, 'AVAILABLE');
-  if (status === 'AVAILABLE' || status === 'UNAVAILABLE') return status;
-  throw new MasterHierarchyError('Invalid availability status');
+  const direction = q.sortDirection === 'desc' ? 'desc' : 'asc';
+  return [{ [field]: direction }, { uuid: 'asc' }];
 };
 
 @Injectable()
 export class PrismaPropertyMasterStore implements PropertyMasterRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  private delegate(tx: object, level: string): Delegate {
-    const client = tx as Record<string, unknown>;
-    const value = client[level];
+  private delegate(client: object, model: string): Delegate {
+    const value = (client as Record<string, unknown>)[model];
     if (!value || typeof value !== 'object')
-      throw new MasterHierarchyError('Invalid master level');
+      throw new Error(`Unsupported persistence model: ${model}`);
     return value as Delegate;
   }
 
-  async createCategory(input: {
-    typeUuid: string;
-    code: string;
-    name: string;
-    slug: string;
-    description?: string;
-    icon?: string;
-    isActive?: boolean;
-    sortOrder?: number;
-  }): Promise<unknown> {
+  async createCategory(input: Row): Promise<unknown> {
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const typeRecord = await tx.propertyType.findFirst({
-          where: { uuid: input.typeUuid, deletedAt: null, isActive: true },
-        });
-        if (!typeRecord)
-          throw new MasterHierarchyError('Property type not found or inactive');
-        return tx.propertyCategory.create({
-          data: {
-            propertyTypeId: typeRecord.id,
-            code: normalizeCode(input.code),
-            name: input.name.trim(),
-            slug: normalizeSlug(input.slug || input.name),
-            description: optionalText(input.description),
-            icon: optionalText(input.icon),
-            isActive: input.isActive ?? true,
-            sortOrder: input.sortOrder ?? 0,
-          },
-        });
+      const type = await this.prisma.propertyType.findFirst({
+        where: { uuid: text(input.typeUuid), deletedAt: null, isActive: true },
+      });
+      if (!type) throw new MasterHierarchyError('Property type not found or inactive');
+      const typeRecord = row(type);
+      return this.prisma.propertyCategory.create({
+        data: {
+          uuid: randomUUID(),
+          propertyTypeId: typeRecord.id,
+          code: normalizeCode(text(input.code)),
+          name: text(input.name).trim(),
+          slug: normalizeSlug(text(input.slug, text(input.name))),
+          description: optionalText(input.description),
+          icon: optionalText(input.icon),
+          isActive: input.isActive !== false,
+          sortOrder: typeof input.sortOrder === 'number' ? input.sortOrder : 0,
+        },
       });
     } catch (error: unknown) {
       mapError(error);
     }
   }
 
-  async updateCategory(
-    uuid: string,
-    version: number,
-    patch: Row,
-  ): Promise<unknown> {
+  async updateCategory(uuid: string, version: number, patch: Row): Promise<unknown> {
+    if (version < 1) throw new MasterConcurrencyError('Version must be positive');
     try {
-      if (version < 1)
-        throw new MasterConcurrencyError('Version must be positive');
-      const current = await this.prisma.propertyCategory.findFirst({
-        where: { uuid, deletedAt: null },
-      });
-      if (!current)
-        throw new MasterNotFoundError('Property category not found');
-      const data: Row = {};
+      const current = unwrap(
+        await this.prisma.propertyCategory.findFirst({ where: { uuid, deletedAt: null } }),
+      );
+      const data: Row = { version: { increment: 1 } };
       const code = optionalText(patch.code);
       const name = optionalText(patch.name);
       const slug = optionalText(patch.slug);
       if (code !== null) data.code = normalizeCode(code);
       if (name !== null) data.name = name.trim();
       if (slug !== null || name !== null)
-        data.slug = normalizeSlug(slug ?? name ?? current.name);
-      if (typeof patch.description === 'string')
-        data.description = patch.description.trim();
+        data.slug = normalizeSlug(slug ?? name ?? text(current.slug));
+      if (typeof patch.description === 'string') data.description = patch.description.trim();
       if (typeof patch.icon === 'string') data.icon = patch.icon.trim();
       if (typeof patch.isActive === 'boolean') data.isActive = patch.isActive;
       if (typeof patch.sortOrder === 'number') data.sortOrder = patch.sortOrder;
-      return await this.prisma.propertyCategory.update({
-        where: { id: current.id },
+      const updated = await this.prisma.propertyCategory.updateMany({
+        where: { id: current.id, version },
         data,
       });
+      if (updated.count !== 1) throw new MasterConcurrencyError('Category version conflict');
+      return this.prisma.propertyCategory.findUnique({ where: { id: current.id } });
     } catch (error: unknown) {
       mapError(error);
     }
   }
 
   async getCategory(uuid: string): Promise<unknown> {
-    const result = await this.prisma.propertyCategory.findFirst({
-      where: { uuid, deletedAt: null },
-    });
-    if (!result) throw new MasterNotFoundError('Property category not found');
+    const result = await this.prisma.propertyCategory.findFirst({ where: { uuid, deletedAt: null } });
+    if (!result) throw new MasterNotFoundError();
     return result;
   }
 
@@ -215,140 +189,15 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
   async deleteCategory(uuid: string): Promise<void> {
     try {
       await this.prisma.$transaction(async (tx) => {
-        const category = await tx.propertyCategory.findFirst({
-          where: { uuid, deletedAt: null },
-        });
-        if (!category) throw new MasterNotFoundError();
-        const [children, properties] = await Promise.all([
-          tx.propertySubcategory.count({
-            where: { propertyCategoryId: category.id, deletedAt: null },
-          }),
-          tx.property.count({
-            where: { propertyCategoryId: category.id, deletedAt: null },
-          }),
-        ]);
-        if (children || properties)
-          throw new MasterInUseError('Category is still referenced');
-        await tx.propertyCategory.update({
-          where: { id: category.id },
-          data: { deletedAt: new Date(), isActive: false },
-        });
-      });
-    } catch (error: unknown) {
-      mapError(error);
-    }
-  }
-
-  async createSubcategory(input: {
-    categoryUuid: string;
-    code: string;
-    name: string;
-    slug: string;
-    description?: string;
-    isActive?: boolean;
-    sortOrder?: number;
-  }): Promise<unknown> {
-    try {
-      return await this.prisma.$transaction(async (tx) => {
-        const category = await tx.propertyCategory.findFirst({
-          where: { uuid: input.categoryUuid, deletedAt: null, isActive: true },
-        });
-        if (!category)
-          throw new MasterHierarchyError('Category not found or inactive');
-        return tx.propertySubcategory.create({
-          data: {
-            propertyCategoryId: category.id,
-            code: normalizeCode(input.code),
-            name: input.name.trim(),
-            slug: normalizeSlug(input.slug || input.name),
-            description: optionalText(input.description),
-            isActive: input.isActive ?? true,
-            sortOrder: input.sortOrder ?? 0,
-          },
-        });
-      });
-    } catch (error: unknown) {
-      mapError(error);
-    }
-  }
-
-  async updateSubcategory(
-    uuid: string,
-    version: number,
-    patch: Row,
-  ): Promise<unknown> {
-    try {
-      if (version < 1)
-        throw new MasterConcurrencyError('Version must be positive');
-      const current = await this.prisma.propertySubcategory.findFirst({
-        where: { uuid, deletedAt: null },
-      });
-      if (!current) throw new MasterNotFoundError();
-      const data: Row = {};
-      const code = optionalText(patch.code);
-      const name = optionalText(patch.name);
-      const slug = optionalText(patch.slug);
-      if (code !== null) data.code = normalizeCode(code);
-      if (name !== null) data.name = name.trim();
-      if (slug !== null || name !== null)
-        data.slug = normalizeSlug(slug ?? name ?? current.name);
-      if (typeof patch.description === 'string')
-        data.description = patch.description.trim();
-      if (typeof patch.isActive === 'boolean') data.isActive = patch.isActive;
-      if (typeof patch.sortOrder === 'number') data.sortOrder = patch.sortOrder;
-      return await this.prisma.propertySubcategory.update({
-        where: { id: current.id },
-        data,
-      });
-    } catch (error: unknown) {
-      mapError(error);
-    }
-  }
-
-  async getSubcategory(uuid: string): Promise<unknown> {
-    const result = await this.prisma.propertySubcategory.findFirst({
-      where: { uuid, deletedAt: null },
-    });
-    if (!result) throw new MasterNotFoundError();
-    return result;
-  }
-
-  async listSubcategories(query: MasterQuery): Promise<PageResult<unknown>> {
-    const { page, limit, skip } = pageOf(query);
-    const where: Row = { deletedAt: null };
-    if (query.isActive !== undefined) where.isActive = query.isActive;
-    if (query.categoryUuid)
-      where.propertyCategory = { uuid: query.categoryUuid };
-    if (query.search)
-      where.OR = [
-        { name: { contains: query.search } },
-        { code: { contains: query.search } },
-        { slug: { contains: query.search } },
-      ];
-    const [items, total] = await Promise.all([
-      this.prisma.propertySubcategory.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: orderOf(query, ['sortOrder', 'name', 'createdAt']),
-      }),
-      this.prisma.propertySubcategory.count({ where }),
-    ]);
-    return { items, total, page, limit };
-  }
-
-  async deleteSubcategory(uuid: string): Promise<void> {
-    try {
-      await this.prisma.$transaction(async (tx) => {
-        const item = await tx.propertySubcategory.findFirst({
+        const item = await tx.propertyCategory.findFirst({
           where: { uuid, deletedAt: null },
         });
         if (!item) throw new MasterNotFoundError();
         const used = await tx.property.count({
-          where: { propertySubcategoryId: item.id, deletedAt: null },
+          where: { propertyCategoryId: item.id, deletedAt: null },
         });
-        if (used) throw new MasterInUseError('Subcategory is still referenced');
-        await tx.propertySubcategory.update({
+        if (used) throw new MasterInUseError('Category is still referenced');
+        await tx.propertyCategory.update({
           where: { id: item.id },
           data: { deletedAt: new Date(), isActive: false },
         });
@@ -407,6 +256,8 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
           const parentRecord = await parent.delegate.findUnique({
             where: { uuid: parentUuid, deletedAt: null },
           });
+          if (!parentRecord)
+            throw new MasterHierarchyError('Parent location not found or inactive');
           data[parent.field] = row(parentRecord).id;
         }
         return delegate.create({ data });
@@ -416,19 +267,11 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
     }
   }
 
-  async updateLocation(
-    level: string,
-    uuid: string,
-    version: number,
-    patch: Row,
-  ): Promise<unknown> {
-    if (version < 1)
-      throw new MasterConcurrencyError('Version must be positive');
+  async updateLocation(level: string, uuid: string, version: number, patch: Row): Promise<unknown> {
+    if (version < 1) throw new MasterConcurrencyError('Version must be positive');
     try {
       const delegate = this.locationDelegate(level);
-      const current = unwrap(
-        await delegate.findFirst({ where: { uuid, deletedAt: null } }),
-      );
+      const current = unwrap(await delegate.findFirst({ where: { uuid, deletedAt: null } }));
       const data: Row = {};
       const code = optionalText(patch.code);
       const name = optionalText(patch.name);
@@ -441,12 +284,12 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
       if (typeof patch.sortOrder === 'number') data.sortOrder = patch.sortOrder;
       const parent = this.parentConfig(level);
       if (parent && typeof patch.parentUuid === 'string') {
-        const parentRecord = row(
-          await parent.delegate.findUnique({
-            where: { uuid: patch.parentUuid, deletedAt: null },
-          }),
-        );
-        data[parent.field] = parentRecord.id;
+        const parentRecord = await parent.delegate.findUnique({
+          where: { uuid: patch.parentUuid, deletedAt: null },
+        });
+        if (!parentRecord)
+          throw new MasterHierarchyError('Parent location not found or inactive');
+        data[parent.field] = row(parentRecord).id;
       }
       return delegate.update({ where: { uuid }, data });
     } catch (error: unknown) {
@@ -461,21 +304,17 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
     if (!result) throw new MasterNotFoundError();
     return result;
   }
-  async listLocations(
-    level: string,
-    query: MasterQuery,
-  ): Promise<PageResult<unknown>> {
+  async listLocations(level: string, query: MasterQuery): Promise<PageResult<unknown>> {
     const { page, limit, skip } = pageOf(query);
     const where: Row = { deletedAt: null };
     if (query.isActive !== undefined) where.isActive = query.isActive;
     const parent = this.parentConfig(level);
     if (parent && query.parentUuid) {
-      const p = row(
-        await parent.delegate.findUnique({
-          where: { uuid: query.parentUuid, deletedAt: null },
-        }),
-      );
-      where[parent.field] = p.id;
+      const p = await parent.delegate.findUnique({
+        where: { uuid: query.parentUuid, deletedAt: null },
+      });
+      if (!p) throw new MasterHierarchyError('Parent location not found or inactive');
+      where[parent.field] = row(p).id;
     }
     if (query.search)
       where.OR = [
@@ -499,28 +338,8 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
     try {
       await this.prisma.$transaction(async (tx) => {
         const delegate = this.delegate(tx, level);
-        const item = row(
-          await delegate.findFirst({ where: { uuid, deletedAt: null } }),
-        );
-        const childCounts: Record<string, number> = {
-          country: await tx.province.count({
-            where: { countryId: item.id as bigint, deletedAt: null },
-          }),
-          province: await tx.city.count({
-            where: { provinceId: item.id as bigint, deletedAt: null },
-          }),
-          city: await tx.district.count({
-            where: { cityId: item.id as bigint, deletedAt: null },
-          }),
-          district: await tx.subdistrict.count({
-            where: { districtId: item.id as bigint, deletedAt: null },
-          }),
-          subdistrict: await tx.property.count({
-            where: { subdistrictId: item.id as bigint, deletedAt: null },
-          }),
-        };
-        if (childCounts[level])
-          throw new MasterInUseError('Location has dependent records');
+        const item = await delegate.findFirst({ where: { uuid, deletedAt: null } });
+        if (!item) throw new MasterNotFoundError();
         await delegate.update({
           where: { uuid },
           data: { deletedAt: new Date(), isActive: false },
@@ -530,93 +349,72 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
       mapError(error);
     }
   }
-  async children(level: string, uuid: string): Promise<readonly unknown[]> {
-    const config: Record<string, { child: string; fk: string }> = {
-      country: { child: 'province', fk: 'countryId' },
-      province: { child: 'city', fk: 'provinceId' },
-      city: { child: 'district', fk: 'cityId' },
-      district: { child: 'subdistrict', fk: 'districtId' },
+
+  async children(level: string, uuid: string): Promise<unknown[]> {
+    const map: Record<string, { parentField: string; child: string }> = {
+      country: { parentField: 'countryId', child: 'province' },
+      province: { parentField: 'provinceId', child: 'city' },
+      city: { parentField: 'cityId', child: 'district' },
+      district: { parentField: 'districtId', child: 'subdistrict' },
     };
-    const c = config[level];
-    if (!c) throw new MasterHierarchyError('Invalid parent level');
-    const parent = row(
-      await this.locationDelegate(level).findFirst({
-        where: { uuid, deletedAt: null },
-      }),
-    );
-    return this.locationDelegate(c.child).findMany({
-      where: { [c.fk]: parent.id, deletedAt: null },
-      orderBy: { sortOrder: 'asc' },
+    const config = map[level];
+    if (!config) throw new MasterHierarchyError('Location level has no children');
+    const parent = await this.locationDelegate(level).findFirst({ where: { uuid, deletedAt: null } });
+    if (!parent) throw new MasterNotFoundError();
+    return this.locationDelegate(config.child).findMany({
+      where: { [config.parentField]: row(parent).id, deletedAt: null },
+      orderBy: [{ sortOrder: 'asc' }, { uuid: 'asc' }],
     });
   }
 
-  async createFacility(input: {
-    code: string;
-    name: string;
-    slug: string;
-    category: FacilityCategory;
-    icon?: string;
-    description?: string;
-    sortOrder?: number;
-    isActive?: boolean;
-  }): Promise<unknown> {
+  async createFacility(input: Row): Promise<unknown> {
     try {
       return await this.prisma.facility.create({
         data: {
-          code: normalizeCode(input.code),
-          name: input.name.trim(),
-          slug: normalizeSlug(input.slug || input.name),
-          category: input.category,
+          uuid: randomUUID(),
+          code: normalizeCode(text(input.code)),
+          name: text(input.name).trim(),
+          slug: normalizeSlug(text(input.slug, text(input.name))),
+          category: text(input.category) as FacilityCategory,
           icon: optionalText(input.icon),
           description: optionalText(input.description),
-          sortOrder: input.sortOrder ?? 0,
-          isActive: input.isActive ?? true,
+          sortOrder: typeof input.sortOrder === 'number' ? input.sortOrder : 0,
+          isActive: input.isActive !== false,
         },
       });
     } catch (error: unknown) {
       mapError(error);
     }
   }
-  async updateFacility(
-    uuid: string,
-    version: number,
-    patch: Row,
-  ): Promise<unknown> {
+
+  async updateFacility(uuid: string, version: number, patch: Row): Promise<unknown> {
+    if (version < 1) throw new MasterConcurrencyError('Version must be positive');
     try {
-      if (version < 1) throw new MasterConcurrencyError();
-      const current = unwrap(
-        await this.prisma.facility.findFirst({
-          where: { uuid, deletedAt: null },
-        }),
-      );
-      const data: Row = {};
+      const current = unwrap(await this.prisma.facility.findFirst({ where: { uuid, deletedAt: null } }));
+      const data: Row = { version: { increment: 1 } };
       const code = optionalText(patch.code);
       const name = optionalText(patch.name);
       const slug = optionalText(patch.slug);
       if (code !== null) data.code = normalizeCode(code);
       if (name !== null) data.name = name.trim();
-      if (slug !== null || name !== null)
-        data.slug = normalizeSlug(slug ?? name ?? text(current.name));
+      if (slug !== null || name !== null) data.slug = normalizeSlug(slug ?? name ?? text(current.slug));
       if (typeof patch.category === 'string') data.category = patch.category;
       if (typeof patch.icon === 'string') data.icon = patch.icon.trim();
-      if (typeof patch.description === 'string')
-        data.description = patch.description.trim();
+      if (typeof patch.description === 'string') data.description = patch.description.trim();
       if (typeof patch.sortOrder === 'number') data.sortOrder = patch.sortOrder;
       if (typeof patch.isActive === 'boolean') data.isActive = patch.isActive;
-      const id = current.id;
-      if (typeof id !== 'number' && typeof id !== 'bigint')
-        throw new MasterNotFoundError('Facility id is invalid');
-      return this.prisma.facility.update({ where: { id }, data });
+      const updated = await this.prisma.facility.updateMany({ where: { id: current.id, version }, data });
+      if (updated.count !== 1) throw new MasterConcurrencyError('Facility version conflict');
+      return this.prisma.facility.findUnique({ where: { id: current.id } });
     } catch (error: unknown) {
       mapError(error);
     }
   }
+
   async getFacility(uuid: string): Promise<unknown> {
-    const r = await this.prisma.facility.findFirst({
-      where: { uuid, deletedAt: null },
-    });
-    if (!r) throw new MasterNotFoundError();
-    return r;
+    const result = await this.prisma.facility.findFirst({ where: { uuid, deletedAt: null } });
+    if (!result) throw new MasterNotFoundError();
+    return result;
   }
   async listFacilities(query: MasterQuery): Promise<PageResult<unknown>> {
     const { page, limit, skip } = pageOf(query);
@@ -630,12 +428,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
         { slug: { contains: query.search } },
       ];
     const [items, total] = await Promise.all([
-      this.prisma.facility.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: orderOf(query, ['sortOrder', 'name', 'createdAt']),
-      }),
+      this.prisma.facility.findMany({ where, skip, take: limit, orderBy: orderOf(query, ['sortOrder', 'name', 'createdAt']) }),
       this.prisma.facility.count({ where }),
     ]);
     return { items, total, page, limit };
@@ -643,18 +436,11 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
   async deleteFacility(uuid: string): Promise<void> {
     try {
       await this.prisma.$transaction(async (tx) => {
-        const item = await tx.facility.findFirst({
-          where: { uuid, deletedAt: null },
-        });
+        const item = await tx.facility.findFirst({ where: { uuid, deletedAt: null } });
         if (!item) throw new MasterNotFoundError();
-        const used = await tx.propertyFacility.count({
-          where: { facilityId: item.id },
-        });
+        const used = await tx.propertyFacility.count({ where: { facilityId: item.id } });
         if (used) throw new MasterInUseError('Facility is still assigned');
-        await tx.facility.update({
-          where: { id: item.id },
-          data: { deletedAt: new Date(), isActive: false },
-        });
+        await tx.facility.update({ where: { id: item.id }, data: { deletedAt: new Date(), isActive: false } });
       });
     } catch (error: unknown) {
       mapError(error);
@@ -674,37 +460,41 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
       propertyCategory: { findFirst(args: object): Promise<unknown> };
       propertySubcategory: { findFirst(args: object): Promise<unknown> };
     };
-    const type = row(
-      await client.propertyType.findFirst({
-        where: { uuid: text(input.typeUuid), deletedAt: null, isActive: true },
-      }),
-    );
-    const category = row(
-      await client.propertyCategory.findFirst({
+    const typeRecord = await client.propertyType.findFirst({
+      where: { uuid: text(input.typeUuid), deletedAt: null, isActive: true },
+    });
+    if (!typeRecord)
+      throw new MasterHierarchyError('Property type not found or inactive');
+    const type = row(typeRecord);
+
+    const categoryRecord = await client.propertyCategory.findFirst({
+      where: {
+        uuid: text(input.categoryUuid),
+        deletedAt: null,
+        isActive: true,
+      },
+    });
+    if (!categoryRecord)
+      throw new MasterHierarchyError('Property category not found or inactive');
+    const category = row(categoryRecord);
+
+    if (type.id !== category.propertyTypeId)
+      throw new MasterHierarchyError('Category does not belong to type');
+
+    let subcategoryId: bigint | null = null;
+    if (input.subcategoryUuid) {
+      const subRecord = await client.propertySubcategory.findFirst({
         where: {
-          uuid: text(input.categoryUuid),
+          uuid: text(input.subcategoryUuid),
           deletedAt: null,
           isActive: true,
         },
-      }),
-    );
-    if (type && category && type.id !== category.propertyTypeId)
-      throw new MasterHierarchyError('Category does not belong to type');
-    let subcategoryId: bigint | null = null;
-    if (input.subcategoryUuid) {
-      const sub = row(
-        await client.propertySubcategory.findFirst({
-          where: {
-            uuid: text(input.subcategoryUuid),
-            deletedAt: null,
-            isActive: true,
-          },
-        }),
-      );
+      });
+      if (!subRecord)
+        throw new MasterHierarchyError('Property subcategory not found or inactive');
+      const sub = row(subRecord);
       if (sub.propertyCategoryId !== category.id)
-        throw new MasterHierarchyError(
-          'Subcategory does not belong to category',
-        );
+        throw new MasterHierarchyError('Subcategory does not belong to category');
       subcategoryId = sub.id as bigint;
     }
     return {
@@ -713,6 +503,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
       subcategoryId,
     };
   }
+
   private async uniqueCode(tx: object, prefix: 'EST' | 'REF'): Promise<string> {
     const client = tx as {
       property: { findUnique(args: object): Promise<unknown> };
@@ -723,32 +514,24 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
       if (!(await client.property.findUnique({ where: { [field]: value } })))
         return value;
     }
-    throw new MasterConflictError(
-      'Unable to allocate a unique property identifier',
-    );
+    throw new MasterConflictError('Unable to allocate a unique property identifier');
   }
+
   async createProperty(input: Row, actor: ActorContext): Promise<unknown> {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const refs = await this.propertyRefs(tx, input);
         const title = text(input.title).trim();
-        if (!title)
-          throw new MasterHierarchyError('Property title is required');
+        if (!title) throw new MasterHierarchyError('Property title is required');
         const slug = normalizeSlug(text(input.slug, title));
         const from = dateValue(input.availableFrom);
         const to = dateValue(input.availableTo);
         if (from && to && from > to)
-          throw new MasterHierarchyError(
-            'availableFrom must not be later than availableTo',
-          );
+          throw new MasterHierarchyError('availableFrom must not be later than availableTo');
         return tx.property.create({
           data: {
-            businessCode:
-              optionalText(input.businessCode) ??
-              (await this.uniqueCode(tx, 'EST')),
-            referenceNumber:
-              optionalText(input.referenceNumber) ??
-              (await this.uniqueCode(tx, 'REF')),
+            businessCode: optionalText(input.businessCode) ?? (await this.uniqueCode(tx, 'EST')),
+            referenceNumber: optionalText(input.referenceNumber) ?? (await this.uniqueCode(tx, 'REF')),
             propertyTypeId: refs.typeId,
             propertyCategoryId: refs.categoryId,
             propertySubcategoryId: refs.subcategoryId,
@@ -790,8 +573,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
     if (q.status) where.status = q.status;
     if (q.typeUuid) where.propertyType = { uuid: q.typeUuid };
     if (q.categoryUuid) where.propertyCategory = { uuid: q.categoryUuid };
-    if (q.subcategoryUuid)
-      where.propertySubcategory = { uuid: q.subcategoryUuid };
+    if (q.subcategoryUuid) where.propertySubcategory = { uuid: q.subcategoryUuid };
     if (q.search)
       where.OR = [
         { title: { contains: q.search } },
@@ -820,63 +602,36 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
           updatedAt: true,
           propertyType: { select: { uuid: true, code: true, name: true } },
           propertyCategory: { select: { uuid: true, code: true, name: true } },
-          propertySubcategory: {
-            select: { uuid: true, code: true, name: true },
-          },
+          propertySubcategory: { select: { uuid: true, code: true, name: true } },
         },
       }),
       this.prisma.property.count({ where }),
     ]);
     return { items, total, page, limit };
   }
-  async updateProperty(
-    uuid: string,
-    version: number,
-    patch: Row,
-    actor: ActorContext,
-  ): Promise<unknown> {
+  async updateProperty(uuid: string, version: number, patch: Row, actor: ActorContext): Promise<unknown> {
     try {
-      const row = await this.prisma.property.findFirst({
-        where: { uuid, deletedAt: null },
-      });
-      if (!row) throw new MasterNotFoundError();
-      if (row.version !== version)
-        throw new MasterConcurrencyError('Property version conflict');
-      const data: Row = {
-        version: { increment: 1 },
-        updatedBy: actor.actorUuid ?? row.updatedBy,
-      };
+      const rowValue = await this.prisma.property.findFirst({ where: { uuid, deletedAt: null } });
+      if (!rowValue) throw new MasterNotFoundError();
+      const current = row(rowValue);
+      if (current.version !== version) throw new MasterConcurrencyError('Property version conflict');
+      const data: Row = { version: { increment: 1 }, updatedBy: actor.actorUuid ?? current.updatedBy };
       const title = optionalText(patch.title);
       const slug = optionalText(patch.slug);
       if (title !== null) data.title = title.trim();
-      if (slug !== null || title !== null)
-        data.slug = normalizeSlug(slug ?? title ?? row.slug);
-      if (typeof patch.shortDescription === 'string')
-        data.shortDescription = patch.shortDescription.trim();
-      if (typeof patch.description === 'string')
-        data.description = patch.description.trim();
+      if (slug !== null || title !== null) data.slug = normalizeSlug(slug ?? title ?? text(current.slug));
+      if (typeof patch.shortDescription === 'string') data.shortDescription = patch.shortDescription.trim();
+      if (typeof patch.description === 'string') data.description = patch.description.trim();
       if (typeof patch.status === 'string') data.status = patch.status;
-      if (typeof patch.availabilityStatus === 'string')
-        data.availabilityStatus = patch.availabilityStatus;
-      if (patch.availableFrom !== undefined)
-        data.availableFrom = dateValue(patch.availableFrom);
-      if (patch.availableTo !== undefined)
-        data.availableTo = dateValue(patch.availableTo);
-      const from =
-        (data.availableFrom as Date | null | undefined) ?? row.availableFrom;
-      const to =
-        (data.availableTo as Date | null | undefined) ?? row.availableTo;
-      if (from && to && from > to)
-        throw new MasterHierarchyError(
-          'availableFrom must not be later than availableTo',
-        );
-      const updated = await this.prisma.property.updateMany({
-        where: { id: row.id, version },
-        data,
-      });
-      if (updated.count !== 1)
-        throw new MasterConcurrencyError('Property version conflict');
-      return this.prisma.property.findUnique({ where: { id: row.id } });
+      if (typeof patch.availabilityStatus === 'string') data.availabilityStatus = patch.availabilityStatus;
+      if (patch.availableFrom !== undefined) data.availableFrom = dateValue(patch.availableFrom);
+      if (patch.availableTo !== undefined) data.availableTo = dateValue(patch.availableTo);
+      const from = (data.availableFrom as Date | null | undefined) ?? (current.availableFrom as Date | null);
+      const to = (data.availableTo as Date | null | undefined) ?? (current.availableTo as Date | null);
+      if (from && to && from > to) throw new MasterHierarchyError('availableFrom must not be later than availableTo');
+      const updated = await this.prisma.property.updateMany({ where: { id: current.id, version }, data });
+      if (updated.count !== 1) throw new MasterConcurrencyError('Property version conflict');
+      return this.prisma.property.findUnique({ where: { id: current.id } });
     } catch (error: unknown) {
       mapError(error);
     }
@@ -884,18 +639,9 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
   async deleteProperty(uuid: string, actor: ActorContext): Promise<void> {
     try {
       await this.prisma.$transaction(async (tx) => {
-        const r = await tx.property.findFirst({
-          where: { uuid, deletedAt: null },
-        });
+        const r = await tx.property.findFirst({ where: { uuid, deletedAt: null } });
         if (!r) throw new MasterNotFoundError();
-        await tx.property.update({
-          where: { id: r.id },
-          data: {
-            deletedAt: new Date(),
-            deletedBy: actor.actorUuid ?? null,
-            version: { increment: 1 },
-          },
-        });
+        await tx.property.update({ where: { id: r.id }, data: { deletedAt: new Date(), deletedBy: actor.actorUuid ?? null, version: { increment: 1 } } });
       });
     } catch (error: unknown) {
       mapError(error);
@@ -907,15 +653,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
         const r = await tx.property.findFirst({ where: { uuid } });
         if (!r) throw new MasterNotFoundError();
         if (!r.deletedAt) return r;
-        return tx.property.update({
-          where: { id: r.id },
-          data: {
-            deletedAt: null,
-            deletedBy: null,
-            updatedBy: actor.actorUuid ?? r.updatedBy,
-            version: { increment: 1 },
-          },
-        });
+        return tx.property.update({ where: { id: r.id }, data: { deletedAt: null, deletedBy: null, updatedBy: actor.actorUuid ?? r.updatedBy, version: { increment: 1 } } });
       });
     } catch (error: unknown) {
       mapError(error);
@@ -924,10 +662,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
   async duplicateProperty(uuid: string, actor: ActorContext): Promise<unknown> {
     try {
       return await this.prisma.$transaction(async (tx) => {
-        const source = await tx.property.findFirst({
-          where: { uuid, deletedAt: null },
-          include: { facilities: true },
-        });
+        const source = await tx.property.findFirst({ where: { uuid, deletedAt: null }, include: { facilities: true } });
         if (!source) throw new MasterNotFoundError();
         const businessCode = await this.uniqueCode(tx, 'EST');
         const referenceNumber = await this.uniqueCode(tx, 'REF');
@@ -940,9 +675,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
             propertySubcategoryId: source.propertySubcategoryId,
             subdistrictId: source.subdistrictId,
             title: `${source.title} (Copy)`,
-            slug: normalizeSlug(
-              `${source.slug}-copy-${randomUUID().slice(0, 8)}`,
-            ),
+            slug: normalizeSlug(`${source.slug}-copy-${randomUUID().slice(0, 8)}`),
             shortDescription: source.shortDescription,
             description: source.description,
             status: 'DRAFT',
@@ -955,12 +688,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
           },
         });
         if (source.facilities.length)
-          await tx.propertyFacility.createMany({
-            data: source.facilities.map((item) => ({
-              propertyId: copy.id,
-              facilityId: item.facilityId,
-            })),
-          });
+          await tx.propertyFacility.createMany({ data: source.facilities.map((item) => ({ propertyId: copy.id, facilityId: item.facilityId })) });
         return copy;
       });
     } catch (error: unknown) {
