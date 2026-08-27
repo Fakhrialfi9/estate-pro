@@ -60,6 +60,7 @@ export default tseslint.config(
     },
 
     plugins: {
+      '@typescript-eslint': tseslint.plugin,
       prettier: prettierPlugin,
     },
 
@@ -81,6 +82,7 @@ export default tseslint.config(
     },
 
     plugins: {
+      '@typescript-eslint': tseslint.plugin,
       prettier: prettierPlugin,
     },
 
