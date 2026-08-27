@@ -54,33 +54,59 @@ describe('PropertyMasterService audit lifecycle', () => {
   });
 
   it('records update plus verification and publication transitions', async () => {
-    vi.mocked(repository.getProperty).mockResolvedValueOnce({
-      uuid: '33333333-3333-4333-8333-333333333333',
-      title: 'Villa',
-      status: 'IN_REVIEW',
-      version: 1,
-    });
-    vi.mocked(repository.updateProperty).mockResolvedValueOnce({
-      uuid: '33333333-3333-4333-8333-333333333333',
-      title: 'Villa Prime',
-      status: 'ACTIVE',
-      version: 2,
-    });
+    const uuid = '33333333-3333-4333-8333-333333333333';
+    vi.mocked(repository.getProperty)
+      .mockResolvedValueOnce({
+        uuid,
+        title: 'Villa',
+        status: 'IN_REVIEW',
+        version: 1,
+      })
+      .mockResolvedValueOnce({
+        uuid,
+        title: 'Villa Prime',
+        status: 'IN_REVIEW',
+        version: 2,
+      })
+      .mockResolvedValueOnce({
+        uuid,
+        title: 'Villa Prime',
+        status: 'IN_REVIEW',
+        version: 3,
+        verifiedAt: new Date('2026-08-27T01:00:00.000Z'),
+      });
+    vi.mocked(repository.updateProperty)
+      .mockResolvedValueOnce({
+        uuid,
+        title: 'Villa Prime',
+        status: 'IN_REVIEW',
+        version: 2,
+      })
+      .mockResolvedValueOnce({
+        uuid,
+        title: 'Villa Prime',
+        status: 'IN_REVIEW',
+        version: 3,
+        verifiedAt: new Date('2026-08-27T01:00:00.000Z'),
+      })
+      .mockResolvedValueOnce({
+        uuid,
+        title: 'Villa Prime',
+        status: 'ACTIVE',
+        version: 4,
+      });
 
-    await service.updateProperty(
-      '33333333-3333-4333-8333-333333333333',
-      1,
-      { title: 'Villa Prime', status: 'ACTIVE' },
-      actor,
-    );
+    await service.updateProperty(uuid, 1, { title: 'Villa Prime' }, actor);
+    await service.verifyProperty(uuid, 2, actor);
+    await service.publishProperty(uuid, 3, actor);
 
     const actions = vi
       .mocked(audit.record)
       .mock.calls.map(([event]) => event.action);
     expect(actions).toEqual([
       'PROPERTY_UPDATED',
-      'PROPERTY_PUBLISHED',
       'PROPERTY_VERIFIED',
+      'PROPERTY_PUBLISHED',
     ]);
   });
 
