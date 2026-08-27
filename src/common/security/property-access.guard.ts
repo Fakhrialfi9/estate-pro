@@ -42,6 +42,10 @@ export class PropertyAccessGuard implements CanActivate {
     const directPropertyUuid = request.params.propertyUuid;
     const pathUuid = request.params.uuid;
 
+    if (isListingResource && !pathUuid) throw new ForbiddenException();
+    const propertyUuid = directPropertyUuid ?? pathUuid;
+    if (!propertyUuid) throw new ForbiddenException();
+
     const accessible = isListingResource
       ? await this.prisma.propertyListing.findFirst({
           where: {
@@ -65,7 +69,7 @@ export class PropertyAccessGuard implements CanActivate {
         })
       : await this.prisma.property.findFirst({
           where: {
-            uuid: directPropertyUuid ?? pathUuid,
+            uuid: propertyUuid,
             deletedAt: null,
             OR: [
               { createdBy: principalUuid },
