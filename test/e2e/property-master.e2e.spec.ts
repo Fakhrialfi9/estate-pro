@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
@@ -7,7 +7,7 @@ import type { Response } from 'supertest';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
-import { JwtService } from '@nestjs/jwt';
+import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
 
 const PERMISSIONS = [
   'property-categories.create',
@@ -31,7 +31,7 @@ type Created = {
 };
 let app: INestApplication;
 let prisma: PrismaService;
-let jwt: JwtService;
+let tokens: JwtTokenService;
 let actor: { uuid: string; token: string };
 let denied: { uuid: string; token: string };
 
@@ -89,14 +89,14 @@ async function makeActor(grant: boolean) {
   }
   return {
     uuid: user.uuid,
-    token: jwt.sign({ sub: user.uuid, sid: sessionId }),
+    token: await tokens.issueAccessToken(user.uuid, sessionId),
   };
 }
 
 async function cleanup() {
   await prisma.propertyFacility.deleteMany();
-  await prisma.property.deleteMany();
   await prisma.propertySubcategory.deleteMany();
+  await prisma.property.deleteMany();
   await prisma.propertyCategory.deleteMany();
   await prisma.propertyType.deleteMany();
   await prisma.authorizationUserRole.deleteMany();
@@ -118,7 +118,7 @@ describe('Property category/facility/core HTTP API', () => {
     );
     await app.init();
     prisma = app.get(PrismaService);
-    jwt = app.get(JwtService);
+    tokens = app.get(JwtTokenService);
   });
   beforeEach(async () => {
     await cleanup();
