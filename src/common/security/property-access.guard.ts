@@ -49,7 +49,7 @@ export class PropertyAccessGuard implements CanActivate {
     const accessible = isListingResource
       ? await this.prisma.propertyListing.findFirst({
           where: {
-            uuid: pathUuid,
+            uuid: pathUuid as string,
             property: {
               deletedAt: null,
               OR: [
