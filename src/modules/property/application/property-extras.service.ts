@@ -5,8 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../common/audit/security-audit.port.js';
+import type {
+  SecurityAuditChange,
+  SecurityAuditRepository,
+} from '../../../common/audit/security-audit.port.js';
 import {
   PropertyExtrasConflictError,
   PropertyExtrasInvalidStateError,
@@ -23,6 +26,24 @@ import {
   type PropertyExtrasActor,
   type PropertyExtrasRepository,
 } from '../domain/repositories/property-extras.repository.js';
+
+const toAuditChanges = (
+  value: unknown,
+): readonly SecurityAuditChange[] | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const changes = Object.entries(value).flatMap(([field, newValue]) => {
+    if (
+      typeof newValue !== 'string' &&
+      typeof newValue !== 'number' &&
+      typeof newValue !== 'boolean' &&
+      newValue !== null
+    )
+      return [];
+    return [{ field, oldValue: null, newValue }];
+  });
+  return changes.length > 0 ? changes : undefined;
+};
+
 @Injectable()
 export class PropertyExtrasService {
   constructor(
@@ -31,6 +52,7 @@ export class PropertyExtrasService {
     @Inject(SECURITY_AUDIT_REPOSITORY)
     private readonly audit: SecurityAuditRepository,
   ) {}
+
   getUtilities(id: string) {
     return this.run(() => this.repository.getUtilities(id));
   }
@@ -273,6 +295,7 @@ export class PropertyExtrasService {
     });
     return r;
   }
+
   private async record(
     action: string,
     entityType: string,
@@ -284,17 +307,14 @@ export class PropertyExtrasService {
       action,
       actorUuid: a.actorUuid,
       subjectUuid: a.actorUuid,
-      actorType: 'user',
+      actorType: a.actorUuid ? 'AUTHENTICATED' : 'SYSTEM',
       entityType,
       entityUuid,
       ipAddress: a.ipAddress,
       userAgent: a.userAgent,
       requestId: a.requestId,
-      result: 'success',
-      changes:
-        typeof changes === 'object' && changes !== null
-          ? (changes as Record<string, unknown>)
-          : undefined,
+      result: 'SUCCESS',
+      changes: toAuditChanges(changes),
     });
   }
   private async run<T>(op: () => Promise<T>): Promise<T> {
