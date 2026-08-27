@@ -21,31 +21,33 @@ const EXPLAIN_COLUMNS = [
   'Extra',
 ] as const;
 
+const EXPLAIN_FIELD_INDEX: Readonly<Record<string, number>> = Object.fromEntries(
+  EXPLAIN_COLUMNS.map((column, index) => [column.toLowerCase(), index]),
+);
+
+const isArrayLikeRow = (row: ExplainRow): row is readonly unknown[] =>
+  Array.isArray(row);
+
 const explainField = (
   row: ExplainRow | undefined,
   field: (typeof EXPLAIN_COLUMNS)[number] | string,
 ): unknown => {
   if (!row) return undefined;
 
-  if (Array.isArray(row)) {
-    const index = EXPLAIN_COLUMNS.findIndex(
-      (column) => column.toLowerCase() === field.toLowerCase(),
-    );
-    return index >= 0 ? row[index] : undefined;
+  const normalizedField = field.toLowerCase();
+
+  if (isArrayLikeRow(row)) {
+    const index = EXPLAIN_FIELD_INDEX[normalizedField];
+    return index === undefined ? undefined : row[index];
   }
 
-  const expected = field.toLowerCase();
   const directValue = row[field];
   if (directValue !== undefined) return directValue;
 
   const entry = Object.entries(row).find(
-    ([key]) => key.toLowerCase() === expected,
+    ([key]) => key.toLowerCase() === normalizedField,
   );
-  if (entry) return entry[1];
-
-  return Object.values(row).find((value) =>
-    field === 'table' ? value === 'properties' : typeof value === 'string',
-  );
+  return entry?.[1];
 };
 
 describe('Property critical query plans', () => {
