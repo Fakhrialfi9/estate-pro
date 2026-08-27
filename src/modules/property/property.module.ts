@@ -14,7 +14,7 @@ import { PropertyTypesController } from './presentation/property-types.controlle
 import { PropertyMasterService } from './application/property-master.service.js';
 import { PropertyMasterController } from './presentation/property-master.controller.js';
 import { PROPERTY_MASTER_REPOSITORY } from './domain/repositories/property-master.repository.js';
-import { PrismaPropertyMasterRepository } from './infrastructure/persistence/prisma-property-master.repository.js';
+import { PrismaPropertyMasterStore } from './infrastructure/persistence/prisma-property-master.store.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule],
@@ -26,15 +26,9 @@ import { PrismaPropertyMasterRepository } from './infrastructure/persistence/pri
     GetPropertyTypeUseCase,
     ListPropertyTypesUseCase,
     UpdatePropertyTypeUseCase,
-    {
-      provide: PROPERTY_TYPE_REPOSITORY,
-      useClass: PrismaPropertyTypeRepository,
-    },
+    { provide: PROPERTY_TYPE_REPOSITORY, useClass: PrismaPropertyTypeRepository },
     PropertyMasterService,
-    {
-      provide: PROPERTY_MASTER_REPOSITORY,
-      useClass: PrismaPropertyMasterRepository,
-    },
+    { provide: PROPERTY_MASTER_REPOSITORY, useClass: PrismaPropertyMasterStore },
   ],
   exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY],
 })
