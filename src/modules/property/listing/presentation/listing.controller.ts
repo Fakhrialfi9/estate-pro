@@ -1,345 +1,46 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Headers,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Post,
-  Put,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../../common/security/authorization.decorators.js';
 import { ListingService } from '../application/listing.service.js';
-import type {
-  CreateListingInput,
-  UpdateListingInput,
-} from '../domain/listing.repository.js';
+import type { CreateListingInput, UpdateListingInput } from '../domain/listing.repository.js';
 import type { ListingStatus } from '../domain/listing.types.js';
-import {
-  AgentAssignmentDto,
-  ChangeAgentDto,
-  CreateListingDto,
-  ListingWorkflowDto,
-  OwnerAssignmentDto,
-  PropertySearchDto,
-  UpdateListingDto,
-} from './listing.dto.js';
-import { mapPropertyDetail, mapPropertyList } from './listing.mapper.js';
+import { AgentAssignmentDto, ChangeAgentDto, CreateListingDto, ListingWorkflowDto, OwnerAssignmentDto, PropertySearchDto, UpdateListingDto } from './listing.dto.js';
+import { mapAgentAssignment, mapListingResponse, mapOwnerResponse, mapPropertyDetail, mapPropertyList } from './listing.mapper.js';
 
-type RequestWithUser = Request & {
-  user?: { sub?: string; permissions?: readonly string[] };
-};
-const actorOf = (
-  request: RequestWithUser,
-  userAgent?: string,
-  requestId?: string,
-) => ({
-  actorUuid: request.user?.sub,
-  ipAddress: request.ip,
-  userAgent,
-  requestId,
-});
-const toCreate = (dto: CreateListingDto): CreateListingInput => ({
-  propertyUuid: dto.propertyUuid,
-  listingCode: dto.listingCode,
-  transactionType: dto.transactionType,
-  visibility: dto.visibility,
-  featured: dto.featured,
-  premium: dto.premium,
-  expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : dto.expiresAt,
-  price: dto.price,
-  payments: dto.payments,
-});
-const toUpdate = (dto: UpdateListingDto): UpdateListingInput => ({
-  listingCode: dto.listingCode,
-  transactionType: dto.transactionType,
-  visibility: dto.visibility,
-  featured: dto.featured,
-  premium: dto.premium,
-  expiresAt:
-    dto.expiresAt === undefined
-      ? undefined
-      : dto.expiresAt === null
-        ? null
-        : new Date(dto.expiresAt),
-  price: dto.price,
-  payments: dto.payments,
-});
-const listResponse = (result: {
-  items: readonly unknown[];
-  total: number;
-  page: number;
-  limit: number;
-}) => ({
-  data: mapPropertyList(result.items),
-  meta: {
-    page: result.page,
-    limit: result.limit,
-    total: result.total,
-    totalPages: Math.ceil(result.total / result.limit),
-  },
-});
-
+type RequestWithUser = Request & { user?: { sub?: string; permissions?: readonly string[] } };
+const actorOf = (request: RequestWithUser, userAgent?: string, requestId?: string) => ({ actorUuid: request.user?.sub, ipAddress: request.ip, userAgent, requestId });
+const toCreate = (dto: CreateListingDto): CreateListingInput => ({ propertyUuid: dto.propertyUuid, listingCode: dto.listingCode, transactionType: dto.transactionType, ...(dto.visibility !== undefined ? { visibility: dto.visibility } : {}), ...(dto.featured !== undefined ? { featured: dto.featured } : {}), ...(dto.premium !== undefined ? { premium: dto.premium } : {}), ...(dto.expiresAt !== undefined ? { expiresAt: dto.expiresAt === null ? null : new Date(dto.expiresAt) } : {}), ...(dto.price !== undefined ? { price: dto.price } : {}), ...(dto.payments !== undefined ? { payments: dto.payments } : {}) });
+const toUpdate = (dto: UpdateListingDto): UpdateListingInput => ({ ...(dto.listingCode !== undefined ? { listingCode: dto.listingCode } : {}), ...(dto.transactionType !== undefined ? { transactionType: dto.transactionType } : {}), ...(dto.visibility !== undefined ? { visibility: dto.visibility } : {}), ...(dto.featured !== undefined ? { featured: dto.featured } : {}), ...(dto.premium !== undefined ? { premium: dto.premium } : {}), ...(dto.expiresAt !== undefined ? { expiresAt: dto.expiresAt === null ? null : new Date(dto.expiresAt) } : {}), ...(dto.price !== undefined ? { price: dto.price } : {}), ...(dto.payments !== undefined ? { payments: dto.payments } : {}) });
+const listResponse = (result: { items: readonly unknown[]; total: number; page: number; limit: number }) => ({ data: mapPropertyList(result.items), meta: { page: result.page, limit: result.limit, total: result.total, totalPages: Math.ceil(result.total / result.limit) } });
 @ApiTags('Property Listing')
 @ApiBearerAuth()
 @Controller({ path: 'property', version: '1' })
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class ListingController {
   constructor(private readonly service: ListingService) {}
-  @Post('listings')
-  @RequirePermissions('listings.create')
-  @ApiOperation({ summary: 'Create listing' })
-  create(
-    @Req() req: RequestWithUser,
-    @Body() dto: CreateListingDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.service
-      .create(toCreate(dto), actorOf(req, ua, rid))
-      .then((data) => ({ data }));
-  }
-  @Get('listings')
-  @RequirePermissions('listings.read')
-  @ApiOperation({ summary: 'List and search listings' })
-  search(@Query() query: PropertySearchDto) {
-    return this.service.search(query).then(listResponse);
-  }
-  @Get('listings/:uuid') @RequirePermissions('listings.read') get(
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-  ) {
-    return this.service.get(uuid).then((data) => ({ data }));
-  }
-  @Patch('listings/:uuid') @RequirePermissions('listings.update') update(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: UpdateListingDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.service
-      .update(uuid, dto.version, toUpdate(dto), actorOf(req, ua, rid))
-      .then((data) => ({ data }));
-  }
-  private transition(
-    req: RequestWithUser,
-    uuid: string,
-    dto: ListingWorkflowDto,
-    status: ListingStatus,
-    ua?: string,
-    rid?: string,
-  ) {
-    return this.service
-      .transition(uuid, dto.version, status, actorOf(req, ua, rid), dto.reason)
-      .then((data) => ({ data }));
-  }
-  @Post('listings/:uuid/submit-review')
-  @RequirePermissions('listings.submit-review')
-  submitReview(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: ListingWorkflowDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.transition(req, uuid, dto, 'IN_REVIEW', ua, rid);
-  }
-  @Post('listings/:uuid/verify') @RequirePermissions('listings.verify') verify(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: ListingWorkflowDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.transition(req, uuid, dto, 'VERIFIED', ua, rid);
-  }
-  @Post('listings/:uuid/reject') @RequirePermissions('listings.reject') reject(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: ListingWorkflowDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.transition(req, uuid, dto, 'DRAFT', ua, rid);
-  }
-  @Post('listings/:uuid/activate')
-  @RequirePermissions('listings.activate')
-  activate(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: ListingWorkflowDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.transition(req, uuid, dto, 'ACTIVE', ua, rid);
-  }
-  @Post('listings/:uuid/publish')
-  @RequirePermissions('listings.publish')
-  publish(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: ListingWorkflowDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.transition(req, uuid, dto, 'PUBLISHED', ua, rid);
-  }
-  @Post('listings/:uuid/unpublish')
-  @RequirePermissions('listings.unpublish')
-  unpublish(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: ListingWorkflowDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.transition(req, uuid, dto, 'UNPUBLISHED', ua, rid);
-  }
-  @Post('listings/:uuid/archive')
-  @RequirePermissions('listings.archive')
-  archive(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: ListingWorkflowDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.transition(req, uuid, dto, 'ARCHIVED', ua, rid);
-  }
-  @Post('listings/:uuid/restore')
-  @RequirePermissions('listings.restore')
-  restore(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: ListingWorkflowDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.transition(req, uuid, dto, 'ACTIVE', ua, rid);
-  }
-  @Post('listings/:uuid/sold') @RequirePermissions('listings.sold') sold(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: ListingWorkflowDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.transition(req, uuid, dto, 'SOLD', ua, rid);
-  }
-  @Post('listings/:uuid/rented') @RequirePermissions('listings.rented') rented(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: ListingWorkflowDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.transition(req, uuid, dto, 'RENTED', ua, rid);
-  }
-  @Post('listings/:uuid/expire') @RequirePermissions('listings.expire') expire(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: ListingWorkflowDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.transition(req, uuid, dto, 'EXPIRED', ua, rid);
-  }
-  @Post('listings/:uuid/duplicate')
-  @RequirePermissions('listings.duplicate')
-  duplicate(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.service
-      .duplicate(uuid, actorOf(req, ua, rid))
-      .then((data) => ({ data }));
-  }
-  @Get('read-model/:uuid') @RequirePermissions('properties.read') detail(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-  ) {
-    const permissions = req.user?.permissions ?? [];
-    return this.service
-      .detail(uuid, req.user?.sub)
-      .then((raw) => ({
-        data: mapPropertyDetail(raw, {
-          canReadSensitive: permissions.includes('properties.sensitive.read'),
-          canReadAnalytics: permissions.includes('listings.analytics.read'),
-        }),
-      }));
-  }
-  @Get('search') @RequirePermissions('properties.read') propertySearch(
-    @Query() query: PropertySearchDto,
-  ) {
-    return this.service.search(query).then(listResponse);
-  }
-  @Post('properties/:uuid/agents')
-  @RequirePermissions('property-agents.assign')
-  assignAgent(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: AgentAssignmentDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.service
-      .assignAgent(
-        uuid,
-        dto.agentUserUuid,
-        dto.agentDisplayName,
-        dto.primary ?? false,
-        actorOf(req, ua, rid),
-      )
-      .then((data) => ({ data }));
-  }
-  @Patch('properties/:uuid/agents/:assignmentUuid')
-  @RequirePermissions('property-agents.change')
-  changeAgent(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Param('assignmentUuid', new ParseUUIDPipe({ version: '4' }))
-    assignmentUuid: string,
-    @Body() dto: ChangeAgentDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.service
-      .changeAgent(
-        uuid,
-        assignmentUuid,
-        dto.agentUserUuid,
-        dto.agentDisplayName,
-        dto.primary ?? false,
-        actorOf(req, ua, rid),
-      )
-      .then((data) => ({ data }));
-  }
-  @Put('properties/:uuid/owner')
-  @RequirePermissions('property-owners.manage')
-  assignOwner(
-    @Req() req: RequestWithUser,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: OwnerAssignmentDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') rid?: string,
-  ) {
-    return this.service
-      .assignOwner(
-        uuid,
-        dto.ownerType,
-        dto.ownerDisplayName,
-        actorOf(req, ua, rid),
-      )
-      .then((data) => ({ data }));
-  }
+  @Post('listings') @RequirePermissions('listings.create') @ApiOperation({ summary: 'Create listing' }) create(@Req() req: RequestWithUser, @Body() dto: CreateListingDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.service.create(toCreate(dto), actorOf(req, ua, rid)).then((data) => ({ data: mapListingResponse(data) })); }
+  @Get('listings') @RequirePermissions('listings.read') @ApiOperation({ summary: 'List and search listings' }) search(@Query() query: PropertySearchDto) { return this.service.search(query).then(listResponse); }
+  @Get('listings/:uuid') @RequirePermissions('listings.read') get(@Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string) { return this.service.get(uuid).then((data) => ({ data: mapListingResponse(data) })); }
+  @Patch('listings/:uuid') @RequirePermissions('listings.update') update(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: UpdateListingDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.service.update(uuid, dto.version, toUpdate(dto), actorOf(req, ua, rid)).then((data) => ({ data: mapListingResponse(data) })); }
+  private transition(req: RequestWithUser, uuid: string, dto: ListingWorkflowDto, status: ListingStatus, ua?: string, rid?: string) { return this.service.transition(uuid, dto.version, status, actorOf(req, ua, rid), dto.reason).then((data) => ({ data: mapListingResponse(data) })); }
+  @Post('listings/:uuid/submit-review') @RequirePermissions('listings.submit-review') submitReview(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: ListingWorkflowDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.transition(req, uuid, dto, 'IN_REVIEW', ua, rid); }
+  @Post('listings/:uuid/verify') @RequirePermissions('listings.verify') verify(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: ListingWorkflowDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.transition(req, uuid, dto, 'VERIFIED', ua, rid); }
+  @Post('listings/:uuid/reject') @RequirePermissions('listings.reject') reject(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: ListingWorkflowDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.transition(req, uuid, dto, 'DRAFT', ua, rid); }
+  @Post('listings/:uuid/activate') @RequirePermissions('listings.activate') activate(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: ListingWorkflowDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.transition(req, uuid, dto, 'ACTIVE', ua, rid); }
+  @Post('listings/:uuid/publish') @RequirePermissions('listings.publish') publish(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: ListingWorkflowDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.transition(req, uuid, dto, 'PUBLISHED', ua, rid); }
+  @Post('listings/:uuid/unpublish') @RequirePermissions('listings.unpublish') unpublish(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: ListingWorkflowDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.transition(req, uuid, dto, 'UNPUBLISHED', ua, rid); }
+  @Post('listings/:uuid/archive') @RequirePermissions('listings.archive') archive(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: ListingWorkflowDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.transition(req, uuid, dto, 'ARCHIVED', ua, rid); }
+  @Post('listings/:uuid/restore') @RequirePermissions('listings.restore') restore(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: ListingWorkflowDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.transition(req, uuid, dto, 'ACTIVE', ua, rid); }
+  @Post('listings/:uuid/sold') @RequirePermissions('listings.sold') sold(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: ListingWorkflowDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.transition(req, uuid, dto, 'SOLD', ua, rid); }
+  @Post('listings/:uuid/rented') @RequirePermissions('listings.rented') rented(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: ListingWorkflowDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.transition(req, uuid, dto, 'RENTED', ua, rid); }
+  @Post('listings/:uuid/expire') @RequirePermissions('listings.expire') expire(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: ListingWorkflowDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.transition(req, uuid, dto, 'EXPIRED', ua, rid); }
+  @Post('listings/:uuid/duplicate') @RequirePermissions('listings.duplicate') duplicate(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.service.duplicate(uuid, actorOf(req, ua, rid)).then((data) => ({ data: mapListingResponse(data) })); }
+  @Get('read-model/:uuid') @RequirePermissions('properties.read') detail(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string) { const permissions = req.user?.permissions ?? []; return this.service.detail(uuid, req.user?.sub).then((raw) => ({ data: mapPropertyDetail(raw, { canReadSensitive: permissions.includes('properties.sensitive.read'), canReadAnalytics: permissions.includes('listings.analytics.read') }) })); }
+  @Get('search') @RequirePermissions('properties.read') propertySearch(@Query() query: PropertySearchDto) { return this.service.search(query).then(listResponse); }
+  @Post('properties/:uuid/agents') @RequirePermissions('property-agents.assign') assignAgent(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: AgentAssignmentDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.service.assignAgent(uuid, dto.agentUserUuid, dto.agentDisplayName, dto.primary ?? false, actorOf(req, ua, rid)).then((data) => ({ data: mapAgentAssignment(data) })); }
+  @Patch('properties/:uuid/agents/:assignmentUuid') @RequirePermissions('property-agents.change') changeAgent(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Param('assignmentUuid', new ParseUUIDPipe({ version: '4' })) assignmentUuid: string, @Body() dto: ChangeAgentDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.service.changeAgent(uuid, assignmentUuid, dto.agentUserUuid, dto.agentDisplayName, dto.primary ?? false, actorOf(req, ua, rid)).then((data) => ({ data: mapAgentAssignment(data) })); }
+  @Put('properties/:uuid/owner') @RequirePermissions('property-owners.manage') assignOwner(@Req() req: RequestWithUser, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() dto: OwnerAssignmentDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) { return this.service.assignOwner(uuid, dto.ownerType, dto.ownerDisplayName, actorOf(req, ua, rid)).then((data) => ({ data: mapOwnerResponse(data) })); }
 }
