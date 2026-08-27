@@ -1,0 +1,35 @@
+model Country {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  code String @unique @db.VarChar(20)
+  name String @db.VarChar(150)
+  slug String @unique @db.VarChar(160)
+  isActive Boolean @default(true) @map("is_active")
+  sortOrder Int @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  provinces Province[]
+  @@index([isActive, deletedAt, sortOrder])
+  @@map("countries")
+}
+model Province {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  countryId BigInt @map("country_id") @db.UnsignedBigInt
+  code String @db.VarChar(30)
+  name String @db.VarChar(150)
+  slug String @db.VarChar(160)
+  isActive Boolean @default(true) @map("is_active")
+  sortOrder Int @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  country Country @relation(fields: [countryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cities City[]
+  @@unique([countryId, code])
+  @@unique([countryId, slug])
+  @@index([countryId])
+  @@index([isActive, deletedAt, sortOrder])
+  @@map("provinces")
+}
