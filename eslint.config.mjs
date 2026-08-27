@@ -76,8 +76,15 @@ export default tseslint.config(
     files: testTypescriptFiles,
 
     languageOptions: {
+      parser: tseslint.parser,
+
       globals: {
         ...globals.node,
+      },
+
+      parserOptions: {
+        project: './tsconfig.eslint.json',
+        tsconfigRootDir: import.meta.dirname,
       },
     },
 
