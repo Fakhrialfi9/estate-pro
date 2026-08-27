@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { JwtService } from '@nestjs/jwt';
+import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
@@ -24,7 +24,7 @@ type Actor = {
 
 async function createActor(
   prisma: PrismaService,
-  jwt: JwtService,
+  tokens: JwtTokenService,
 ): Promise<Actor> {
   const user = await prisma.authenticationUser.create({
     data: {
@@ -79,14 +79,14 @@ async function createActor(
     uuid: user.uuid,
     userId: user.id,
     roleId: role.id,
-    token: jwt.sign({ sub: user.uuid, sid: sessionId }),
+    token: await tokens.issueAccessToken(user.uuid, sessionId),
   };
 }
 
 describe('Property object-level authorization', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwt: JwtService;
+  let tokens: JwtTokenService;
   let owner: Actor;
   let other: Actor;
   let typeId: bigint;
@@ -103,10 +103,10 @@ describe('Property object-level authorization', () => {
     );
     await app.init();
     prisma = app.get(PrismaService);
-    jwt = app.get(JwtService);
+    tokens = app.get(JwtTokenService);
 
-    owner = await createActor(prisma, jwt);
-    other = await createActor(prisma, jwt);
+    owner = await createActor(prisma, tokens);
+    other = await createActor(prisma, tokens);
     const type = await prisma.propertyType.create({
       data: {
         uuid: randomUUID(),
