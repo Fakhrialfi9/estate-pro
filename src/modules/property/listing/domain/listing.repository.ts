@@ -82,7 +82,7 @@ export interface ListingRepository {
     version: number,
     to: ListingStatus,
     actor: ListingActor,
-    reason?: string | undefined,
+    reason?: string,
   ): Promise<unknown>;
   expireDue(actor: ListingActor): Promise<readonly string[]>;
   duplicate(uuid: string, actor: ListingActor): Promise<unknown>;
@@ -109,7 +109,7 @@ export interface ListingRepository {
   ): Promise<unknown>;
   getPropertyDetail(
     propertyUuid: string,
-    viewerUserUuid?: string | undefined,
+    viewerUserUuid?: string,
   ): Promise<unknown>;
   search(query: PropertySearchQuery): Promise<{
     items: readonly unknown[];
