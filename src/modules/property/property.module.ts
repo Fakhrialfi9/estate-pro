@@ -15,10 +15,14 @@ import { PropertyMasterService } from './application/property-master.service.js'
 import { PropertyMasterController } from './presentation/property-master.controller.js';
 import { PROPERTY_MASTER_REPOSITORY } from './domain/repositories/property-master.repository.js';
 import { PrismaPropertyMasterStore } from './infrastructure/persistence/prisma-property-master.store.js';
+import { PROPERTY_DETAILS_REPOSITORY } from './domain/repositories/property-details.repository.js';
+import { PrismaPropertyDetailsRepository } from './infrastructure/persistence/prisma-property-details.repository.js';
+import { PropertyDetailsService } from './application/property-details.service.js';
+import { PropertyDetailsController } from './presentation/property-details.controller.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule],
-  controllers: [PropertyTypesController, PropertyMasterController],
+  controllers: [PropertyTypesController, PropertyMasterController, PropertyDetailsController],
   providers: [
     AuthorizationGuard,
     CreatePropertyTypeUseCase,
@@ -35,7 +39,12 @@ import { PrismaPropertyMasterStore } from './infrastructure/persistence/prisma-p
       provide: PROPERTY_MASTER_REPOSITORY,
       useClass: PrismaPropertyMasterStore,
     },
+    PropertyDetailsService,
+    {
+      provide: PROPERTY_DETAILS_REPOSITORY,
+      useClass: PrismaPropertyDetailsRepository,
+    },
   ],
-  exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY],
+  exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY, PROPERTY_DETAILS_REPOSITORY],
 })
 export class PropertyModule {}

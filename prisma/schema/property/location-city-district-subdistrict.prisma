@@ -12,6 +12,7 @@ model City {
   deletedAt DateTime? @map("deleted_at")
   province Province @relation(fields: [provinceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   districts District[]
+  propertyLocations PropertyLocation[]
   @@unique([provinceId, code])
   @@unique([provinceId, slug])
   @@index([provinceId])
@@ -32,6 +33,7 @@ model District {
   deletedAt DateTime? @map("deleted_at")
   city City @relation(fields: [cityId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   subdistricts Subdistrict[]
+  propertyLocations PropertyLocation[]
   @@unique([cityId, code])
   @@unique([cityId, slug])
   @@index([cityId])
@@ -52,6 +54,7 @@ model Subdistrict {
   deletedAt DateTime? @map("deleted_at")
   district District @relation(fields: [districtId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   properties Property[]
+  propertyLocations PropertyLocation[]
   @@unique([districtId, code])
   @@unique([districtId, slug])
   @@index([districtId])

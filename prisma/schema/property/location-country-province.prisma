@@ -10,6 +10,7 @@ model Country {
   updatedAt DateTime @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
   provinces Province[]
+  propertyLocations PropertyLocation[]
   @@index([isActive, deletedAt, sortOrder])
   @@map("countries")
 }
@@ -27,6 +28,7 @@ model Province {
   deletedAt DateTime? @map("deleted_at")
   country Country @relation(fields: [countryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   cities City[]
+  propertyLocations PropertyLocation[]
   @@unique([countryId, code])
   @@unique([countryId, slug])
   @@index([countryId])
