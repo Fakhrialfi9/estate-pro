@@ -81,7 +81,7 @@ function scaled(value: string, scale: number): bigint {
   const normalized = value.trim();
   if (!DECIMAL_PATTERN.test(normalized))
     throw new Error('Money/percentage must be a non-negative decimal');
-  const [whole, fraction = ''] = normalized.split('.');
+  const [whole = '0', fraction = ''] = normalized.split('.');
   if (fraction.length > scale)
     throw new Error(`Decimal scale must not exceed ${scale}`);
   return (
