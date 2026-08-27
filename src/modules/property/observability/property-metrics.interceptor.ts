@@ -15,7 +15,9 @@ const isPropertyHttpRequest = (
 ): value is PropertyHttpRequest => {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Record<string, unknown>;
-  return typeof candidate.path === 'string' && typeof candidate.method === 'string';
+  return (
+    typeof candidate.path === 'string' && typeof candidate.method === 'string'
+  );
 };
 
 const meter = metrics.getMeter('estate-pro.property');
