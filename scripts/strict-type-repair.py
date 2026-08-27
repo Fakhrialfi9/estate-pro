@@ -1,4 +1,5 @@
 # Deterministic strict-type repair script for main-branch validation.
+# CI trigger marker: database environment for Prisma generation is configured.
 from pathlib import Path
 import re
 
@@ -80,20 +81,16 @@ for path in ('src/modules/property/infrastructure/persistence/prisma-property-de
     p.write_text(text)
 
 p = Path('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts')
-text = p.read_text()
-text = text.replace(': current?.yearBuilt,', ': (current?.yearBuilt ?? null),').replace(': current?.yearRenovated,', ': (current?.yearRenovated ?? null),')
-text = text.replace('data: common,', 'data: omitUndefined(common),').replace('data: scalar,', 'data: omitUndefined(scalar),')
-text = text.replace('facilityId: { in: facilityIds },', 'facilityId: { in: Array.from(facilityIds) },')
+text = p.read_text().replace(': current?.yearBuilt,', ': (current?.yearBuilt ?? null),').replace(': current?.yearRenovated,', ': (current?.yearRenovated ?? null),')
+text = text.replace('data: common,', 'data: omitUndefined(common),').replace('data: scalar,', 'data: omitUndefined(scalar),').replace('facilityId: { in: facilityIds },', 'facilityId: { in: Array.from(facilityIds) },')
 text = text.replace('inputs[index].available', 'input.available').replace('inputs[index].quantity', 'input.quantity').replace('inputs[index].notes', 'input.notes')
-text = text.replace('            data,\n          });', '            data: omitUndefined(data),\n          });')
 text = re.sub(r'(for \(let index = 0; index < inputs\.length; index\+\+\) \{\n\s+)(const current = existing\[index\];\n\s+const input = inputs\[index\];)', r'\1const current = existing[index];\n      const input = inputs[index];\n      if (!input) continue;', text, count=1)
+text = text.replace('            data,\n          });', '            data: omitUndefined(data),\n          });')
 p.write_text(text)
 
 p = Path('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts')
 text = p.read_text().replace('ownerReference: p.ownerReference,', 'ownerReference: p.ownerReference ?? null,')
-text = text.replace('where: { id: c.id }, data })', 'where: { id: c.id }, data: omitUndefined(data) })')
-text = text.replace('where: { id: c.id },\n                  data,', 'where: { id: c.id },\n                  data: omitUndefined(data),')
-text = text.replace('                ...data,', '                ...omitUndefined(data),').replace('                  ...data,', '                  ...omitUndefined(data),')
+text = text.replace('where: { id: c.id }, data })', 'where: { id: c.id }, data: omitUndefined(data) })').replace('where: { id: c.id },\n                  data,', 'where: { id: c.id },\n                  data: omitUndefined(data),').replace('                ...data,', '                ...omitUndefined(data),').replace('                  ...data,', '                  ...omitUndefined(data),')
 p.write_text(text)
 
 p = Path('src/modules/property/listing/infrastructure/listing.repository.ts')
@@ -113,7 +110,8 @@ p = Path('src/modules/property/infrastructure/persistence/prisma-property-master
 text = p.read_text().replace('  PageResult,\n', '')
 if "import type { PageResult } from '../../domain/property-master.types.js';" not in text:
     marker = "import type { PropertyMasterRepository } from '../../domain/repositories/property-master.repository.js';\n"
-    text = text.replace(marker, marker + "import type { PageResult } from '../../domain/property-master.types.js';\n", 1)
+    if marker in text:
+        text = text.replace(marker, marker + "import type { PageResult } from '../../domain/property-master.types.js';\n", 1)
 text = text.replace('const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];', "const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');")
 text = text.replace('return this.prisma.facility.update({ where: { id: current.id }, data });', "const id = current.id;\n      if (typeof id !== 'number' && typeof id !== 'bigint') throw new MasterNotFoundError('Facility id is invalid');\n      return this.prisma.facility.update({ where: { id }, data });")
 text = text.replace("availabilityStatus: text(input.availabilityStatus, 'AVAILABLE'),", "availabilityStatus: text(input.availabilityStatus, 'AVAILABLE') === 'UNAVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE',")
