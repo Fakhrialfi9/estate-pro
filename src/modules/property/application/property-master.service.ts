@@ -7,7 +7,10 @@ import {
 } from '@nestjs/common';
 import { AUDIT_ACTIONS } from '../../../common/audit/audit-events.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../common/audit/security-audit.port.js';
-import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';
+import type {
+  SecurityAuditChange,
+  SecurityAuditRepository,
+} from '../../../common/audit/security-audit.port.js';
 import {
   assertAvailability,
   assertTransition,
