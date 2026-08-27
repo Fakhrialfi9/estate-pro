@@ -36,6 +36,8 @@ jobs:
         run: npm ci
       - name: Apply strict type fixes
         run: python3 scripts/strict-type-repair.py
+      - name: Apply final strict type fixes
+        run: python3 scripts/final-type-repair.py
       - name: Format repaired source
         run: npx prettier --write src
       - name: Prisma generate
