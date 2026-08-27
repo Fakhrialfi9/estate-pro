@@ -34,7 +34,9 @@ describe('ListingService', () => {
   });
 
   it('maps repository not-found and version conflicts to HTTP errors', async () => {
-    const findOne = vi.fn().mockRejectedValue(new ListingNotFoundError('missing'));
+    const findOne = vi
+      .fn()
+      .mockRejectedValue(new ListingNotFoundError('missing'));
     const update = vi.fn().mockRejectedValue(new ListingConflictError('conflict'));
     const repository = { findOne, update } as unknown as ListingRepository;
     const record = vi.fn();
@@ -47,9 +49,7 @@ describe('ListingService', () => {
   });
 
   it('writes workflow audit after a successful transition', async () => {
-    const transition = vi
-      .fn()
-      .mockResolvedValue({ status: 'IN_REVIEW' });
+    const transition = vi.fn().mockResolvedValue({ status: 'IN_REVIEW' });
     const record = vi.fn().mockResolvedValue(undefined);
     const repository = { transition } as unknown as ListingRepository;
     const audit = { record } as unknown as SecurityAuditRepository;
