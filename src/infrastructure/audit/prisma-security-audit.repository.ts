@@ -80,6 +80,17 @@ const ALLOWED_ACTIONS = new Set<string>([
   'PROPERTY_TYPE_CREATED',
   'PROPERTY_TYPE_UPDATED',
   'PROPERTY_TYPE_DELETED',
+  'property.specifications.update',
+  'property.location.update',
+  'property.building.update',
+  'property.room.create',
+  'property.room.update',
+  'property.room.delete',
+  'property.rooms.reorder',
+  'property.facility.attach',
+  'property.facility.update',
+  'property.facility.detach',
+  'property.facility.bulk_attach',
 ]);
 const FAILURE_ACTION_PATTERN = /(FAILURE|BLOCKED|ATTEMPTED)$/;
 const ADMIN_RESOURCE_TYPES = new Set([
