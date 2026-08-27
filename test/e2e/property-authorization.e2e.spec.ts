@@ -94,9 +94,13 @@ describe('Property object-level authorization', () => {
   let propertyUuid: string;
 
   beforeAll(async () => {
-    const ref = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const ref = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = ref.createNestApplication();
-    configureApplication(app as unknown as Parameters<typeof configureApplication>[0]);
+    configureApplication(
+      app as unknown as Parameters<typeof configureApplication>[0],
+    );
     await app.init();
     prisma = app.get(PrismaService);
     jwt = app.get(JwtService);

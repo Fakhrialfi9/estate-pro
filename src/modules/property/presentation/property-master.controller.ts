@@ -264,7 +264,9 @@ export class PropertyMasterController {
   }
   @Get('facilities/:uuid')
   @RequirePermissions('facilities.read')
-  getFacility(@Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string) {
+  getFacility(
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+  ) {
     return this.service.getFacility(uuid).then(response);
   }
   @Patch('facilities/:uuid')
@@ -308,7 +310,9 @@ export class PropertyMasterController {
   }
   @Get('properties/:uuid')
   @RequirePermissions('properties.read')
-  getProperty(@Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string) {
+  getProperty(
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+  ) {
     return this.service.getProperty(uuid).then(response);
   }
   @Patch('properties/:uuid')

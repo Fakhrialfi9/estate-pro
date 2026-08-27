@@ -46,7 +46,11 @@ export class PropertyLifecycleController {
     @Headers('user-agent') userAgent?: string,
     @Headers('x-request-id') requestId?: string,
   ) {
-    return this.service.verify(uuid, body.version, actor(request, userAgent, requestId));
+    return this.service.verify(
+      uuid,
+      body.version,
+      actor(request, userAgent, requestId),
+    );
   }
 
   @Post(':uuid/publish')
@@ -59,6 +63,10 @@ export class PropertyLifecycleController {
     @Headers('user-agent') userAgent?: string,
     @Headers('x-request-id') requestId?: string,
   ) {
-    return this.service.publish(uuid, body.version, actor(request, userAgent, requestId));
+    return this.service.publish(
+      uuid,
+      body.version,
+      actor(request, userAgent, requestId),
+    );
   }
 }

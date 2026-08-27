@@ -77,7 +77,11 @@ const diff = (
   return fields.flatMap((field) => {
     const oldValue = auditScalar(before[field]);
     const newValue = auditScalar(after[field]);
-    if (oldValue === undefined || newValue === undefined || oldValue === newValue)
+    if (
+      oldValue === undefined ||
+      newValue === undefined ||
+      oldValue === newValue
+    )
       return [];
     return [{ field, oldValue, newValue }];
   });
@@ -92,63 +96,102 @@ export class PropertyMasterService {
     private readonly audit: SecurityAuditRepository,
   ) {}
 
-  createCategory(input: {
-    typeUuid: string;
-    code: string;
-    name: string;
-    slug: string;
-    description?: string;
-    icon?: string;
-    isActive?: boolean;
-    sortOrder?: number;
-  }, actor: ActorContext) {
+  createCategory(
+    input: {
+      typeUuid: string;
+      code: string;
+      name: string;
+      slug: string;
+      description?: string;
+      icon?: string;
+      isActive?: boolean;
+      sortOrder?: number;
+    },
+    actor: ActorContext,
+  ) {
     return this.run(() => this.repository.createCategory(input, actor));
   }
-  updateCategory(uuid: string, version: number | undefined, patch: Record<string, unknown>, actor: ActorContext) {
-    return this.run(() => this.repository.updateCategory(uuid, version ?? 1, patch, actor));
+  updateCategory(
+    uuid: string,
+    version: number | undefined,
+    patch: Record<string, unknown>,
+    actor: ActorContext,
+  ) {
+    return this.run(() =>
+      this.repository.updateCategory(uuid, version ?? 1, patch, actor),
+    );
   }
   getCategory(uuid: string) {
     return this.run(() => this.repository.getCategory(uuid));
   }
-  listCategories(query: PageRequest & { isActive?: boolean; typeUuid?: string }) {
+  listCategories(
+    query: PageRequest & { isActive?: boolean; typeUuid?: string },
+  ) {
     return this.repository.listCategories(query);
   }
   deleteCategory(uuid: string, actor: ActorContext) {
     return this.run(() => this.repository.deleteCategory(uuid, actor));
   }
-  createSubcategory(input: {
-    categoryUuid: string;
-    code: string;
-    name: string;
-    slug: string;
-    description?: string;
-    isActive?: boolean;
-    sortOrder?: number;
-  }, actor: ActorContext) {
+  createSubcategory(
+    input: {
+      categoryUuid: string;
+      code: string;
+      name: string;
+      slug: string;
+      description?: string;
+      isActive?: boolean;
+      sortOrder?: number;
+    },
+    actor: ActorContext,
+  ) {
     return this.run(() => this.repository.createSubcategory(input, actor));
   }
-  updateSubcategory(uuid: string, version: number | undefined, patch: Record<string, unknown>, actor: ActorContext) {
-    return this.run(() => this.repository.updateSubcategory(uuid, version ?? 1, patch, actor));
+  updateSubcategory(
+    uuid: string,
+    version: number | undefined,
+    patch: Record<string, unknown>,
+    actor: ActorContext,
+  ) {
+    return this.run(() =>
+      this.repository.updateSubcategory(uuid, version ?? 1, patch, actor),
+    );
   }
   getSubcategory(uuid: string) {
     return this.run(() => this.repository.getSubcategory(uuid));
   }
-  listSubcategories(query: PageRequest & { isActive?: boolean; categoryUuid?: string }) {
+  listSubcategories(
+    query: PageRequest & { isActive?: boolean; categoryUuid?: string },
+  ) {
     return this.repository.listSubcategories(query);
   }
   deleteSubcategory(uuid: string, actor: ActorContext) {
     return this.run(() => this.repository.deleteSubcategory(uuid, actor));
   }
-  createLocation(level: 'country' | 'province' | 'city' | 'district' | 'subdistrict', input: Record<string, unknown>, actor: ActorContext) {
+  createLocation(
+    level: 'country' | 'province' | 'city' | 'district' | 'subdistrict',
+    input: Record<string, unknown>,
+    actor: ActorContext,
+  ) {
     return this.run(() => this.repository.createLocation(level, input, actor));
   }
-  updateLocation(level: string, uuid: string, version: number | undefined, patch: Record<string, unknown>, actor: ActorContext) {
-    return this.run(() => this.repository.updateLocation(level, uuid, version ?? 1, patch, actor));
+  updateLocation(
+    level: string,
+    uuid: string,
+    version: number | undefined,
+    patch: Record<string, unknown>,
+    actor: ActorContext,
+  ) {
+    return this.run(() =>
+      this.repository.updateLocation(level, uuid, version ?? 1, patch, actor),
+    );
   }
   getLocation(level: string, uuid: string) {
     return this.run(() => this.repository.getLocation(level, uuid));
   }
-  listLocations(level: string, query: PageRequest & { isActive?: boolean; parentUuid?: string }) {
+  listLocations(
+    level: string,
+    query: PageRequest & { isActive?: boolean; parentUuid?: string },
+  ) {
     return this.repository.listLocations(level, query);
   }
   deleteLocation(level: string, uuid: string, actor: ActorContext) {
@@ -157,25 +200,37 @@ export class PropertyMasterService {
   children(level: string, uuid: string) {
     return this.run(() => this.repository.children(level, uuid));
   }
-  createFacility(input: {
-    code: string;
-    name: string;
-    slug: string;
-    category: FacilityCategory;
-    icon?: string;
-    description?: string;
-    sortOrder?: number;
-    isActive?: boolean;
-  }, actor: ActorContext) {
+  createFacility(
+    input: {
+      code: string;
+      name: string;
+      slug: string;
+      category: FacilityCategory;
+      icon?: string;
+      description?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    },
+    actor: ActorContext,
+  ) {
     return this.run(() => this.repository.createFacility(input, actor));
   }
-  updateFacility(uuid: string, version: number | undefined, patch: Record<string, unknown>, actor: ActorContext) {
-    return this.run(() => this.repository.updateFacility(uuid, version ?? 1, patch, actor));
+  updateFacility(
+    uuid: string,
+    version: number | undefined,
+    patch: Record<string, unknown>,
+    actor: ActorContext,
+  ) {
+    return this.run(() =>
+      this.repository.updateFacility(uuid, version ?? 1, patch, actor),
+    );
   }
   getFacility(uuid: string) {
     return this.run(() => this.repository.getFacility(uuid));
   }
-  listFacilities(query: PageRequest & { isActive?: boolean; category?: FacilityCategory }) {
+  listFacilities(
+    query: PageRequest & { isActive?: boolean; category?: FacilityCategory },
+  ) {
     return this.repository.listFacilities(query);
   }
   deleteFacility(uuid: string, actor: ActorContext) {
@@ -187,8 +242,16 @@ export class PropertyMasterService {
     const result = await this.run(() => this.repository.createProperty(input, actor));
     const record = result as Record<string, unknown>;
     await this.recordAudit(AUDIT_ACTIONS.PROPERTY_CREATED, record.uuid, actor, [
-      { field: 'title', oldValue: null, newValue: auditScalar(record.title) ?? null },
-      { field: 'status', oldValue: null, newValue: auditScalar(record.status) ?? null },
+      {
+        field: 'title',
+        oldValue: null,
+        newValue: auditScalar(record.title) ?? null,
+      },
+      {
+        field: 'status',
+        oldValue: null,
+        newValue: auditScalar(record.status) ?? null,
+      },
     ]);
     return result;
   }
@@ -196,35 +259,53 @@ export class PropertyMasterService {
   getProperty(uuid: string) {
     return this.run(() => this.repository.getProperty(uuid));
   }
-  listProperties(query: PageRequest & {
-    status?: PropertyStatus;
-    typeUuid?: string;
-    categoryUuid?: string;
-    subcategoryUuid?: string;
-    isActive?: boolean;
-  }) {
+  listProperties(
+    query: PageRequest & {
+      status?: PropertyStatus;
+      typeUuid?: string;
+      categoryUuid?: string;
+      subcategoryUuid?: string;
+      isActive?: boolean;
+    },
+  ) {
     return this.repository.listProperties(query);
   }
 
-  async updateProperty(uuid: string, version: number, patch: Record<string, unknown>, actor: ActorContext) {
+  async updateProperty(
+    uuid: string,
+    version: number,
+    patch: Record<string, unknown>,
+    actor: ActorContext,
+  ) {
     const current = await this.run(() => this.repository.getProperty(uuid));
     const currentRecord = current as Record<string, unknown>;
     const currentStatus = toStatus(currentRecord.status, 'DRAFT');
     const nextStatus = toStatus(patch.status, currentStatus);
     if (nextStatus === 'ACTIVE' && currentStatus !== 'ACTIVE') {
-      throw new BadRequestException('Property activation must use the verify/publish workflow');
+      throw new BadRequestException(
+        'Property activation must use the verify/publish workflow',
+      );
     }
     assertTransition(currentStatus, nextStatus);
-    const from = patch.availableFrom !== undefined
-      ? toDate(patch.availableFrom)
-      : toDate(currentRecord.availableFrom);
-    const to = patch.availableTo !== undefined
-      ? toDate(patch.availableTo)
-      : toDate(currentRecord.availableTo);
+    const from =
+      patch.availableFrom !== undefined
+        ? toDate(patch.availableFrom)
+        : toDate(currentRecord.availableFrom);
+    const to =
+      patch.availableTo !== undefined
+        ? toDate(patch.availableTo)
+        : toDate(currentRecord.availableTo);
     assertAvailability(from, to);
-    const result = await this.run(() => this.repository.updateProperty(uuid, version, patch, actor));
+    const result = await this.run(() =>
+      this.repository.updateProperty(uuid, version, patch, actor),
+    );
     const updatedRecord = result as Record<string, unknown>;
-    await this.recordAudit(AUDIT_ACTIONS.PROPERTY_UPDATED, uuid, actor, diff(currentRecord, updatedRecord));
+    await this.recordAudit(
+      AUDIT_ACTIONS.PROPERTY_UPDATED,
+      uuid,
+      actor,
+      diff(currentRecord, updatedRecord),
+    );
     if (currentStatus !== nextStatus && nextStatus === 'ARCHIVED') {
       await this.recordAudit(AUDIT_ACTIONS.PROPERTY_ARCHIVED, uuid, actor);
     }
@@ -232,16 +313,23 @@ export class PropertyMasterService {
   }
 
   async verifyProperty(uuid: string, version: number, actor: ActorContext) {
-    const current = (await this.run(() => this.repository.getProperty(uuid))) as Record<string, unknown>;
+    const current = (await this.run(() => this.repository.getProperty(uuid))) as Record<
+      string,
+      unknown
+    >;
     if (toStatus(current.status, 'DRAFT') !== 'IN_REVIEW') {
-      throw new BadRequestException('Only properties in IN_REVIEW can be verified');
+      throw new BadRequestException(
+        'Only properties in IN_REVIEW can be verified',
+      );
     }
-    const result = await this.run(() => this.repository.updateProperty(
-      uuid,
-      version,
-      { verifiedAt: new Date(), verifiedBy: actor.actorUuid ?? null },
-      actor,
-    ));
+    const result = await this.run(() =>
+      this.repository.updateProperty(
+        uuid,
+        version,
+        { verifiedAt: new Date(), verifiedBy: actor.actorUuid ?? null },
+        actor,
+      ),
+    );
     await this.recordAudit(
       AUDIT_ACTIONS.PROPERTY_VERIFIED,
       uuid,
@@ -252,19 +340,28 @@ export class PropertyMasterService {
   }
 
   async publishProperty(uuid: string, version: number, actor: ActorContext) {
-    const current = (await this.run(() => this.repository.getProperty(uuid))) as Record<string, unknown>;
+    const current = (await this.run(() => this.repository.getProperty(uuid))) as Record<
+      string,
+      unknown
+    >;
     if (toStatus(current.status, 'DRAFT') !== 'IN_REVIEW') {
-      throw new BadRequestException('Only properties in IN_REVIEW can be published');
+      throw new BadRequestException(
+        'Only properties in IN_REVIEW can be published',
+      );
     }
     if (!current.verifiedAt) {
-      throw new BadRequestException('Property must be verified before publishing');
+      throw new BadRequestException(
+        'Property must be verified before publishing',
+      );
     }
-    const result = await this.run(() => this.repository.updateProperty(
-      uuid,
-      version,
-      { status: 'ACTIVE', publishedAt: new Date() },
-      actor,
-    ));
+    const result = await this.run(() =>
+      this.repository.updateProperty(
+        uuid,
+        version,
+        { status: 'ACTIVE', publishedAt: new Date() },
+        actor,
+      ),
+    );
     await this.recordAudit(
       AUDIT_ACTIONS.PROPERTY_PUBLISHED,
       uuid,
@@ -284,13 +381,24 @@ export class PropertyMasterService {
     return result;
   }
   async duplicateProperty(uuid: string, actor: ActorContext) {
-    const result = await this.run(() => this.repository.duplicateProperty(uuid, actor));
+    const result = await this.run(() =>
+      this.repository.duplicateProperty(uuid, actor),
+    );
     const record = result as Record<string, unknown>;
-    await this.recordAudit(AUDIT_ACTIONS.PROPERTY_DUPLICATED, record.uuid ?? uuid, actor);
+    await this.recordAudit(
+      AUDIT_ACTIONS.PROPERTY_DUPLICATED,
+      record.uuid ?? uuid,
+      actor,
+    );
     return result;
   }
 
-  private async recordAudit(action: string, entityUuid: unknown, actor: ActorContext, changes?: readonly SecurityAuditChange[]) {
+  private async recordAudit(
+    action: string,
+    entityUuid: unknown,
+    actor: ActorContext,
+    changes?: readonly SecurityAuditChange[],
+  ) {
     if (typeof entityUuid !== 'string' || !entityUuid) return;
     await this.audit.record({
       action,
@@ -311,13 +419,19 @@ export class PropertyMasterService {
     try {
       return await fn();
     } catch (error: unknown) {
-      if (error instanceof MasterNotFoundError) throw new NotFoundException(error.message);
-      if (error instanceof MasterConflictError || error instanceof MasterInUseError || error instanceof MasterConcurrencyError) {
+      if (error instanceof MasterNotFoundError)
+        throw new NotFoundException(error.message);
+      if (
+        error instanceof MasterConflictError ||
+        error instanceof MasterInUseError ||
+        error instanceof MasterConcurrencyError
+      )
         throw new ConflictException(error.message);
-      }
-      if (error instanceof MasterHierarchyError || error instanceof MasterStateError) {
+      if (
+        error instanceof MasterHierarchyError ||
+        error instanceof MasterStateError
+      )
         throw new BadRequestException(error.message);
-      }
       throw error;
     }
   }

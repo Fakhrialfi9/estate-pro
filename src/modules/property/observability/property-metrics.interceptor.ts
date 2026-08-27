@@ -31,7 +31,9 @@ const mediaCounter = meter.createCounter('property_media_operations_total', {
 });
 
 const isPropertyPath = (path: string): boolean =>
-  path === '/property' || path.startsWith('/property/') || path.includes('/property/');
+  path === '/property' ||
+  path.startsWith('/property/') ||
+  path.includes('/property/');
 
 const operationOf = (path: string, method: string): string => {
   if (path.includes('/search') || (path.endsWith('/listings') && method === 'GET')) {

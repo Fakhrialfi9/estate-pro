@@ -30,7 +30,8 @@ import {
 const toAuditChanges = (
   value: unknown,
 ): readonly SecurityAuditChange[] | undefined => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    return undefined;
   const changes = Object.entries(value).flatMap(([field, newValue]) => {
     if (
       typeof newValue !== 'string' &&
@@ -121,7 +122,9 @@ export class PropertyExtrasService {
     a: PropertyExtrasActor,
   ) {
     validateCertificateInput(p);
-    const r = await this.run(() => this.repository.createCertificate(id, p, a));
+    const r = await this.run(() =>
+      this.repository.createCertificate(id, p, a),
+    );
     await this.record(
       'property.certificate.create',
       'property_certificate',
@@ -222,7 +225,9 @@ export class PropertyExtrasService {
     p: Parameters<PropertyExtrasRepository['upsertEnvironment']>[1],
     a: PropertyExtrasActor,
   ) {
-    const r = await this.run(() => this.repository.upsertEnvironment(id, p, a));
+    const r = await this.run(() =>
+      this.repository.upsertEnvironment(id, p, a),
+    );
     await this.record(
       'property.environment.update',
       'property_environment',
@@ -270,7 +275,9 @@ export class PropertyExtrasService {
     a: PropertyExtrasActor,
   ) {
     validateMedia(p);
-    const r = await this.run(() => this.repository.updateMedia(id, mid, p, a));
+    const r = await this.run(() =>
+      this.repository.updateMedia(id, mid, p, a),
+    );
     await this.record('property.media.update', 'property_media', mid, a, {
       type: p.type,
       category: p.category,

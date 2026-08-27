@@ -55,10 +55,17 @@ export class PrismaPropertyLifecycleRepository
     if (current.status !== 'IN_REVIEW')
       throw new MasterConcurrencyError('Property must be in IN_REVIEW');
     if (!current.verifiedAt)
-      throw new MasterConcurrencyError('Property must be verified before publishing');
+      throw new MasterConcurrencyError(
+        'Property must be verified before publishing',
+      );
 
     const result = await this.prisma.property.updateMany({
-      where: { id: current.id, version, status: 'IN_REVIEW', verifiedAt: { not: null } },
+      where: {
+        id: current.id,
+        version,
+        status: 'IN_REVIEW',
+        verifiedAt: { not: null },
+      },
       data: {
         status: 'ACTIVE',
         publishedAt: new Date(),

@@ -14,9 +14,7 @@ const normalizePermission = (value: string): string =>
 const hasGlobalPropertyAccess = (
   permissions: readonly string[] | undefined,
 ): boolean => {
-  const granted = new Set(
-    (permissions ?? []).map(normalizePermission),
-  );
+  const granted = new Set((permissions ?? []).map(normalizePermission));
   return (
     granted.has('properties.manage') ||
     granted.has('listings.manage') ||

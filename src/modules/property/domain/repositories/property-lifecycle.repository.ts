@@ -5,4 +5,6 @@ export interface PropertyLifecycleRepository {
   publish(uuid: string, version: number, actor: ActorContext): Promise<unknown>;
 }
 
-export const PROPERTY_LIFECYCLE_REPOSITORY = Symbol('PROPERTY_LIFECYCLE_REPOSITORY');
+export const PROPERTY_LIFECYCLE_REPOSITORY = Symbol(
+  'PROPERTY_LIFECYCLE_REPOSITORY',
+);

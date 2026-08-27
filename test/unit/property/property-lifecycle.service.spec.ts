@@ -71,17 +71,20 @@ describe('PropertyLifecycleService', () => {
     );
   });
 
-  it('rejects a repository result that violates the ACTIVE publication contract', async () => {
-    vi.mocked(repository.publish).mockResolvedValueOnce({
-      uuid: '44444444-4444-4444-8444-444444444444',
-      status: 'DRAFT',
-    });
+  it(
+    'rejects a repository result that violates the ACTIVE publication contract',
+    async () => {
+      vi.mocked(repository.publish).mockResolvedValueOnce({
+        uuid: '44444444-4444-4444-8444-444444444444',
+        status: 'DRAFT',
+      });
 
-    await expect(
-      service.publish('44444444-4444-4444-8444-444444444444', 1, actor),
-    ).rejects.toThrow(BadRequestException);
-    expect(audit.record).not.toHaveBeenCalled();
-  });
+      await expect(
+        service.publish('44444444-4444-4444-8444-444444444444', 1, actor),
+      ).rejects.toThrow(BadRequestException);
+      expect(audit.record).not.toHaveBeenCalled();
+    },
+  );
 
   it('maps optimistic concurrency failures to HTTP 409', async () => {
     vi.mocked(repository.verify).mockRejectedValueOnce(
