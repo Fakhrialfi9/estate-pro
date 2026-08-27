@@ -22,6 +22,9 @@ const hasGlobalPropertyAccess = (
   );
 };
 
+const requestPathOf = (request: PropertyAccessRequest): string =>
+  request.path ?? request.originalUrl ?? request.url ?? '';
+
 @Injectable()
 export class PropertyAccessGuard implements CanActivate {
   constructor(private readonly prisma: PrismaService) {}
@@ -31,7 +34,7 @@ export class PropertyAccessGuard implements CanActivate {
     const principalUuid = request.user?.sub;
     if (!principalUuid) throw new ForbiddenException();
 
-    const routePath = request.path;
+    const routePath = requestPathOf(request);
     const isListingResource = routePath.includes('/listings/');
     const isPropertyResource =
       routePath.includes('/properties/') || routePath.includes('/read-model/');
