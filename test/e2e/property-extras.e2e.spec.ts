@@ -3,6 +3,7 @@ import request from 'supertest';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { AppModule } from '../../src/app.module.js';
+import { configureApplication } from '../../src/bootstrap.js';
 
 describe('Property extras HTTP boundary', () => {
   let app: INestApplication;
@@ -11,6 +12,7 @@ describe('Property extras HTTP boundary', () => {
       imports: [AppModule],
     }).compile();
     app = ref.createNestApplication();
+    configureApplication(app as Parameters<typeof configureApplication>[0]);
     await app.init();
   });
   afterAll(async () => {
