@@ -177,6 +177,12 @@ export class PropertyUpdateDto {
   @IsOptional() @IsDateString() availableTo?: string;
   @IsInt() @Min(1) version!: number;
 }
+export class PropertyLifecycleDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  version!: number;
+}
 export class ListQuery {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) page?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
