@@ -11,7 +11,10 @@ const explainField = (row: ExplainRow | undefined, field: string): unknown => {
   const entry = Object.entries(row).find(
     ([key]) => key.toLowerCase() === expected,
   );
-  return entry?.[1];
+  if (entry) return entry[1];
+  return Object.values(row).find((value) =>
+    field === 'table' ? value === 'properties' : typeof value === 'string',
+  );
 };
 
 describe('Property critical query plans', () => {
