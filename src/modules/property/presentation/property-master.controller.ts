@@ -103,7 +103,9 @@ export class PropertyMasterController {
     @Headers('user-agent') ua?: string,
     @Headers('x-request-id') rid?: string,
   ) {
-    return this.service.createCategory(d, actor(r, ua, rid)).then(response);
+    return this.service
+      .createCategory({ ...d }, actor(r, ua, rid))
+      .then(response);
   }
   @Get('categories')
   @RequirePermissions('property-categories.read')
@@ -127,7 +129,7 @@ export class PropertyMasterController {
     @Headers('x-request-id') rid?: string,
   ) {
     return this.service
-      .updateCategory(uuid, d.version, d, actor(r, ua, rid))
+      .updateCategory(uuid, d.version, { ...d }, actor(r, ua, rid))
       .then(response);
   }
   @Delete('categories/:uuid')
@@ -149,7 +151,9 @@ export class PropertyMasterController {
     @Headers('user-agent') ua?: string,
     @Headers('x-request-id') rid?: string,
   ) {
-    return this.service.createSubcategory(d, actor(r, ua, rid)).then(response);
+    return this.service
+      .createSubcategory({ ...d }, actor(r, ua, rid))
+      .then(response);
   }
   @Get('subcategories')
   @RequirePermissions('property-subcategories.read')
@@ -173,7 +177,7 @@ export class PropertyMasterController {
     @Headers('x-request-id') rid?: string,
   ) {
     return this.service
-      .updateSubcategory(uuid, d.version, d, actor(r, ua, rid))
+      .updateSubcategory(uuid, d.version, { ...d }, actor(r, ua, rid))
       .then(response);
   }
   @Delete('subcategories/:uuid')
@@ -197,7 +201,7 @@ export class PropertyMasterController {
     @Headers('x-request-id') rid?: string,
   ) {
     return this.service
-      .createLocation(levelOf(level), d, actor(r, ua, rid))
+      .createLocation(levelOf(level), { ...d }, actor(r, ua, rid))
       .then(response);
   }
   @Get('locations/:level')
@@ -224,7 +228,7 @@ export class PropertyMasterController {
     @Headers('x-request-id') rid?: string,
   ) {
     return this.service
-      .updateLocation(levelOf(level), uuid, d.version, d, actor(r, ua, rid))
+      .updateLocation(levelOf(level), uuid, d.version, { ...d }, actor(r, ua, rid))
       .then(response);
   }
   @Delete('locations/:level/:uuid')
@@ -255,7 +259,9 @@ export class PropertyMasterController {
     @Headers('user-agent') ua?: string,
     @Headers('x-request-id') rid?: string,
   ) {
-    return this.service.createFacility(d, actor(r, ua, rid)).then(response);
+    return this.service
+      .createFacility({ ...d }, actor(r, ua, rid))
+      .then(response);
   }
   @Get('facilities')
   @RequirePermissions('facilities.read')
@@ -279,7 +285,7 @@ export class PropertyMasterController {
     @Headers('x-request-id') rid?: string,
   ) {
     return this.service
-      .updateFacility(uuid, d.version, d, actor(r, ua, rid))
+      .updateFacility(uuid, d.version, { ...d }, actor(r, ua, rid))
       .then(response);
   }
   @Delete('facilities/:uuid')
@@ -301,7 +307,9 @@ export class PropertyMasterController {
     @Headers('user-agent') ua?: string,
     @Headers('x-request-id') rid?: string,
   ) {
-    return this.service.createProperty(d, actor(r, ua, rid)).then(response);
+    return this.service
+      .createProperty({ ...d }, actor(r, ua, rid))
+      .then(response);
   }
   @Get('properties')
   @RequirePermissions('properties.read')
@@ -325,7 +333,7 @@ export class PropertyMasterController {
     @Headers('x-request-id') rid?: string,
   ) {
     return this.service
-      .updateProperty(uuid, d.version, d, actor(r, ua, rid))
+      .updateProperty(uuid, d.version, { ...d }, actor(r, ua, rid))
       .then(response);
   }
   @Post('properties/:uuid/verify')
