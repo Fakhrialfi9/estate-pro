@@ -417,32 +417,30 @@ export class PrismaListingRepository implements ListingRepository {
   async expireDue(actor: ListingActor): Promise<readonly string[]> {
     const now = new Date();
     return this.run(() =>
-      this.prisma
-        .$transaction(async (tx) => {
-          const candidates = await tx.propertyListing.findMany({
-            where: { status: 'PUBLISHED', expiresAt: { lte: now } },
-            select: { uuid: true, version: true },
+      this.prisma.$transaction(async (tx) => {
+        const candidates = await tx.propertyListing.findMany({
+          where: { status: 'PUBLISHED', expiresAt: { lte: now } },
+          select: { uuid: true, version: true },
+        });
+        const expired: string[] = [];
+        for (const candidate of candidates) {
+          const changed = await tx.propertyListing.updateMany({
+            where: {
+              uuid: candidate.uuid,
+              version: candidate.version,
+              status: 'PUBLISHED',
+            },
+            data: {
+              status: 'EXPIRED',
+              visibility: 'PRIVATE',
+              updatedBy: actorId(actor),
+              version: { increment: 1 },
+            },
           });
-          const expired: string[] = [];
-          for (const candidate of candidates) {
-            const changed = await tx.propertyListing.updateMany({
-              where: {
-                uuid: candidate.uuid,
-                version: candidate.version,
-                status: 'PUBLISHED',
-              },
-              data: {
-                status: 'EXPIRED',
-                visibility: 'PRIVATE',
-                updatedBy: actorId(actor),
-                version: { increment: 1 },
-              },
-            });
-            if (changed.count === 1) expired.push(candidate.uuid);
-          }
-          return expired;
-        })
-        .catch((error: unknown) => this.mapError(error)),
+          if (changed.count === 1) expired.push(candidate.uuid);
+        }
+        return expired;
+      }),
     );
   }
 
