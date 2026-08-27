@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -7,6 +8,8 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 
 import { SecureValidationPipe } from './common/pipes/secure-validation.pipe.js';
+
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,100}$/;
 
 export const configureApplication = (app: NestExpressApplication): void => {
   const configService = app.get(ConfigService);
@@ -27,6 +30,14 @@ export const configureApplication = (app: NestExpressApplication): void => {
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: apiVersion,
+  });
+
+  app.use((request, response, next) => {
+    const raw = request.header('x-request-id');
+    const requestId = raw && REQUEST_ID_PATTERN.test(raw) ? raw : randomUUID();
+    request.headers['x-request-id'] = requestId;
+    response.setHeader('x-request-id', requestId);
+    next();
   });
 
   app.useGlobalPipes(
