@@ -7,60 +7,60 @@ import type {
   PropertyOwnerType,
 } from './listing.types.js';
 export interface ListingActor {
-  readonly actorUuid?: string;
-  readonly ipAddress?: string;
-  readonly userAgent?: string;
-  readonly requestId?: string;
+  readonly actorUuid?: string | undefined;
+  readonly ipAddress?: string | undefined;
+  readonly userAgent?: string | undefined;
+  readonly requestId?: string | undefined;
 }
 export interface CreateListingInput {
   readonly propertyUuid: string;
   readonly listingCode: string;
   readonly transactionType: ListingTransactionType;
-  readonly visibility?: ListingVisibility;
-  readonly featured?: boolean;
-  readonly premium?: boolean;
-  readonly expiresAt?: Date | null;
-  readonly price?: ListingPricingInput;
-  readonly payments?: readonly ListingPaymentInput[];
+  readonly visibility?: ListingVisibility | undefined;
+  readonly featured?: boolean | undefined;
+  readonly premium?: boolean | undefined;
+  readonly expiresAt?: Date | null | undefined;
+  readonly price?: ListingPricingInput | undefined;
+  readonly payments?: readonly ListingPaymentInput[] | undefined;
 }
 export interface UpdateListingInput {
-  readonly listingCode?: string;
-  readonly transactionType?: ListingTransactionType;
-  readonly visibility?: ListingVisibility;
-  readonly featured?: boolean;
-  readonly premium?: boolean;
-  readonly expiresAt?: Date | null;
-  readonly price?: ListingPricingInput;
-  readonly payments?: readonly ListingPaymentInput[];
+  readonly listingCode?: string | undefined;
+  readonly transactionType?: ListingTransactionType | undefined;
+  readonly visibility?: ListingVisibility | undefined;
+  readonly featured?: boolean | undefined;
+  readonly premium?: boolean | undefined;
+  readonly expiresAt?: Date | null | undefined;
+  readonly price?: ListingPricingInput | undefined;
+  readonly payments?: readonly ListingPaymentInput[] | undefined;
 }
 export interface PropertySearchQuery {
   readonly page: number;
   readonly limit: number;
-  readonly search?: string;
-  readonly typeUuid?: string;
-  readonly categoryUuid?: string;
-  readonly subcategoryUuid?: string;
-  readonly countryUuid?: string;
-  readonly provinceUuid?: string;
-  readonly cityUuid?: string;
-  readonly districtUuid?: string;
-  readonly minPrice?: string;
-  readonly maxPrice?: string;
-  readonly minLandArea?: string;
-  readonly maxLandArea?: string;
-  readonly minBuildingArea?: string;
-  readonly maxBuildingArea?: string;
-  readonly minBedrooms?: number;
-  readonly maxBedrooms?: number;
-  readonly minBathrooms?: string;
-  readonly maxBathrooms?: string;
-  readonly facilityUuids?: readonly string[];
-  readonly transactionType?: ListingTransactionType;
-  readonly listingStatus?: ListingStatus;
-  readonly featured?: boolean;
-  readonly verified?: boolean;
-  readonly sortBy?: PropertySortField;
-  readonly sortDirection?: 'asc' | 'desc';
+  readonly search?: string | undefined;
+  readonly typeUuid?: string | undefined;
+  readonly categoryUuid?: string | undefined;
+  readonly subcategoryUuid?: string | undefined;
+  readonly countryUuid?: string | undefined;
+  readonly provinceUuid?: string | undefined;
+  readonly cityUuid?: string | undefined;
+  readonly districtUuid?: string | undefined;
+  readonly minPrice?: string | undefined;
+  readonly maxPrice?: string | undefined;
+  readonly minLandArea?: string | undefined;
+  readonly maxLandArea?: string | undefined;
+  readonly minBuildingArea?: string | undefined;
+  readonly maxBuildingArea?: string | undefined;
+  readonly minBedrooms?: number | undefined;
+  readonly maxBedrooms?: number | undefined;
+  readonly minBathrooms?: string | undefined;
+  readonly maxBathrooms?: string | undefined;
+  readonly facilityUuids?: readonly string[] | undefined;
+  readonly transactionType?: ListingTransactionType | undefined;
+  readonly listingStatus?: ListingStatus | undefined;
+  readonly featured?: boolean | undefined;
+  readonly verified?: boolean | undefined;
+  readonly sortBy?: PropertySortField | undefined;
+  readonly sortDirection?: 'asc' | 'desc' | undefined;
 }
 export type PropertySortField =
   | 'price'
@@ -82,7 +82,7 @@ export interface ListingRepository {
     version: number,
     to: ListingStatus,
     actor: ListingActor,
-    reason?: string,
+    reason?: string | undefined,
   ): Promise<unknown>;
   expireDue(actor: ListingActor): Promise<readonly string[]>;
   duplicate(uuid: string, actor: ListingActor): Promise<unknown>;
@@ -109,7 +109,7 @@ export interface ListingRepository {
   ): Promise<unknown>;
   getPropertyDetail(
     propertyUuid: string,
-    viewerUserUuid?: string,
+    viewerUserUuid?: string | undefined,
   ): Promise<unknown>;
   search(query: PropertySearchQuery): Promise<{
     items: readonly unknown[];
