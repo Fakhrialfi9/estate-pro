@@ -7,6 +7,7 @@ import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
+import { SessionService } from '../../src/modules/auth/application/services/session.service.js';
 
 const permissions = [
   'property-types.create',
@@ -35,7 +36,7 @@ async function makeActor(
   await prisma.authenticationUserSession.create({
     data: {
       userId: user.id,
-      sessionId,
+      sessionId: SessionService.digestSecret(sessionId),
       expiresAt: new Date(Date.now() + 3600000),
     },
   });
