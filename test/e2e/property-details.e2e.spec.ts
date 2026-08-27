@@ -7,6 +7,7 @@ import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
+import { SessionService } from '../../src/modules/auth/application/services/session.service.js';
 
 type AuthContext = { uuid: string; token: string };
 type Body = { data?: { uuid?: string } };
@@ -55,7 +56,7 @@ async function makeActor(grant: boolean): Promise<AuthContext> {
   await prisma.authenticationUserSession.create({
     data: {
       userId: user.id,
-      sessionId,
+      sessionId: SessionService.digestSecret(sessionId),
       expiresAt: new Date(Date.now() + 3600000),
     },
   });
@@ -172,6 +173,8 @@ describe('Property detail child APIs', () => {
     await prisma.propertyLocation.deleteMany();
     await prisma.propertySpecification.deleteMany();
     await prisma.property.deleteMany();
+    await prisma.propertyCategory.deleteMany({ where: { id: categoryId } });
+    await prisma.propertyType.deleteMany({ where: { id: typeId } });
     await prisma.facility.deleteMany({
       where: { code: { startsWith: 'E2E-F-' } },
     });
