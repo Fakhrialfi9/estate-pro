@@ -48,12 +48,18 @@ describe('PropertyType persistence integration', () => {
     return created;
   };
 
+  const uniqueCode = (prefix: 'HOUSE' | 'VILLA'): string =>
+    `${prefix}_${randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`;
+
+  const uniqueSlug = (prefix: 'house' | 'villa'): string =>
+    `${prefix}-${randomUUID().replaceAll('-', '').slice(0, 12).toLowerCase()}`;
+
   const data = (
     overrides: Partial<Parameters<typeof repository.create>[0]> = {},
   ) => ({
-    code: `HOUSE_${randomUUID().slice(0, 8).toUpperCase()}`,
+    code: uniqueCode('HOUSE'),
     name: 'House',
-    slug: `house-${randomUUID().slice(0, 8)}`,
+    slug: uniqueSlug('house'),
     description: 'Residential property',
     icon: 'house',
     isActive: true,
@@ -70,13 +76,23 @@ describe('PropertyType persistence integration', () => {
   });
 
   it('lists with pagination, filtering and deterministic sorting', async () => {
-    const token = randomUUID().slice(0, 8);
+    const token = randomUUID().replaceAll('-', '').slice(0, 12).toLowerCase();
+    const houseCode = `HOUSE_${token.toUpperCase()}`;
+    const houseSlug = `house-${token}`;
+    const villaCode = `VILLA_${token.toUpperCase()}`;
+    const villaSlug = `villa-${token}`;
+
     await createTracked(
-      data({ code: `HOUSE_${token}`, slug: `house-${token}`, sortOrder: 20 }),
+      data({ code: houseCode, slug: houseSlug, sortOrder: 20 }),
     );
     await createTracked(
-      data({ code: `VILLA_${token}`, slug: `villa-${token}`, sortOrder: 10 }),
+      data({
+        code: villaCode,
+        slug: villaSlug,
+        sortOrder: 10,
+      }),
     );
+
     const result = await repository.list({
       page: 1,
       limit: 1,
@@ -88,7 +104,7 @@ describe('PropertyType persistence integration', () => {
     });
     expect(result.total).toBe(2);
     expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.code).toBe(`VILLA_${token}`);
+    expect(result.items[0]?.code).toBe(villaCode);
   });
 
   it('updates a persisted record', async () => {
