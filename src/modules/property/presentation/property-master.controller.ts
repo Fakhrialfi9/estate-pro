@@ -228,7 +228,13 @@ export class PropertyMasterController {
     @Headers('x-request-id') rid?: string,
   ) {
     return this.service
-      .updateLocation(levelOf(level), uuid, d.version, { ...d }, actor(r, ua, rid))
+      .updateLocation(
+        levelOf(level),
+        uuid,
+        d.version,
+        { ...d },
+        actor(r, ua, rid),
+      )
       .then(response);
   }
   @Delete('locations/:level/:uuid')
