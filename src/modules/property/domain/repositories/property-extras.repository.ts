@@ -14,10 +14,10 @@ import type {
 } from '../property-extras.js';
 
 export type PropertyExtrasActor = {
-  actorUuid?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  requestId?: string;
+  actorUuid?: string | undefined;
+  ipAddress?: string | undefined;
+  userAgent?: string | undefined;
+  requestId?: string | undefined;
 };
 
 export interface PropertyExtrasRepository {
