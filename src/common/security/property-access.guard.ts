@@ -1,11 +1,14 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
-import type { Request } from 'express';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service.js';
 
-type PropertyAccessRequest = Request & {
+type PropertyAccessRequest = {
+  method?: string;
   user?: { sub?: string; permissions?: readonly string[] };
   params: Record<string, string | undefined>;
+  path?: string;
+  originalUrl?: string;
+  url?: string;
   route?: { path?: string };
 };
 
@@ -24,7 +27,11 @@ const hasGlobalPropertyAccess = (
 };
 
 const requestPathOf = (request: PropertyAccessRequest): string =>
-  request.route?.path ?? request.originalUrl ?? request.url ?? '';
+  request.path ??
+  request.route?.path ??
+  request.originalUrl ??
+  request.url ??
+  '';
 
 @Injectable()
 export class PropertyAccessGuard implements CanActivate {
@@ -69,7 +76,7 @@ export class PropertyAccessGuard implements CanActivate {
     let accessible = isListingResource
       ? await this.prisma.propertyListing.findFirst({
           where: {
-            uuid: pathUuid as string,
+            uuid: pathUuid,
             property: {
               deletedAt: null,
               OR: [
