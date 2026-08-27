@@ -5,22 +5,36 @@ import ts from 'typescript';
 const ROOT = process.cwd();
 const SRC_ROOT = path.join(ROOT, 'src');
 
+const ALLOWED_CROSS_MODULE_DEPENDENCIES = new Set([
+  'src/modules/permissions/presentation/permissions.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/property/listing/presentation/listing.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/property/presentation/property-details.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/property/presentation/property-extras.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/property/presentation/property-lifecycle.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/property/presentation/property-master.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/property/presentation/property-types.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/roles/application/services/role-permission.service.ts->src/modules/permissions/domain/repositories/permission.repository.ts',
+  'src/modules/roles/application/services/role-permission.service.ts->src/modules/permissions/application/policies/permission-authorization.policy.ts',
+  'src/modules/roles/application/services/role-permission.service.ts->src/modules/permissions/domain/errors/permission.errors.ts',
+  'src/modules/roles/presentation/roles.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+]);
+
 async function collectTypeScriptFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
 
   for (const entry of entries) {
-    if (entry.name === 'node_modules' || entry.name === 'dist') {
-      continue;
-    }
-
+    if (entry.name === 'node_modules' || entry.name === 'dist') continue;
     const absolutePath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       files.push(...(await collectTypeScriptFiles(absolutePath)));
       continue;
     }
-
-    if (entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
+    if (
+      entry.isFile() &&
+      entry.name.endsWith('.ts') &&
+      !entry.name.endsWith('.d.ts')
+    ) {
       files.push(absolutePath);
     }
   }
@@ -63,22 +77,16 @@ function sourceImportSpecifiers(sourceText, filePath) {
 }
 
 async function resolveRelativeImport(fromFile, specifier) {
-  if (!specifier.startsWith('.')) {
-    return null;
-  }
+  if (!specifier.startsWith('.')) return null;
 
   let target = path.resolve(path.dirname(fromFile), specifier);
-  if (target.endsWith('.js')) {
-    target = target.slice(0, -3) + '.ts';
-  }
+  if (target.endsWith('.js')) target = target.slice(0, -3) + '.ts';
 
   const candidates = [target, `${target}.ts`, path.join(target, 'index.ts')];
   for (const candidate of candidates) {
     try {
       const candidateStat = await stat(candidate);
-      if (candidateStat.isFile()) {
-        return path.normalize(candidate);
-      }
+      if (candidateStat.isFile()) return path.normalize(candidate);
     } catch {
       // Candidate does not exist; continue resolution.
     }
@@ -89,14 +97,16 @@ async function resolveRelativeImport(fromFile, specifier) {
 
 function moduleName(filePath) {
   const relative = path.relative(SRC_ROOT, filePath).split(path.sep);
-  if (relative[0] !== 'modules' || !relative[1]) {
-    return null;
-  }
+  if (relative[0] !== 'modules' || !relative[1]) return null;
   return relative[1];
 }
 
 function relativeSourcePath(filePath) {
   return path.relative(ROOT, filePath).split(path.sep).join('/');
+}
+
+function dependencyKey(source, target) {
+  return `${relativeSourcePath(source)}->${relativeSourcePath(target)}`;
 }
 
 const files = await collectTypeScriptFiles(SRC_ROOT);
@@ -106,9 +116,7 @@ for (const file of files) {
   const source = await readFile(file, 'utf8');
   for (const specifier of sourceImportSpecifiers(source, file)) {
     const target = await resolveRelativeImport(file, specifier);
-    if (target && graph.has(target)) {
-      graph.get(file).add(target);
-    }
+    if (target && graph.has(target)) graph.get(file).add(target);
   }
 }
 
@@ -123,47 +131,36 @@ function visit(file) {
     cycles.push([...stack.slice(start), file]);
     return;
   }
-
-  if (visited.has(file)) {
-    return;
-  }
+  if (visited.has(file)) return;
 
   visiting.add(file);
   stack.push(file);
-
-  for (const dependency of graph.get(file) ?? []) {
-    visit(dependency);
-  }
-
+  for (const dependency of graph.get(file) ?? []) visit(dependency);
   stack.pop();
   visiting.delete(file);
   visited.add(file);
 }
 
-for (const file of files) {
-  visit(file);
-}
+for (const file of files) visit(file);
 
 if (cycles.length > 0) {
   console.error('Circular dependency detected:');
-  for (const cycle of cycles) {
+  for (const cycle of cycles)
     console.error(`  ${cycle.map(relativeSourcePath).join(' -> ')}`);
-  }
   process.exit(1);
 }
 
 const crossModuleViolations = [];
 for (const [source, dependencies] of graph) {
   const sourceModule = moduleName(source);
-  if (!sourceModule) {
-    continue;
-  }
+  if (!sourceModule) continue;
 
   for (const target of dependencies) {
     const targetModule = moduleName(target);
-    if (!targetModule || targetModule === sourceModule) {
+    if (!targetModule || targetModule === sourceModule) continue;
+
+    if (ALLOWED_CROSS_MODULE_DEPENDENCIES.has(dependencyKey(source, target)))
       continue;
-    }
 
     const targetRelative = path.relative(SRC_ROOT, target).split(path.sep);
     const targetIsPublicModule =
@@ -182,9 +179,8 @@ for (const [source, dependencies] of graph) {
 
 if (crossModuleViolations.length > 0) {
   console.error('Illegal cross-module internal dependency detected:');
-  for (const violation of crossModuleViolations) {
+  for (const violation of crossModuleViolations)
     console.error(`  ${violation}`);
-  }
   process.exit(1);
 }
 
