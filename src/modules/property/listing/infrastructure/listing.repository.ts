@@ -20,10 +20,12 @@ import type {
   PropertySearchQuery,
   UpdateListingInput,
 } from '../domain/listing.repository.js';
+
 export class ListingNotFoundError extends Error {}
 export class ListingConflictError extends Error {}
 export class ListingStateError extends Error {}
 export class ListingValidationError extends Error {}
+
 const actorId = (actor: ListingActor): string | null => actor.actorUuid ?? null;
 const trim = (value: string): string => value.trim();
 const maskOwner = (value: string): string => {
@@ -37,9 +39,11 @@ const hashOwner = (value: string): string =>
   createHash('sha256').update(value).digest('hex');
 const positiveDecimal = (value: string | null | undefined): boolean =>
   value != null && /^\d+(?:\.\d+)?$/.test(value) && Number(value) > 0;
+
 @Injectable()
 export class PrismaListingRepository implements ListingRepository {
   constructor(private readonly prisma: PrismaService) {}
+
   private async propertyByUuid(
     tx: Prisma.TransactionClient | PrismaService,
     uuid: string,
@@ -66,6 +70,7 @@ export class PrismaListingRepository implements ListingRepository {
     if (!property) throw new ListingNotFoundError('Property not found');
     return property;
   }
+
   private async normalizePricing(
     input: ListingPricingInput,
     propertyId: bigint,
@@ -85,6 +90,7 @@ export class PrismaListingRepository implements ListingRepository {
       ? { ...input, pricePerSqm: derivePricePerSqm(base, area) }
       : input;
   }
+
   private validatePayments(payments: readonly ListingPaymentInput[]): void {
     const types = new Set<string>();
     for (const payment of payments) {
@@ -96,6 +102,7 @@ export class PrismaListingRepository implements ListingRepository {
       assertPaymentInvariants(payment);
     }
   }
+
   async create(
     input: CreateListingInput,
     actor: ListingActor,
@@ -166,6 +173,7 @@ export class PrismaListingRepository implements ListingRepository {
         .catch((error: unknown) => this.mapError(error)),
     );
   }
+
   async findOne(uuid: string): Promise<unknown> {
     const listing = await this.prisma.propertyListing.findFirst({
       where: { uuid },
@@ -211,6 +219,7 @@ export class PrismaListingRepository implements ListingRepository {
     if (!listing) throw new ListingNotFoundError('Listing not found');
     return listing;
   }
+
   async update(
     uuid: string,
     version: number,
@@ -295,6 +304,7 @@ export class PrismaListingRepository implements ListingRepository {
         .catch((error: unknown) => this.mapError(error)),
     );
   }
+
   async transition(
     uuid: string,
     version: number,
@@ -403,6 +413,7 @@ export class PrismaListingRepository implements ListingRepository {
         .catch((error: unknown) => this.mapError(error)),
     );
   }
+
   async expireDue(actor: ListingActor): Promise<readonly string[]> {
     const now = new Date();
     return this.run(() =>
@@ -434,6 +445,7 @@ export class PrismaListingRepository implements ListingRepository {
         .catch((error: unknown) => this.mapError(error)),
     );
   }
+
   async duplicate(uuid: string, actor: ListingActor): Promise<unknown> {
     return this.run(() =>
       this.prisma
@@ -525,6 +537,7 @@ export class PrismaListingRepository implements ListingRepository {
         .catch((error: unknown) => this.mapError(error)),
     );
   }
+
   async assignAgent(
     propertyUuid: string,
     agentUserUuid: string,
@@ -579,6 +592,7 @@ export class PrismaListingRepository implements ListingRepository {
         .catch((error: unknown) => this.mapError(error)),
     );
   }
+
   async changeAgent(
     propertyUuid: string,
     assignmentUuid: string,
@@ -626,6 +640,7 @@ export class PrismaListingRepository implements ListingRepository {
         .catch((error: unknown) => this.mapError(error)),
     );
   }
+
   async assignOwner(
     propertyUuid: string,
     ownerType: PropertyOwnerType,
@@ -670,6 +685,7 @@ export class PrismaListingRepository implements ListingRepository {
         .catch((error: unknown) => this.mapError(error)),
     );
   }
+
   async getPropertyDetail(
     propertyUuid: string,
     viewerUserUuid?: string,
@@ -689,6 +705,8 @@ export class PrismaListingRepository implements ListingRepository {
         availabilityStatus: true,
         availableFrom: true,
         availableTo: true,
+        propertyTypeId: true,
+        propertyCategoryId: true,
         version: true,
         publishedAt: true,
         verifiedAt: true,
@@ -1032,21 +1050,21 @@ export class PrismaListingRepository implements ListingRepository {
       },
     });
     if (!property) throw new ListingNotFoundError('Property not found');
+
     const audit = await this.prisma.auditLog.findMany({
       where: { resourceId: propertyUuid, action: { startsWith: 'property.' } },
       orderBy: { createdAt: 'desc' },
       take: 5,
       select: { action: true, result: true, reason: true, createdAt: true },
     });
+
     const related = await this.prisma.property.findMany({
       where: {
         uuid: { not: property.uuid },
         deletedAt: null,
         OR: [
-          { propertyType: { is: { uuid: property.propertyType.uuid } } },
-          {
-            propertyCategory: { is: { uuid: property.propertyCategory.uuid } },
-          },
+          { propertyTypeId: property.propertyTypeId },
+          { propertyCategoryId: property.propertyCategoryId },
         ],
       },
       orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
@@ -1071,6 +1089,7 @@ export class PrismaListingRepository implements ListingRepository {
         },
       },
     });
+
     return {
       ...property,
       audit,
@@ -1078,6 +1097,7 @@ export class PrismaListingRepository implements ListingRepository {
       viewerUserUuid: viewerUserUuid ?? null,
     };
   }
+
   async search(query: PropertySearchQuery): Promise<{
     items: readonly unknown[];
     total: number;
@@ -1089,6 +1109,7 @@ export class PrismaListingRepository implements ListingRepository {
     const skip = (page - 1) * limit;
     const where: Prisma.PropertyWhereInput = { deletedAt: null };
     const listingWhere: Prisma.PropertyListingWhereInput = {};
+
     if (query.search?.trim()) {
       const term = query.search.trim();
       where.OR = [
@@ -1172,6 +1193,7 @@ export class PrismaListingRepository implements ListingRepository {
         is: { maxPrice: { gte: query.minPrice, lte: query.maxPrice } },
       };
     if (Object.keys(listingWhere).length) where.listing = { is: listingWhere };
+
     const direction = query.sortDirection ?? 'desc';
     const orderBy: Prisma.PropertyOrderByWithRelationInput =
       query.sortBy === 'price'
@@ -1185,6 +1207,7 @@ export class PrismaListingRepository implements ListingRepository {
               : query.sortBy === 'updatedAt'
                 ? { updatedAt: direction }
                 : { updatedAt: 'desc' };
+
     const [total, items] = await Promise.all([
       this.prisma.property.count({ where }),
       this.prisma.property.findMany({
@@ -1232,6 +1255,7 @@ export class PrismaListingRepository implements ListingRepository {
     ]);
     return { items, total, page, limit };
   }
+
   private async run<T>(operation: () => Promise<T>): Promise<T> {
     try {
       return await operation();
@@ -1239,6 +1263,7 @@ export class PrismaListingRepository implements ListingRepository {
       throw this.mapError(error);
     }
   }
+
   private mapError(error: unknown): Error {
     if (
       error instanceof ListingNotFoundError ||
