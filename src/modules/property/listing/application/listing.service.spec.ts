@@ -21,41 +21,41 @@ const input = {
 
 describe('ListingService', () => {
   it('coordinates creation and audit', async () => {
-    const repository = {
-      create: vi.fn().mockResolvedValue({ uuid: 'listing-uuid' }),
-    } as unknown as ListingRepository;
-    const audit = {
-      record: vi.fn().mockResolvedValue(undefined),
-    } as unknown as SecurityAuditRepository;
+    const create = vi.fn().mockResolvedValue({ uuid: 'listing-uuid' });
+    const record = vi.fn().mockResolvedValue(undefined);
+    const repository = { create } as unknown as ListingRepository;
+    const audit = { record } as unknown as SecurityAuditRepository;
     const service = new ListingService(repository, audit);
     await expect(service.create(input, actor)).resolves.toEqual({
       uuid: 'listing-uuid',
     });
-    expect(repository.create).toHaveBeenCalledOnce();
-    expect(audit.record).toHaveBeenCalledOnce();
+    expect(create).toHaveBeenCalledOnce();
+    expect(record).toHaveBeenCalledOnce();
   });
+
   it('maps repository not-found and version conflicts to HTTP errors', async () => {
-    const repository = {
-      findOne: vi.fn().mockRejectedValue(new ListingNotFoundError('missing')),
-      update: vi.fn().mockRejectedValue(new ListingConflictError('conflict')),
-    } as unknown as ListingRepository;
-    const audit = { record: vi.fn() } as unknown as SecurityAuditRepository;
+    const findOne = vi.fn().mockRejectedValue(new ListingNotFoundError('missing'));
+    const update = vi.fn().mockRejectedValue(new ListingConflictError('conflict'));
+    const repository = { findOne, update } as unknown as ListingRepository;
+    const record = vi.fn();
+    const audit = { record } as unknown as SecurityAuditRepository;
     const service = new ListingService(repository, audit);
     await expect(service.get('missing')).rejects.toMatchObject({ status: 404 });
     await expect(service.update('listing', 1, {}, actor)).rejects.toMatchObject(
       { status: 409 },
     );
   });
+
   it('writes workflow audit after a successful transition', async () => {
-    const repository = {
-      transition: vi.fn().mockResolvedValue({ status: 'IN_REVIEW' }),
-    } as unknown as ListingRepository;
-    const audit = {
-      record: vi.fn().mockResolvedValue(undefined),
-    } as unknown as SecurityAuditRepository;
+    const transition = vi
+      .fn()
+      .mockResolvedValue({ status: 'IN_REVIEW' });
+    const record = vi.fn().mockResolvedValue(undefined);
+    const repository = { transition } as unknown as ListingRepository;
+    const audit = { record } as unknown as SecurityAuditRepository;
     const service = new ListingService(repository, audit);
     await service.transition('listing', 1, 'IN_REVIEW', actor);
-    expect(audit.record).toHaveBeenCalledWith(
+    expect(record).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'property.listing.in_review',
         result: 'SUCCESS',
