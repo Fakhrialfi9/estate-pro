@@ -674,42 +674,52 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
       propertyCategory: { findFirst(args: object): Promise<unknown> };
       propertySubcategory: { findFirst(args: object): Promise<unknown> };
     };
-    const type = row(
-      await client.propertyType.findFirst({
-        where: { uuid: text(input.typeUuid), deletedAt: null, isActive: true },
-      }),
-    );
-    const category = row(
-      await client.propertyCategory.findFirst({
+    const type = await client.propertyType.findFirst({
+      where: { uuid: text(input.typeUuid), deletedAt: null, isActive: true },
+    });
+    if (!type)
+      throw new MasterHierarchyError('Property type not found or inactive');
+
+    const category = await client.propertyCategory.findFirst({
+      where: {
+        uuid: text(input.categoryUuid),
+        deletedAt: null,
+        isActive: true,
+      },
+    });
+    if (!category)
+      throw new MasterHierarchyError(
+        'Property category not found or inactive',
+      );
+
+    const typeRecord = row(type);
+    const categoryRecord = row(category);
+    if (typeRecord.id !== categoryRecord.propertyTypeId)
+      throw new MasterHierarchyError('Category does not belong to type');
+
+    let subcategoryId: bigint | null = null;
+    if (input.subcategoryUuid) {
+      const sub = await client.propertySubcategory.findFirst({
         where: {
-          uuid: text(input.categoryUuid),
+          uuid: text(input.subcategoryUuid),
           deletedAt: null,
           isActive: true,
         },
-      }),
-    );
-    if (type && category && type.id !== category.propertyTypeId)
-      throw new MasterHierarchyError('Category does not belong to type');
-    let subcategoryId: bigint | null = null;
-    if (input.subcategoryUuid) {
-      const sub = row(
-        await client.propertySubcategory.findFirst({
-          where: {
-            uuid: text(input.subcategoryUuid),
-            deletedAt: null,
-            isActive: true,
-          },
-        }),
-      );
-      if (sub.propertyCategoryId !== category.id)
+      });
+      if (!sub)
+        throw new MasterHierarchyError(
+          'Property subcategory not found or inactive',
+        );
+      const subRecord = row(sub);
+      if (subRecord.propertyCategoryId !== categoryRecord.id)
         throw new MasterHierarchyError(
           'Subcategory does not belong to category',
         );
-      subcategoryId = sub.id as bigint;
+      subcategoryId = subRecord.id as bigint;
     }
     return {
-      typeId: type.id as bigint,
-      categoryId: category.id as bigint,
+      typeId: typeRecord.id as bigint,
+      categoryId: categoryRecord.id as bigint,
       subcategoryId,
     };
   }
