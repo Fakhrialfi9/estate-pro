@@ -22,7 +22,10 @@ const decimalValue = (value: unknown): string | null => {
 
   if (typeof value === 'object' && 'toString' in value) {
     const candidate = value.toString;
-    if (typeof candidate === 'function' && candidate !== Object.prototype.toString)
+    if (
+      typeof candidate === 'function' &&
+      candidate !== Object.prototype.toString
+    )
       return candidate.call(value);
   }
 
