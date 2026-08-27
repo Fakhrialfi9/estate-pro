@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PropertyMasterService } from '../../../src/modules/property/application/property-master.service.js';
 import type { PropertyMasterRepository } from '../../../src/modules/property/domain/repositories/property-master.repository.js';
 import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
@@ -22,6 +22,10 @@ describe('PropertyMasterService audit lifecycle', () => {
   } as unknown as PropertyMasterRepository;
 
   const service = new PropertyMasterService(repository, audit);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it('records property creation with actor and safe lifecycle fields', async () => {
     vi.mocked(repository.createProperty).mockResolvedValueOnce({
@@ -87,9 +91,12 @@ describe('PropertyMasterService audit lifecycle', () => {
     vi.mocked(repository.duplicateProperty).mockResolvedValueOnce({
       uuid: '55555555-5555-4555-8555-555555555555',
     });
-    vi.mocked(repository.getProperty)
-      .mockResolvedValueOnce({ uuid, status: 'ACTIVE', title: 'Villa', version: 1 })
-      .mockResolvedValueOnce({ uuid, status: 'ACTIVE', title: 'Villa', version: 1 });
+    vi.mocked(repository.getProperty).mockResolvedValueOnce({
+      uuid,
+      status: 'ACTIVE',
+      title: 'Villa',
+      version: 1,
+    });
     vi.mocked(repository.updateProperty).mockResolvedValueOnce({
       uuid,
       title: 'Villa',
