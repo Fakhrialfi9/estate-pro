@@ -45,6 +45,9 @@ export const AUDIT_ACTIONS = {
   PROPERTY_ARCHIVED: 'PROPERTY_ARCHIVED',
   PROPERTY_RESTORED: 'PROPERTY_RESTORED',
   PROPERTY_DUPLICATED: 'PROPERTY_DUPLICATED',
+  PROPERTY_TYPE_CREATED: 'PROPERTY_TYPE_CREATED',
+  PROPERTY_TYPE_UPDATED: 'PROPERTY_TYPE_UPDATED',
+  PROPERTY_TYPE_DELETED: 'PROPERTY_TYPE_DELETED',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
@@ -63,5 +66,6 @@ export const AUDIT_RESOURCE_TYPES = [
   'recovery_code',
   'audit_log',
   'property',
+  'property_type',
 ] as const;
 export const AUDIT_RESULT_VALUES = ['SUCCESS', 'FAILURE'] as const;
