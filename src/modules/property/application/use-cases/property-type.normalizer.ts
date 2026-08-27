@@ -18,13 +18,17 @@ export const normalizeSlug = (value: string): string => {
   return normalized;
 };
 
-export const normalizeDescription = (value: string | null | undefined): string | null => {
+export const normalizeDescription = (
+  value: string | null | undefined,
+): string | null => {
   if (value === undefined || value === null) return null;
   const normalized = value.trim();
   return normalized || null;
 };
 
-export const normalizeIcon = (value: string | null | undefined): string | null => {
+export const normalizeIcon = (
+  value: string | null | undefined,
+): string | null => {
   if (value === undefined || value === null) return null;
   const normalized = value.trim();
   return normalized || null;
