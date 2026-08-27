@@ -36,8 +36,8 @@ jobs:
         run: npm ci
       - name: Apply deterministic base fixes
         run: python3 scripts/strict-type-repair.py
-      - name: Apply explicit final fixes
-        run: python3 scripts/final-type-repair-v2.py
+      - name: Apply measured final fixes
+        run: python3 scripts/final-type-repair-v3.py
       - name: Format repaired source
         run: npx prettier --write src
       - name: Prisma generate
