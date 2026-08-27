@@ -99,9 +99,26 @@ export const VENTILATION_TYPES = [
 ] as const;
 export type VentilationType = (typeof VENTILATION_TYPES)[number];
 
-export class PropertyDetailNotFoundError extends Error {}
-export class PropertyDetailConflictError extends Error {}
-export class PropertyDetailInvalidStateError extends Error {}
+export class PropertyDetailNotFoundError extends Error {
+  constructor(message = 'Property detail not found') {
+    super(message);
+    this.name = PropertyDetailNotFoundError.name;
+  }
+}
+
+export class PropertyDetailConflictError extends Error {
+  constructor(message = 'Property detail conflict') {
+    super(message);
+    this.name = PropertyDetailConflictError.name;
+  }
+}
+
+export class PropertyDetailInvalidStateError extends Error {
+  constructor(message = 'Invalid property detail') {
+    super(message);
+    this.name = PropertyDetailInvalidStateError.name;
+  }
+}
 
 const numberValue = (
   value: string | number | null | undefined,
@@ -238,10 +255,10 @@ export const assertCoordinatePair = (
     lat !== null &&
     (lat < -90 ||
       lat > 90 ||
-      !/^[-+]?\d+(?:\.\d{1,6})?$/.test(String(latitude)))
+      !/^[-+]?\d+(?:\.\d{1,7})?$/.test(String(latitude)))
   )
     throw new PropertyDetailInvalidStateError(
-      'latitude must be between -90 and 90 with at most 6 decimal places',
+      'latitude must be between -90 and 90 with at most 7 decimal places',
     );
   if (
     lng !== null &&
