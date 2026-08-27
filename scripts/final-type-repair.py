@@ -20,10 +20,13 @@ def wrap_first_data_after(path: str, anchor: str) -> None:
         return
     opening = data_pos + len('data: ')
     closing = matching_brace(text, opening)
-    prefix = text[:data_pos] + 'data: omitUndefined('
-    middle = text[data_pos + len('data: '): closing + 1]
-    suffix = text[closing + 1:]
-    p.write_text(prefix + middle + ')' + suffix)
+    p.write_text(
+        text[:data_pos]
+        + 'data: omitUndefined('
+        + text[data_pos + len('data: '):closing + 1]
+        + ')'
+        + text[closing + 1:]
+    )
 
 
 def matching_brace(text: str, opening: int) -> int:
@@ -51,45 +54,48 @@ def matching_brace(text: str, opening: int) -> int:
     raise RuntimeError('unbalanced object literal')
 
 
-# Application service: slug is derived when omitted by the persistence layer.
+# The application contract derives slugs from names when callers omit them.
+p = Path('src/modules/property/application/property-master.service.ts')
+text = p.read_text()
 for method in ('createCategory', 'createSubcategory', 'createFacility'):
-    p = Path('src/modules/property/application/property-master.service.ts')
-    text = p.read_text()
-    start = text.find(f'  {method}(')
+    pattern = rf'(async\s+{method}\(\s*input:\s*\{{.*?)(\bslug:) string;(.*?\n\s*\},\s*\n\s*actor: ActorContext)'
+    text = re.sub(pattern, r'\1\2 string;\3', text, count=1, flags=re.MULTILINE | re.DOTALL)
+    # The service methods are not async in some revisions; support both forms and preserve exact contract.
+    start = text.find(f'  {method}(\n    input:')
     if start >= 0:
-        end = text.find('  }', start)
+        end = text.find('\n  }', start)
         if end >= 0:
             block = text[start:end]
-            block = block.replace('slug: string;', 'slug?: string;')
+            block = block.replace('slug: string;', 'slug?: string;', 1)
             text = text[:start] + block + text[end:]
-            p.write_text(text)
+# Explicitly target the three known signatures if the generic pass left them unchanged.
+for marker in (
+    'typeUuid: string;\n      code: string;\n      name: string;\n      slug: string;',
+    'categoryUuid: string;\n      code: string;\n      name: string;\n      slug: string;',
+    'code: string;\n      name: string;\n      slug: string;\n      category: FacilityCategory;',
+):
+    text = text.replace(marker, marker.replace('slug: string;', 'slug?: string;'), 1)
+p.write_text(text)
 
-# Property details: patch-shaped updates must not pass undefined Prisma fields.
-wrap_first_data_after(
-    'src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts',
-    'return tx.propertyBuilding.update({',
-)
-wrap_first_data_after(
-    'src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts',
-    'return tx.propertyRoom.update({',
-)
-wrap_first_data_after(
-    'src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts',
-    'return tx.propertyFacility.update({',
-)
-
-# Utility / SEO / certificate / media create/update data objects.
+# Strict optional Prisma data objects.
 for anchor in (
-    'await tx.propertyUtility.create({',
-    'await tx.propertySeo.create({',
-    'await tx.propertyCertificate.create({',
-    'await tx.propertyCertificate.update({',
-    'await tx.propertyMedia.create({',
-    'await tx.propertyMedia.update({',
+    'return tx.propertyBuilding.update({',
+    'return tx.propertyRoom.update({',
+    'return tx.propertyFacility.update({',
+):
+    wrap_first_data_after('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts', anchor)
+
+for anchor in (
+    'const r = await tx.propertyUtility.create({',
+    'const r = await tx.propertyCertificate.create({',
+    'const r = await tx.propertyCertificate.update({',
+    'const r = await tx.propertySeo.create({',
+    'const r = await tx.propertyMedia.create({',
+    'const r = await tx.propertyMedia.update({',
 ):
     wrap_first_data_after('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts', anchor)
 
-# Master-store strict id and enum validation.
+# Master store: narrow unknown IDs and validate string enum values.
 p = Path('src/modules/property/infrastructure/persistence/prisma-property-master.store.ts')
 text = p.read_text()
 text = text.replace(
@@ -104,47 +110,74 @@ text = text.replace(
 )
 p.write_text(text)
 
-# Listing create/update: remove optional relation keys instead of assigning undefined.
+# Listing repository: no explicit undefined relation keys; no readonly arrays in Prisma create inputs.
 p = Path('src/modules/property/listing/infrastructure/listing.repository.ts')
 text = p.read_text()
-wrap_first_data_after(p.as_posix(), 'this.prisma.propertyListing.create({')
-text = p.read_text()
-# Also wrap the duplicate create and transition update after the first transformation.
-wrap_first_data_after(p.as_posix(), 'tx.propertyListing.create({')
-text = p.read_text()
-text = re.sub(r'\n\s*\.catch\(\(error: unknown\) => this\.mapError\(error\)\),', ',', text)
-# Engagement selection and location relations are conditionally present.
 text = text.replace(
-"""        engagements: engagementUserUuid
-          ? {
-              where: { userUuid: engagementUserUuid },
-              select: { isSaved: true, viewedAt: true },
-            }
-          : undefined,""",
-"""        ...(engagementUserUuid
-          ? {
-              engagements: {
-                where: { userUuid: engagementUserUuid },
-                select: { isSaved: true, viewedAt: true },
-              },
-            }
-          : {}),""",
+    'paymentOptions: input.payments?.length\n                ? {\n                    create: input.payments.map((payment) => ({',
+    '...(input.payments?.length\n                ? {\n                    paymentOptions: {\n                      create: Array.from(input.payments, (payment) => ({',
+    1,
 )
-for key, name in (('country','countryUuid'),('province','provinceUuid'),('city','cityUuid'),('district','districtUuid')):
+text = text.replace(
+    '                  }\n                : undefined,\n              analytics:',
+    '                    },\n                  }\n                : {}),\n              analytics:',
+    1,
+)
+text = text.replace(
+    'paymentOptions: source.paymentOptions.length\n                ? {\n                    create: source.paymentOptions.map((payment) => ({',
+    '...(source.paymentOptions.length\n                ? {\n                    paymentOptions: {\n                      create: Array.from(source.paymentOptions, (payment) => ({',
+    1,
+)
+text = text.replace(
+    '                  }\n                : undefined,\n              analytics:',
+    '                    },\n                  }\n                : {}),\n              analytics:',
+    1,
+)
+text = re.sub(r'\n\s*\.catch\(\(error: unknown\) => this\.mapError\(error\)\),', ',', text)
+# Typed update object: remove undefined properties at construction.
+text = text.replace(
+    'const data: Prisma.PropertyListingUpdateManyMutationInput = {',
+    'const data: Prisma.PropertyListingUpdateManyMutationInput = omitUndefined({',
+    1,
+)
+# Close the update data literal.
+text = text.replace(
+    '            version: { increment: 1 },\n          };\n          if (to === \'PUBLISHED\')',
+    '            version: { increment: 1 },\n          });\n          if (to === \'PUBLISHED\')',
+    1,
+)
+# Engagement selector must be conditionally included.
+text = text.replace(
+    '        engagements: engagementUserUuid\n          ? {\n              where: { userUuid: engagementUserUuid },\n              select: { isSaved: true, viewedAt: true },\n            }\n          : undefined,',
+    '        ...(engagementUserUuid\n          ? {\n              engagements: {\n                where: { userUuid: engagementUserUuid },\n                select: { isSaved: true, viewedAt: true },\n              },\n            }\n          : {}),',
+    1,
+)
+# Location relations: conditionally include every relation filter.
+for key, name in (('country', 'countryUuid'), ('province', 'provinceUuid'), ('city', 'cityUuid'), ('district', 'districtUuid')):
     text = text.replace(
         f'          {key}: query.{name} ? {{ is: {{ uuid: query.{name} }} }} : undefined,',
-        f'          ...({name} ? {{ {key}: {{ is: {{ uuid: {name} }} }} }} : {{}}),',
+        f'          ...({{ {key}: query.{name} ? {{ is: {{ uuid: query.{name} }} }} : undefined }}),',
+    )
+    # Also support multiline form.
+    text = text.replace(
+        f'          {key}: query.{name}\n            ? {{ is: {{ uuid: query.{name} }} }}\n            : undefined,',
+        f'          ...({{ {key}: query.{name} ? {{ is: {{ uuid: query.{name} }} }} : undefined }}),',
     )
 p.write_text(text)
 
-# Controller actor context: auth middleware guarantees user in protected routes;
-# fail closed when it is absent and omit undefined metadata properties.
+# Both controllers construct an authenticated actor context, never an optional actorUuid.
 for filename in ('property-lifecycle.controller.ts', 'property-master.controller.ts'):
     p = Path('src/modules/property/presentation') / filename
     text = p.read_text()
-    old = """const actor = (\n  request: AuthenticatedRequest,\n  userAgent?: string,\n  requestId?: string,\n) => ({\n  actorUuid: request.user?.sub,\n  ipAddress: request.ip,\n  userAgent,\n  requestId,\n});"""
-    new = """const actor = (\n  request: AuthenticatedRequest,\n  userAgent?: string,\n  requestId?: string,\n) => {\n  const actorUuid = request.user?.sub;\n  if (!actorUuid) throw new ForbiddenException('Authenticated user is required');\n  return {\n    actorUuid,\n    ipAddress: request.ip ?? 'unknown',\n    ...(userAgent !== undefined ? { userAgent } : {}),\n    ...(requestId !== undefined ? { requestId } : {}),\n  };\n};"""
-    if old in text:
-        text = text.replace('  BadRequestException,\n', '  BadRequestException,\n  ForbiddenException,\n', 1)
-        text = text.replace(old, new, 1)
+    pattern = re.compile(
+        r'const actor = \(\s*request: AuthenticatedRequest,\s*userAgent\?: string,\s*requestId\?: string,\s*\) => \(\{\s*actorUuid: request\.user\?\.sub,\s*ipAddress: request\.ip,\s*userAgent,\s*requestId,\s*\}\);',
+        re.MULTILINE,
+    )
+    replacement = """const actor = (\n  request: AuthenticatedRequest,\n  userAgent?: string,\n  requestId?: string,\n) => {\n  const actorUuid = request.user?.sub;\n  if (!actorUuid) throw new ForbiddenException('Authenticated user is required');\n  return {\n    actorUuid,\n    ipAddress: request.ip ?? 'unknown',\n    ...(userAgent !== undefined ? { userAgent } : {}),\n    ...(requestId !== undefined ? { requestId } : {}),\n  };\n};"""
+    if pattern.search(text):
+        text = pattern.sub(replacement, text, count=1)
+        if 'ForbiddenException' not in text.split('\n', 15)[0:15].__str__():
+            text = text.replace('  BadRequestException,\n', '  BadRequestException,\n  ForbiddenException,\n', 1)
+        if "ForbiddenException }" in text:
+            pass
     p.write_text(text)
