@@ -22,7 +22,7 @@ export interface PropertyMasterRepository {
       typeUuid: string;
       code: string;
       name: string;
-      slug: string;
+      slug?: string;
       description?: string;
       icon?: string;
       isActive?: boolean;
@@ -44,7 +44,7 @@ export interface PropertyMasterRepository {
       categoryUuid: string;
       code: string;
       name: string;
-      slug: string;
+      slug?: string;
       description?: string;
       isActive?: boolean;
       sortOrder?: number;
@@ -87,7 +87,7 @@ export interface PropertyMasterRepository {
     input: {
       code: string;
       name: string;
-      slug: string;
+      slug?: string;
       category: FacilityCategory;
       icon?: string;
       description?: string;
