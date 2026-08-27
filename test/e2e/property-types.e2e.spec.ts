@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
@@ -18,7 +18,11 @@ type SuperTestRequestTarget = Parameters<typeof request>[0];
 const http = (app: INestApplication) =>
   request(app.getHttpServer() as unknown as SuperTestRequestTarget);
 
-async function makeActor(prisma: PrismaService, tokens: JwtTokenService, grant: boolean) {
+async function makeActor(
+  prisma: PrismaService,
+  tokens: JwtTokenService,
+  grant: boolean,
+) {
   const user = await prisma.authenticationUser.create({
     data: {
       uuid: randomUUID(),
@@ -143,39 +147,48 @@ describe('Property Types HTTP API', () => {
       .set('Authorization', await auth(admin))
       .send(payload)
       .expect(201);
-    const uuid = created.body.data.uuid as string;
+    const uuid = created.body.uuid as string;
+    expect(created.body).toMatchObject({ code: 'HOUSE', slug: 'house' });
     await http(app)
       .get(`/api/v1/property-types/${uuid}`)
       .set('Authorization', await auth(admin))
       .expect(200);
-    await http(app)
-      .get('/api/v1/property-types?limit=10&page=1')
+    const list = await http(app)
+      .get('/api/v1/property-types')
+      .query({ sortBy: 'sortOrder', sortDirection: 'asc' })
       .set('Authorization', await auth(admin))
       .expect(200);
-    await http(app)
+    expect(list.body.meta.total).toBe(1);
+    const updated = await http(app)
       .patch(`/api/v1/property-types/${uuid}`)
       .set('Authorization', await auth(admin))
-      .send({ name: 'House Prime' })
+      .send({ name: 'Town House', sortOrder: 20 })
       .expect(200);
+    expect(updated.body.name).toBe('Town House');
     await http(app)
       .delete(`/api/v1/property-types/${uuid}`)
       .set('Authorization', await auth(admin))
       .expect(204);
+    await http(app)
+      .get(`/api/v1/property-types/${uuid}`)
+      .set('Authorization', await auth(admin))
+      .expect(404);
+    const afterDelete = await http(app)
+      .get('/api/v1/property-types')
+      .set('Authorization', await auth(admin))
+      .expect(200);
+    expect(afterDelete.body.meta.total).toBe(0);
   });
   it('rejects invalid boolean filter and update by forbidden actor', async () => {
     await http(app)
-      .get('/api/v1/property-types?filterField=isActive&filterValue=true')
+      .get('/api/v1/property-types')
+      .query({ filterField: 'isActive', filterValue: 'maybe' })
       .set('Authorization', await auth(admin))
       .expect(400);
-    const created = await http(app)
-      .post('/api/v1/property-types')
-      .set('Authorization', await auth(admin))
-      .send(payload)
-      .expect(201);
     await http(app)
-      .patch(`/api/v1/property-types/${created.body.data.uuid as string}`)
+      .patch(`/api/v1/property-types/${randomUUID()}`)
       .set('Authorization', await auth(denied))
-      .send({ name: 'Denied' })
+      .send({ name: 'Blocked' })
       .expect(403);
   });
 });
