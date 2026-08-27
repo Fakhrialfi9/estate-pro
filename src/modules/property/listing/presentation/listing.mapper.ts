@@ -11,7 +11,9 @@ const dateValue = (value: unknown): string | null =>
     : typeof value === 'string'
       ? value
       : null;
-type DecimalLike = { readonly toFixed: (fractionDigits?: number) => string };
+type DecimalLike = {
+  readonly toFixed: (fractionDigits?: number) => string;
+};
 const isDecimalLike = (value: object): value is DecimalLike =>
   'toFixed' in value && typeof value.toFixed === 'function';
 const decimalValue = (value: unknown): string | null => {
