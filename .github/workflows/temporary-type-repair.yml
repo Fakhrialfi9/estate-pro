@@ -28,16 +28,16 @@ jobs:
 
           const replaceExact = (file, replacements) => {
             let text = fs.readFileSync(file, 'utf8');
-            for (const [from, to] of replacements) {
+            for (const [from, to, expected = 1] of replacements) {
               const count = text.split(from).length - 1;
-              if (count !== 1) throw new Error(`${file}: expected one occurrence of ${JSON.stringify(from)}, found ${count}`);
-              text = text.replace(from, to);
+              if (count !== expected) throw new Error(`${file}: expected ${expected} occurrences of ${JSON.stringify(from)}, found ${count}`);
+              text = text.split(from).join(to);
             }
             fs.writeFileSync(file, text);
           };
 
           replaceExact('src/modules/property/domain/property-extras.ts', [
-            ["const [w, f = ''] = this.amount.split('.')", "const [w = '0', f = ''] = this.amount.split('.')"],
+            ["const [w, f = ''] = this.amount.split('.')", "const [w = '0', f = ''] = this.amount.split('.')", 2],
             ["const [w, f = ''] = v.split('.')", "const [w = '0', f = ''] = v.split('.')"],
             ["const [a, b] = o;", "const [a = 0, b = 0] = o;"],
           ]);
@@ -65,8 +65,7 @@ jobs:
           ]);
 
           replaceExact('src/modules/property/application/property-master.service.ts', [
-            ["      slug: string;\n      description?: string;", "      slug?: string;\n      description?: string;"],
-            ["      slug: string;\n      description?: string;", "      slug?: string;\n      description?: string;"],
+            ["      slug: string;\n      description?: string;", "      slug?: string;\n      description?: string;", 2],
             ["      slug: string;\n      category: FacilityCategory;", "      slug?: string;\n      category: FacilityCategory;"],
           ]);
 
