@@ -33,8 +33,10 @@ const mediaCounter = meter.createCounter('property_media_operations_total', {
 const isPropertyPath = (path: string): boolean =>
   path === '/property' || path.startsWith('/property/') || path.includes('/property/');
 
-const operationOf = (path: string): string => {
-  if (path.includes('/listings/search') || path.endsWith('/listings')) return 'listing';
+const operationOf = (path: string, method: string): string => {
+  if (path.includes('/search') || (path.endsWith('/listings') && method === 'GET')) {
+    return 'search';
+  }
   if (path.includes('/publish')) return 'publish';
   if (path.includes('/media')) return 'media';
   if (path.includes('/properties')) return 'property';
@@ -57,11 +59,10 @@ export class PropertyMetricsInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler) {
     const request = context.switchToHttp().getRequest<Request>();
     const path = request.route?.path ?? request.path;
-
     if (!isPropertyPath(path)) return next.handle();
 
     const response = context.switchToHttp().getResponse<Response>();
-    const operation = operationOf(path);
+    const operation = operationOf(path, request.method);
     const startedAt = performance.now();
 
     return next.handle().pipe(
@@ -85,7 +86,7 @@ export class PropertyMetricsInterceptor implements NestInterceptor {
         };
         requestCounter.add(1, attributes);
         requestDuration.record(durationMs, attributes);
-        if (operation === 'listing') searchDuration.record(durationMs, attributes);
+        if (operation === 'search') searchDuration.record(durationMs, attributes);
         if (operation === 'publish') publishCounter.add(1, attributes);
         if (operation === 'media') mediaCounter.add(1, attributes);
       }),
