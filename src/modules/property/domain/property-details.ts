@@ -234,13 +234,19 @@ export const assertCoordinatePair = (
     throw new PropertyDetailInvalidStateError(
       'latitude and longitude must be provided together',
     );
-  if (lat !== null && (lat < -90 || lat > 90))
+  if (
+    lat !== null &&
+    (lat < -90 || lat > 90 || !/^[-+]?\d+(?:\.\d{1,6})?$/.test(String(latitude)))
+  )
     throw new PropertyDetailInvalidStateError(
-      'latitude must be between -90 and 90',
+      'latitude must be between -90 and 90 with at most 6 decimal places',
     );
-  if (lng !== null && (lng < -180 || lng > 180))
+  if (
+    lng !== null &&
+    (lng < -180 || lng > 180 || !/^[-+]?\d+(?:\.\d{1,7})?$/.test(String(longitude)))
+  )
     throw new PropertyDetailInvalidStateError(
-      'longitude must be between -180 and 180',
+      'longitude must be between -180 and 180 with at most 7 decimal places',
     );
 };
 
