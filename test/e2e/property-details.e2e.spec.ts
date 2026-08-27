@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import type { Server as HttpServer } from 'node:http';
 import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
@@ -12,6 +11,7 @@ import { SessionService } from '../../src/modules/auth/application/services/sess
 
 type AuthContext = { uuid: string; token: string };
 type Body = { data?: { uuid?: string } };
+type SuperTestApp = Parameters<typeof request>[0];
 
 const PERMISSIONS = [
   'property-specifications.read',
@@ -32,7 +32,7 @@ const PERMISSIONS = [
   'property-facilities.bulk-attach',
 ] as const;
 const http = (app: NestExpressApplication) =>
-  request(app.getHttpServer() as unknown as HttpServer);
+  request(app.getHttpServer() as SuperTestApp);
 
 let app: NestExpressApplication;
 let prisma: PrismaService;
