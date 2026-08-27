@@ -3,61 +3,93 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 
-type ExplainObjectRow = Record<string, unknown>;
-type ExplainRow = ExplainObjectRow | readonly unknown[];
+type JsonExplainRow = Record<string, unknown>;
 
-const EXPLAIN_COLUMNS = [
-  'id',
-  'select_type',
-  'table',
-  'partitions',
-  'type',
-  'possible_keys',
-  'key',
-  'key_len',
-  'ref',
-  'rows',
-  'filtered',
-  'Extra',
-] as const;
+type JsonExplainResult = {
+  query_block?: Record<string, unknown>;
+};
 
-const EXPLAIN_FIELD_INDEX: Readonly<Record<string, number>> =
-  Object.fromEntries(
-    EXPLAIN_COLUMNS.map((column, index) => [column.toLowerCase(), index]),
-  );
-
-const explainField = (
-  row: ExplainRow | undefined,
-  field: (typeof EXPLAIN_COLUMNS)[number] | string,
-): unknown => {
-  if (!row) return undefined;
-
-  const normalizedField = field.toLowerCase();
-  const fieldIndex = EXPLAIN_FIELD_INDEX[normalizedField];
-
-  if (Array.isArray(row)) {
-    return fieldIndex === undefined ? undefined : row[fieldIndex];
+const readExplainJson = (row: JsonExplainRow | undefined): JsonExplainResult => {
+  if (!row) {
+    throw new Error('EXPLAIN FORMAT=JSON returned no result row.');
   }
 
-  const directValue = row[field];
-  if (directValue !== undefined) return directValue;
+  const rawValue = Object.values(row)[0];
 
-  const namedEntry = Object.entries(row).find(
-    ([key]) => key.toLowerCase() === normalizedField,
-  );
-  if (namedEntry) return namedEntry[1];
-
-  // Some MariaDB driver-adapter versions materialize raw rows as objects whose
-  // enumerable keys are numeric indexes instead of SQL column names.
-  if (fieldIndex !== undefined) {
-    const indexedEntries = Object.entries(row)
-      .filter(([key]) => /^\d+$/.test(key))
-      .sort(([left], [right]) => Number(left) - Number(right));
-
-    return indexedEntries[fieldIndex]?.[1];
+  if (typeof rawValue !== 'string') {
+    throw new Error('EXPLAIN FORMAT=JSON returned an unexpected result value.');
   }
 
-  return undefined;
+  const parsed: unknown = JSON.parse(rawValue);
+
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    Array.isArray(parsed)
+  ) {
+    throw new Error('EXPLAIN FORMAT=JSON returned an invalid JSON document.');
+  }
+
+  return parsed as JsonExplainResult;
+};
+
+const containsPropertyTable = (value: unknown): boolean => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  if (Array.isArray(value)) {
+    return value.some(containsPropertyTable);
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (record.table === 'properties' || record.table_name === 'properties') {
+    return true;
+  }
+
+  return Object.values(record).some(containsPropertyTable);
+};
+
+const collectUsedKeys = (value: unknown, result: string[] = []): string[] => {
+  if (typeof value !== 'object' || value === null) {
+    return result;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectUsedKeys(item, result);
+    }
+    return result;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  for (const [key, nestedValue] of Object.entries(record)) {
+    if (
+      key === 'key' ||
+      key === 'possible_keys' ||
+      key === 'possibleKeys' ||
+      key === 'used_key' ||
+      key === 'usedKey'
+    ) {
+      if (typeof nestedValue === 'string') {
+        result.push(nestedValue);
+      }
+
+      if (Array.isArray(nestedValue)) {
+        for (const item of nestedValue) {
+          if (typeof item === 'string') {
+            result.push(item);
+          }
+        }
+      }
+    }
+
+    collectUsedKeys(nestedValue, result);
+  }
+
+  return result;
 };
 
 describe('Property critical query plans', () => {
@@ -88,22 +120,26 @@ describe('Property critical query plans', () => {
   });
 
   it('can explain the indexed property listing query', async () => {
-    const plan = await prisma.$queryRaw<ExplainRow[]>(
-      Prisma.sql`EXPLAIN SELECT uuid, business_code, reference_number, title, slug, status, availability_status, available_from, available_to, version, created_at, updated_at FROM properties WHERE deleted_at IS NULL AND status = 'ACTIVE' ORDER BY updated_at DESC, id DESC LIMIT 20 OFFSET 0`,
+    const rows = await prisma.$queryRaw<JsonExplainRow[]>(
+      Prisma.sql`EXPLAIN FORMAT=JSON SELECT uuid, business_code, reference_number, title, slug, status, availability_status, available_from, available_to, version, created_at, updated_at FROM properties WHERE deleted_at IS NULL AND status = 'ACTIVE' ORDER BY updated_at DESC, id DESC LIMIT 20 OFFSET 0`,
     );
 
-    expect(plan).toHaveLength(1);
-    expect(explainField(plan[0], 'table')).toBe('properties');
-    expect(explainField(plan[0], 'possible_keys')).toEqual(expect.any(String));
+    expect(rows).toHaveLength(1);
+
+    const plan = readExplainJson(rows[0]);
+    expect(containsPropertyTable(plan)).toBe(true);
+    expect(collectUsedKeys(plan).length).toBeGreaterThanOrEqual(1);
   });
 
   it('can explain the property location/filter query', async () => {
-    const plan = await prisma.$queryRaw<ExplainRow[]>(
-      Prisma.sql`EXPLAIN SELECT uuid, title, status, updated_at FROM properties WHERE deleted_at IS NULL AND property_type_id = 1 AND property_category_id = 1 ORDER BY updated_at DESC, id DESC LIMIT 20`,
+    const rows = await prisma.$queryRaw<JsonExplainRow[]>(
+      Prisma.sql`EXPLAIN FORMAT=JSON SELECT uuid, title, status, updated_at FROM properties WHERE deleted_at IS NULL AND property_type_id = 1 AND property_category_id = 1 ORDER BY updated_at DESC, id DESC LIMIT 20`,
     );
 
-    expect(plan).toHaveLength(1);
-    expect(explainField(plan[0], 'table')).toBe('properties');
-    expect(explainField(plan[0], 'possible_keys')).toEqual(expect.any(String));
+    expect(rows).toHaveLength(1);
+
+    const plan = readExplainJson(rows[0]);
+    expect(containsPropertyTable(plan)).toBe(true);
+    expect(collectUsedKeys(plan).length).toBeGreaterThanOrEqual(1);
   });
 });
