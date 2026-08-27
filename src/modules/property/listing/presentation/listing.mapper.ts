@@ -19,8 +19,7 @@ const decimalValue = (value: unknown): string | null => {
     typeof value === 'bigint'
   )
     return String(value);
-  const method = Reflect.get(value, 'toString');
-  return typeof method === 'function' ? String(method.call(value)) : null;
+  return String(value);
 };
 export interface PropertyDetailViewer {
   readonly canReadSensitive: boolean;
