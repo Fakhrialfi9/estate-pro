@@ -25,6 +25,10 @@ import { PROPERTY_EXTRAS_REPOSITORY } from './domain/repositories/property-extra
 import { PrismaPropertyExtrasRepository } from './infrastructure/persistence/prisma-property-extras.repository.js';
 import { PropertyExtrasService } from './application/property-extras.service.js';
 import { PropertyExtrasController } from './presentation/property-extras.controller.js';
+import { PROPERTY_LIFECYCLE_REPOSITORY } from './domain/repositories/property-lifecycle.repository.js';
+import { PrismaPropertyLifecycleRepository } from './infrastructure/persistence/prisma-property-lifecycle.repository.js';
+import { PropertyLifecycleService } from './application/property-lifecycle.service.js';
+import { PropertyLifecycleController } from './presentation/property-lifecycle.controller.js';
 import { PropertyMetricsInterceptor } from './observability/property-metrics.interceptor.js';
 
 @Module({
@@ -34,6 +38,7 @@ import { PropertyMetricsInterceptor } from './observability/property-metrics.int
     PropertyMasterController,
     PropertyDetailsController,
     PropertyExtrasController,
+    PropertyLifecycleController,
   ],
   providers: [
     AuthorizationGuard,
@@ -61,6 +66,11 @@ import { PropertyMetricsInterceptor } from './observability/property-metrics.int
       provide: PROPERTY_EXTRAS_REPOSITORY,
       useClass: PrismaPropertyExtrasRepository,
     },
+    PropertyLifecycleService,
+    {
+      provide: PROPERTY_LIFECYCLE_REPOSITORY,
+      useClass: PrismaPropertyLifecycleRepository,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: PropertyMetricsInterceptor,
@@ -71,6 +81,7 @@ import { PropertyMetricsInterceptor } from './observability/property-metrics.int
     PROPERTY_MASTER_REPOSITORY,
     PROPERTY_DETAILS_REPOSITORY,
     PROPERTY_EXTRAS_REPOSITORY,
+    PROPERTY_LIFECYCLE_REPOSITORY,
   ],
 })
 export class PropertyModule {}
