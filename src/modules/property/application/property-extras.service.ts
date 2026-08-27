@@ -27,21 +27,26 @@ import {
   type PropertyExtrasRepository,
 } from '../domain/repositories/property-extras.repository.js';
 
+type AuditScalar = string | number | boolean | null;
+
+const isAuditScalar = (value: unknown): value is AuditScalar =>
+  value === null ||
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'boolean';
+
 const toAuditChanges = (
   value: unknown,
 ): readonly SecurityAuditChange[] | undefined => {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     return undefined;
-  const changes = Object.entries(value).flatMap(([field, newValue]) => {
-    if (
-      typeof newValue !== 'string' &&
-      typeof newValue !== 'number' &&
-      typeof newValue !== 'boolean' &&
-      newValue !== null
-    )
-      return [];
-    return [{ field, oldValue: null, newValue }];
-  });
+  const record = value as Record<string, unknown>;
+  const changes: SecurityAuditChange[] = [];
+  for (const field of Object.keys(record)) {
+    const newValue = record[field];
+    if (!isAuditScalar(newValue)) continue;
+    changes.push({ field, oldValue: null, newValue });
+  }
   return changes.length > 0 ? changes : undefined;
 };
 

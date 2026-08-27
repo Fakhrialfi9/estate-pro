@@ -8,6 +8,16 @@ import type { Request, Response } from 'express';
 import { metrics } from '@opentelemetry/api';
 import { catchError, finalize, throwError } from 'rxjs';
 
+type PropertyHttpRequest = Pick<Request, 'path' | 'method'>;
+
+const isPropertyHttpRequest = (
+  value: unknown,
+): value is PropertyHttpRequest => {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.path === 'string' && typeof candidate.method === 'string';
+};
+
 const meter = metrics.getMeter('estate-pro.property');
 const requestCounter = meter.createCounter('property_requests_total', {
   description: 'Property HTTP requests completed',
@@ -62,8 +72,10 @@ const statusClassOf = (status: number): string =>
 @Injectable()
 export class PropertyMetricsInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler) {
-    const request = context.switchToHttp().getRequest<Request>();
-    const path = request.route?.path ?? request.path;
+    const rawRequest = context.switchToHttp().getRequest<unknown>();
+    if (!isPropertyHttpRequest(rawRequest)) return next.handle();
+    const request = rawRequest;
+    const path = request.path;
     if (!isPropertyPath(path)) return next.handle();
 
     const response = context.switchToHttp().getResponse<Response>();
@@ -82,7 +94,7 @@ export class PropertyMetricsInterceptor implements NestInterceptor {
       }),
       finalize(() => {
         const durationMs = performance.now() - startedAt;
-        const status = statusCodeOf(response);
+        const status = response.statusCode;
         const attributes = {
           operation,
           method: request.method,

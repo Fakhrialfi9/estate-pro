@@ -31,12 +31,10 @@ export class PropertyAccessGuard implements CanActivate {
     const principalUuid = request.user?.sub;
     if (!principalUuid) throw new ForbiddenException();
 
-    const routePath = String(request.route?.path ?? request.path ?? '');
-    const isListingResource = routePath.includes('/listings/:uuid');
+    const routePath = request.path;
+    const isListingResource = routePath.includes('/listings/');
     const isPropertyResource =
-      routePath.includes('/properties/:uuid') ||
-      routePath.includes('/properties/:propertyUuid') ||
-      routePath.includes('/read-model/:uuid');
+      routePath.includes('/properties/') || routePath.includes('/read-model/');
 
     if (!isListingResource && !isPropertyResource) return true;
     if (hasGlobalPropertyAccess(request.user?.permissions)) return true;

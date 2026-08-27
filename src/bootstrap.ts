@@ -3,6 +3,7 @@ import { VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
+import type { NextFunction, Request, Response } from 'express';
 import type { HelmetOptions } from 'helmet';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
@@ -32,7 +33,7 @@ export const configureApplication = (app: NestExpressApplication): void => {
     defaultVersion: apiVersion,
   });
 
-  app.use((request, response, next) => {
+  app.use((request: Request, response: Response, next: NextFunction) => {
     const raw = request.header('x-request-id');
     const requestId = raw && REQUEST_ID_PATTERN.test(raw) ? raw : randomUUID();
     request.headers['x-request-id'] = requestId;
