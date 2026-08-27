@@ -30,12 +30,8 @@ type PropertyTypeWhere = {
   OR?: Array<{ code?: StringFilter; name?: StringFilter; slug?: StringFilter }>;
 };
 type Delegate = {
-  create(args: {
-    data: PropertyTypePersistenceData;
-  }): Promise<PropertyTypePersistenceRecord>;
-  findFirst(args: {
-    where: PropertyTypeWhere;
-  }): Promise<PropertyTypePersistenceRecord | null>;
+  create(args: { data: PropertyTypePersistenceData }): Promise<PropertyTypePersistenceRecord>;
+  findFirst(args: { where: PropertyTypeWhere }): Promise<PropertyTypePersistenceRecord | null>;
   findMany(args: {
     where: PropertyTypeWhere;
     orderBy: Array<Record<string, SortDirection>>;
@@ -45,7 +41,7 @@ type Delegate = {
   count(args: { where: PropertyTypeWhere }): Promise<number>;
   update(args: {
     where: { uuid: string };
-    data: Partial<PropertyTypePersistenceData> & { deletedAt?: Date };
+    data: Partial<PropertyTypePersistenceData> & { deletedAt?: Date; };
   }): Promise<PropertyTypePersistenceRecord>;
 };
 type PrismaPropertyTypeClient = { propertyType: Delegate };
@@ -86,35 +82,27 @@ export class PrismaPropertyTypeRepository implements PropertyTypeRepository {
   }
 
   async findById(uuid: string) {
-    const record = await this.propertyTypes.findFirst({
-      where: { uuid, deletedAt: null },
-    });
+    const record = await this.propertyTypes.findFirst({ where: { uuid, deletedAt: null } });
     return record ? PrismaPropertyTypeMapper.toDomain(record) : null;
   }
 
   async findByCode(code: string) {
-    const record = await this.propertyTypes.findFirst({
-      where: { code, deletedAt: null },
-    });
+    const record = await this.propertyTypes.findFirst({ where: { code, deletedAt: null } });
     return record ? PrismaPropertyTypeMapper.toDomain(record) : null;
   }
 
   async findBySlug(slug: string) {
-    const record = await this.propertyTypes.findFirst({
-      where: { slug, deletedAt: null },
-    });
+    const record = await this.propertyTypes.findFirst({ where: { slug, deletedAt: null } });
     return record ? PrismaPropertyTypeMapper.toDomain(record) : null;
   }
 
   async list(query: PropertyTypeListQuery): Promise<PropertyTypeListResult> {
-    const page =
-      Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
+    const page = Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
     const limit = Number.isInteger(query.limit)
       ? Math.min(Math.max(query.limit, 1), MAX_PAGE_SIZE)
       : DEFAULT_PAGE_SIZE;
     const sortBy = this.resolveSortField(query.sortBy);
-    const sortDirection: SortDirection =
-      query.sortDirection === 'desc' ? 'desc' : 'asc';
+    const sortDirection: SortDirection = query.sortDirection === 'desc' ? 'desc' : 'asc';
     const search = query.search?.trim().slice(0, MAX_SEARCH_LENGTH);
     const where: PropertyTypeWhere = {
       deletedAt: null,
@@ -156,23 +144,16 @@ export class PrismaPropertyTypeRepository implements PropertyTypeRepository {
           ...(changes.code !== undefined ? { code: changes.code } : {}),
           ...(changes.name !== undefined ? { name: changes.name } : {}),
           ...(changes.slug !== undefined ? { slug: changes.slug } : {}),
-          ...(changes.description !== undefined
-            ? { description: changes.description }
-            : {}),
+          ...(changes.description !== undefined ? { description: changes.description } : {}),
           ...(changes.icon !== undefined ? { icon: changes.icon } : {}),
-          ...(changes.isActive !== undefined
-            ? { isActive: changes.isActive }
-            : {}),
-          ...(changes.sortOrder !== undefined
-            ? { sortOrder: changes.sortOrder }
-            : {}),
+          ...(changes.isActive !== undefined ? { isActive: changes.isActive } : {}),
+          ...(changes.sortOrder !== undefined ? { sortOrder: changes.sortOrder } : {}),
         },
       });
       return PrismaPropertyTypeMapper.toDomain(record);
     } catch (error: unknown) {
       const code = (error as { code?: string }).code;
-      if (code === 'P2002')
-        throw new PropertyTypeAlreadyExistsException('code or slug');
+      if (code === 'P2002') throw new PropertyTypeAlreadyExistsException('code or slug');
       if (code === 'P2025') throw new PropertyTypeNotFoundException();
       throw error;
     }
@@ -185,36 +166,25 @@ export class PrismaPropertyTypeRepository implements PropertyTypeRepository {
         data: { deletedAt, isActive: false },
       });
     } catch (error: unknown) {
-      if ((error as { code?: string }).code === 'P2025')
-        throw new PropertyTypeNotFoundException();
+      if ((error as { code?: string }).code === 'P2025') throw new PropertyTypeNotFoundException();
       throw error;
     }
   }
 
-  private resolveSortField(
-    value: PropertyTypeSortField,
-  ): PropertyTypeSortField {
+  private resolveSortField(value: PropertyTypeSortField): PropertyTypeSortField {
     return value in SORT_FIELDS ? value : 'createdAt';
   }
 
-  private buildFilter(
-    field?: PropertyTypeFilterField,
-    value?: string | boolean,
-  ): PropertyTypeWhere {
+  private buildFilter(field?: PropertyTypeFilterField, value?: string | boolean): PropertyTypeWhere {
     if (!field || value === undefined) return {};
-    if (field === 'isActive')
-      return { isActive: value === true || value === 'true' };
+    if (field === 'isActive') return { isActive: value === true || value === 'true' };
     return { [field]: value };
   }
 
   private mapUniqueConstraint(error: unknown): void {
     if ((error as { code?: string }).code === 'P2002') {
-      const fields = String(
-        (error as { message?: string }).message ?? '',
-      ).toLowerCase();
-      throw new PropertyTypeAlreadyExistsException(
-        fields.includes('slug') ? 'slug' : 'code',
-      );
+      const fields = String((error as { message?: string }).message ?? '').toLowerCase();
+      throw new PropertyTypeAlreadyExistsException(fields.includes('slug') ? 'slug' : 'code');
     }
   }
 }

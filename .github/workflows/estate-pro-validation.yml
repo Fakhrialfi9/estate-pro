@@ -23,16 +23,20 @@ jobs:
       DATABASE_CONNECT_TIMEOUT_MS: 5000
       DATABASE_ACQUIRE_TIMEOUT_MS: 10000
       DATABASE_POOL_IDLE_TIMEOUT_SEC: 30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+
       - name: Pin npm
         run: npm install --global npm@11.18.0
+
       - name: Install MariaDB
         run: |
           sudo apt-get update
@@ -41,42 +45,60 @@ jobs:
           sudo mysql -e "CREATE DATABASE IF NOT EXISTS estate_pro_test;"
           sudo mysql -e "CREATE USER IF NOT EXISTS 'test'@'127.0.0.1' IDENTIFIED BY 'test-password';"
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_test.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
+
       - name: Install dependencies
         run: npm ci
+
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
+
       - name: Generate Prisma client
         run: npm run prisma:generate
+
       - name: Deploy Prisma migrations
         run: npm run prisma:deploy
+
       - name: Migration status
         run: npm run prisma:status
+
       - name: Security baseline
         run: npm run test:security:baseline
+
       - name: Format check
         run: npm run format:check
+
       - name: Lint
         run: npm run lint
+
       - name: Typecheck
         run: npm run typecheck
+
       - name: Architecture validation
         run: npm run check:architecture
+
       - name: Unit tests
         run: npm run test:unit
+
       - name: Integration tests
         run: npm run test:integration
+
       - name: E2E tests
         run: npm run test:e2e
+
       - name: Security tests
         run: npm run test:security
+
       - name: Coverage
         run: npm run test:coverage
+
       - name: Production build
         run: npm run build
+
       - name: Compiled runtime validation
         run: npm run check:runtime
+
       - name: Repository cleanliness
         run: |
           test "$(git branch --show-current)" = "main"
-          test -z "$(find . -type f -name '*.py' -not -path './.git/*' -not -path './node_modules/*' -print)"
+          test -z "$(git status --porcelain)"
           git diff --check

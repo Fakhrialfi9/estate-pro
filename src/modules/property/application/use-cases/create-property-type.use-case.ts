@@ -57,10 +57,10 @@ export class CreatePropertyTypeUseCase {
 
     const propertyType = await this.repository.create(data);
     await this.audit.record({
-      action: 'PROPERTY_TYPE_CREATED',
+      action: 'PROPERTY_CREATED',
       actorUuid: context.actorUuid,
       userUuid: context.actorUuid,
-      entityType: 'property_type',
+      entityType: 'property',
       entityUuid: propertyType.uuid,
       ipAddress: context.ipAddress,
       userAgent: context.userAgent,

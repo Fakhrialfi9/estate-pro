@@ -46,10 +46,7 @@ export interface PropertyTypeRepository {
   findByCode(code: string): Promise<PropertyTypeEntity | null>;
   findBySlug(slug: string): Promise<PropertyTypeEntity | null>;
   list(query: PropertyTypeListQuery): Promise<PropertyTypeListResult>;
-  update(
-    uuid: string,
-    changes: PropertyTypeUpdate,
-  ): Promise<PropertyTypeEntity>;
+  update(uuid: string, changes: PropertyTypeUpdate): Promise<PropertyTypeEntity>;
   softDelete(uuid: string, deletedAt?: Date): Promise<void>;
 }
 

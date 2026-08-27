@@ -12,9 +12,7 @@ describe('PropertyType persistence integration', () => {
   let repository: PrismaPropertyTypeRepository;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [DatabaseModule],
-    }).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [DatabaseModule] }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
     prisma = app.get(PrismaService);
@@ -29,9 +27,7 @@ describe('PropertyType persistence integration', () => {
     await app.close();
   });
 
-  const data = (
-    overrides: Partial<Parameters<typeof repository.create>[0]> = {},
-  ) => ({
+  const data = (overrides: Partial<Parameters<typeof repository.create>[0]> = {}) => ({
     code: `HOUSE_${randomUUID().slice(0, 8).toUpperCase()}`,
     name: 'House',
     slug: `house-${randomUUID().slice(0, 8)}`,
@@ -51,12 +47,8 @@ describe('PropertyType persistence integration', () => {
   });
 
   it('lists with pagination, filtering and deterministic sorting', async () => {
-    await repository.create(
-      data({ code: 'HOUSE', slug: 'house', sortOrder: 20 }),
-    );
-    await repository.create(
-      data({ code: 'VILLA', slug: 'villa', sortOrder: 10 }),
-    );
+    await repository.create(data({ code: 'HOUSE', slug: 'house', sortOrder: 20 }));
+    await repository.create(data({ code: 'VILLA', slug: 'villa', sortOrder: 10 }));
     const result = await repository.list({
       page: 1,
       limit: 1,
@@ -72,10 +64,7 @@ describe('PropertyType persistence integration', () => {
 
   it('updates a persisted record', async () => {
     const created = await repository.create(data());
-    const updated = await repository.update(created.uuid, {
-      name: 'Town House',
-      sortOrder: 25,
-    });
+    const updated = await repository.update(created.uuid, { name: 'Town House', sortOrder: 25 });
     expect(updated.name).toBe('Town House');
     expect(updated.sortOrder).toBe(25);
   });
@@ -83,12 +72,8 @@ describe('PropertyType persistence integration', () => {
   it('enforces unique code and slug at the database boundary', async () => {
     const first = data({ code: 'DUPLICATE', slug: 'duplicate' });
     await repository.create(first);
-    await expect(
-      repository.create({ ...first, name: 'Second' }),
-    ).rejects.toThrow('Property type code is already in use.');
-    await expect(
-      repository.create({ ...data(), slug: 'duplicate' }),
-    ).rejects.toThrow('Property type slug is already in use.');
+    await expect(repository.create({ ...first, name: 'Second' })).rejects.toThrow('Property type code is already in use.');
+    await expect(repository.create({ ...data(), slug: 'duplicate' })).rejects.toThrow('Property type slug is already in use.');
   });
 
   it('soft-deletes and excludes records from normal reads', async () => {
@@ -102,9 +87,7 @@ describe('PropertyType persistence integration', () => {
       sortDirection: 'desc',
     });
     expect(result.total).toBe(0);
-    const raw = await prisma.propertyType.findUniqueOrThrow({
-      where: { uuid: created.uuid },
-    });
+    const raw = await prisma.propertyType.findUniqueOrThrow({ where: { uuid: created.uuid } });
     expect(raw.deletedAt).not.toBeNull();
     expect(raw.isActive).toBe(false);
   });

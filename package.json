@@ -6,9 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "packageManager": "npm@11.18.0",
-  "engines": {
-    "node": "22.x"
-  },
+  "engines": { "node": "22.x" },
   "scripts": {
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -98,8 +96,5 @@
     "typescript": "5.7.3",
     "typescript-eslint": "8.20.0",
     "vitest": "4.1.11"
-  },
-  "overrides": {
-    "deepmerge-ts": "^8.0.0"
   }
 }

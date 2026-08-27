@@ -1,13 +1,5 @@
 import { Type } from 'class-transformer';
-import {
-  IsIn,
-  IsInt,
-  IsOptional,
-  IsString,
-  Length,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 
 export class PropertyTypeQueryDto {
   @IsOptional()
