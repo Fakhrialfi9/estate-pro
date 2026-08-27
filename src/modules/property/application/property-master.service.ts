@@ -101,7 +101,7 @@ export class PropertyMasterService {
       typeUuid: string;
       code: string;
       name: string;
-      slug: string;
+      slug?: string;
       description?: string;
       icon?: string;
       isActive?: boolean;
@@ -137,7 +137,7 @@ export class PropertyMasterService {
       categoryUuid: string;
       code: string;
       name: string;
-      slug: string;
+      slug?: string;
       description?: string;
       isActive?: boolean;
       sortOrder?: number;
@@ -204,7 +204,7 @@ export class PropertyMasterService {
     input: {
       code: string;
       name: string;
-      slug: string;
+      slug?: string;
       category: FacilityCategory;
       icon?: string;
       description?: string;
@@ -283,11 +283,10 @@ export class PropertyMasterService {
     const currentRecord = current as Record<string, unknown>;
     const currentStatus = toStatus(currentRecord.status, 'DRAFT');
     const nextStatus = toStatus(patch.status, currentStatus);
-    if (nextStatus === 'ACTIVE' && currentStatus !== 'ACTIVE') {
+    if (nextStatus === 'ACTIVE' && currentStatus !== 'ACTIVE')
       throw new BadRequestException(
         'Property activation must use the verify/publish workflow',
       );
-    }
     assertTransition(currentStatus, nextStatus);
     const from =
       patch.availableFrom !== undefined
@@ -308,9 +307,8 @@ export class PropertyMasterService {
       actor,
       diff(currentRecord, updatedRecord),
     );
-    if (currentStatus !== nextStatus && nextStatus === 'ARCHIVED') {
+    if (currentStatus !== nextStatus && nextStatus === 'ARCHIVED')
       await this.recordAudit(AUDIT_ACTIONS.PROPERTY_ARCHIVED, uuid, actor);
-    }
     return result;
   }
 
@@ -318,11 +316,10 @@ export class PropertyMasterService {
     const current = (await this.run(() =>
       this.repository.getProperty(uuid),
     )) as Record<string, unknown>;
-    if (toStatus(current.status, 'DRAFT') !== 'IN_REVIEW') {
+    if (toStatus(current.status, 'DRAFT') !== 'IN_REVIEW')
       throw new BadRequestException(
         'Only properties in IN_REVIEW can be verified',
       );
-    }
     const result = await this.run(() =>
       this.repository.updateProperty(
         uuid,
@@ -344,16 +341,14 @@ export class PropertyMasterService {
     const current = (await this.run(() =>
       this.repository.getProperty(uuid),
     )) as Record<string, unknown>;
-    if (toStatus(current.status, 'DRAFT') !== 'IN_REVIEW') {
+    if (toStatus(current.status, 'DRAFT') !== 'IN_REVIEW')
       throw new BadRequestException(
         'Only properties in IN_REVIEW can be published',
       );
-    }
-    if (!current.verifiedAt) {
+    if (!current.verifiedAt)
       throw new BadRequestException(
         'Property must be verified before publishing',
       );
-    }
     const result = await this.run(() =>
       this.repository.updateProperty(
         uuid,
