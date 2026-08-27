@@ -11,6 +11,37 @@ let prisma: PrismaService;
 let repository: PropertyDetailsRepository;
 let app: INestApplication;
 const actor = { actorUuid: randomUUID() };
+const createdPropertyUuids = new Set<string>();
+const createdFacilityUuids = new Set<string>();
+const createdCategoryUuids = new Set<string>();
+const createdTypeUuids = new Set<string>();
+
+async function cleanupFixtures(): Promise<void> {
+  if (createdPropertyUuids.size > 0) {
+    await prisma.property.deleteMany({
+      where: { uuid: { in: [...createdPropertyUuids] } },
+    });
+    createdPropertyUuids.clear();
+  }
+  if (createdFacilityUuids.size > 0) {
+    await prisma.facility.deleteMany({
+      where: { uuid: { in: [...createdFacilityUuids] } },
+    });
+    createdFacilityUuids.clear();
+  }
+  if (createdCategoryUuids.size > 0) {
+    await prisma.propertyCategory.deleteMany({
+      where: { uuid: { in: [...createdCategoryUuids] } },
+    });
+    createdCategoryUuids.clear();
+  }
+  if (createdTypeUuids.size > 0) {
+    await prisma.propertyType.deleteMany({
+      where: { uuid: { in: [...createdTypeUuids] } },
+    });
+    createdTypeUuids.clear();
+  }
+}
 
 async function createProperty() {
   const type = await prisma.propertyType.create({
@@ -21,6 +52,8 @@ async function createProperty() {
       slug: `house-${randomUUID()}`,
     },
   });
+  createdTypeUuids.add(type.uuid);
+
   const category = await prisma.propertyCategory.create({
     data: {
       uuid: randomUUID(),
@@ -30,7 +63,9 @@ async function createProperty() {
       slug: `res-${randomUUID()}`,
     },
   });
-  return prisma.property.create({
+  createdCategoryUuids.add(category.uuid);
+
+  const property = await prisma.property.create({
     data: {
       uuid: randomUUID(),
       businessCode: `B-${randomUUID().replaceAll('-', '').slice(0, 24)}`,
@@ -39,12 +74,16 @@ async function createProperty() {
       propertyCategoryId: category.id,
       title: 'Integration Property',
       slug: `property-${randomUUID()}`,
+      createdBy: actor.actorUuid,
+      updatedBy: actor.actorUuid,
     },
   });
+  createdPropertyUuids.add(property.uuid);
+  return property;
 }
 
 async function createFacility(active = true) {
-  return prisma.facility.create({
+  const facility = await prisma.facility.create({
     data: {
       uuid: randomUUID(),
       code: `FAC-${randomUUID().slice(0, 10)}`,
@@ -54,6 +93,8 @@ async function createFacility(active = true) {
       isActive: active,
     },
   });
+  createdFacilityUuids.add(facility.uuid);
+  return facility;
 }
 
 describe('Property details repository integration', () => {
@@ -68,18 +109,13 @@ describe('Property details repository integration', () => {
   });
 
   beforeEach(async () => {
-    await prisma.propertyFacility.deleteMany();
-    await prisma.propertyRoom.deleteMany();
-    await prisma.propertyBuilding.deleteMany();
-    await prisma.propertyLocation.deleteMany();
-    await prisma.propertySpecification.deleteMany();
-    await prisma.property.deleteMany();
-    await prisma.facility.deleteMany();
-    await prisma.propertyCategory.deleteMany();
-    await prisma.propertyType.deleteMany();
+    await cleanupFixtures();
   });
 
-  afterAll(async () => app.close());
+  afterAll(async () => {
+    await cleanupFixtures();
+    await app.close();
+  });
 
   it('upserts specification values and preserves decimal precision', async () => {
     const property = await createProperty();
@@ -99,10 +135,7 @@ describe('Property details repository integration', () => {
       actor,
     );
     expect(String((saved as { landArea: unknown }).landArea)).toBe('12345.67');
-    const bathrooms = (saved as {
-      bathrooms: { toFixed: (digits: number) => string };
-    }).bathrooms;
-    expect(bathrooms.toFixed(2)).toBe('3.50');
+    expect(Number(String((saved as { bathrooms: unknown }).bathrooms))).toBe(3.5);
   });
 
   it('blocks cross-property room access', async () => {
