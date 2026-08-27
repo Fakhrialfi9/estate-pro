@@ -50,11 +50,28 @@ export class PropertyAccessGuard implements CanActivate {
     const propertyUuid = directPropertyUuid ?? pathUuid;
     if (!propertyUuid) throw new ForbiddenException();
 
-    const accessible = isListingResource
+    const propertyAccessWhere = {
+      uuid: propertyUuid,
+      deletedAt: null,
+      OR: [
+        { createdBy: principalUuid },
+        {
+          agentAssignments: {
+            some: {
+              agentUserUuid: principalUuid,
+              unassignedAt: null,
+            },
+          },
+        },
+      ],
+    };
+
+    let accessible = isListingResource
       ? await this.prisma.propertyListing.findFirst({
           where: {
             uuid: pathUuid as string,
             property: {
+              deletedAt: null,
               OR: [
                 { createdBy: principalUuid },
                 {
@@ -74,22 +91,24 @@ export class PropertyAccessGuard implements CanActivate {
           },
         })
       : await this.prisma.property.findFirst({
-          where: {
-            uuid: propertyUuid,
-            OR: [
-              { createdBy: principalUuid },
-              {
-                agentAssignments: {
-                  some: {
-                    agentUserUuid: principalUuid,
-                    unassignedAt: null,
-                  },
-                },
-              },
-            ],
-          },
+          where: propertyAccessWhere,
           select: { id: true, deletedAt: true },
         });
+
+    const canResolveDeletedProperty =
+      !accessible &&
+      !isListingResource &&
+      (request.method === 'GET' || routePath.includes('/restore'));
+
+    if (canResolveDeletedProperty) {
+      accessible = await this.prisma.property.findFirst({
+        where: {
+          uuid: propertyUuid,
+          OR: propertyAccessWhere.OR,
+        },
+        select: { id: true, deletedAt: true },
+      });
+    }
 
     if (!accessible) throw new ForbiddenException();
     return true;
