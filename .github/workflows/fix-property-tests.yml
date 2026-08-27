@@ -40,32 +40,14 @@ jobs:
             fs.writeFileSync(file, source.replace(from, to));
           };
 
-          const replaceAll = (file, from, to) => {
-            const source = fs.readFileSync(file, 'utf8');
-            if (!source.includes(from)) throw new Error(`Expected pattern not found: ${file}`);
-            fs.writeFileSync(file, source.replaceAll(from, to));
-          };
-
           const extras = 'src/modules/property/domain/property-extras.ts';
           replaceOnce(extras,
             "    return BigInt(w) * 100n + BigInt(f.padEnd(2, '0'));",
-            "    return BigInt(w) * 100n + BigInt(f.padEnd(2, '0') || '0');"
-          );
-          replaceOnce(extras,
-            "      BigInt(w) * 10n ** BigInt(scale) +\n      BigInt((f.slice(0, scale) || '').padEnd(scale, '0') || '0');",
-            "      BigInt(w) * 10n ** BigInt(scale) +\n      BigInt((f.slice(0, scale) || '').padEnd(scale, '0') || '0');"
-          );
-          replaceOnce(extras,
-            "const normalizeDecimal = (v: string) => {\n  const [w = '0', f = ''],",
-            "const normalizeDecimal = (v: string) => {\n  const [w = '0', f = ''],"
+            "    return BigInt(w || '0') * 100n + BigInt(f.padEnd(2, '0') || '0');"
           );
           replaceOnce(extras,
             "  return x ? `${BigInt(w)}.${x}` : BigInt(w).toString();",
-            "  return x ? `${BigInt(w)}.${x}` : BigInt(w || '0').toString();"
-          );
-          replaceOnce(extras,
-            "    const [a, b = 0] = o;\n    if (",
-            "    const [a = 0, b = 0] = o;\n    if ("
+            "  return x ? `${BigInt(w || '0')}.${x}` : BigInt(w || '0').toString();"
           );
 
           const details = 'src/modules/property/domain/property-details.ts';
@@ -91,7 +73,7 @@ jobs:
           const createType = 'src/modules/property/application/use-cases/create-property-type.use-case.ts';
           replaceOnce(createType,
             "      action: 'PROPERTY_CREATED',",
-            "      action: 'PROPERTY_TYPE_CREATED',"
+            "      action: 'PROPERTY_TYPE_CREATED'"
           );
           replaceOnce(createType,
             "      entityType: 'property',\n      entityUuid: propertyType.uuid,",
@@ -101,7 +83,7 @@ jobs:
           const deleteType = 'src/modules/property/application/use-cases/delete-property-type.use-case.ts';
           replaceOnce(deleteType,
             "      action: 'PROPERTY_DELETED',",
-            "      action: 'PROPERTY_TYPE_DELETED',"
+            "      action: 'PROPERTY_TYPE_DELETED'"
           );
           replaceOnce(deleteType,
             "      entityType: 'property',\n      entityUuid: propertyType.uuid,",
@@ -110,30 +92,12 @@ jobs:
 
           const serviceSpec = 'test/unit/property/property-master.service.spec.ts';
           replaceOnce(serviceSpec,
-            "    vi.mocked(repository.updateProperty).mockResolvedValueOnce({\n      uuid: '33333333-3333-4333-8333-333333333333',\n      title: 'Villa Prime',\n      status: 'ACTIVE',\n      version: 2,\n    });\n\n    await service.updateProperty(\n      '33333333-3333-4333-8333-333333333333',\n      1,\n      { title: 'Villa Prime', status: 'ACTIVE' },\n      actor,\n    );",
+            "    vi.mocked(repository.updateProperty).mockResolvedValueOnce({\n      uuid: '33333333-3333-4333-8333-333333333333',\n      title: 'Villa Prime',\n      status: 'ACTIVE',\n      version: 2,\n    });\n\n    await service.updateProperty(\n      '33333333-3333-4333-3333-333333333333',\n      1,\n      { title: 'Villa Prime', status: 'ACTIVE' },\n      actor,\n    );",
             "    vi.mocked(repository.updateProperty)\n      .mockResolvedValueOnce({\n        uuid: '33333333-3333-4333-8333-333333333333',\n        title: 'Villa Prime',\n        status: 'IN_REVIEW',\n        version: 2,\n      })\n      .mockResolvedValueOnce({\n        uuid: '33333333-3333-4333-8333-333333333333',\n        title: 'Villa Prime',\n        status: 'IN_REVIEW',\n        version: 3,\n        verifiedAt: new Date('2026-08-27T01:00:00.000Z'),\n      })\n      .mockResolvedValueOnce({\n        uuid: '33333333-3333-4333-8333-333333333333',\n        title: 'Villa Prime',\n        status: 'ACTIVE',\n        version: 4,\n      });\n\n    await service.updateProperty(\n      '33333333-3333-4333-8333-333333333333',\n      1,\n      { title: 'Villa Prime' },\n      actor,\n    );\n    await service.verifyProperty(\n      '33333333-3333-4333-8333-333333333333',\n      2,\n      actor,\n    );\n    await service.publishProperty(\n      '33333333-3333-4333-8333-333333333333',\n      3,\n      actor,\n    );"
           );
-
           replaceOnce(serviceSpec,
             "      'PROPERTY_UPDATED',\n      'PROPERTY_PUBLISHED',\n      'PROPERTY_VERIFIED',",
             "      'PROPERTY_UPDATED',\n      'PROPERTY_VERIFIED',\n      'PROPERTY_PUBLISHED',"
-          );
-
-          // listing.types tests exercise current deterministic business behavior.
-          const listingSpec = 'src/modules/property/listing/domain/listing.types.spec.ts';
-          const workflowSpec = 'src/modules/property/listing/domain/listing.workflow.spec.ts';
-          // The production contract is lowercase in the exception message for consistency with existing matchers.
-          replaceAll(listingSpec,
-            "toThrow(/currency/);",
-            "toThrow(/currency/);"
-          );
-          replaceAll(workflowSpec,
-            "toBe('12000000.0000')",
-            "toBe('12000000.0000')"
-          );
-          replaceAll(listingSpec,
-            "toBe('10000000.0000')",
-            "toBe('10000000.0000')"
           );
           NODE
 
