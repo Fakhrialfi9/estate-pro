@@ -450,8 +450,10 @@ export class PrismaListingRepository implements ListingRepository {
         const property = await tx.property.create({
           data: {
             uuid: randomUUID(),
-            businessCode:
-              `${source.property.businessCode}-CP-${suffix}`.slice(0, 40),
+            businessCode: `${source.property.businessCode}-CP-${suffix}`.slice(
+              0,
+              40,
+            ),
             referenceNumber:
               `${source.property.referenceNumber}-CP-${suffix}`.slice(0, 80),
             propertyTypeId: source.property.propertyTypeId,

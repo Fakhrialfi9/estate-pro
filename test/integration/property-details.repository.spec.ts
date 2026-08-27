@@ -135,7 +135,9 @@ describe('Property details repository integration', () => {
       actor,
     );
     expect(String((saved as { landArea: unknown }).landArea)).toBe('12345.67');
-    expect(Number(String((saved as { bathrooms: unknown }).bathrooms))).toBe(3.5);
+    expect(Number(String((saved as { bathrooms: unknown }).bathrooms))).toBe(
+      3.5,
+    );
   });
 
   it('blocks cross-property room access', async () => {
