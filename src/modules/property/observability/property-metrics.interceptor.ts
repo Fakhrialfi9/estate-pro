@@ -10,6 +10,8 @@ import { catchError, finalize, throwError } from 'rxjs';
 
 type PropertyHttpRequest = Pick<Request, 'path' | 'method'>;
 
+type StatusError = { readonly getStatus?: () => unknown };
+
 const asUnknown = (value: unknown): unknown => value;
 
 const isPropertyHttpRequest = (
@@ -64,9 +66,10 @@ const operationOf = (path: string, method: string): string => {
 
 const statusCodeOfError = (error: unknown): number => {
   if (!error || typeof error !== 'object') return 500;
-  const candidate = error as { getStatus?: unknown };
-  if (typeof candidate.getStatus !== 'function') return 500;
-  const status = candidate.getStatus();
+  const candidate = error as StatusError;
+  const getStatus = candidate.getStatus;
+  if (!getStatus) return 500;
+  const status = getStatus();
   return typeof status === 'number' && Number.isInteger(status) ? status : 500;
 };
 
