@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthorizationGuard } from '../../src/common/security/authorization.guard.js';
-import { PropertyAccessGuard } from '../../src/common/security/property-access.guard.js';
+import type { PropertyAccessGuard } from '../../src/common/security/property-access.guard.js';
 import {
   AUTHORIZATION_PERMISSIONS_METADATA,
   RequirePermissions,
@@ -127,9 +127,8 @@ describe('AuthorizationGuard', () => {
   const resolve = vi.fn();
   const assertPermissions = vi.fn();
   const assertRoles = vi.fn();
-  const propertyAccess = {
-    canActivate: vi.fn().mockResolvedValue(true),
-  } as unknown as PropertyAccessGuard;
+  const canActivate = vi.fn().mockResolvedValue(true);
+  const propertyAccess = { canActivate } as unknown as PropertyAccessGuard;
   const authorization = {
     resolve,
     assertPermissions,
@@ -164,7 +163,7 @@ describe('AuthorizationGuard', () => {
     await expect(guard.canActivate(context(request(), handler))).resolves.toBe(
       true,
     );
-    expect(propertyAccess.canActivate).not.toHaveBeenCalled();
+    expect(canActivate).not.toHaveBeenCalled();
   });
 
   it('returns 401 when protected route has no authenticated identity', async () => {
@@ -193,7 +192,7 @@ describe('AuthorizationGuard', () => {
     });
     await expect(guard.canActivate(context(req, handler))).resolves.toBe(true);
     expect(req.user?.permissions).toEqual(['users:read']);
-    expect(propertyAccess.canActivate).toHaveBeenCalledOnce();
+    expect(canActivate).toHaveBeenCalledOnce();
   });
 
   it('ignores spoofed userId from request input because identity comes from principal', async () => {
