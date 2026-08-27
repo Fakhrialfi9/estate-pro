@@ -40,6 +40,15 @@ jobs:
             fs.writeFileSync(file, source.replace(from, to));
           };
 
+          const replaceBlock = (file, startMarker, endMarker, replacement) => {
+            const source = fs.readFileSync(file, 'utf8');
+            const start = source.indexOf(startMarker);
+            if (start < 0) throw new Error(`Start marker not found: ${file}`);
+            const end = source.indexOf(endMarker, start);
+            if (end < 0) throw new Error(`End marker not found: ${file}`);
+            fs.writeFileSync(file, source.slice(0, start) + replacement + source.slice(end));
+          };
+
           const extras = 'src/modules/property/domain/property-extras.ts';
           replaceOnce(extras,
             "    return BigInt(w) * 100n + BigInt(f.padEnd(2, '0'));",
@@ -73,7 +82,7 @@ jobs:
           const createType = 'src/modules/property/application/use-cases/create-property-type.use-case.ts';
           replaceOnce(createType,
             "      action: 'PROPERTY_CREATED',",
-            "      action: 'PROPERTY_TYPE_CREATED'"
+            "      action: 'PROPERTY_TYPE_CREATED',"
           );
           replaceOnce(createType,
             "      entityType: 'property',\n      entityUuid: propertyType.uuid,",
@@ -83,21 +92,35 @@ jobs:
           const deleteType = 'src/modules/property/application/use-cases/delete-property-type.use-case.ts';
           replaceOnce(deleteType,
             "      action: 'PROPERTY_DELETED',",
-            "      action: 'PROPERTY_TYPE_DELETED'"
+            "      action: 'PROPERTY_TYPE_DELETED',"
           );
           replaceOnce(deleteType,
             "      entityType: 'property',\n      entityUuid: propertyType.uuid,",
             "      entityType: 'property_type',\n      entityUuid: propertyType.uuid,"
           );
 
-          const serviceSpec = 'test/unit/property/property-master.service.spec.ts';
-          replaceOnce(serviceSpec,
-            "    vi.mocked(repository.updateProperty).mockResolvedValueOnce({\n      uuid: '33333333-3333-4333-8333-333333333333',\n      title: 'Villa Prime',\n      status: 'ACTIVE',\n      version: 2,\n    });\n\n    await service.updateProperty(\n      '33333333-3333-4333-3333-333333333333',\n      1,\n      { title: 'Villa Prime', status: 'ACTIVE' },\n      actor,\n    );",
-            "    vi.mocked(repository.updateProperty)\n      .mockResolvedValueOnce({\n        uuid: '33333333-3333-4333-8333-333333333333',\n        title: 'Villa Prime',\n        status: 'IN_REVIEW',\n        version: 2,\n      })\n      .mockResolvedValueOnce({\n        uuid: '33333333-3333-4333-8333-333333333333',\n        title: 'Villa Prime',\n        status: 'IN_REVIEW',\n        version: 3,\n        verifiedAt: new Date('2026-08-27T01:00:00.000Z'),\n      })\n      .mockResolvedValueOnce({\n        uuid: '33333333-3333-4333-8333-333333333333',\n        title: 'Villa Prime',\n        status: 'ACTIVE',\n        version: 4,\n      });\n\n    await service.updateProperty(\n      '33333333-3333-4333-8333-333333333333',\n      1,\n      { title: 'Villa Prime' },\n      actor,\n    );\n    await service.verifyProperty(\n      '33333333-3333-4333-8333-333333333333',\n      2,\n      actor,\n    );\n    await service.publishProperty(\n      '33333333-3333-4333-8333-333333333333',\n      3,\n      actor,\n    );"
-          );
-          replaceOnce(serviceSpec,
-            "      'PROPERTY_UPDATED',\n      'PROPERTY_PUBLISHED',\n      'PROPERTY_VERIFIED',",
-            "      'PROPERTY_UPDATED',\n      'PROPERTY_VERIFIED',\n      'PROPERTY_PUBLISHED',"
+          replaceBlock(
+            'test/unit/property/property-master.service.spec.ts',
+            "  it('records update plus verification and publication transitions', async () => {",
+            "  it('records delete, restore, archive, and duplicate lifecycle events', async () => {",
+            `  it('records update plus verification and publication transitions', async () => {
+    const uuid = '33333333-3333-4333-8333-333333333333';
+    vi.mocked(repository.getProperty)
+      .mockResolvedValueOnce({ uuid, title: 'Villa', status: 'IN_REVIEW', version: 1 })
+      .mockResolvedValueOnce({ uuid, title: 'Villa Prime', status: 'IN_REVIEW', version: 2 })
+      .mockResolvedValueOnce({ uuid, title: 'Villa Prime', status: 'IN_REVIEW', version: 3, verifiedAt: new Date('2026-08-27T01:00:00.000Z') });
+    vi.mocked(repository.updateProperty)
+      .mockResolvedValueOnce({ uuid, title: 'Villa Prime', status: 'IN_REVIEW', version: 2 })
+      .mockResolvedValueOnce({ uuid, title: 'Villa Prime', status: 'IN_REVIEW', version: 3, verifiedAt: new Date('2026-08-27T01:00:00.000Z') })
+      .mockResolvedValueOnce({ uuid, title: 'Villa Prime', status: 'ACTIVE', version: 4 });
+
+    await service.updateProperty(uuid, 1, { title: 'Villa Prime' }, actor);
+    await service.verifyProperty(uuid, 2, actor);
+    await service.publishProperty(uuid, 3, actor);
+
+    const actions = vi.mocked(audit.record).mock.calls.map(([event]) => event.action);
+    expect(actions).toEqual(['PROPERTY_UPDATED', 'PROPERTY_VERIFIED', 'PROPERTY_PUBLISHED']);
+  });\n\n` 
           );
           NODE
 
@@ -124,5 +147,5 @@ jobs:
           git add src/modules/property/domain/property-extras.ts src/modules/property/domain/property-details.ts src/modules/property/listing/domain/listing.types.ts src/modules/property/application/use-cases/create-property-type.use-case.ts src/modules/property/application/use-cases/delete-property-type.use-case.ts test/unit/property/property-master.service.spec.ts
           git add -u .github/workflows
           git rm -f .github/workflows/fix-property-tests.yml .github/workflows/fix-property-master-types.yml || true
-          git commit -m 'fix: align property invariants and lifecycle tests' || exit 0
+          git commit -m 'fix: align property domain invariants and tests' || exit 0
           git push origin HEAD:main
