@@ -11,7 +11,11 @@ import { ListingController } from './presentation/listing.controller.js';
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule],
   controllers: [ListingController],
-  providers: [AuthorizationGuard, ListingService, { provide: LISTING_REPOSITORY, useClass: PrismaListingRepository }],
+  providers: [
+    AuthorizationGuard,
+    ListingService,
+    { provide: LISTING_REPOSITORY, useClass: PrismaListingRepository },
+  ],
   exports: [LISTING_REPOSITORY, ListingService],
 })
 export class ListingModule {}

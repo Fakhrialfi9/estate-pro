@@ -27,12 +27,44 @@ import { PropertyExtrasController } from './presentation/property-extras.control
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule, ListingModule],
-  controllers: [PropertyTypesController, PropertyMasterController, PropertyDetailsController, PropertyExtrasController],
-  providers: [AuthorizationGuard, CreatePropertyTypeUseCase, DeletePropertyTypeUseCase, GetPropertyTypeUseCase, ListPropertyTypesUseCase, UpdatePropertyTypeUseCase,
-    { provide: PROPERTY_TYPE_REPOSITORY, useClass: PrismaPropertyTypeRepository }, PropertyMasterService,
-    { provide: PROPERTY_MASTER_REPOSITORY, useClass: PrismaPropertyMasterStore }, PropertyDetailsService,
-    { provide: PROPERTY_DETAILS_REPOSITORY, useClass: PrismaPropertyDetailsRepository }, PropertyExtrasService,
-    { provide: PROPERTY_EXTRAS_REPOSITORY, useClass: PrismaPropertyExtrasRepository }],
-  exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY, PROPERTY_DETAILS_REPOSITORY, PROPERTY_EXTRAS_REPOSITORY],
+  controllers: [
+    PropertyTypesController,
+    PropertyMasterController,
+    PropertyDetailsController,
+    PropertyExtrasController,
+  ],
+  providers: [
+    AuthorizationGuard,
+    CreatePropertyTypeUseCase,
+    DeletePropertyTypeUseCase,
+    GetPropertyTypeUseCase,
+    ListPropertyTypesUseCase,
+    UpdatePropertyTypeUseCase,
+    {
+      provide: PROPERTY_TYPE_REPOSITORY,
+      useClass: PrismaPropertyTypeRepository,
+    },
+    PropertyMasterService,
+    {
+      provide: PROPERTY_MASTER_REPOSITORY,
+      useClass: PrismaPropertyMasterStore,
+    },
+    PropertyDetailsService,
+    {
+      provide: PROPERTY_DETAILS_REPOSITORY,
+      useClass: PrismaPropertyDetailsRepository,
+    },
+    PropertyExtrasService,
+    {
+      provide: PROPERTY_EXTRAS_REPOSITORY,
+      useClass: PrismaPropertyExtrasRepository,
+    },
+  ],
+  exports: [
+    PROPERTY_TYPE_REPOSITORY,
+    PROPERTY_MASTER_REPOSITORY,
+    PROPERTY_DETAILS_REPOSITORY,
+    PROPERTY_EXTRAS_REPOSITORY,
+  ],
 })
 export class PropertyModule {}
