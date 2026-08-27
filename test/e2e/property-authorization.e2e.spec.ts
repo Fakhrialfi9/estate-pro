@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
+import { SessionService } from '../../src/modules/auth/application/services/session.service.js';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
@@ -38,7 +39,7 @@ async function createActor(
   await prisma.authenticationUserSession.create({
     data: {
       userId: user.id,
-      sessionId,
+      sessionId: SessionService.digestSecret(sessionId),
       expiresAt: new Date(Date.now() + 60 * 60 * 1000),
     },
   });
