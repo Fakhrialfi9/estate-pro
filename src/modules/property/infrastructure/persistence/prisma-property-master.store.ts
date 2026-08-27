@@ -678,9 +678,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
       where: { uuid: text(input.typeUuid), deletedAt: null, isActive: true },
     });
     if (!type)
-      throw new MasterHierarchyError(
-        'Property type not found or inactive',
-      );
+      throw new MasterHierarchyError('Property type not found or inactive');
 
     const category = await client.propertyCategory.findFirst({
       where: {
@@ -690,9 +688,7 @@ export class PrismaPropertyMasterStore implements PropertyMasterRepository {
       },
     });
     if (!category)
-      throw new MasterHierarchyError(
-        'Property category not found or inactive',
-      );
+      throw new MasterHierarchyError('Property category not found or inactive');
 
     const typeRecord = row(type);
     const categoryRecord = row(category);
