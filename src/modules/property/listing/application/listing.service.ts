@@ -205,9 +205,7 @@ export class ListingService {
       this.repository.getPropertyDetail(propertyUuid, viewerUserUuid),
     );
   }
-  search(
-    query: PropertySearchQuery,
-  ): Promise<{
+  search(query: PropertySearchQuery): Promise<{
     items: readonly unknown[];
     total: number;
     page: number;

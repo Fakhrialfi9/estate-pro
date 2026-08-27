@@ -277,14 +277,12 @@ export class ListingController {
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
   ) {
     const permissions = req.user?.permissions ?? [];
-    return this.service
-      .detail(uuid, req.user?.sub)
-      .then((raw) => ({
-        data: mapPropertyDetail(raw, {
-          canReadSensitive: permissions.includes('properties.sensitive.read'),
-          canReadAnalytics: permissions.includes('listings.analytics.read'),
-        }),
-      }));
+    return this.service.detail(uuid, req.user?.sub).then((raw) => ({
+      data: mapPropertyDetail(raw, {
+        canReadSensitive: permissions.includes('properties.sensitive.read'),
+        canReadAnalytics: permissions.includes('listings.analytics.read'),
+      }),
+    }));
   }
   @Get('search') @RequirePermissions('properties.read') propertySearch(
     @Query() query: PropertySearchDto,

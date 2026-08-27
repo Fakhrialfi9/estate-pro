@@ -111,9 +111,7 @@ export interface ListingRepository {
     propertyUuid: string,
     viewerUserUuid?: string,
   ): Promise<unknown>;
-  search(
-    query: PropertySearchQuery,
-  ): Promise<{
+  search(query: PropertySearchQuery): Promise<{
     items: readonly unknown[];
     total: number;
     page: number;
