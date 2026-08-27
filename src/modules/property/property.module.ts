@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
 import { AuthorizationModule } from '../../common/security/authorization.module.js';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
@@ -24,6 +25,7 @@ import { PROPERTY_EXTRAS_REPOSITORY } from './domain/repositories/property-extra
 import { PrismaPropertyExtrasRepository } from './infrastructure/persistence/prisma-property-extras.repository.js';
 import { PropertyExtrasService } from './application/property-extras.service.js';
 import { PropertyExtrasController } from './presentation/property-extras.controller.js';
+import { PropertyMetricsInterceptor } from './observability/property-metrics.interceptor.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule, ListingModule],
@@ -58,6 +60,10 @@ import { PropertyExtrasController } from './presentation/property-extras.control
     {
       provide: PROPERTY_EXTRAS_REPOSITORY,
       useClass: PrismaPropertyExtrasRepository,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: PropertyMetricsInterceptor,
     },
   ],
   exports: [
