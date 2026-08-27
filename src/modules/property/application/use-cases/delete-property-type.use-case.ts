@@ -27,7 +27,8 @@ export class DeletePropertyTypeUseCase {
     const propertyType: PropertyTypeEntity | null =
       await this.repository.findById(uuid);
     if (!propertyType) throw new PropertyTypeNotFoundException();
-    if (propertyType.deletedAt !== null) throw new PropertyTypeNotFoundException();
+    if (propertyType.deletedAt !== null)
+      throw new PropertyTypeNotFoundException();
 
     await this.repository.softDelete(uuid);
     await this.audit.record({

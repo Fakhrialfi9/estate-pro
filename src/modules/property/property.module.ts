@@ -26,9 +26,15 @@ import { PrismaPropertyMasterRepository } from './infrastructure/persistence/pri
     GetPropertyTypeUseCase,
     ListPropertyTypesUseCase,
     UpdatePropertyTypeUseCase,
-    { provide: PROPERTY_TYPE_REPOSITORY, useClass: PrismaPropertyTypeRepository },
+    {
+      provide: PROPERTY_TYPE_REPOSITORY,
+      useClass: PrismaPropertyTypeRepository,
+    },
     PropertyMasterService,
-    { provide: PROPERTY_MASTER_REPOSITORY, useClass: PrismaPropertyMasterRepository },
+    {
+      provide: PROPERTY_MASTER_REPOSITORY,
+      useClass: PrismaPropertyMasterRepository,
+    },
   ],
   exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY],
 })

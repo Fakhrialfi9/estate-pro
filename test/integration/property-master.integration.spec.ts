@@ -9,7 +9,9 @@ let prisma: PrismaService;
 
 describe('Property master integration', () => {
   beforeAll(async () => {
-    moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     await moduleRef.init();
     prisma = moduleRef.get(PrismaService);
   });
@@ -32,10 +34,35 @@ describe('Property master integration', () => {
   });
 
   it('supports real category hierarchy integrity', async () => {
-    const type = await prisma.propertyType.create({ data: { uuid: randomUUID(), code: `IT-${randomUUID().slice(0,8)}`, name: 'Integration Type', slug: `integration-${randomUUID()}` } });
-    const category = await prisma.propertyCategory.create({ data: { uuid: randomUUID(), propertyTypeId: type.id, code: `CAT-${randomUUID().slice(0,8)}`, name: 'Integration Category', slug: `integration-category-${randomUUID()}` } });
-    const subcategory = await prisma.propertySubcategory.create({ data: { uuid: randomUUID(), propertyCategoryId: category.id, code: `SUB-${randomUUID().slice(0,8)}`, name: 'Integration Subcategory', slug: `integration-subcategory-${randomUUID()}` } });
+    const type = await prisma.propertyType.create({
+      data: {
+        uuid: randomUUID(),
+        code: `IT-${randomUUID().slice(0, 8)}`,
+        name: 'Integration Type',
+        slug: `integration-${randomUUID()}`,
+      },
+    });
+    const category = await prisma.propertyCategory.create({
+      data: {
+        uuid: randomUUID(),
+        propertyTypeId: type.id,
+        code: `CAT-${randomUUID().slice(0, 8)}`,
+        name: 'Integration Category',
+        slug: `integration-category-${randomUUID()}`,
+      },
+    });
+    const subcategory = await prisma.propertySubcategory.create({
+      data: {
+        uuid: randomUUID(),
+        propertyCategoryId: category.id,
+        code: `SUB-${randomUUID().slice(0, 8)}`,
+        name: 'Integration Subcategory',
+        slug: `integration-subcategory-${randomUUID()}`,
+      },
+    });
     expect(subcategory.propertyCategoryId).toBe(category.id);
-    await expect(prisma.propertyCategory.delete({ where: { id: category.id } })).rejects.toBeTruthy();
+    await expect(
+      prisma.propertyCategory.delete({ where: { id: category.id } }),
+    ).rejects.toBeTruthy();
   });
 });

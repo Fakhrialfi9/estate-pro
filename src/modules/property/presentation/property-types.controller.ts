@@ -177,9 +177,7 @@ export class PropertyTypesController {
   private parseBooleanFilter(value?: string): boolean {
     if (value === 'true') return true;
     if (value === 'false') return false;
-    throw new BadRequestException(
-      'isActive filterValue must be true or false',
-    );
+    throw new BadRequestException('isActive filterValue must be true or false');
   }
 
   private context(

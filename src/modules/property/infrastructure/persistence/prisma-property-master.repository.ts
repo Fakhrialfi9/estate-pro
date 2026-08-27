@@ -1,57 +1,1045 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
-import type { ActorContext, FacilityCategory, PageRequest, PropertyStatus } from '../../domain/property-master.types.js';
-import { normalizeCode, normalizeSlug } from '../../domain/property-master.types.js';
-import { MasterConcurrencyError, MasterConflictError, MasterHierarchyError, MasterInUseError, MasterNotFoundError } from '../../domain/errors.js';
-import type { MasterQuery, PageResult, PropertyMasterRepository } from '../../domain/repositories/property-master.repository.js';
+import type {
+  ActorContext,
+  FacilityCategory,
+  PageRequest,
+  PropertyStatus,
+} from '../../domain/property-master.types.js';
+import {
+  normalizeCode,
+  normalizeSlug,
+} from '../../domain/property-master.types.js';
+import {
+  MasterConcurrencyError,
+  MasterConflictError,
+  MasterHierarchyError,
+  MasterInUseError,
+  MasterNotFoundError,
+} from '../../domain/errors.js';
+import type {
+  MasterQuery,
+  PageResult,
+  PropertyMasterRepository,
+} from '../../domain/repositories/property-master.repository.js';
 
-type Delegate = { findUnique(args: object): Promise<Record<string, unknown> | null>; findMany(args: object): Promise<Record<string, unknown>[]>; count(args: object): Promise<number>; create(args: object): Promise<Record<string, unknown>>; update(args: object): Promise<Record<string, unknown>>; delete(args: object): Promise<Record<string, unknown>>; };
-const asRecord = (v: unknown): Record<string, unknown> => { if (!v || typeof v !== 'object') throw new Error('Invalid persistence result'); return v as Record<string, unknown>; };
+type Delegate = {
+  findUnique(args: object): Promise<Record<string, unknown> | null>;
+  findMany(args: object): Promise<Record<string, unknown>[]>;
+  count(args: object): Promise<number>;
+  create(args: object): Promise<Record<string, unknown>>;
+  update(args: object): Promise<Record<string, unknown>>;
+  delete(args: object): Promise<Record<string, unknown>>;
+};
+const asRecord = (v: unknown): Record<string, unknown> => {
+  if (!v || typeof v !== 'object')
+    throw new Error('Invalid persistence result');
+  return v as Record<string, unknown>;
+};
 
 @Injectable()
-export class PrismaPropertyMasterRepository implements PropertyMasterRepository {
+export class PrismaPropertyMasterRepository
+  implements PropertyMasterRepository
+{
   constructor(private readonly prisma: PrismaService) {}
-  private page(q: PageRequest): { page: number; limit: number; skip: number } { const page = Math.max(1, q.page ?? 1); const limit = Math.min(100, Math.max(1, q.limit ?? 20)); return { page, limit, skip: (page - 1) * limit }; }
-  private sort(q: PageRequest, allowed: readonly string[]): Record<string, 'asc'|'desc'> { const key = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0]; return { [key]: q.sortDirection === 'desc' ? 'desc' : 'asc' }; }
-  private mapDbError(error: unknown): never { const code = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code?: unknown }).code) : ''; if (code === 'P2002') throw new MasterConflictError('A unique property value already exists'); if (code === 'P2025') throw new MasterNotFoundError(); if (code === 'P2003' || code === 'P2014') throw new MasterInUseError('Resource is still referenced by another record'); throw error; }
+  private page(q: PageRequest): { page: number; limit: number; skip: number } {
+    const page = Math.max(1, q.page ?? 1);
+    const limit = Math.min(100, Math.max(1, q.limit ?? 20));
+    return { page, limit, skip: (page - 1) * limit };
+  }
+  private sort(
+    q: PageRequest,
+    allowed: readonly string[],
+  ): Record<string, 'asc' | 'desc'> {
+    const key = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];
+    return { [key]: q.sortDirection === 'desc' ? 'desc' : 'asc' };
+  }
+  private mapDbError(error: unknown): never {
+    const code =
+      typeof error === 'object' && error !== null && 'code' in error
+        ? String((error as { code?: unknown }).code)
+        : '';
+    if (code === 'P2002')
+      throw new MasterConflictError('A unique property value already exists');
+    if (code === 'P2025') throw new MasterNotFoundError();
+    if (code === 'P2003' || code === 'P2014')
+      throw new MasterInUseError(
+        'Resource is still referenced by another record',
+      );
+    throw error;
+  }
 
-  async createCategory(i: {typeUuid:string;code:string;name:string;slug:string;description?:string;icon?:string;isActive?:boolean;sortOrder?:number}, a: ActorContext) { try { return await this.prisma.$transaction(async tx => { const type = await tx.propertyType.findFirst({ where: { uuid:i.typeUuid, deletedAt:null } }); if (!type) throw new MasterHierarchyError('Property type not found or inactive'); return asRecord(await tx.propertyCategory.create({ data:{ propertyTypeId:type.id, code:normalizeCode(i.code), name:i.name.trim(), slug:normalizeSlug(i.slug||i.name), description:i.description?.trim()||null, icon:i.icon?.trim()||null, isActive:i.isActive ?? true, sortOrder:i.sortOrder ?? 0 }, include:{propertyType:{select:{uuid:true,code:true,name:true}}} })); }); } catch(e){this.mapDbError(e);} }
-  async updateCategory(uuid:string, version:number, p:Record<string,unknown>, a:ActorContext){ try { return await this.prisma.$transaction(async tx=>{ const current=await tx.propertyCategory.findFirst({where:{uuid,deletedAt:null}}); if(!current) throw new MasterNotFoundError('Property category not found'); if (version < 1 || current.updatedAt.getTime() < 0) throw new MasterConcurrencyError(); const data:Record<string,unknown>={}; if(typeof p.code==='string') data.code=normalizeCode(p.code); if(typeof p.name==='string') data.name=p.name.trim(); if(typeof p.slug==='string'||typeof p.name==='string') data.slug=normalizeSlug(typeof p.slug==='string'?p.slug:String(p.name??current.name)); if(typeof p.description==='string') data.description=p.description.trim(); if(typeof p.icon==='string') data.icon=p.icon.trim(); if(typeof p.isActive==='boolean') data.isActive=p.isActive; if(typeof p.sortOrder==='number') data.sortOrder=p.sortOrder; const rows=await tx.propertyCategory.updateMany({where:{id:current.id,updatedAt:current.updatedAt},data:{...data,updatedAt:new Date()}}); if(rows.count!==1) throw new MasterConcurrencyError(); return asRecord(await tx.propertyCategory.findUnique({where:{id:current.id},include:{propertyType:{select:{uuid:true,code:true,name:true}}}})); }); } catch(e){this.mapDbError(e);} }
-  async getCategory(uuid:string){ const row=await this.prisma.propertyCategory.findFirst({where:{uuid,deletedAt:null},include:{propertyType:{select:{uuid:true,code:true,name:true}}}}); if(!row) throw new MasterNotFoundError('Property category not found'); return row; }
-  async listCategories(q:MasterQuery):Promise<PageResult<unknown>> { const {page,limit,skip}=this.page(q); const where:Record<string,unknown>={deletedAt:null}; if(q.isActive!==undefined) where.isActive=q.isActive; if(q.typeUuid) where.propertyType={uuid:q.typeUuid}; if(q.search) where.OR=[{name:{contains:q.search}},{code:{contains:q.search}},{slug:{contains:q.search}}]; const [items,total]=await Promise.all([this.prisma.propertyCategory.findMany({where,skip,take:limit,orderBy:this.sort(q,['sortOrder','name','createdAt']),include:{propertyType:{select:{uuid:true,code:true,name:true}}}}),this.prisma.propertyCategory.count({where})]); return {items,total,page,limit}; }
-  async deleteCategory(uuid:string,a:ActorContext):Promise<void>{ try { await this.prisma.$transaction(async tx=>{ const row=await tx.propertyCategory.findFirst({where:{uuid,deletedAt:null}}); if(!row) throw new MasterNotFoundError(); const child=await tx.propertySubcategory.count({where:{propertyCategoryId:row.id,deletedAt:null}}); const props=await tx.property.count({where:{propertyCategoryId:row.id,deletedAt:null}}); if(child||props) throw new MasterInUseError('Category cannot be deleted while it has subcategories or properties'); await tx.propertyCategory.update({where:{id:row.id},data:{deletedAt:new Date()}}); }); } catch(e){this.mapDbError(e);} }
+  async createCategory(
+    i: {
+      typeUuid: string;
+      code: string;
+      name: string;
+      slug: string;
+      description?: string;
+      icon?: string;
+      isActive?: boolean;
+      sortOrder?: number;
+    },
+    a: ActorContext,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const type = await tx.propertyType.findFirst({
+          where: { uuid: i.typeUuid, deletedAt: null },
+        });
+        if (!type)
+          throw new MasterHierarchyError('Property type not found or inactive');
+        return asRecord(
+          await tx.propertyCategory.create({
+            data: {
+              propertyTypeId: type.id,
+              code: normalizeCode(i.code),
+              name: i.name.trim(),
+              slug: normalizeSlug(i.slug || i.name),
+              description: i.description?.trim() || null,
+              icon: i.icon?.trim() || null,
+              isActive: i.isActive ?? true,
+              sortOrder: i.sortOrder ?? 0,
+            },
+            include: {
+              propertyType: { select: { uuid: true, code: true, name: true } },
+            },
+          }),
+        );
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async updateCategory(
+    uuid: string,
+    version: number,
+    p: Record<string, unknown>,
+    a: ActorContext,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const current = await tx.propertyCategory.findFirst({
+          where: { uuid, deletedAt: null },
+        });
+        if (!current)
+          throw new MasterNotFoundError('Property category not found');
+        if (version < 1 || current.updatedAt.getTime() < 0)
+          throw new MasterConcurrencyError();
+        const data: Record<string, unknown> = {};
+        if (typeof p.code === 'string') data.code = normalizeCode(p.code);
+        if (typeof p.name === 'string') data.name = p.name.trim();
+        if (typeof p.slug === 'string' || typeof p.name === 'string')
+          data.slug = normalizeSlug(
+            typeof p.slug === 'string'
+              ? p.slug
+              : String(p.name ?? current.name),
+          );
+        if (typeof p.description === 'string')
+          data.description = p.description.trim();
+        if (typeof p.icon === 'string') data.icon = p.icon.trim();
+        if (typeof p.isActive === 'boolean') data.isActive = p.isActive;
+        if (typeof p.sortOrder === 'number') data.sortOrder = p.sortOrder;
+        const rows = await tx.propertyCategory.updateMany({
+          where: { id: current.id, updatedAt: current.updatedAt },
+          data: { ...data, updatedAt: new Date() },
+        });
+        if (rows.count !== 1) throw new MasterConcurrencyError();
+        return asRecord(
+          await tx.propertyCategory.findUnique({
+            where: { id: current.id },
+            include: {
+              propertyType: { select: { uuid: true, code: true, name: true } },
+            },
+          }),
+        );
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async getCategory(uuid: string) {
+    const row = await this.prisma.propertyCategory.findFirst({
+      where: { uuid, deletedAt: null },
+      include: {
+        propertyType: { select: { uuid: true, code: true, name: true } },
+      },
+    });
+    if (!row) throw new MasterNotFoundError('Property category not found');
+    return row;
+  }
+  async listCategories(q: MasterQuery): Promise<PageResult<unknown>> {
+    const { page, limit, skip } = this.page(q);
+    const where: Record<string, unknown> = { deletedAt: null };
+    if (q.isActive !== undefined) where.isActive = q.isActive;
+    if (q.typeUuid) where.propertyType = { uuid: q.typeUuid };
+    if (q.search)
+      where.OR = [
+        { name: { contains: q.search } },
+        { code: { contains: q.search } },
+        { slug: { contains: q.search } },
+      ];
+    const [items, total] = await Promise.all([
+      this.prisma.propertyCategory.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: this.sort(q, ['sortOrder', 'name', 'createdAt']),
+        include: {
+          propertyType: { select: { uuid: true, code: true, name: true } },
+        },
+      }),
+      this.prisma.propertyCategory.count({ where }),
+    ]);
+    return { items, total, page, limit };
+  }
+  async deleteCategory(uuid: string, a: ActorContext): Promise<void> {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const row = await tx.propertyCategory.findFirst({
+          where: { uuid, deletedAt: null },
+        });
+        if (!row) throw new MasterNotFoundError();
+        const child = await tx.propertySubcategory.count({
+          where: { propertyCategoryId: row.id, deletedAt: null },
+        });
+        const props = await tx.property.count({
+          where: { propertyCategoryId: row.id, deletedAt: null },
+        });
+        if (child || props)
+          throw new MasterInUseError(
+            'Category cannot be deleted while it has subcategories or properties',
+          );
+        await tx.propertyCategory.update({
+          where: { id: row.id },
+          data: { deletedAt: new Date() },
+        });
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
 
-  async createSubcategory(i:{categoryUuid:string;code:string;name:string;slug:string;description?:string;isActive?:boolean;sortOrder?:number},a:ActorContext){ try{return await this.prisma.$transaction(async tx=>{const c=await tx.propertyCategory.findFirst({where:{uuid:i.categoryUuid,deletedAt:null,isActive:true}});if(!c)throw new MasterHierarchyError('Category not found or inactive');return asRecord(await tx.propertySubcategory.create({data:{propertyCategoryId:c.id,code:normalizeCode(i.code),name:i.name.trim(),slug:normalizeSlug(i.slug||i.name),description:i.description?.trim()||null,isActive:i.isActive??true,sortOrder:i.sortOrder??0},include:{propertyCategory:{select:{uuid:true,code:true,name:true,propertyType:{select:{uuid:true,code:true,name:true}}}}}}));});}catch(e){this.mapDbError(e);} }
-  async updateSubcategory(uuid:string,version:number,p:Record<string,unknown>,a:ActorContext){try{return await this.prisma.$transaction(async tx=>{const row=await tx.propertySubcategory.findFirst({where:{uuid,deletedAt:null}});if(!row)throw new MasterNotFoundError();const data:Record<string,unknown>={};if(typeof p.code==='string')data.code=normalizeCode(p.code);if(typeof p.name==='string')data.name=p.name.trim();if(typeof p.slug==='string'||typeof p.name==='string')data.slug=normalizeSlug(typeof p.slug==='string'?p.slug:String(p.name??row.name));if(typeof p.description==='string')data.description=p.description.trim();if(typeof p.isActive==='boolean')data.isActive=p.isActive;if(typeof p.sortOrder==='number')data.sortOrder=p.sortOrder;const r=await tx.propertySubcategory.updateMany({where:{id:row.id,updatedAt:row.updatedAt},data:{...data,updatedAt:new Date()}});if(r.count!==1)throw new MasterConcurrencyError();return asRecord(await tx.propertySubcategory.findUnique({where:{id:row.id},include:{propertyCategory:{select:{uuid:true,code:true,name:true}}}}));});}catch(e){this.mapDbError(e);} }
-  async getSubcategory(uuid:string){const row=await this.prisma.propertySubcategory.findFirst({where:{uuid,deletedAt:null},include:{propertyCategory:{select:{uuid:true,code:true,name:true,propertyType:{select:{uuid:true,code:true,name:true}}}}}});if(!row)throw new MasterNotFoundError();return row;}
-  async listSubcategories(q:MasterQuery):Promise<PageResult<unknown>>{const {page,limit,skip}=this.page(q);const where:Record<string,unknown>={deletedAt:null};if(q.isActive!==undefined)where.isActive=q.isActive;if(q.categoryUuid)where.propertyCategory={uuid:q.categoryUuid};if(q.search)where.OR=[{name:{contains:q.search}},{code:{contains:q.search}},{slug:{contains:q.search}}];const[items,total]=await Promise.all([this.prisma.propertySubcategory.findMany({where,skip,take:limit,orderBy:this.sort(q,['sortOrder','name','createdAt']),include:{propertyCategory:{select:{uuid:true,code:true,name:true}}}}),this.prisma.propertySubcategory.count({where})]);return{items,total,page,limit};}
-  async deleteSubcategory(uuid:string,a:ActorContext):Promise<void>{try{await this.prisma.$transaction(async tx=>{const row=await tx.propertySubcategory.findFirst({where:{uuid,deletedAt:null}});if(!row)throw new MasterNotFoundError();const used=await tx.property.count({where:{propertySubcategoryId:row.id,deletedAt:null}});if(used)throw new MasterInUseError('Subcategory cannot be deleted while used by properties');await tx.propertySubcategory.update({where:{id:row.id},data:{deletedAt:new Date()}});});}catch(e){this.mapDbError(e);}}
+  async createSubcategory(
+    i: {
+      categoryUuid: string;
+      code: string;
+      name: string;
+      slug: string;
+      description?: string;
+      isActive?: boolean;
+      sortOrder?: number;
+    },
+    a: ActorContext,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const c = await tx.propertyCategory.findFirst({
+          where: { uuid: i.categoryUuid, deletedAt: null, isActive: true },
+        });
+        if (!c)
+          throw new MasterHierarchyError('Category not found or inactive');
+        return asRecord(
+          await tx.propertySubcategory.create({
+            data: {
+              propertyCategoryId: c.id,
+              code: normalizeCode(i.code),
+              name: i.name.trim(),
+              slug: normalizeSlug(i.slug || i.name),
+              description: i.description?.trim() || null,
+              isActive: i.isActive ?? true,
+              sortOrder: i.sortOrder ?? 0,
+            },
+            include: {
+              propertyCategory: {
+                select: {
+                  uuid: true,
+                  code: true,
+                  name: true,
+                  propertyType: {
+                    select: { uuid: true, code: true, name: true },
+                  },
+                },
+              },
+            },
+          }),
+        );
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async updateSubcategory(
+    uuid: string,
+    version: number,
+    p: Record<string, unknown>,
+    a: ActorContext,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const row = await tx.propertySubcategory.findFirst({
+          where: { uuid, deletedAt: null },
+        });
+        if (!row) throw new MasterNotFoundError();
+        const data: Record<string, unknown> = {};
+        if (typeof p.code === 'string') data.code = normalizeCode(p.code);
+        if (typeof p.name === 'string') data.name = p.name.trim();
+        if (typeof p.slug === 'string' || typeof p.name === 'string')
+          data.slug = normalizeSlug(
+            typeof p.slug === 'string' ? p.slug : String(p.name ?? row.name),
+          );
+        if (typeof p.description === 'string')
+          data.description = p.description.trim();
+        if (typeof p.isActive === 'boolean') data.isActive = p.isActive;
+        if (typeof p.sortOrder === 'number') data.sortOrder = p.sortOrder;
+        const r = await tx.propertySubcategory.updateMany({
+          where: { id: row.id, updatedAt: row.updatedAt },
+          data: { ...data, updatedAt: new Date() },
+        });
+        if (r.count !== 1) throw new MasterConcurrencyError();
+        return asRecord(
+          await tx.propertySubcategory.findUnique({
+            where: { id: row.id },
+            include: {
+              propertyCategory: {
+                select: { uuid: true, code: true, name: true },
+              },
+            },
+          }),
+        );
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async getSubcategory(uuid: string) {
+    const row = await this.prisma.propertySubcategory.findFirst({
+      where: { uuid, deletedAt: null },
+      include: {
+        propertyCategory: {
+          select: {
+            uuid: true,
+            code: true,
+            name: true,
+            propertyType: { select: { uuid: true, code: true, name: true } },
+          },
+        },
+      },
+    });
+    if (!row) throw new MasterNotFoundError();
+    return row;
+  }
+  async listSubcategories(q: MasterQuery): Promise<PageResult<unknown>> {
+    const { page, limit, skip } = this.page(q);
+    const where: Record<string, unknown> = { deletedAt: null };
+    if (q.isActive !== undefined) where.isActive = q.isActive;
+    if (q.categoryUuid) where.propertyCategory = { uuid: q.categoryUuid };
+    if (q.search)
+      where.OR = [
+        { name: { contains: q.search } },
+        { code: { contains: q.search } },
+        { slug: { contains: q.search } },
+      ];
+    const [items, total] = await Promise.all([
+      this.prisma.propertySubcategory.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: this.sort(q, ['sortOrder', 'name', 'createdAt']),
+        include: {
+          propertyCategory: { select: { uuid: true, code: true, name: true } },
+        },
+      }),
+      this.prisma.propertySubcategory.count({ where }),
+    ]);
+    return { items, total, page, limit };
+  }
+  async deleteSubcategory(uuid: string, a: ActorContext): Promise<void> {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const row = await tx.propertySubcategory.findFirst({
+          where: { uuid, deletedAt: null },
+        });
+        if (!row) throw new MasterNotFoundError();
+        const used = await tx.property.count({
+          where: { propertySubcategoryId: row.id, deletedAt: null },
+        });
+        if (used)
+          throw new MasterInUseError(
+            'Subcategory cannot be deleted while used by properties',
+          );
+        await tx.propertySubcategory.update({
+          where: { id: row.id },
+          data: { deletedAt: new Date() },
+        });
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
 
-  private model(level:string):Delegate{const m:Record<string,unknown>={country:this.prisma.country,province:this.prisma.province,city:this.prisma.city,district:this.prisma.district,subdistrict:this.prisma.subdistrict};const d=m[level];if(!d)throw new MasterHierarchyError('Invalid location level');return d as Delegate;}
-  private parentField(level:string):string|undefined{return ({province:'countryId',city:'provinceId',district:'cityId',subdistrict:'districtId'} as Record<string,string>)[level];}
-  private parentModel(level:string):Delegate|undefined{const p={province:this.prisma.country,city:this.prisma.province,district:this.prisma.city,subdistrict:this.prisma.district} as Record<string,unknown>;return p[level] as Delegate|undefined;}
-  private parentLevel(level:string):string|undefined{return ({province:'country',city:'province',district:'city',subdistrict:'district'} as Record<string,string>)[level];}
-  async createLocation(level:'country'|'province'|'city'|'district'|'subdistrict',i:Record<string,unknown>,a:ActorContext){try{return await this.prisma.$transaction(async tx=>{const d=this.modelFromTx(tx,level);const pf=this.parentField(level);const pm=this.parentModelFromTx(tx,level);let parentId:bigint|undefined;if(pf&&pm){const pu=String(i.parentUuid??'');const p=await pm.findUnique({where:{uuid:pu,deletedAt:null}});if(!p)throw new MasterHierarchyError(`Invalid ${this.parentLevel(level)} parent`);parentId=p.id as bigint;}const data:Record<string,unknown>={code:normalizeCode(String(i.code??'')),name:String(i.name??'').trim(),slug:normalizeSlug(String(i.slug??i.name??'')),isActive:i.isActive!==false,sortOrder:typeof i.sortOrder==='number'?i.sortOrder:0};if(pf)data[pf]=parentId;return d.create({data});});}catch(e){this.mapDbError(e);}}
-  async updateLocation(level:string,uuid:string,version:number,p:Record<string,unknown>,a:ActorContext){try{const d=this.model(level);const row=await d.findUnique({where:{uuid,deletedAt:null}});if(!row)throw new MasterNotFoundError();const data:Record<string,unknown>={};if(typeof p.code==='string')data.code=normalizeCode(p.code);if(typeof p.name==='string')data.name=p.name.trim();if(typeof p.slug==='string'||typeof p.name==='string')data.slug=normalizeSlug(typeof p.slug==='string'?p.slug:String(p.name??row.name));if(typeof p.isActive==='boolean')data.isActive=p.isActive;if(typeof p.sortOrder==='number')data.sortOrder=p.sortOrder; if(typeof p.parentUuid==='string'){const pm=this.parentModel(level);const parentLevel=this.parentLevel(level);if(pm){const parent=await pm.findUnique({where:{uuid:p.parentUuid,deletedAt:null}});if(!parent)throw new MasterHierarchyError(`Invalid ${parentLevel} parent`);data[this.parentField(level) as string]=parent.id;}}const r=await d.updateMany?.({where:{uuid,updatedAt:row.updatedAt},data:{...data,updatedAt:new Date()}}); if(r && r.count!==1)throw new MasterConcurrencyError();return d.findUnique({where:{uuid}});}catch(e){this.mapDbError(e);}}
-  async getLocation(level:string,uuid:string){const row=await this.model(level).findUnique({where:{uuid,deletedAt:null}});if(!row)throw new MasterNotFoundError();return row;}
-  async listLocations(level:string,q:MasterQuery):Promise<PageResult<unknown>>{const {page,limit,skip}=this.page(q);const where:Record<string,unknown>={deletedAt:null};if(q.isActive!==undefined)where.isActive=q.isActive;const pf=this.parentField(level);if(pf&&q.parentUuid)where[pf]={in:[q.parentUuid]};if(q.search)where.OR=[{name:{contains:q.search}},{code:{contains:q.search}},{slug:{contains:q.search}}];const d=this.model(level);const [items,total]=await Promise.all([d.findMany({where,skip,take:limit,orderBy:this.sort(q,['sortOrder','name','createdAt'])}),d.count({where})]);return{items,total,page,limit};}
-  async deleteLocation(level:string,uuid:string,a:ActorContext):Promise<void>{try{await this.prisma.$transaction(async tx=>{const d=this.modelFromTx(tx,level);const row=await d.findUnique({where:{uuid,deletedAt:null}});if(!row)throw new MasterNotFoundError();const counts:Record<string,number>={country:await tx.province.count({where:{countryId:row.id as bigint,deletedAt:null}}),province:await tx.city.count({where:{provinceId:row.id as bigint,deletedAt:null}}),city:await tx.district.count({where:{cityId:row.id as bigint,deletedAt:null}}),district:await tx.subdistrict.count({where:{districtId:row.id as bigint,deletedAt:null}}),subdistrict:await tx.property.count({where:{subdistrictId:row.id as bigint,deletedAt:null}})};if(counts[level]>0)throw new MasterInUseError('Location cannot be deleted while descendants reference it');await d.update({where:{id:row.id},data:{deletedAt:new Date()}});});}catch(e){this.mapDbError(e);}}
-  async children(level:string,uuid:string):Promise<readonly unknown[]>{const map:{[k:string]:[string,Delegate]}={country:['countryId',this.model('province')],province:['provinceId',this.model('city')],city:['cityId',this.model('district')],district:['districtId',this.model('subdistrict')]};const entry=map[level];if(!entry)throw new MasterHierarchyError('Invalid parent level');const parent=await this.model(level).findUnique({where:{uuid,deletedAt:null}});if(!parent)throw new MasterNotFoundError();return entry[1].findMany({where:{[entry[0]]:parent.id,deletedAt:null},orderBy:{sortOrder:'asc'}});}
+  private model(level: string): Delegate {
+    const m: Record<string, unknown> = {
+      country: this.prisma.country,
+      province: this.prisma.province,
+      city: this.prisma.city,
+      district: this.prisma.district,
+      subdistrict: this.prisma.subdistrict,
+    };
+    const d = m[level];
+    if (!d) throw new MasterHierarchyError('Invalid location level');
+    return d as Delegate;
+  }
+  private parentField(level: string): string | undefined {
+    return (
+      {
+        province: 'countryId',
+        city: 'provinceId',
+        district: 'cityId',
+        subdistrict: 'districtId',
+      } as Record<string, string>
+    )[level];
+  }
+  private parentModel(level: string): Delegate | undefined {
+    const p = {
+      province: this.prisma.country,
+      city: this.prisma.province,
+      district: this.prisma.city,
+      subdistrict: this.prisma.district,
+    } as Record<string, unknown>;
+    return p[level] as Delegate | undefined;
+  }
+  private parentLevel(level: string): string | undefined {
+    return (
+      {
+        province: 'country',
+        city: 'province',
+        district: 'city',
+        subdistrict: 'district',
+      } as Record<string, string>
+    )[level];
+  }
+  async createLocation(
+    level: 'country' | 'province' | 'city' | 'district' | 'subdistrict',
+    i: Record<string, unknown>,
+    a: ActorContext,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const d = this.modelFromTx(tx, level);
+        const pf = this.parentField(level);
+        const pm = this.parentModelFromTx(tx, level);
+        let parentId: bigint | undefined;
+        if (pf && pm) {
+          const pu = String(i.parentUuid ?? '');
+          const p = await pm.findUnique({
+            where: { uuid: pu, deletedAt: null },
+          });
+          if (!p)
+            throw new MasterHierarchyError(
+              `Invalid ${this.parentLevel(level)} parent`,
+            );
+          parentId = p.id as bigint;
+        }
+        const data: Record<string, unknown> = {
+          code: normalizeCode(String(i.code ?? '')),
+          name: String(i.name ?? '').trim(),
+          slug: normalizeSlug(String(i.slug ?? i.name ?? '')),
+          isActive: i.isActive !== false,
+          sortOrder: typeof i.sortOrder === 'number' ? i.sortOrder : 0,
+        };
+        if (pf) data[pf] = parentId;
+        return d.create({ data });
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async updateLocation(
+    level: string,
+    uuid: string,
+    version: number,
+    p: Record<string, unknown>,
+    a: ActorContext,
+  ) {
+    try {
+      const d = this.model(level);
+      const row = await d.findUnique({ where: { uuid, deletedAt: null } });
+      if (!row) throw new MasterNotFoundError();
+      const data: Record<string, unknown> = {};
+      if (typeof p.code === 'string') data.code = normalizeCode(p.code);
+      if (typeof p.name === 'string') data.name = p.name.trim();
+      if (typeof p.slug === 'string' || typeof p.name === 'string')
+        data.slug = normalizeSlug(
+          typeof p.slug === 'string' ? p.slug : String(p.name ?? row.name),
+        );
+      if (typeof p.isActive === 'boolean') data.isActive = p.isActive;
+      if (typeof p.sortOrder === 'number') data.sortOrder = p.sortOrder;
+      if (typeof p.parentUuid === 'string') {
+        const pm = this.parentModel(level);
+        const parentLevel = this.parentLevel(level);
+        if (pm) {
+          const parent = await pm.findUnique({
+            where: { uuid: p.parentUuid, deletedAt: null },
+          });
+          if (!parent)
+            throw new MasterHierarchyError(`Invalid ${parentLevel} parent`);
+          data[this.parentField(level) as string] = parent.id;
+        }
+      }
+      const r = await d.updateMany?.({
+        where: { uuid, updatedAt: row.updatedAt },
+        data: { ...data, updatedAt: new Date() },
+      });
+      if (r && r.count !== 1) throw new MasterConcurrencyError();
+      return d.findUnique({ where: { uuid } });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async getLocation(level: string, uuid: string) {
+    const row = await this.model(level).findUnique({
+      where: { uuid, deletedAt: null },
+    });
+    if (!row) throw new MasterNotFoundError();
+    return row;
+  }
+  async listLocations(
+    level: string,
+    q: MasterQuery,
+  ): Promise<PageResult<unknown>> {
+    const { page, limit, skip } = this.page(q);
+    const where: Record<string, unknown> = { deletedAt: null };
+    if (q.isActive !== undefined) where.isActive = q.isActive;
+    const pf = this.parentField(level);
+    if (pf && q.parentUuid) where[pf] = { in: [q.parentUuid] };
+    if (q.search)
+      where.OR = [
+        { name: { contains: q.search } },
+        { code: { contains: q.search } },
+        { slug: { contains: q.search } },
+      ];
+    const d = this.model(level);
+    const [items, total] = await Promise.all([
+      d.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: this.sort(q, ['sortOrder', 'name', 'createdAt']),
+      }),
+      d.count({ where }),
+    ]);
+    return { items, total, page, limit };
+  }
+  async deleteLocation(
+    level: string,
+    uuid: string,
+    a: ActorContext,
+  ): Promise<void> {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const d = this.modelFromTx(tx, level);
+        const row = await d.findUnique({ where: { uuid, deletedAt: null } });
+        if (!row) throw new MasterNotFoundError();
+        const counts: Record<string, number> = {
+          country: await tx.province.count({
+            where: { countryId: row.id as bigint, deletedAt: null },
+          }),
+          province: await tx.city.count({
+            where: { provinceId: row.id as bigint, deletedAt: null },
+          }),
+          city: await tx.district.count({
+            where: { cityId: row.id as bigint, deletedAt: null },
+          }),
+          district: await tx.subdistrict.count({
+            where: { districtId: row.id as bigint, deletedAt: null },
+          }),
+          subdistrict: await tx.property.count({
+            where: { subdistrictId: row.id as bigint, deletedAt: null },
+          }),
+        };
+        if (counts[level] > 0)
+          throw new MasterInUseError(
+            'Location cannot be deleted while descendants reference it',
+          );
+        await d.update({
+          where: { id: row.id },
+          data: { deletedAt: new Date() },
+        });
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async children(level: string, uuid: string): Promise<readonly unknown[]> {
+    const map: { [k: string]: [string, Delegate] } = {
+      country: ['countryId', this.model('province')],
+      province: ['provinceId', this.model('city')],
+      city: ['cityId', this.model('district')],
+      district: ['districtId', this.model('subdistrict')],
+    };
+    const entry = map[level];
+    if (!entry) throw new MasterHierarchyError('Invalid parent level');
+    const parent = await this.model(level).findUnique({
+      where: { uuid, deletedAt: null },
+    });
+    if (!parent) throw new MasterNotFoundError();
+    return entry[1].findMany({
+      where: { [entry[0]]: parent.id, deletedAt: null },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
 
-  private modelFromTx(tx:unknown,level:string):Delegate{const t=tx as Record<string,unknown>;const d={country:t.country,province:t.province,city:t.city,district:t.district,subdistrict:t.subdistrict}[level];if(!d)throw new MasterHierarchyError('Invalid location level');return d as Delegate;}
-  private parentModelFromTx(tx:unknown,level:string):Delegate|undefined{const t=tx as Record<string,unknown>;return ({province:t.country,city:t.province,district:t.city,subdistrict:t.district} as Record<string,unknown>)[level] as Delegate|undefined;}
+  private modelFromTx(tx: unknown, level: string): Delegate {
+    const t = tx as Record<string, unknown>;
+    const d = {
+      country: t.country,
+      province: t.province,
+      city: t.city,
+      district: t.district,
+      subdistrict: t.subdistrict,
+    }[level];
+    if (!d) throw new MasterHierarchyError('Invalid location level');
+    return d as Delegate;
+  }
+  private parentModelFromTx(tx: unknown, level: string): Delegate | undefined {
+    const t = tx as Record<string, unknown>;
+    return (
+      {
+        province: t.country,
+        city: t.province,
+        district: t.city,
+        subdistrict: t.district,
+      } as Record<string, unknown>
+    )[level] as Delegate | undefined;
+  }
 
-  async createFacility(i:{code:string;name:string;slug:string;category:FacilityCategory;icon?:string;description?:string;sortOrder?:number;isActive?:boolean},a:ActorContext){try{return await this.prisma.$transaction(tx=>tx.facility.create({data:{code:normalizeCode(i.code),name:i.name.trim(),slug:normalizeSlug(i.slug||i.name),category:i.category,icon:i.icon?.trim()||null,description:i.description?.trim()||null,sortOrder:i.sortOrder??0,isActive:i.isActive??true}}));}catch(e){this.mapDbError(e);}}
-  async updateFacility(uuid:string,version:number,p:Record<string,unknown>,a:ActorContext){try{const row=await this.prisma.facility.findFirst({where:{uuid,deletedAt:null}});if(!row)throw new MasterNotFoundError();const data:Record<string,unknown>={};if(typeof p.code==='string')data.code=normalizeCode(p.code);if(typeof p.name==='string')data.name=p.name.trim();if(typeof p.slug==='string'||typeof p.name==='string')data.slug=normalizeSlug(typeof p.slug==='string'?p.slug:String(p.name??row.name));if(typeof p.category==='string')data.category=p.category;if(typeof p.icon==='string')data.icon=p.icon.trim();if(typeof p.description==='string')data.description=p.description.trim();if(typeof p.isActive==='boolean')data.isActive=p.isActive;if(typeof p.sortOrder==='number')data.sortOrder=p.sortOrder;const r=await this.prisma.facility.updateMany({where:{id:row.id,updatedAt:row.updatedAt},data:{...data,updatedAt:new Date()}});if(r.count!==1)throw new MasterConcurrencyError();return this.prisma.facility.findUnique({where:{id:row.id}});}catch(e){this.mapDbError(e);}}
-  async getFacility(uuid:string){const row=await this.prisma.facility.findFirst({where:{uuid,deletedAt:null}});if(!row)throw new MasterNotFoundError();return row;}
-  async listFacilities(q:MasterQuery):Promise<PageResult<unknown>>{const {page,limit,skip}=this.page(q);const where:Record<string,unknown>={deletedAt:null};if(q.isActive!==undefined)where.isActive=q.isActive;if(q.category)where.category=q.category;if(q.search)where.OR=[{name:{contains:q.search}},{code:{contains:q.search}},{slug:{contains:q.search}}];const [items,total]=await Promise.all([this.prisma.facility.findMany({where,skip,take:limit,orderBy:this.sort(q,['sortOrder','name','createdAt'])}),this.prisma.facility.count({where})]);return{items,total,page,limit};}
-  async deleteFacility(uuid:string,a:ActorContext){try{await this.prisma.$transaction(async tx=>{const row=await tx.facility.findFirst({where:{uuid,deletedAt:null}});if(!row)throw new MasterNotFoundError();const used=await tx.propertyFacility.count({where:{facilityId:row.id}});if(used)throw new MasterInUseError('Facility is still assigned to properties');await tx.facility.update({where:{id:row.id},data:{deletedAt:new Date()}});});}catch(e){this.mapDbError(e);}}
+  async createFacility(
+    i: {
+      code: string;
+      name: string;
+      slug: string;
+      category: FacilityCategory;
+      icon?: string;
+      description?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    },
+    a: ActorContext,
+  ) {
+    try {
+      return await this.prisma.$transaction((tx) =>
+        tx.facility.create({
+          data: {
+            code: normalizeCode(i.code),
+            name: i.name.trim(),
+            slug: normalizeSlug(i.slug || i.name),
+            category: i.category,
+            icon: i.icon?.trim() || null,
+            description: i.description?.trim() || null,
+            sortOrder: i.sortOrder ?? 0,
+            isActive: i.isActive ?? true,
+          },
+        }),
+      );
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async updateFacility(
+    uuid: string,
+    version: number,
+    p: Record<string, unknown>,
+    a: ActorContext,
+  ) {
+    try {
+      const row = await this.prisma.facility.findFirst({
+        where: { uuid, deletedAt: null },
+      });
+      if (!row) throw new MasterNotFoundError();
+      const data: Record<string, unknown> = {};
+      if (typeof p.code === 'string') data.code = normalizeCode(p.code);
+      if (typeof p.name === 'string') data.name = p.name.trim();
+      if (typeof p.slug === 'string' || typeof p.name === 'string')
+        data.slug = normalizeSlug(
+          typeof p.slug === 'string' ? p.slug : String(p.name ?? row.name),
+        );
+      if (typeof p.category === 'string') data.category = p.category;
+      if (typeof p.icon === 'string') data.icon = p.icon.trim();
+      if (typeof p.description === 'string')
+        data.description = p.description.trim();
+      if (typeof p.isActive === 'boolean') data.isActive = p.isActive;
+      if (typeof p.sortOrder === 'number') data.sortOrder = p.sortOrder;
+      const r = await this.prisma.facility.updateMany({
+        where: { id: row.id, updatedAt: row.updatedAt },
+        data: { ...data, updatedAt: new Date() },
+      });
+      if (r.count !== 1) throw new MasterConcurrencyError();
+      return this.prisma.facility.findUnique({ where: { id: row.id } });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async getFacility(uuid: string) {
+    const row = await this.prisma.facility.findFirst({
+      where: { uuid, deletedAt: null },
+    });
+    if (!row) throw new MasterNotFoundError();
+    return row;
+  }
+  async listFacilities(q: MasterQuery): Promise<PageResult<unknown>> {
+    const { page, limit, skip } = this.page(q);
+    const where: Record<string, unknown> = { deletedAt: null };
+    if (q.isActive !== undefined) where.isActive = q.isActive;
+    if (q.category) where.category = q.category;
+    if (q.search)
+      where.OR = [
+        { name: { contains: q.search } },
+        { code: { contains: q.search } },
+        { slug: { contains: q.search } },
+      ];
+    const [items, total] = await Promise.all([
+      this.prisma.facility.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: this.sort(q, ['sortOrder', 'name', 'createdAt']),
+      }),
+      this.prisma.facility.count({ where }),
+    ]);
+    return { items, total, page, limit };
+  }
+  async deleteFacility(uuid: string, a: ActorContext) {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const row = await tx.facility.findFirst({
+          where: { uuid, deletedAt: null },
+        });
+        if (!row) throw new MasterNotFoundError();
+        const used = await tx.propertyFacility.count({
+          where: { facilityId: row.id },
+        });
+        if (used)
+          throw new MasterInUseError(
+            'Facility is still assigned to properties',
+          );
+        await tx.facility.update({
+          where: { id: row.id },
+          data: { deletedAt: new Date() },
+        });
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
 
-  async createProperty(i:Record<string,unknown>,a:ActorContext){try{return await this.prisma.$transaction(async tx=>{const type=await tx.propertyType.findFirst({where:{uuid:String(i.typeUuid),deletedAt:null,isActive:true}});const cat=await tx.propertyCategory.findFirst({where:{uuid:String(i.categoryUuid),deletedAt:null,isActive:true}});const sub=i.subcategoryUuid?await tx.propertySubcategory.findFirst({where:{uuid:String(i.subcategoryUuid),deletedAt:null,isActive:true},include:{propertyCategory:true}}):null;if(!type||!cat||!sub&&i.subcategoryUuid)throw new MasterHierarchyError('Type/category/subcategory not found or inactive');if(cat&&cat.propertyTypeId!==type?.id)throw new MasterHierarchyError('Category does not belong to the property type');if(sub&&(sub.propertyCategoryId!==cat?.id))throw new MasterHierarchyError('Subcategory does not belong to the category');const title=String(i.title??'').trim();const slug=normalizeSlug(String(i.slug??title));const now=new Date();const row=await tx.property.create({data:{businessCode:String(i.businessCode??`EST-${Date.now().toString(36).toUpperCase()}`),referenceNumber:String(i.referenceNumber??`REF-${Date.now().toString(36).toUpperCase()}`),propertyTypeId:type!.id,propertyCategoryId:cat!.id,propertySubcategoryId:sub?.id??null,subdistrictId:null,title,slug,shortDescription:typeof i.shortDescription==='string'?i.shortDescription.trim():null,description:typeof i.description==='string'?i.description.trim():null,status:(i.status??'DRAFT') as PropertyStatus,availabilityStatus:i.availabilityStatus??'AVAILABLE',availableFrom:i.availableFrom?new Date(String(i.availableFrom)):null,availableTo:i.availableTo?new Date(String(i.availableTo)):null,version:1,createdBy:a.actorUuid??null,updatedBy:a.actorUuid??null,createdAt:now,updatedAt:now},include:{propertyType:{select:{uuid:true,code:true,name:true}},propertyCategory:{select:{uuid:true,code:true,name:true}},propertySubcategory:{select:{uuid:true,code:true,name:true}},facilities:{include:{facility:true}}}});const facilityUuids=Array.isArray(i.facilityUuids)?i.facilityUuids.filter((v):v is string=>typeof v==='string'):[];if(facilityUuids.length){const fs=await tx.facility.findMany({where:{uuid:{in:facilityUuids},deletedAt:null,isActive:true}});if(fs.length!==new Set(facilityUuids).size)throw new MasterHierarchyError('One or more facilities are invalid');await tx.propertyFacility.createMany({data:fs.map(f=>({propertyId:row.id,facilityId:f.id}))});}return row;});}catch(e){this.mapDbError(e);}}
-  async getProperty(uuid:string){const row=await this.prisma.property.findFirst({where:{uuid,deletedAt:null},include:{propertyType:{select:{uuid:true,code:true,name:true}},propertyCategory:{select:{uuid:true,code:true,name:true}},propertySubcategory:{select:{uuid:true,code:true,name:true}},subdistrict:{select:{uuid:true,code:true,name:true}},facilities:{include:{facility:{select:{uuid:true,code:true,name:true,slug:true,category:true}}}}}});if(!row)throw new MasterNotFoundError('Property not found');return row;}
-  async listProperties(q:MasterQuery):Promise<PageResult<unknown>>{const {page,limit,skip}=this.page(q);const where:Record<string,unknown>={deletedAt:null};if(q.status)where.status=q.status;if(q.typeUuid)where.propertyType={uuid:q.typeUuid};if(q.categoryUuid)where.propertyCategory={uuid:q.categoryUuid};if(q.subcategoryUuid)where.propertySubcategory={uuid:q.subcategoryUuid};if(q.search)where.OR=[{title:{contains:q.search}},{businessCode:{contains:q.search}},{referenceNumber:{contains:q.search}},{slug:{contains:q.search}}];const [items,total]=await Promise.all([this.prisma.property.findMany({where,skip,take:limit,orderBy:this.sort(q,['updatedAt','title','createdAt']),select:{uuid:true,businessCode:true,referenceNumber:true,title:true,slug:true,status:true,availabilityStatus:true,version:true,createdAt:true,updatedAt:true,propertyType:{select:{uuid:true,code:true,name:true}},propertyCategory:{select:{uuid:true,code:true,name:true}},propertySubcategory:{select:{uuid:true,code:true,name:true}}}}),this.prisma.property.count({where})]);return{items,total,page,limit};}
-  async updateProperty(uuid:string,version:number,p:Record<string,unknown>,a:ActorContext){try{return await this.prisma.$transaction(async tx=>{const row=await tx.property.findFirst({where:{uuid,deletedAt:null}});if(!row)throw new MasterNotFoundError();if(row.version!==version)throw new MasterConcurrencyError('Property version conflict');const data:Record<string,unknown>={updatedBy:a.actorUuid??row.updatedBy,version:{increment:1}};if(typeof p.title==='string')data.title=p.title.trim();if(typeof p.slug==='string'||typeof p.title==='string')data.slug=normalizeSlug(typeof p.slug==='string'?p.slug:String(p.title??row.title));if(typeof p.shortDescription==='string')data.shortDescription=p.shortDescription.trim();if(typeof p.description==='string')data.description=p.description.trim();if(typeof p.status==='string')data.status=p.status;if(typeof p.availabilityStatus==='string')data.availabilityStatus=p.availabilityStatus;if(p.availableFrom!==undefined)data.availableFrom=p.availableFrom?new Date(String(p.availableFrom)):null;if(p.availableTo!==undefined)data.availableTo=p.availableTo?new Date(String(p.availableTo)):null;const r=await tx.property.updateMany({where:{id:row.id,version},data});if(r.count!==1)throw new MasterConcurrencyError();return tx.property.findUnique({where:{id:row.id}});});}catch(e){this.mapDbError(e);}}
-  async deleteProperty(uuid:string,a:ActorContext){try{await this.prisma.$transaction(async tx=>{const row=await tx.property.findFirst({where:{uuid,deletedAt:null}});if(!row)throw new MasterNotFoundError();await tx.property.update({where:{id:row.id},data:{deletedAt:new Date(),deletedBy:a.actorUuid??null}});});}catch(e){this.mapDbError(e);}}
-  async restoreProperty(uuid:string,a:ActorContext){try{const row=await this.prisma.property.findFirst({where:{uuid}});if(!row)throw new MasterNotFoundError();if(!row.deletedAt)return row;return this.prisma.property.update({where:{id:row.id},data:{deletedAt:null,deletedBy:null,updatedBy:a.actorUuid??row.updatedBy,version:{increment:1}}});}catch(e){this.mapDbError(e);}}
-  async duplicateProperty(uuid:string,a:ActorContext){try{return await this.prisma.$transaction(async tx=>{const row=await tx.property.findFirst({where:{uuid,deletedAt:null},include:{facilities:true}});if(!row)throw new MasterNotFoundError();let code=`EST-${Date.now().toString(36).toUpperCase()}`;let ref=`REF-${Date.now().toString(36).toUpperCase()}`;while(await tx.property.findUnique({where:{businessCode:code}}))code=`EST-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random()*99)}`;while(await tx.property.findUnique({where:{referenceNumber:ref}}))ref=`REF-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random()*99)}`;const copy=await tx.property.create({data:{businessCode:code,referenceNumber:ref,propertyTypeId:row.propertyTypeId,propertyCategoryId:row.propertyCategoryId,propertySubcategoryId:row.propertySubcategoryId,subdistrictId:row.subdistrictId,title:`${row.title} (Copy)`,slug:`${row.slug}-copy-${Date.now().toString(36)}`,shortDescription:row.shortDescription,description:row.description,status:'DRAFT',availabilityStatus:row.availabilityStatus,availableFrom:row.availableFrom,availableTo:row.availableTo,version:1,createdBy:a.actorUuid??null,updatedBy:a.actorUuid??null}});if(row.facilities.length)await tx.propertyFacility.createMany({data:row.facilities.map(f=>({propertyId:copy.id,facilityId:f.facilityId}))});return copy;});}catch(e){this.mapDbError(e);}}
+  async createProperty(i: Record<string, unknown>, a: ActorContext) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const type = await tx.propertyType.findFirst({
+          where: { uuid: String(i.typeUuid), deletedAt: null, isActive: true },
+        });
+        const cat = await tx.propertyCategory.findFirst({
+          where: {
+            uuid: String(i.categoryUuid),
+            deletedAt: null,
+            isActive: true,
+          },
+        });
+        const sub = i.subcategoryUuid
+          ? await tx.propertySubcategory.findFirst({
+              where: {
+                uuid: String(i.subcategoryUuid),
+                deletedAt: null,
+                isActive: true,
+              },
+              include: { propertyCategory: true },
+            })
+          : null;
+        if (!type || !cat || (!sub && i.subcategoryUuid))
+          throw new MasterHierarchyError(
+            'Type/category/subcategory not found or inactive',
+          );
+        if (cat && cat.propertyTypeId !== type?.id)
+          throw new MasterHierarchyError(
+            'Category does not belong to the property type',
+          );
+        if (sub && sub.propertyCategoryId !== cat?.id)
+          throw new MasterHierarchyError(
+            'Subcategory does not belong to the category',
+          );
+        const title = String(i.title ?? '').trim();
+        const slug = normalizeSlug(String(i.slug ?? title));
+        const now = new Date();
+        const row = await tx.property.create({
+          data: {
+            businessCode: String(
+              i.businessCode ?? `EST-${Date.now().toString(36).toUpperCase()}`,
+            ),
+            referenceNumber: String(
+              i.referenceNumber ??
+                `REF-${Date.now().toString(36).toUpperCase()}`,
+            ),
+            propertyTypeId: type!.id,
+            propertyCategoryId: cat!.id,
+            propertySubcategoryId: sub?.id ?? null,
+            subdistrictId: null,
+            title,
+            slug,
+            shortDescription:
+              typeof i.shortDescription === 'string'
+                ? i.shortDescription.trim()
+                : null,
+            description:
+              typeof i.description === 'string' ? i.description.trim() : null,
+            status: (i.status ?? 'DRAFT') as PropertyStatus,
+            availabilityStatus: i.availabilityStatus ?? 'AVAILABLE',
+            availableFrom: i.availableFrom
+              ? new Date(String(i.availableFrom))
+              : null,
+            availableTo: i.availableTo ? new Date(String(i.availableTo)) : null,
+            version: 1,
+            createdBy: a.actorUuid ?? null,
+            updatedBy: a.actorUuid ?? null,
+            createdAt: now,
+            updatedAt: now,
+          },
+          include: {
+            propertyType: { select: { uuid: true, code: true, name: true } },
+            propertyCategory: {
+              select: { uuid: true, code: true, name: true },
+            },
+            propertySubcategory: {
+              select: { uuid: true, code: true, name: true },
+            },
+            facilities: { include: { facility: true } },
+          },
+        });
+        const facilityUuids = Array.isArray(i.facilityUuids)
+          ? i.facilityUuids.filter((v): v is string => typeof v === 'string')
+          : [];
+        if (facilityUuids.length) {
+          const fs = await tx.facility.findMany({
+            where: {
+              uuid: { in: facilityUuids },
+              deletedAt: null,
+              isActive: true,
+            },
+          });
+          if (fs.length !== new Set(facilityUuids).size)
+            throw new MasterHierarchyError(
+              'One or more facilities are invalid',
+            );
+          await tx.propertyFacility.createMany({
+            data: fs.map((f) => ({ propertyId: row.id, facilityId: f.id })),
+          });
+        }
+        return row;
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async getProperty(uuid: string) {
+    const row = await this.prisma.property.findFirst({
+      where: { uuid, deletedAt: null },
+      include: {
+        propertyType: { select: { uuid: true, code: true, name: true } },
+        propertyCategory: { select: { uuid: true, code: true, name: true } },
+        propertySubcategory: { select: { uuid: true, code: true, name: true } },
+        subdistrict: { select: { uuid: true, code: true, name: true } },
+        facilities: {
+          include: {
+            facility: {
+              select: {
+                uuid: true,
+                code: true,
+                name: true,
+                slug: true,
+                category: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!row) throw new MasterNotFoundError('Property not found');
+    return row;
+  }
+  async listProperties(q: MasterQuery): Promise<PageResult<unknown>> {
+    const { page, limit, skip } = this.page(q);
+    const where: Record<string, unknown> = { deletedAt: null };
+    if (q.status) where.status = q.status;
+    if (q.typeUuid) where.propertyType = { uuid: q.typeUuid };
+    if (q.categoryUuid) where.propertyCategory = { uuid: q.categoryUuid };
+    if (q.subcategoryUuid)
+      where.propertySubcategory = { uuid: q.subcategoryUuid };
+    if (q.search)
+      where.OR = [
+        { title: { contains: q.search } },
+        { businessCode: { contains: q.search } },
+        { referenceNumber: { contains: q.search } },
+        { slug: { contains: q.search } },
+      ];
+    const [items, total] = await Promise.all([
+      this.prisma.property.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: this.sort(q, ['updatedAt', 'title', 'createdAt']),
+        select: {
+          uuid: true,
+          businessCode: true,
+          referenceNumber: true,
+          title: true,
+          slug: true,
+          status: true,
+          availabilityStatus: true,
+          version: true,
+          createdAt: true,
+          updatedAt: true,
+          propertyType: { select: { uuid: true, code: true, name: true } },
+          propertyCategory: { select: { uuid: true, code: true, name: true } },
+          propertySubcategory: {
+            select: { uuid: true, code: true, name: true },
+          },
+        },
+      }),
+      this.prisma.property.count({ where }),
+    ]);
+    return { items, total, page, limit };
+  }
+  async updateProperty(
+    uuid: string,
+    version: number,
+    p: Record<string, unknown>,
+    a: ActorContext,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const row = await tx.property.findFirst({
+          where: { uuid, deletedAt: null },
+        });
+        if (!row) throw new MasterNotFoundError();
+        if (row.version !== version)
+          throw new MasterConcurrencyError('Property version conflict');
+        const data: Record<string, unknown> = {
+          updatedBy: a.actorUuid ?? row.updatedBy,
+          version: { increment: 1 },
+        };
+        if (typeof p.title === 'string') data.title = p.title.trim();
+        if (typeof p.slug === 'string' || typeof p.title === 'string')
+          data.slug = normalizeSlug(
+            typeof p.slug === 'string' ? p.slug : String(p.title ?? row.title),
+          );
+        if (typeof p.shortDescription === 'string')
+          data.shortDescription = p.shortDescription.trim();
+        if (typeof p.description === 'string')
+          data.description = p.description.trim();
+        if (typeof p.status === 'string') data.status = p.status;
+        if (typeof p.availabilityStatus === 'string')
+          data.availabilityStatus = p.availabilityStatus;
+        if (p.availableFrom !== undefined)
+          data.availableFrom = p.availableFrom
+            ? new Date(String(p.availableFrom))
+            : null;
+        if (p.availableTo !== undefined)
+          data.availableTo = p.availableTo
+            ? new Date(String(p.availableTo))
+            : null;
+        const r = await tx.property.updateMany({
+          where: { id: row.id, version },
+          data,
+        });
+        if (r.count !== 1) throw new MasterConcurrencyError();
+        return tx.property.findUnique({ where: { id: row.id } });
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async deleteProperty(uuid: string, a: ActorContext) {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const row = await tx.property.findFirst({
+          where: { uuid, deletedAt: null },
+        });
+        if (!row) throw new MasterNotFoundError();
+        await tx.property.update({
+          where: { id: row.id },
+          data: { deletedAt: new Date(), deletedBy: a.actorUuid ?? null },
+        });
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async restoreProperty(uuid: string, a: ActorContext) {
+    try {
+      const row = await this.prisma.property.findFirst({ where: { uuid } });
+      if (!row) throw new MasterNotFoundError();
+      if (!row.deletedAt) return row;
+      return this.prisma.property.update({
+        where: { id: row.id },
+        data: {
+          deletedAt: null,
+          deletedBy: null,
+          updatedBy: a.actorUuid ?? row.updatedBy,
+          version: { increment: 1 },
+        },
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
+  async duplicateProperty(uuid: string, a: ActorContext) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const row = await tx.property.findFirst({
+          where: { uuid, deletedAt: null },
+          include: { facilities: true },
+        });
+        if (!row) throw new MasterNotFoundError();
+        let code = `EST-${Date.now().toString(36).toUpperCase()}`;
+        let ref = `REF-${Date.now().toString(36).toUpperCase()}`;
+        while (await tx.property.findUnique({ where: { businessCode: code } }))
+          code = `EST-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 99)}`;
+        while (
+          await tx.property.findUnique({ where: { referenceNumber: ref } })
+        )
+          ref = `REF-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 99)}`;
+        const copy = await tx.property.create({
+          data: {
+            businessCode: code,
+            referenceNumber: ref,
+            propertyTypeId: row.propertyTypeId,
+            propertyCategoryId: row.propertyCategoryId,
+            propertySubcategoryId: row.propertySubcategoryId,
+            subdistrictId: row.subdistrictId,
+            title: `${row.title} (Copy)`,
+            slug: `${row.slug}-copy-${Date.now().toString(36)}`,
+            shortDescription: row.shortDescription,
+            description: row.description,
+            status: 'DRAFT',
+            availabilityStatus: row.availabilityStatus,
+            availableFrom: row.availableFrom,
+            availableTo: row.availableTo,
+            version: 1,
+            createdBy: a.actorUuid ?? null,
+            updatedBy: a.actorUuid ?? null,
+          },
+        });
+        if (row.facilities.length)
+          await tx.propertyFacility.createMany({
+            data: row.facilities.map((f) => ({
+              propertyId: copy.id,
+              facilityId: f.facilityId,
+            })),
+          });
+        return copy;
+      });
+    } catch (e) {
+      this.mapDbError(e);
+    }
+  }
 }

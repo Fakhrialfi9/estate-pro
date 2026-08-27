@@ -18,7 +18,9 @@ import type { CreatePropertyTypeDto } from '../../../src/modules/property/applic
 import type { UpdatePropertyTypeDto } from '../../../src/modules/property/application/dto/update-property-type.dto.js';
 import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
 
-const snapshot = (overrides: Partial<Parameters<typeof PropertyTypeEntity.create>[0]> = {}) => ({
+const snapshot = (
+  overrides: Partial<Parameters<typeof PropertyTypeEntity.create>[0]> = {},
+) => ({
   uuid: randomUUID(),
   code: 'HOUSE',
   name: 'House',
@@ -33,16 +35,20 @@ const snapshot = (overrides: Partial<Parameters<typeof PropertyTypeEntity.create
   ...overrides,
 });
 
-const dto = (overrides: Partial<CreatePropertyTypeDto> = {}): CreatePropertyTypeDto =>
-  Object.assign(new (class {} )(), {
+const dto = (
+  overrides: Partial<CreatePropertyTypeDto> = {},
+): CreatePropertyTypeDto =>
+  Object.assign(new (class {})(), {
     code: 'house',
     name: '  House  ',
     slug: 'House',
     ...overrides,
   }) as CreatePropertyTypeDto;
 
-const updateDto = (overrides: Partial<UpdatePropertyTypeDto> = {}): UpdatePropertyTypeDto =>
-  Object.assign(new (class {} )(), overrides) as UpdatePropertyTypeDto;
+const updateDto = (
+  overrides: Partial<UpdatePropertyTypeDto> = {},
+): UpdatePropertyTypeDto =>
+  Object.assign(new (class {})(), overrides) as UpdatePropertyTypeDto;
 
 const repository = (): PropertyTypeRepository => ({
   create: vi.fn(),
@@ -59,12 +65,12 @@ const context = { actorUuid: randomUUID(), ipAddress: '127.0.0.1' };
 
 describe('PropertyType domain and application', () => {
   it('enforces domain invariants and soft-delete state', () => {
-    expect(() => PropertyTypeEntity.create(snapshot({ code: 'house' }))).toThrow(
-      'Invalid property type code',
-    );
-    expect(() => PropertyTypeEntity.create(snapshot({ sortOrder: -1 }))).toThrow(
-      'Invalid property type sort order',
-    );
+    expect(() =>
+      PropertyTypeEntity.create(snapshot({ code: 'house' })),
+    ).toThrow('Invalid property type code');
+    expect(() =>
+      PropertyTypeEntity.create(snapshot({ sortOrder: -1 })),
+    ).toThrow('Invalid property type sort order');
 
     const entity = PropertyTypeEntity.create(snapshot());
     expect(entity.isAccessible()).toBe(true);
@@ -77,62 +83,108 @@ describe('PropertyType domain and application', () => {
   it('creates normalized property types and audits the mutation', async () => {
     const repo = repository();
     const audits = audit();
-    const created = PropertyTypeEntity.create(snapshot({ code: 'HOUSE', slug: 'house' }));
+    const created = PropertyTypeEntity.create(
+      snapshot({ code: 'HOUSE', slug: 'house' }),
+    );
     vi.mocked(repo.findByCode).mockResolvedValue(null);
     vi.mocked(repo.findBySlug).mockResolvedValue(null);
     vi.mocked(repo.create).mockResolvedValue(created);
 
-    const result = await new CreatePropertyTypeUseCase(repo, audits).execute(dto(), context);
+    const result = await new CreatePropertyTypeUseCase(repo, audits).execute(
+      dto(),
+      context,
+    );
     expect(result).toBe(created);
-    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ code: 'HOUSE', name: 'House', slug: 'house' }));
-    expect(audits.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'PROPERTY_TYPE_CREATED' }));
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'HOUSE', name: 'House', slug: 'house' }),
+    );
+    expect(audits.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'PROPERTY_TYPE_CREATED' }),
+    );
   });
 
   it('rejects duplicate code and duplicate slug on create', async () => {
     const repo = repository();
     const existing = PropertyTypeEntity.create(snapshot());
     vi.mocked(repo.findByCode).mockResolvedValue(existing);
-    await expect(new CreatePropertyTypeUseCase(repo, audit()).execute(dto(), context)).rejects.toBeInstanceOf(PropertyTypeAlreadyExistsException);
+    await expect(
+      new CreatePropertyTypeUseCase(repo, audit()).execute(dto(), context),
+    ).rejects.toBeInstanceOf(PropertyTypeAlreadyExistsException);
 
     const slugRepo = repository();
     vi.mocked(slugRepo.findByCode).mockResolvedValue(null);
     vi.mocked(slugRepo.findBySlug).mockResolvedValue(existing);
-    await expect(new CreatePropertyTypeUseCase(slugRepo, audit()).execute(dto(), context)).rejects.toBeInstanceOf(PropertyTypeAlreadyExistsException);
+    await expect(
+      new CreatePropertyTypeUseCase(slugRepo, audit()).execute(dto(), context),
+    ).rejects.toBeInstanceOf(PropertyTypeAlreadyExistsException);
   });
 
   it('updates allowed fields and rejects duplicate identifiers', async () => {
     const repo = repository();
     const audits = audit();
     const current = PropertyTypeEntity.create(snapshot());
-    const updated = PropertyTypeEntity.create(snapshot({ code: 'VILLA', name: 'Villa', slug: 'villa' }));
+    const updated = PropertyTypeEntity.create(
+      snapshot({ code: 'VILLA', name: 'Villa', slug: 'villa' }),
+    );
     vi.mocked(repo.findById).mockResolvedValue(current);
     vi.mocked(repo.findByCode).mockResolvedValue(null);
     vi.mocked(repo.findBySlug).mockResolvedValue(null);
     vi.mocked(repo.update).mockResolvedValue(updated);
 
-    await expect(new UpdatePropertyTypeUseCase(repo, audits).execute(current.uuid, updateDto({ code: 'villa', name: 'Villa', slug: 'villa' }), context)).resolves.toBe(updated);
-    expect(repo.update).toHaveBeenCalledWith(current.uuid, expect.objectContaining({ code: 'VILLA', name: 'Villa', slug: 'villa' }));
+    await expect(
+      new UpdatePropertyTypeUseCase(repo, audits).execute(
+        current.uuid,
+        updateDto({ code: 'villa', name: 'Villa', slug: 'villa' }),
+        context,
+      ),
+    ).resolves.toBe(updated);
+    expect(repo.update).toHaveBeenCalledWith(
+      current.uuid,
+      expect.objectContaining({ code: 'VILLA', name: 'Villa', slug: 'villa' }),
+    );
 
     vi.mocked(repo.findByCode).mockResolvedValue(updated);
-    await expect(new UpdatePropertyTypeUseCase(repo, audit()).execute(current.uuid, updateDto({ code: 'villa' }), context)).rejects.toBeInstanceOf(PropertyTypeAlreadyExistsException);
+    await expect(
+      new UpdatePropertyTypeUseCase(repo, audit()).execute(
+        current.uuid,
+        updateDto({ code: 'villa' }),
+        context,
+      ),
+    ).rejects.toBeInstanceOf(PropertyTypeAlreadyExistsException);
   });
 
   it('returns current entity for an empty update and rejects missing entities', async () => {
     const repo = repository();
     const current = PropertyTypeEntity.create(snapshot());
     vi.mocked(repo.findById).mockResolvedValue(current);
-    await expect(new UpdatePropertyTypeUseCase(repo, audit()).execute(current.uuid, updateDto(), context)).resolves.toBe(current);
+    await expect(
+      new UpdatePropertyTypeUseCase(repo, audit()).execute(
+        current.uuid,
+        updateDto(),
+        context,
+      ),
+    ).resolves.toBe(current);
     vi.mocked(repo.findById).mockResolvedValue(null);
-    await expect(new UpdatePropertyTypeUseCase(repo, audit()).execute(current.uuid, updateDto({ name: 'X' }), context)).rejects.toBeInstanceOf(PropertyTypeNotFoundException);
+    await expect(
+      new UpdatePropertyTypeUseCase(repo, audit()).execute(
+        current.uuid,
+        updateDto({ name: 'X' }),
+        context,
+      ),
+    ).rejects.toBeInstanceOf(PropertyTypeNotFoundException);
   });
 
   it('gets property type and rejects not found', async () => {
     const repo = repository();
     const current = PropertyTypeEntity.create(snapshot());
     vi.mocked(repo.findById).mockResolvedValue(current);
-    await expect(new GetPropertyTypeUseCase(repo).execute(current.uuid)).resolves.toBe(current);
+    await expect(
+      new GetPropertyTypeUseCase(repo).execute(current.uuid),
+    ).resolves.toBe(current);
     vi.mocked(repo.findById).mockResolvedValue(null);
-    await expect(new GetPropertyTypeUseCase(repo).execute(current.uuid)).rejects.toBeInstanceOf(PropertyTypeNotFoundException);
+    await expect(
+      new GetPropertyTypeUseCase(repo).execute(current.uuid),
+    ).rejects.toBeInstanceOf(PropertyTypeNotFoundException);
   });
 
   it('lists with validated pagination, filter, and sorting', async () => {
@@ -147,10 +199,22 @@ describe('PropertyType domain and application', () => {
       sortDirection: 'asc',
       search: 'house',
     };
-    vi.mocked(repo.list).mockResolvedValue({ items, total: 21, page: 2, limit: 20 });
-    await expect(new ListPropertyTypesUseCase(repo).execute(query)).resolves.toMatchObject({ total: 21, page: 2 });
+    vi.mocked(repo.list).mockResolvedValue({
+      items,
+      total: 21,
+      page: 2,
+      limit: 20,
+    });
+    await expect(
+      new ListPropertyTypesUseCase(repo).execute(query),
+    ).resolves.toMatchObject({ total: 21, page: 2 });
     expect(repo.list).toHaveBeenCalledWith(query);
-    await expect(new ListPropertyTypesUseCase(repo).execute({ ...query, filterValue: 'true' })).rejects.toThrow('isActive filterValue');
+    await expect(
+      new ListPropertyTypesUseCase(repo).execute({
+        ...query,
+        filterValue: 'true',
+      }),
+    ).rejects.toThrow('isActive filterValue');
   });
 
   it('soft-deletes existing property types', async () => {
@@ -159,8 +223,15 @@ describe('PropertyType domain and application', () => {
     const current = PropertyTypeEntity.create(snapshot());
     vi.mocked(repo.findById).mockResolvedValue(current);
     vi.mocked(repo.softDelete).mockResolvedValue(undefined);
-    await expect(new DeletePropertyTypeUseCase(repo, audits).execute(current.uuid, context)).resolves.toBeUndefined();
+    await expect(
+      new DeletePropertyTypeUseCase(repo, audits).execute(
+        current.uuid,
+        context,
+      ),
+    ).resolves.toBeUndefined();
     expect(repo.softDelete).toHaveBeenCalledWith(current.uuid);
-    expect(audits.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'PROPERTY_TYPE_DELETED' }));
+    expect(audits.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'PROPERTY_TYPE_DELETED' }),
+    );
   });
 });
