@@ -30,21 +30,16 @@ jobs:
           set -euo pipefail
           node <<'NODE'
           const fs = require('node:fs');
-
           const replace = (file, from, to) => {
             const source = fs.readFileSync(file, 'utf8');
             if (!source.includes(from)) return;
             fs.writeFileSync(file, source.split(from).join(to));
           };
-
           replace('src/modules/property/domain/property-extras.ts', "const [w, f = ''] = this.amount.split('.')", "const [w = '0', f = ''] = this.amount.split('.')");
           replace('src/modules/property/domain/property-extras.ts', "const [w, f = ''] = v.split('.')", "const [w = '0', f = ''] = v.split('.')");
           replace('src/modules/property/domain/property-extras.ts', 'const [a, b] = o;', 'const [a, b = 0] = o;');
           replace('src/modules/property/listing/domain/listing.types.ts', "const [whole, fraction = ''] = normalized.split('.')", "const [whole = '0', fraction = ''] = normalized.split('.')");
-
-          replace(
-            'src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts',
-            `          await tx.propertyFacility.createMany({
+          replace('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts', `          await tx.propertyFacility.createMany({
             data: ids.map((facilityId, index) => ({
               propertyId,
               facilityId,
@@ -52,8 +47,7 @@ jobs:
               quantity: inputs[index].quantity ?? null,
               notes: trim(inputs[index].notes) ?? null,
             })),
-          });`,
-            `          await tx.propertyFacility.createMany({
+          });`, `          await tx.propertyFacility.createMany({
             data: ids.map((facilityId, index) => {
               const input = inputs[index];
               if (!input)
@@ -68,24 +62,47 @@ jobs:
                 notes: trim(input.notes) ?? null,
               };
             }),
-          });`,
-          );
-
+          });`);
           const store = 'src/modules/property/infrastructure/persistence/prisma-property-master.store.ts';
           replace(store, `import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';`, `import { Prisma } from '../../../../prisma/generated/prisma/client.js';
-          import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';`);
-          replace(store, `  type ActorContext,\n  type FacilityCategory,\n  type PageRequest,\n  type PropertyStatus,`, `  type ActorContext,\n  type FacilityCategory,\n  type PageRequest,\n  type PropertyStatus,`);
-          replace(store, `import type {\n  MasterQuery,\n  PageResult,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';`, `import type {\n  MasterQuery,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';
-          import type { PageResult } from '../../domain/property-master.types.js';`);
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';`);
+          replace(store, `import type {
+  MasterQuery,
+  PageResult,
+  PropertyMasterRepository,
+} from '../../domain/repositories/property-master.repository.js';`, `import type {
+  MasterQuery,
+  PropertyMasterRepository,
+} from '../../domain/repositories/property-master.repository.js';
+import type { PageResult } from '../../domain/property-master.types.js';`);
           replace(store, `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];`, `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');`);
-          replace(store, `const text = (value: unknown, fallback = ''): string =>\n  typeof value === 'string' ? value : fallback;`, `const text = (value: unknown, fallback = ''): string =>\n  typeof value === 'string' ? value : fallback;\n\nconst availabilityStatus = (value: unknown): Prisma.AvailabilityStatus => {\n  const status = text(value, 'AVAILABLE');\n  if (status === 'AVAILABLE') return Prisma.AvailabilityStatus.AVAILABLE;\n  if (status === 'UNAVAILABLE') return Prisma.AvailabilityStatus.UNAVAILABLE;\n  throw new MasterHierarchyError('Invalid availability status');\n};`);
-          replace(store, `      return this.prisma.facility.update({ where: { id: current.id }, data });`, `      const id = current.id;\n      if (typeof id !== 'number' && typeof id !== 'bigint')\n        throw new MasterNotFoundError('Facility id is invalid');\n      return this.prisma.facility.update({ where: { id }, data });`);
+          replace(store, `const text = (value: unknown, fallback = ''): string =>
+  typeof value === 'string' ? value : fallback;`, `const text = (value: unknown, fallback = ''): string =>
+  typeof value === 'string' ? value : fallback;
+
+const availabilityStatus = (value: unknown): Prisma.AvailabilityStatus => {
+  const status = text(value, 'AVAILABLE');
+  if (status === 'AVAILABLE') return Prisma.AvailabilityStatus.AVAILABLE;
+  if (status === 'UNAVAILABLE') return Prisma.AvailabilityStatus.UNAVAILABLE;
+  throw new MasterHierarchyError('Invalid availability status');
+};`);
+          replace(store, `      return this.prisma.facility.update({ where: { id: current.id }, data });`, `      const id = current.id;
+      if (typeof id !== 'number' && typeof id !== 'bigint')
+        throw new MasterNotFoundError('Facility id is invalid');
+      return this.prisma.facility.update({ where: { id }, data });`);
           replace(store, `            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE'),`, `            availabilityStatus: availabilityStatus(input.availabilityStatus),`);
           replace(store, `    slug: string;`, `    slug?: string;`);
-
           const listing = 'src/modules/property/listing/infrastructure/listing.repository.ts';
-          replace(listing, `        })\n        .catch((error: unknown) => this.mapError(error)),\n    );\n  }\n\n  async expireDue`, `        }),\n    );\n  }\n\n  async expireDue`);
+          replace(listing, `        })
+        .catch((error: unknown) => this.mapError(error)),
+    );
+  }
 
+  async expireDue`, `        }),
+    );
+  }
+
+  async expireDue`);
           const controller = 'src/modules/property/presentation/property-master.controller.ts';
           for (const [from, to] of [
             ['this.service.createCategory(d, actor(r, ua, rid))', 'this.service.createCategory({ ...d }, actor(r, ua, rid))'],
@@ -99,7 +116,6 @@ jobs:
             ['this.service.createProperty(d, actor(r, ua, rid))', 'this.service.createProperty({ ...d }, actor(r, ua, rid))'],
             ['.updateProperty(uuid, d.version, d, actor(r, ua, rid))', '.updateProperty(uuid, d.version, { ...d }, actor(r, ua, rid))'],
           ]) replace(controller, from, to);
-
           const walk = (dir) => {
             for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
               if (entry.name === '.git' || entry.name === 'node_modules') continue;
@@ -110,7 +126,9 @@ jobs:
           };
           walk('.');
           NODE
-      - name: Format
+      - name: Format repaired sources
+        run: npx prettier --write src/modules/property/domain/property-extras.ts src/modules/property/domain/repositories/property-master.repository.ts src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts src/modules/property/infrastructure/persistence/prisma-property-master.store.ts src/modules/property/listing/domain/listing.types.ts src/modules/property/listing/infrastructure/listing.repository.ts src/modules/property/application/property-master.service.ts src/modules/property/presentation/property-master.controller.ts
+      - name: Format check
         run: npm run format:check
       - name: Lint
         run: npm run lint
