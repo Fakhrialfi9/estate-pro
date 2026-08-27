@@ -26,6 +26,18 @@ const baseTypeScriptRules = {
   'prettier/prettier': 'error',
 };
 
+const vitestGlobals = {
+  afterAll: 'readonly',
+  afterEach: 'readonly',
+  beforeAll: 'readonly',
+  beforeEach: 'readonly',
+  describe: 'readonly',
+  expect: 'readonly',
+  it: 'readonly',
+  test: 'readonly',
+  vi: 'readonly',
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -51,6 +63,7 @@ export default tseslint.config(
     languageOptions: {
       globals: {
         ...globals.node,
+        ...vitestGlobals,
       },
 
       parserOptions: {
@@ -80,6 +93,7 @@ export default tseslint.config(
 
       globals: {
         ...globals.node,
+        ...vitestGlobals,
       },
 
       parserOptions: {
