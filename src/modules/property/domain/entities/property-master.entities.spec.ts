@@ -4,7 +4,7 @@ import {
   assertTransition,
   normalizeCode,
   normalizeSlug,
-} from './property-master.types.js';
+} from '../property-master.types.js';
 
 describe('property master domain rules', () => {
   it('normalizes identifiers', () => {
@@ -13,6 +13,7 @@ describe('property master domain rules', () => {
       'luxury-house-bandung',
     );
   });
+
   it('allows valid lifecycle transitions and rejects invalid ones', () => {
     expect(() => assertTransition('DRAFT', 'IN_REVIEW')).not.toThrow();
     expect(() => assertTransition('ACTIVE', 'SOLD')).not.toThrow();
@@ -20,6 +21,7 @@ describe('property master domain rules', () => {
       'Invalid property status transition',
     );
   });
+
   it('enforces availability date ordering', () => {
     expect(() =>
       assertAvailability(new Date('2026-08-01'), new Date('2026-08-31')),
