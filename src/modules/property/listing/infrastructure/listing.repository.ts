@@ -1078,9 +1078,7 @@ export class PrismaListingRepository implements ListingRepository {
       viewerUserUuid: viewerUserUuid ?? null,
     };
   }
-  async search(
-    query: PropertySearchQuery,
-  ): Promise<{
+  async search(query: PropertySearchQuery): Promise<{
     items: readonly unknown[];
     total: number;
     page: number;
