@@ -26,7 +26,12 @@ import { PropertyExtrasController } from './presentation/property-extras.control
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule],
-  controllers: [PropertyTypesController, PropertyMasterController, PropertyDetailsController, PropertyExtrasController],
+  controllers: [
+    PropertyTypesController,
+    PropertyMasterController,
+    PropertyDetailsController,
+    PropertyExtrasController,
+  ],
   providers: [
     AuthorizationGuard,
     CreatePropertyTypeUseCase,
@@ -34,14 +39,31 @@ import { PropertyExtrasController } from './presentation/property-extras.control
     GetPropertyTypeUseCase,
     ListPropertyTypesUseCase,
     UpdatePropertyTypeUseCase,
-    { provide: PROPERTY_TYPE_REPOSITORY, useClass: PrismaPropertyTypeRepository },
+    {
+      provide: PROPERTY_TYPE_REPOSITORY,
+      useClass: PrismaPropertyTypeRepository,
+    },
     PropertyMasterService,
-    { provide: PROPERTY_MASTER_REPOSITORY, useClass: PrismaPropertyMasterStore },
+    {
+      provide: PROPERTY_MASTER_REPOSITORY,
+      useClass: PrismaPropertyMasterStore,
+    },
     PropertyDetailsService,
-    { provide: PROPERTY_DETAILS_REPOSITORY, useClass: PrismaPropertyDetailsRepository },
+    {
+      provide: PROPERTY_DETAILS_REPOSITORY,
+      useClass: PrismaPropertyDetailsRepository,
+    },
     PropertyExtrasService,
-    { provide: PROPERTY_EXTRAS_REPOSITORY, useClass: PrismaPropertyExtrasRepository },
+    {
+      provide: PROPERTY_EXTRAS_REPOSITORY,
+      useClass: PrismaPropertyExtrasRepository,
+    },
   ],
-  exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY, PROPERTY_DETAILS_REPOSITORY, PROPERTY_EXTRAS_REPOSITORY],
+  exports: [
+    PROPERTY_TYPE_REPOSITORY,
+    PROPERTY_MASTER_REPOSITORY,
+    PROPERTY_DETAILS_REPOSITORY,
+    PROPERTY_EXTRAS_REPOSITORY,
+  ],
 })
 export class PropertyModule {}

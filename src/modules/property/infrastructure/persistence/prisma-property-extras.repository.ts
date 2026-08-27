@@ -2,54 +2,920 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
-import { hashSensitive, maskSensitive, validateCertificateDates, validateFinancialInvariants, validateLegalInvariants, validateMedia, validateSeoInvariants, validateUtilityInvariants, PropertyExtrasConflictError, PropertyExtrasInvalidStateError, PropertyExtrasNotFoundError, type CertificateCreateInput, type CertificateUpdateInput, type EnvironmentPatch, type FeaturePatch, type FinancialPatch, type JsonValue, type LegalPatch, type MediaCreateInput, type MediaUpdateInput, type SecurityPatch, type SeoPatch, type UtilityPatch } from '../../domain/property-extras.js';
-import type { PropertyExtrasActor, PropertyExtrasRepository } from '../../domain/repositories/property-extras.repository.js';
+import {
+  hashSensitive,
+  maskSensitive,
+  validateCertificateDates,
+  validateFinancialInvariants,
+  validateLegalInvariants,
+  validateMedia,
+  validateSeoInvariants,
+  validateUtilityInvariants,
+  PropertyExtrasConflictError,
+  PropertyExtrasInvalidStateError,
+  PropertyExtrasNotFoundError,
+  type CertificateCreateInput,
+  type CertificateUpdateInput,
+  type EnvironmentPatch,
+  type FeaturePatch,
+  type FinancialPatch,
+  type JsonValue,
+  type LegalPatch,
+  type MediaCreateInput,
+  type MediaUpdateInput,
+  type SecurityPatch,
+  type SeoPatch,
+  type UtilityPatch,
+} from '../../domain/property-extras.js';
+import type {
+  PropertyExtrasActor,
+  PropertyExtrasRepository,
+} from '../../domain/repositories/property-extras.repository.js';
 
-type Tx=Prisma.TransactionClient;
-const j=(v:JsonValue|null|undefined):Prisma.InputJsonValue|typeof Prisma.JsonNull|undefined=>v===undefined?undefined:v===null?Prisma.JsonNull:v as Prisma.InputJsonValue;
-const sid=(a:PropertyExtrasActor)=>a.actorUuid??null;
-const s=(v:string|null|undefined)=>v===undefined?undefined:v===null?null:v.trim();
-const pick=<T>(v:T|undefined,c:T):T=>v===undefined?c:v;
-const d=(v:unknown)=>v==null?null:String(v);
+type Tx = Prisma.TransactionClient;
+const j = (
+  v: JsonValue | null | undefined,
+): Prisma.InputJsonValue | typeof Prisma.JsonNull | undefined =>
+  v === undefined
+    ? undefined
+    : v === null
+      ? Prisma.JsonNull
+      : (v as Prisma.InputJsonValue);
+const sid = (a: PropertyExtrasActor) => a.actorUuid ?? null;
+const s = (v: string | null | undefined) =>
+  v === undefined ? undefined : v === null ? null : v.trim();
+const pick = <T>(v: T | undefined, c: T): T => (v === undefined ? c : v);
+const d = (v: unknown) => (v == null ? null : String(v));
 
 @Injectable()
-export class PrismaPropertyExtrasRepository implements PropertyExtrasRepository {
-  constructor(private readonly prisma:PrismaService){}
-  private async propertyId(client:PrismaService|Tx,uuid:string){const p=await client.property.findFirst({where:{uuid,deletedAt:null},select:{id:true,slug:true}});if(!p)throw new PropertyExtrasNotFoundError('Property not found');return p.id;}
-  async getPropertySlug(uuid:string){const p=await this.prisma.property.findFirst({where:{uuid,deletedAt:null},select:{slug:true}});if(!p)throw new PropertyExtrasNotFoundError('Property not found');return p.slug;}
-  private async lock(tx:Tx,id:bigint){await tx.$queryRaw`SELECT id FROM properties WHERE id=${id} FOR UPDATE`;}
-  private async run<T>(fn:()=>Promise<T>):Promise<T>{try{return await fn();}catch(e:unknown){if(e instanceof PropertyExtrasNotFoundError||e instanceof PropertyExtrasConflictError||e instanceof PropertyExtrasInvalidStateError)throw e;if(e instanceof Prisma.PrismaClientKnownRequestError){if(e.code==='P2002')throw new PropertyExtrasConflictError('Duplicate protected property resource');if(e.code==='P2003')throw new PropertyExtrasInvalidStateError('Referenced resource is invalid');if(e.code==='P2025')throw new PropertyExtrasNotFoundError('Property resource not found');}throw e;}}
-  async getUtilities(uuid:string){const id=await this.propertyId(this.prisma,uuid);const r=await this.prisma.propertyUtility.findUnique({where:{propertyId:id}});if(!r)return null;return this.utility(r);}
-  async upsertUtilities(uuid:string,p:UtilityPatch,a:PropertyExtrasActor){return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);const c=await tx.propertyUtility.findUnique({where:{propertyId:id}});const m:UtilityPatch={electricityProvider:pick(p.electricityProvider,c?.electricityProvider??null),electricityCapacityKva:pick(p.electricityCapacityKva,d(c?.electricityCapacityKva)),electricityMeterNumberMasked:pick(p.electricityMeterNumberMasked,c?.electricityMeterNumberMasked??null),waterSource:pick(p.waterSource,c?.waterSource??'UNKNOWN'),waterBackupSource:pick(p.waterBackupSource,c?.waterBackupSource??null),gasType:pick(p.gasType,c?.gasType??'NONE'),internetFiber:pick(p.internetFiber,c?.internetFiber??false),internetProviders:pick(p.internetProviders,Array.isArray(c?.internetProviders)?(c.internetProviders as unknown[]).filter((x):x is string=>typeof x==='string'):null),sewageType:pick(p.sewageType,c?.sewageType??'NONE'),drainageType:pick(p.drainageType,c?.drainageType??'NONE'),drainageCondition:pick(p.drainageCondition,c?.drainageCondition??'UNKNOWN'),backupPowerType:pick(p.backupPowerType,c?.backupPowerType??'NONE'),backupPowerCapacityKva:pick(p.backupPowerCapacityKva,d(c?.backupPowerCapacityKva))};validateUtilityInvariants(m);const data={electricityProvider:s(m.electricityProvider),electricityCapacityKva:m.electricityCapacityKva,electricityMeterNumberMasked:s(m.electricityMeterNumberMasked),waterSource:m.waterSource,waterBackupSource:m.waterBackupSource,gasType:m.gasType,internetFiber:m.internetFiber,internetProviders:j(m.internetProviders),sewageType:m.sewageType,drainageType:m.drainageType,drainageCondition:m.drainageCondition,backupPowerType:m.backupPowerType,backupPowerCapacityKva:m.backupPowerCapacityKva,updatedBy:sid(a)};const r=c?await tx.propertyUtility.update({where:{id:c.id},data}):await tx.propertyUtility.create({data:{uuid:randomUUID(),propertyId:id,createdBy:sid(a),...data}});return this.utility(r);}));}
-  async getLegal(uuid:string){const id=await this.propertyId(this.prisma,uuid);const r=await this.prisma.propertyLegal.findUnique({where:{propertyId:id}});return r?this.legal(r):null;}
-  async upsertLegal(uuid:string,p:LegalPatch,a:PropertyExtrasActor){return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);const c=await tx.propertyLegal.findUnique({where:{propertyId:id}});const m:LegalPatch={ownershipType:pick(p.ownershipType,c?.ownershipType??'OTHER'),ownershipStatus:pick(p.ownershipStatus,c?.ownershipStatus??'UNKNOWN'),verificationStatus:pick(p.verificationStatus,c?.verificationStatus??'UNVERIFIED'),verifiedAt:pick(p.verifiedAt,c?.verifiedAt?.toISOString()??null),verificationSource:pick(p.verificationSource,c?.verificationSource??null),zoningZone:pick(p.zoningZone,c?.zoningZone??null),allowedUse:pick(p.allowedUse,c?.allowedUse??null),buildingCoverageRatio:pick(p.buildingCoverageRatio,d(c?.buildingCoverageRatio)),floorAreaRatio:pick(p.floorAreaRatio,d(c?.floorAreaRatio)),disputes:pick(p.disputes,c?.disputes as JsonValue|null),encumbrances:pick(p.encumbrances,c?.encumbrances as JsonValue|null),ownerReference:p.ownerReference};validateLegalInvariants(m);const owner=p.ownerReference===undefined?(undefined):p.ownerReference===null?null:p.ownerReference;const data={ownershipType:m.ownershipType,ownershipStatus:m.ownershipStatus,verificationStatus:m.verificationStatus,verifiedAt:m.verifiedAt?new Date(m.verifiedAt):null,verificationSource:s(m.verificationSource),zoningZone:s(m.zoningZone),allowedUse:s(m.allowedUse),buildingCoverageRatio:m.buildingCoverageRatio,floorAreaRatio:m.floorAreaRatio,disputes:j(m.disputes),encumbrances:j(m.encumbrances),updatedBy:sid(a),...(owner!==undefined?{ownerReferenceHash:owner===null?null:hashSensitive(owner),ownerReferenceMasked:owner===null?null:maskSensitive(owner)}:{})};const r=c?await tx.propertyLegal.update({where:{id:c.id},data}):await tx.propertyLegal.create({data:{uuid:randomUUID(),propertyId:id,createdBy:sid(a),ownerReferenceHash:owner===undefined?null:owner===null?null:hashSensitive(owner),ownerReferenceMasked:owner===undefined?null:owner===null?null:maskSensitive(owner),...data}});return this.legal(r);}));}
-  async listCertificates(uuid:string){const id=await this.propertyId(this.prisma,uuid);return (await this.prisma.propertyCertificate.findMany({where:{propertyId:id,deletedAt:null},orderBy:{createdAt:'asc'}})).map(r=>this.certificate(r));}
-  async createCertificate(uuid:string,p:CertificateCreateInput,a:PropertyExtrasActor){validateCertificateDates(p.issueDate,p.expiryDate,p.status);return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);const r=await tx.propertyCertificate.create({data:{uuid:randomUUID(),propertyId:id,type:p.type,numberHash:hashSensitive(p.number),numberMasked:maskSensitive(p.number),status:p.status??'UNKNOWN',issueDate:p.issueDate?new Date(p.issueDate):null,expiryDate:p.expiryDate?new Date(p.expiryDate):null,issuer:s(p.issuer),createdBy:sid(a),updatedBy:sid(a)}});return this.certificate(r);}));}
-  async updateCertificate(uuid:string,cu:string,p:CertificateUpdateInput,a:PropertyExtrasActor){return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);const c=await tx.propertyCertificate.findFirst({where:{uuid:cu,propertyId:id,deletedAt:null}});if(!c)throw new PropertyExtrasNotFoundError('Certificate not found');const number=p.number===undefined?undefined:p.number;const issue=p.issueDate===undefined?(c.issueDate?.toISOString().slice(0,10)??null):p.issueDate;const expiry=p.expiryDate===undefined?(c.expiryDate?.toISOString().slice(0,10)??null):p.expiryDate;const status=p.status===undefined?c.status:p.status;validateCertificateDates(issue,expiry,status);const r=await tx.propertyCertificate.update({where:{id:c.id},data:{type:p.type,numberHash:number===undefined?undefined:hashSensitive(number),numberMasked:number===undefined?undefined:maskSensitive(number),status,issueDate:issue===null?null:issue?new Date(issue):undefined,expiryDate:expiry===null?null:expiry?new Date(expiry):undefined,issuer:s(p.issuer),updatedBy:sid(a)}});return this.certificate(r);}));}
-  async deleteCertificate(uuid:string,cu:string,a:PropertyExtrasActor){const id=await this.propertyId(this.prisma,uuid);const r=await this.prisma.propertyCertificate.findFirst({where:{uuid:cu,propertyId:id,deletedAt:null},select:{id:true}});if(!r)throw new PropertyExtrasNotFoundError('Certificate not found');await this.prisma.propertyCertificate.update({where:{id:r.id},data:{deletedAt:new Date(),updatedBy:sid(a)}});}
-  async getFinancial(uuid:string){const id=await this.propertyId(this.prisma,uuid);const r=await this.prisma.propertyFinancial.findUnique({where:{propertyId:id}});return r?this.financial(r):null;}
-  async upsertFinancial(uuid:string,p:FinancialPatch,a:PropertyExtrasActor){return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);const c=await tx.propertyFinancial.findUnique({where:{propertyId:id}});const m:FinancialPatch={askingPrice:pick(p.askingPrice,d(c?.askingPrice)),currency:pick(p.currency,c?.currency??'IDR'),negotiable:pick(p.negotiable,c?.negotiable??false),annualPropertyTax:pick(p.annualPropertyTax,d(c?.annualPropertyTax)),monthlyMaintenance:pick(p.monthlyMaintenance,d(c?.monthlyMaintenance)),monthlyUtilityCost:pick(p.monthlyUtilityCost,d(c?.monthlyUtilityCost)),monthlyServiceCharges:pick(p.monthlyServiceCharges,d(c?.monthlyServiceCharges)),rentalYield:pick(p.rentalYield,d(c?.rentalYield)),annualRentalIncome:pick(p.annualRentalIncome,d(c?.annualRentalIncome)),capitalGrowth:pick(p.capitalGrowth,d(c?.capitalGrowth)),investmentRating:pick(p.investmentRating,c?.investmentRating??'NOT_RATED')};validateFinancialInvariants(m);const r=c?await tx.propertyFinancial.update({where:{id:c.id},data:{...m,updatedBy:sid(a)}}):await tx.propertyFinancial.create({data:{uuid:randomUUID(),propertyId:id,createdBy:sid(a),updatedBy:sid(a),...m}});return this.financial(r);}));}
-  async getFeatures(uuid:string){const id=await this.propertyId(this.prisma,uuid);const r=await this.prisma.propertyFeatures.findUnique({where:{propertyId:id}});return r?this.features(r):null;}
-  async upsertFeatures(uuid:string,p:FeaturePatch,a:PropertyExtrasActor){return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);const r=await tx.propertyFeatures.upsert({where:{propertyId:id},create:{uuid:randomUUID(),propertyId:id,createdBy:sid(a),updatedBy:sid(a),...p},update:{...p,updatedBy:sid(a)}});return this.features(r);}));}
-  async getSecurity(uuid:string){const id=await this.propertyId(this.prisma,uuid);const r=await this.prisma.propertySecurity.findUnique({where:{propertyId:id}});return r?this.security(r):null;}
-  async upsertSecurity(uuid:string,p:SecurityPatch,a:PropertyExtrasActor){return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);const r=await tx.propertySecurity.upsert({where:{propertyId:id},create:{uuid:randomUUID(),propertyId:id,createdBy:sid(a),updatedBy:sid(a),...p},update:{...p,updatedBy:sid(a)}});return this.security(r);}));}
-  async getEnvironment(uuid:string){const id=await this.propertyId(this.prisma,uuid);const r=await this.prisma.propertyEnvironment.findUnique({where:{propertyId:id}});return r?this.environment(r):null;}
-  async upsertEnvironment(uuid:string,p:EnvironmentPatch,a:PropertyExtrasActor){return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);const r=await tx.propertyEnvironment.upsert({where:{propertyId:id},create:{uuid:randomUUID(),propertyId:id,createdBy:sid(a),updatedBy:sid(a),...p},update:{...p,updatedBy:sid(a)}});return this.environment(r);}));}
-  async getSeo(uuid:string){const id=await this.propertyId(this.prisma,uuid);const r=await this.prisma.propertySeo.findUnique({where:{propertyId:id}});return r?this.seo(r):null;}
-  async upsertSeo(uuid:string,p:SeoPatch,a:PropertyExtrasActor){return this.run(()=>this.prisma.$transaction(async tx=>{const prop=await tx.property.findFirst({where:{uuid,deletedAt:null},select:{id:true,slug:true}});if(!prop)throw new PropertyExtrasNotFoundError('Property not found');const c=await tx.propertySeo.findUnique({where:{propertyId:prop.id}});const m:SeoPatch={title:pick(p.title,c?.title??null),description:pick(p.description,c?.description??null),keywords:pick(p.keywords,c?.keywords as JsonValue|null),canonicalUrl:pick(p.canonicalUrl,c?.canonicalUrl??null),ogImageUrl:pick(p.ogImageUrl,c?.ogImageUrl??null),robots:pick(p.robots,c?.robots??'INDEX_FOLLOW'),metadataVersion:pick(p.metadataVersion,c?.metadataVersion??'1.0'),schemaType:pick(p.schemaType,c?.schemaType??null),source:pick(p.source,c?.source??null),tags:pick(p.tags,c?.tags as JsonValue|null),customFields:pick(p.customFields,c?.customFields as JsonValue|null)};validateSeoInvariants(prop.slug,m);const data={...m,keywords:j(m.keywords),tags:j(m.tags),customFields:j(m.customFields),updatedBy:sid(a)};const r=c?await tx.propertySeo.update({where:{id:c.id},data}):await tx.propertySeo.create({data:{uuid:randomUUID(),propertyId:prop.id,createdBy:sid(a),...data}});return this.seo(r);}));}
-  async listMedia(uuid:string){const id=await this.propertyId(this.prisma,uuid);return (await this.prisma.propertyMedia.findMany({where:{propertyId:id,deletedAt:null},orderBy:[{sortOrder:'asc'},{id:'asc'}]})).map(r=>this.media(r));}
-  async addMedia(uuid:string,p:MediaCreateInput,a:PropertyExtrasActor){validateMedia(p);return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);if(p.isCover)await this.lock(tx,id);if(p.isCover)await tx.propertyMedia.updateMany({where:{propertyId:id,deletedAt:null,isCover:true},data:{isCover:false,updatedBy:sid(a)}});const r=await tx.propertyMedia.create({data:{uuid:randomUUID(),propertyId:id,type:p.type,category:p.category??'OTHER',url:p.url.trim(),thumbnailUrl:s(p.thumbnailUrl),mimeType:p.mimeType.toLowerCase().trim(),extension:s(p.extension)?.replace(/^\./,'').toLowerCase(),fileSizeBytes:p.fileSizeBytes,widthPx:p.widthPx,heightPx:p.heightPx,durationMs:p.durationMs,sortOrder:p.sortOrder??0,isCover:p.isCover??false,metadata:j(p.metadata),provider:s(p.provider),storageKey:s(p.storageKey),createdBy:sid(a),updatedBy:sid(a)}});return this.media(r);}));}
-  async updateMedia(uuid:string,mu:string,p:MediaUpdateInput,a:PropertyExtrasActor){return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);const c=await tx.propertyMedia.findFirst({where:{uuid:mu,propertyId:id,deletedAt:null}});if(!c)throw new PropertyExtrasNotFoundError('Media not found');const m:MediaUpdateInput={type:pick(p.type,c.type),category:pick(p.category,c.category),url:pick(p.url,c.url),thumbnailUrl:pick(p.thumbnailUrl,c.thumbnailUrl),mimeType:pick(p.mimeType,c.mimeType),extension:pick(p.extension,c.extension),fileSizeBytes:pick(p.fileSizeBytes,c.fileSizeBytes),widthPx:pick(p.widthPx,c.widthPx),heightPx:pick(p.heightPx,c.heightPx),durationMs:pick(p.durationMs,c.durationMs),sortOrder:pick(p.sortOrder,c.sortOrder),isCover:pick(p.isCover,c.isCover),metadata:pick(p.metadata,c.metadata as JsonValue|null),provider:pick(p.provider,c.provider),storageKey:pick(p.storageKey,c.storageKey)};validateMedia(m);if(m.isCover) {if(m.type!=='IMAGE')throw new PropertyExtrasInvalidStateError('Only IMAGE media can be a cover');await this.lock(tx,id);await tx.propertyMedia.updateMany({where:{propertyId:id,deletedAt:null,isCover:true,id:{not:c.id}},data:{isCover:false,updatedBy:sid(a)}});}const r=await tx.propertyMedia.update({where:{id:c.id},data:{type:m.type,category:m.category,url:m.url,thumbnailUrl:m.thumbnailUrl,mimeType:m.mimeType,extension:m.extension,fileSizeBytes:m.fileSizeBytes,widthPx:m.widthPx,heightPx:m.heightPx,durationMs:m.durationMs,sortOrder:m.sortOrder,isCover:m.isCover,metadata:j(m.metadata),provider:m.provider,storageKey:m.storageKey,updatedBy:sid(a)}});return this.media(r);}));}
-  async deleteMedia(uuid:string,mu:string,a:PropertyExtrasActor){const id=await this.propertyId(this.prisma,uuid);const r=await this.prisma.propertyMedia.findFirst({where:{uuid:mu,propertyId:id,deletedAt:null},select:{id:true}});if(!r)throw new PropertyExtrasNotFoundError('Media not found');await this.prisma.propertyMedia.update({where:{id:r.id},data:{deletedAt:new Date(),isCover:false,updatedBy:sid(a)}});}
-  async setCover(uuid:string,mu:string,a:PropertyExtrasActor){return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);await this.lock(tx,id);const c=await tx.propertyMedia.findFirst({where:{uuid:mu,propertyId:id,deletedAt:null}});if(!c)throw new PropertyExtrasNotFoundError('Media not found');if(c.type!=='IMAGE')throw new PropertyExtrasInvalidStateError('Only IMAGE media can be a cover');await tx.propertyMedia.updateMany({where:{propertyId:id,deletedAt:null,isCover:true},data:{isCover:false,updatedBy:sid(a)}});return this.media(await tx.propertyMedia.update({where:{id:c.id},data:{isCover:true,updatedBy:sid(a)}}));}));}
-  async reorderMedia(uuid:string,ids:string[],a:PropertyExtrasActor){return this.run(()=>this.prisma.$transaction(async tx=>{const id=await this.propertyId(tx,uuid);const rows=await tx.propertyMedia.findMany({where:{propertyId:id,deletedAt:null},select:{id:true,uuid:true}});if(rows.length!==ids.length||new Set(ids).size!==ids.length||rows.some(r=>!ids.includes(r.uuid)))throw new PropertyExtrasInvalidStateError('Reorder must include every active media resource belonging to this property');const by=new Map(rows.map(r=>[r.uuid,r.id]));for(const[i,x]of ids.entries())await tx.propertyMedia.update({where:{id:by.get(x)},data:{sortOrder:i,updatedBy:sid(a)}});return (await tx.propertyMedia.findMany({where:{propertyId:id,deletedAt:null},orderBy:[{sortOrder:'asc'},{id:'asc'}]})).map(r=>this.media(r));}));}
-  private utility(r:Prisma.PropertyUtilityGetPayload<object>){return {uuid:r.uuid,electricityProvider:r.electricityProvider,electricityCapacityKva:d(r.electricityCapacityKva),electricityMeterNumberMasked:r.electricityMeterNumberMasked,waterSource:r.waterSource,waterBackupSource:r.waterBackupSource,gasType:r.gasType,internetFiber:r.internetFiber,internetProviders:r.internetProviders,sewageType:r.sewageType,drainageType:r.drainageType,drainageCondition:r.drainageCondition,backupPowerType:r.backupPowerType,backupPowerCapacityKva:d(r.backupPowerCapacityKva),createdAt:r.createdAt,updatedAt:r.updatedAt};}
-  private legal(r:Prisma.PropertyLegalGetPayload<object>){return {uuid:r.uuid,ownershipType:r.ownershipType,ownershipStatus:r.ownershipStatus,ownerReferenceMasked:r.ownerReferenceMasked,verificationStatus:r.verificationStatus,verifiedAt:r.verifiedAt,verified:r.verificationStatus==='VERIFIED',verificationSource:r.verificationSource,zoningZone:r.zoningZone,allowedUse:r.allowedUse,buildingCoverageRatio:d(r.buildingCoverageRatio),floorAreaRatio:d(r.floorAreaRatio),disputes:r.disputes,encumbrances:r.encumbrances,createdAt:r.createdAt,updatedAt:r.updatedAt};}
-  private certificate(r:Prisma.PropertyCertificateGetPayload<object>){return {uuid:r.uuid,type:r.type,numberMasked:r.numberMasked,status:r.status,issueDate:r.issueDate,expiryDate:r.expiryDate,issuer:r.issuer,createdAt:r.createdAt,updatedAt:r.updatedAt};}
-  private financial(r:Prisma.PropertyFinancialGetPayload<object>){return {uuid:r.uuid,askingPrice:d(r.askingPrice),currency:r.currency,negotiable:r.negotiable,annualPropertyTax:d(r.annualPropertyTax),monthlyMaintenance:d(r.monthlyMaintenance),monthlyUtilityCost:d(r.monthlyUtilityCost),monthlyServiceCharges:d(r.monthlyServiceCharges),rentalYield:d(r.rentalYield),annualRentalIncome:d(r.annualRentalIncome),capitalGrowth:d(r.capitalGrowth),investmentRating:r.investmentRating,createdAt:r.createdAt,updatedAt:r.updatedAt};}
-  private features(r:Prisma.PropertyFeaturesGetPayload<object>){return {uuid:r.uuid,petFriendly:r.petFriendly,childFriendly:r.childFriendly,wheelchairAccessible:r.wheelchairAccessible,elderlyFriendly:r.elderlyFriendly,smokingAllowed:r.smokingAllowed,eventsAllowed:r.eventsAllowed,rentalAllowed:r.rentalAllowed,createdAt:r.createdAt,updatedAt:r.updatedAt};}
-  private security(r:Prisma.PropertySecurityGetPayload<object>){return {uuid:r.uuid,securityGuard:r.securityGuard,cctv:r.cctv,accessControl:r.accessControl,gatedCommunity:r.gatedCommunity,smartLock:r.smartLock,alarmSystem:r.alarmSystem,createdAt:r.createdAt,updatedAt:r.updatedAt};}
-  private environment(r:Prisma.PropertyEnvironmentGetPayload<object>){return {uuid:r.uuid,greenBuilding:r.greenBuilding,solarPower:r.solarPower,rainwaterHarvesting:r.rainwaterHarvesting,waterSaving:r.waterSaving,greenCertification:r.greenCertification,createdAt:r.createdAt,updatedAt:r.updatedAt};}
-  private seo(r:Prisma.PropertySeoGetPayload<object>){return {uuid:r.uuid,title:r.title,description:r.description,keywords:r.keywords,canonicalUrl:r.canonicalUrl,ogImageUrl:r.ogImageUrl,robots:r.robots,metadataVersion:r.metadataVersion,schemaType:r.schemaType,source:r.source,tags:r.tags,customFields:r.customFields,createdAt:r.createdAt,updatedAt:r.updatedAt};}
-  private media(r:Prisma.PropertyMediaGetPayload<object>){return {uuid:r.uuid,type:r.type,category:r.category,url:r.url,thumbnailUrl:r.thumbnailUrl,mimeType:r.mimeType,extension:r.extension,fileSizeBytes:r.fileSizeBytes,widthPx:r.widthPx,heightPx:r.heightPx,durationMs:r.durationMs,sortOrder:r.sortOrder,isCover:r.isCover,metadata:r.metadata,provider:r.provider,storageKey:r.storageKey,createdAt:r.createdAt,updatedAt:r.updatedAt};}
+export class PrismaPropertyExtrasRepository
+  implements PropertyExtrasRepository
+{
+  constructor(private readonly prisma: PrismaService) {}
+  private async propertyId(client: PrismaService | Tx, uuid: string) {
+    const p = await client.property.findFirst({
+      where: { uuid, deletedAt: null },
+      select: { id: true, slug: true },
+    });
+    if (!p) throw new PropertyExtrasNotFoundError('Property not found');
+    return p.id;
+  }
+  async getPropertySlug(uuid: string) {
+    const p = await this.prisma.property.findFirst({
+      where: { uuid, deletedAt: null },
+      select: { slug: true },
+    });
+    if (!p) throw new PropertyExtrasNotFoundError('Property not found');
+    return p.slug;
+  }
+  private async lock(tx: Tx, id: bigint) {
+    await tx.$queryRaw`SELECT id FROM properties WHERE id=${id} FOR UPDATE`;
+  }
+  private async run<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (e: unknown) {
+      if (
+        e instanceof PropertyExtrasNotFoundError ||
+        e instanceof PropertyExtrasConflictError ||
+        e instanceof PropertyExtrasInvalidStateError
+      )
+        throw e;
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        if (e.code === 'P2002')
+          throw new PropertyExtrasConflictError(
+            'Duplicate protected property resource',
+          );
+        if (e.code === 'P2003')
+          throw new PropertyExtrasInvalidStateError(
+            'Referenced resource is invalid',
+          );
+        if (e.code === 'P2025')
+          throw new PropertyExtrasNotFoundError('Property resource not found');
+      }
+      throw e;
+    }
+  }
+  async getUtilities(uuid: string) {
+    const id = await this.propertyId(this.prisma, uuid);
+    const r = await this.prisma.propertyUtility.findUnique({
+      where: { propertyId: id },
+    });
+    if (!r) return null;
+    return this.utility(r);
+  }
+  async upsertUtilities(uuid: string, p: UtilityPatch, a: PropertyExtrasActor) {
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        const c = await tx.propertyUtility.findUnique({
+          where: { propertyId: id },
+        });
+        const m: UtilityPatch = {
+          electricityProvider: pick(
+            p.electricityProvider,
+            c?.electricityProvider ?? null,
+          ),
+          electricityCapacityKva: pick(
+            p.electricityCapacityKva,
+            d(c?.electricityCapacityKva),
+          ),
+          electricityMeterNumberMasked: pick(
+            p.electricityMeterNumberMasked,
+            c?.electricityMeterNumberMasked ?? null,
+          ),
+          waterSource: pick(p.waterSource, c?.waterSource ?? 'UNKNOWN'),
+          waterBackupSource: pick(
+            p.waterBackupSource,
+            c?.waterBackupSource ?? null,
+          ),
+          gasType: pick(p.gasType, c?.gasType ?? 'NONE'),
+          internetFiber: pick(p.internetFiber, c?.internetFiber ?? false),
+          internetProviders: pick(
+            p.internetProviders,
+            Array.isArray(c?.internetProviders)
+              ? (c.internetProviders as unknown[]).filter(
+                  (x): x is string => typeof x === 'string',
+                )
+              : null,
+          ),
+          sewageType: pick(p.sewageType, c?.sewageType ?? 'NONE'),
+          drainageType: pick(p.drainageType, c?.drainageType ?? 'NONE'),
+          drainageCondition: pick(
+            p.drainageCondition,
+            c?.drainageCondition ?? 'UNKNOWN',
+          ),
+          backupPowerType: pick(
+            p.backupPowerType,
+            c?.backupPowerType ?? 'NONE',
+          ),
+          backupPowerCapacityKva: pick(
+            p.backupPowerCapacityKva,
+            d(c?.backupPowerCapacityKva),
+          ),
+        };
+        validateUtilityInvariants(m);
+        const data = {
+          electricityProvider: s(m.electricityProvider),
+          electricityCapacityKva: m.electricityCapacityKva,
+          electricityMeterNumberMasked: s(m.electricityMeterNumberMasked),
+          waterSource: m.waterSource,
+          waterBackupSource: m.waterBackupSource,
+          gasType: m.gasType,
+          internetFiber: m.internetFiber,
+          internetProviders: j(m.internetProviders),
+          sewageType: m.sewageType,
+          drainageType: m.drainageType,
+          drainageCondition: m.drainageCondition,
+          backupPowerType: m.backupPowerType,
+          backupPowerCapacityKva: m.backupPowerCapacityKva,
+          updatedBy: sid(a),
+        };
+        const r = c
+          ? await tx.propertyUtility.update({ where: { id: c.id }, data })
+          : await tx.propertyUtility.create({
+              data: {
+                uuid: randomUUID(),
+                propertyId: id,
+                createdBy: sid(a),
+                ...data,
+              },
+            });
+        return this.utility(r);
+      }),
+    );
+  }
+  async getLegal(uuid: string) {
+    const id = await this.propertyId(this.prisma, uuid);
+    const r = await this.prisma.propertyLegal.findUnique({
+      where: { propertyId: id },
+    });
+    return r ? this.legal(r) : null;
+  }
+  async upsertLegal(uuid: string, p: LegalPatch, a: PropertyExtrasActor) {
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        const c = await tx.propertyLegal.findUnique({
+          where: { propertyId: id },
+        });
+        const m: LegalPatch = {
+          ownershipType: pick(p.ownershipType, c?.ownershipType ?? 'OTHER'),
+          ownershipStatus: pick(
+            p.ownershipStatus,
+            c?.ownershipStatus ?? 'UNKNOWN',
+          ),
+          verificationStatus: pick(
+            p.verificationStatus,
+            c?.verificationStatus ?? 'UNVERIFIED',
+          ),
+          verifiedAt: pick(p.verifiedAt, c?.verifiedAt?.toISOString() ?? null),
+          verificationSource: pick(
+            p.verificationSource,
+            c?.verificationSource ?? null,
+          ),
+          zoningZone: pick(p.zoningZone, c?.zoningZone ?? null),
+          allowedUse: pick(p.allowedUse, c?.allowedUse ?? null),
+          buildingCoverageRatio: pick(
+            p.buildingCoverageRatio,
+            d(c?.buildingCoverageRatio),
+          ),
+          floorAreaRatio: pick(p.floorAreaRatio, d(c?.floorAreaRatio)),
+          disputes: pick(p.disputes, c?.disputes as JsonValue | null),
+          encumbrances: pick(
+            p.encumbrances,
+            c?.encumbrances as JsonValue | null,
+          ),
+          ownerReference: p.ownerReference,
+        };
+        validateLegalInvariants(m);
+        const owner =
+          p.ownerReference === undefined
+            ? undefined
+            : p.ownerReference === null
+              ? null
+              : p.ownerReference;
+        const data = {
+          ownershipType: m.ownershipType,
+          ownershipStatus: m.ownershipStatus,
+          verificationStatus: m.verificationStatus,
+          verifiedAt: m.verifiedAt ? new Date(m.verifiedAt) : null,
+          verificationSource: s(m.verificationSource),
+          zoningZone: s(m.zoningZone),
+          allowedUse: s(m.allowedUse),
+          buildingCoverageRatio: m.buildingCoverageRatio,
+          floorAreaRatio: m.floorAreaRatio,
+          disputes: j(m.disputes),
+          encumbrances: j(m.encumbrances),
+          updatedBy: sid(a),
+          ...(owner !== undefined
+            ? {
+                ownerReferenceHash:
+                  owner === null ? null : hashSensitive(owner),
+                ownerReferenceMasked:
+                  owner === null ? null : maskSensitive(owner),
+              }
+            : {}),
+        };
+        const r = c
+          ? await tx.propertyLegal.update({ where: { id: c.id }, data })
+          : await tx.propertyLegal.create({
+              data: {
+                uuid: randomUUID(),
+                propertyId: id,
+                createdBy: sid(a),
+                ownerReferenceHash:
+                  owner === undefined
+                    ? null
+                    : owner === null
+                      ? null
+                      : hashSensitive(owner),
+                ownerReferenceMasked:
+                  owner === undefined
+                    ? null
+                    : owner === null
+                      ? null
+                      : maskSensitive(owner),
+                ...data,
+              },
+            });
+        return this.legal(r);
+      }),
+    );
+  }
+  async listCertificates(uuid: string) {
+    const id = await this.propertyId(this.prisma, uuid);
+    return (
+      await this.prisma.propertyCertificate.findMany({
+        where: { propertyId: id, deletedAt: null },
+        orderBy: { createdAt: 'asc' },
+      })
+    ).map((r) => this.certificate(r));
+  }
+  async createCertificate(
+    uuid: string,
+    p: CertificateCreateInput,
+    a: PropertyExtrasActor,
+  ) {
+    validateCertificateDates(p.issueDate, p.expiryDate, p.status);
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        const r = await tx.propertyCertificate.create({
+          data: {
+            uuid: randomUUID(),
+            propertyId: id,
+            type: p.type,
+            numberHash: hashSensitive(p.number),
+            numberMasked: maskSensitive(p.number),
+            status: p.status ?? 'UNKNOWN',
+            issueDate: p.issueDate ? new Date(p.issueDate) : null,
+            expiryDate: p.expiryDate ? new Date(p.expiryDate) : null,
+            issuer: s(p.issuer),
+            createdBy: sid(a),
+            updatedBy: sid(a),
+          },
+        });
+        return this.certificate(r);
+      }),
+    );
+  }
+  async updateCertificate(
+    uuid: string,
+    cu: string,
+    p: CertificateUpdateInput,
+    a: PropertyExtrasActor,
+  ) {
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        const c = await tx.propertyCertificate.findFirst({
+          where: { uuid: cu, propertyId: id, deletedAt: null },
+        });
+        if (!c) throw new PropertyExtrasNotFoundError('Certificate not found');
+        const number = p.number === undefined ? undefined : p.number;
+        const issue =
+          p.issueDate === undefined
+            ? (c.issueDate?.toISOString().slice(0, 10) ?? null)
+            : p.issueDate;
+        const expiry =
+          p.expiryDate === undefined
+            ? (c.expiryDate?.toISOString().slice(0, 10) ?? null)
+            : p.expiryDate;
+        const status = p.status === undefined ? c.status : p.status;
+        validateCertificateDates(issue, expiry, status);
+        const r = await tx.propertyCertificate.update({
+          where: { id: c.id },
+          data: {
+            type: p.type,
+            numberHash:
+              number === undefined ? undefined : hashSensitive(number),
+            numberMasked:
+              number === undefined ? undefined : maskSensitive(number),
+            status,
+            issueDate:
+              issue === null ? null : issue ? new Date(issue) : undefined,
+            expiryDate:
+              expiry === null ? null : expiry ? new Date(expiry) : undefined,
+            issuer: s(p.issuer),
+            updatedBy: sid(a),
+          },
+        });
+        return this.certificate(r);
+      }),
+    );
+  }
+  async deleteCertificate(uuid: string, cu: string, a: PropertyExtrasActor) {
+    const id = await this.propertyId(this.prisma, uuid);
+    const r = await this.prisma.propertyCertificate.findFirst({
+      where: { uuid: cu, propertyId: id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!r) throw new PropertyExtrasNotFoundError('Certificate not found');
+    await this.prisma.propertyCertificate.update({
+      where: { id: r.id },
+      data: { deletedAt: new Date(), updatedBy: sid(a) },
+    });
+  }
+  async getFinancial(uuid: string) {
+    const id = await this.propertyId(this.prisma, uuid);
+    const r = await this.prisma.propertyFinancial.findUnique({
+      where: { propertyId: id },
+    });
+    return r ? this.financial(r) : null;
+  }
+  async upsertFinancial(
+    uuid: string,
+    p: FinancialPatch,
+    a: PropertyExtrasActor,
+  ) {
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        const c = await tx.propertyFinancial.findUnique({
+          where: { propertyId: id },
+        });
+        const m: FinancialPatch = {
+          askingPrice: pick(p.askingPrice, d(c?.askingPrice)),
+          currency: pick(p.currency, c?.currency ?? 'IDR'),
+          negotiable: pick(p.negotiable, c?.negotiable ?? false),
+          annualPropertyTax: pick(p.annualPropertyTax, d(c?.annualPropertyTax)),
+          monthlyMaintenance: pick(
+            p.monthlyMaintenance,
+            d(c?.monthlyMaintenance),
+          ),
+          monthlyUtilityCost: pick(
+            p.monthlyUtilityCost,
+            d(c?.monthlyUtilityCost),
+          ),
+          monthlyServiceCharges: pick(
+            p.monthlyServiceCharges,
+            d(c?.monthlyServiceCharges),
+          ),
+          rentalYield: pick(p.rentalYield, d(c?.rentalYield)),
+          annualRentalIncome: pick(
+            p.annualRentalIncome,
+            d(c?.annualRentalIncome),
+          ),
+          capitalGrowth: pick(p.capitalGrowth, d(c?.capitalGrowth)),
+          investmentRating: pick(
+            p.investmentRating,
+            c?.investmentRating ?? 'NOT_RATED',
+          ),
+        };
+        validateFinancialInvariants(m);
+        const r = c
+          ? await tx.propertyFinancial.update({
+              where: { id: c.id },
+              data: { ...m, updatedBy: sid(a) },
+            })
+          : await tx.propertyFinancial.create({
+              data: {
+                uuid: randomUUID(),
+                propertyId: id,
+                createdBy: sid(a),
+                updatedBy: sid(a),
+                ...m,
+              },
+            });
+        return this.financial(r);
+      }),
+    );
+  }
+  async getFeatures(uuid: string) {
+    const id = await this.propertyId(this.prisma, uuid);
+    const r = await this.prisma.propertyFeatures.findUnique({
+      where: { propertyId: id },
+    });
+    return r ? this.features(r) : null;
+  }
+  async upsertFeatures(uuid: string, p: FeaturePatch, a: PropertyExtrasActor) {
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        const r = await tx.propertyFeatures.upsert({
+          where: { propertyId: id },
+          create: {
+            uuid: randomUUID(),
+            propertyId: id,
+            createdBy: sid(a),
+            updatedBy: sid(a),
+            ...p,
+          },
+          update: { ...p, updatedBy: sid(a) },
+        });
+        return this.features(r);
+      }),
+    );
+  }
+  async getSecurity(uuid: string) {
+    const id = await this.propertyId(this.prisma, uuid);
+    const r = await this.prisma.propertySecurity.findUnique({
+      where: { propertyId: id },
+    });
+    return r ? this.security(r) : null;
+  }
+  async upsertSecurity(uuid: string, p: SecurityPatch, a: PropertyExtrasActor) {
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        const r = await tx.propertySecurity.upsert({
+          where: { propertyId: id },
+          create: {
+            uuid: randomUUID(),
+            propertyId: id,
+            createdBy: sid(a),
+            updatedBy: sid(a),
+            ...p,
+          },
+          update: { ...p, updatedBy: sid(a) },
+        });
+        return this.security(r);
+      }),
+    );
+  }
+  async getEnvironment(uuid: string) {
+    const id = await this.propertyId(this.prisma, uuid);
+    const r = await this.prisma.propertyEnvironment.findUnique({
+      where: { propertyId: id },
+    });
+    return r ? this.environment(r) : null;
+  }
+  async upsertEnvironment(
+    uuid: string,
+    p: EnvironmentPatch,
+    a: PropertyExtrasActor,
+  ) {
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        const r = await tx.propertyEnvironment.upsert({
+          where: { propertyId: id },
+          create: {
+            uuid: randomUUID(),
+            propertyId: id,
+            createdBy: sid(a),
+            updatedBy: sid(a),
+            ...p,
+          },
+          update: { ...p, updatedBy: sid(a) },
+        });
+        return this.environment(r);
+      }),
+    );
+  }
+  async getSeo(uuid: string) {
+    const id = await this.propertyId(this.prisma, uuid);
+    const r = await this.prisma.propertySeo.findUnique({
+      where: { propertyId: id },
+    });
+    return r ? this.seo(r) : null;
+  }
+  async upsertSeo(uuid: string, p: SeoPatch, a: PropertyExtrasActor) {
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const prop = await tx.property.findFirst({
+          where: { uuid, deletedAt: null },
+          select: { id: true, slug: true },
+        });
+        if (!prop) throw new PropertyExtrasNotFoundError('Property not found');
+        const c = await tx.propertySeo.findUnique({
+          where: { propertyId: prop.id },
+        });
+        const m: SeoPatch = {
+          title: pick(p.title, c?.title ?? null),
+          description: pick(p.description, c?.description ?? null),
+          keywords: pick(p.keywords, c?.keywords as JsonValue | null),
+          canonicalUrl: pick(p.canonicalUrl, c?.canonicalUrl ?? null),
+          ogImageUrl: pick(p.ogImageUrl, c?.ogImageUrl ?? null),
+          robots: pick(p.robots, c?.robots ?? 'INDEX_FOLLOW'),
+          metadataVersion: pick(p.metadataVersion, c?.metadataVersion ?? '1.0'),
+          schemaType: pick(p.schemaType, c?.schemaType ?? null),
+          source: pick(p.source, c?.source ?? null),
+          tags: pick(p.tags, c?.tags as JsonValue | null),
+          customFields: pick(
+            p.customFields,
+            c?.customFields as JsonValue | null,
+          ),
+        };
+        validateSeoInvariants(prop.slug, m);
+        const data = {
+          ...m,
+          keywords: j(m.keywords),
+          tags: j(m.tags),
+          customFields: j(m.customFields),
+          updatedBy: sid(a),
+        };
+        const r = c
+          ? await tx.propertySeo.update({ where: { id: c.id }, data })
+          : await tx.propertySeo.create({
+              data: {
+                uuid: randomUUID(),
+                propertyId: prop.id,
+                createdBy: sid(a),
+                ...data,
+              },
+            });
+        return this.seo(r);
+      }),
+    );
+  }
+  async listMedia(uuid: string) {
+    const id = await this.propertyId(this.prisma, uuid);
+    return (
+      await this.prisma.propertyMedia.findMany({
+        where: { propertyId: id, deletedAt: null },
+        orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+      })
+    ).map((r) => this.media(r));
+  }
+  async addMedia(uuid: string, p: MediaCreateInput, a: PropertyExtrasActor) {
+    validateMedia(p);
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        if (p.isCover) await this.lock(tx, id);
+        if (p.isCover)
+          await tx.propertyMedia.updateMany({
+            where: { propertyId: id, deletedAt: null, isCover: true },
+            data: { isCover: false, updatedBy: sid(a) },
+          });
+        const r = await tx.propertyMedia.create({
+          data: {
+            uuid: randomUUID(),
+            propertyId: id,
+            type: p.type,
+            category: p.category ?? 'OTHER',
+            url: p.url.trim(),
+            thumbnailUrl: s(p.thumbnailUrl),
+            mimeType: p.mimeType.toLowerCase().trim(),
+            extension: s(p.extension)?.replace(/^\./, '').toLowerCase(),
+            fileSizeBytes: p.fileSizeBytes,
+            widthPx: p.widthPx,
+            heightPx: p.heightPx,
+            durationMs: p.durationMs,
+            sortOrder: p.sortOrder ?? 0,
+            isCover: p.isCover ?? false,
+            metadata: j(p.metadata),
+            provider: s(p.provider),
+            storageKey: s(p.storageKey),
+            createdBy: sid(a),
+            updatedBy: sid(a),
+          },
+        });
+        return this.media(r);
+      }),
+    );
+  }
+  async updateMedia(
+    uuid: string,
+    mu: string,
+    p: MediaUpdateInput,
+    a: PropertyExtrasActor,
+  ) {
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        const c = await tx.propertyMedia.findFirst({
+          where: { uuid: mu, propertyId: id, deletedAt: null },
+        });
+        if (!c) throw new PropertyExtrasNotFoundError('Media not found');
+        const m: MediaUpdateInput = {
+          type: pick(p.type, c.type),
+          category: pick(p.category, c.category),
+          url: pick(p.url, c.url),
+          thumbnailUrl: pick(p.thumbnailUrl, c.thumbnailUrl),
+          mimeType: pick(p.mimeType, c.mimeType),
+          extension: pick(p.extension, c.extension),
+          fileSizeBytes: pick(p.fileSizeBytes, c.fileSizeBytes),
+          widthPx: pick(p.widthPx, c.widthPx),
+          heightPx: pick(p.heightPx, c.heightPx),
+          durationMs: pick(p.durationMs, c.durationMs),
+          sortOrder: pick(p.sortOrder, c.sortOrder),
+          isCover: pick(p.isCover, c.isCover),
+          metadata: pick(p.metadata, c.metadata as JsonValue | null),
+          provider: pick(p.provider, c.provider),
+          storageKey: pick(p.storageKey, c.storageKey),
+        };
+        validateMedia(m);
+        if (m.isCover) {
+          if (m.type !== 'IMAGE')
+            throw new PropertyExtrasInvalidStateError(
+              'Only IMAGE media can be a cover',
+            );
+          await this.lock(tx, id);
+          await tx.propertyMedia.updateMany({
+            where: {
+              propertyId: id,
+              deletedAt: null,
+              isCover: true,
+              id: { not: c.id },
+            },
+            data: { isCover: false, updatedBy: sid(a) },
+          });
+        }
+        const r = await tx.propertyMedia.update({
+          where: { id: c.id },
+          data: {
+            type: m.type,
+            category: m.category,
+            url: m.url,
+            thumbnailUrl: m.thumbnailUrl,
+            mimeType: m.mimeType,
+            extension: m.extension,
+            fileSizeBytes: m.fileSizeBytes,
+            widthPx: m.widthPx,
+            heightPx: m.heightPx,
+            durationMs: m.durationMs,
+            sortOrder: m.sortOrder,
+            isCover: m.isCover,
+            metadata: j(m.metadata),
+            provider: m.provider,
+            storageKey: m.storageKey,
+            updatedBy: sid(a),
+          },
+        });
+        return this.media(r);
+      }),
+    );
+  }
+  async deleteMedia(uuid: string, mu: string, a: PropertyExtrasActor) {
+    const id = await this.propertyId(this.prisma, uuid);
+    const r = await this.prisma.propertyMedia.findFirst({
+      where: { uuid: mu, propertyId: id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!r) throw new PropertyExtrasNotFoundError('Media not found');
+    await this.prisma.propertyMedia.update({
+      where: { id: r.id },
+      data: { deletedAt: new Date(), isCover: false, updatedBy: sid(a) },
+    });
+  }
+  async setCover(uuid: string, mu: string, a: PropertyExtrasActor) {
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        await this.lock(tx, id);
+        const c = await tx.propertyMedia.findFirst({
+          where: { uuid: mu, propertyId: id, deletedAt: null },
+        });
+        if (!c) throw new PropertyExtrasNotFoundError('Media not found');
+        if (c.type !== 'IMAGE')
+          throw new PropertyExtrasInvalidStateError(
+            'Only IMAGE media can be a cover',
+          );
+        await tx.propertyMedia.updateMany({
+          where: { propertyId: id, deletedAt: null, isCover: true },
+          data: { isCover: false, updatedBy: sid(a) },
+        });
+        return this.media(
+          await tx.propertyMedia.update({
+            where: { id: c.id },
+            data: { isCover: true, updatedBy: sid(a) },
+          }),
+        );
+      }),
+    );
+  }
+  async reorderMedia(uuid: string, ids: string[], a: PropertyExtrasActor) {
+    return this.run(() =>
+      this.prisma.$transaction(async (tx) => {
+        const id = await this.propertyId(tx, uuid);
+        const rows = await tx.propertyMedia.findMany({
+          where: { propertyId: id, deletedAt: null },
+          select: { id: true, uuid: true },
+        });
+        if (
+          rows.length !== ids.length ||
+          new Set(ids).size !== ids.length ||
+          rows.some((r) => !ids.includes(r.uuid))
+        )
+          throw new PropertyExtrasInvalidStateError(
+            'Reorder must include every active media resource belonging to this property',
+          );
+        const by = new Map(rows.map((r) => [r.uuid, r.id]));
+        for (const [i, x] of ids.entries())
+          await tx.propertyMedia.update({
+            where: { id: by.get(x) },
+            data: { sortOrder: i, updatedBy: sid(a) },
+          });
+        return (
+          await tx.propertyMedia.findMany({
+            where: { propertyId: id, deletedAt: null },
+            orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+          })
+        ).map((r) => this.media(r));
+      }),
+    );
+  }
+  private utility(r: Prisma.PropertyUtilityGetPayload<object>) {
+    return {
+      uuid: r.uuid,
+      electricityProvider: r.electricityProvider,
+      electricityCapacityKva: d(r.electricityCapacityKva),
+      electricityMeterNumberMasked: r.electricityMeterNumberMasked,
+      waterSource: r.waterSource,
+      waterBackupSource: r.waterBackupSource,
+      gasType: r.gasType,
+      internetFiber: r.internetFiber,
+      internetProviders: r.internetProviders,
+      sewageType: r.sewageType,
+      drainageType: r.drainageType,
+      drainageCondition: r.drainageCondition,
+      backupPowerType: r.backupPowerType,
+      backupPowerCapacityKva: d(r.backupPowerCapacityKva),
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    };
+  }
+  private legal(r: Prisma.PropertyLegalGetPayload<object>) {
+    return {
+      uuid: r.uuid,
+      ownershipType: r.ownershipType,
+      ownershipStatus: r.ownershipStatus,
+      ownerReferenceMasked: r.ownerReferenceMasked,
+      verificationStatus: r.verificationStatus,
+      verifiedAt: r.verifiedAt,
+      verified: r.verificationStatus === 'VERIFIED',
+      verificationSource: r.verificationSource,
+      zoningZone: r.zoningZone,
+      allowedUse: r.allowedUse,
+      buildingCoverageRatio: d(r.buildingCoverageRatio),
+      floorAreaRatio: d(r.floorAreaRatio),
+      disputes: r.disputes,
+      encumbrances: r.encumbrances,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    };
+  }
+  private certificate(r: Prisma.PropertyCertificateGetPayload<object>) {
+    return {
+      uuid: r.uuid,
+      type: r.type,
+      numberMasked: r.numberMasked,
+      status: r.status,
+      issueDate: r.issueDate,
+      expiryDate: r.expiryDate,
+      issuer: r.issuer,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    };
+  }
+  private financial(r: Prisma.PropertyFinancialGetPayload<object>) {
+    return {
+      uuid: r.uuid,
+      askingPrice: d(r.askingPrice),
+      currency: r.currency,
+      negotiable: r.negotiable,
+      annualPropertyTax: d(r.annualPropertyTax),
+      monthlyMaintenance: d(r.monthlyMaintenance),
+      monthlyUtilityCost: d(r.monthlyUtilityCost),
+      monthlyServiceCharges: d(r.monthlyServiceCharges),
+      rentalYield: d(r.rentalYield),
+      annualRentalIncome: d(r.annualRentalIncome),
+      capitalGrowth: d(r.capitalGrowth),
+      investmentRating: r.investmentRating,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    };
+  }
+  private features(r: Prisma.PropertyFeaturesGetPayload<object>) {
+    return {
+      uuid: r.uuid,
+      petFriendly: r.petFriendly,
+      childFriendly: r.childFriendly,
+      wheelchairAccessible: r.wheelchairAccessible,
+      elderlyFriendly: r.elderlyFriendly,
+      smokingAllowed: r.smokingAllowed,
+      eventsAllowed: r.eventsAllowed,
+      rentalAllowed: r.rentalAllowed,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    };
+  }
+  private security(r: Prisma.PropertySecurityGetPayload<object>) {
+    return {
+      uuid: r.uuid,
+      securityGuard: r.securityGuard,
+      cctv: r.cctv,
+      accessControl: r.accessControl,
+      gatedCommunity: r.gatedCommunity,
+      smartLock: r.smartLock,
+      alarmSystem: r.alarmSystem,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    };
+  }
+  private environment(r: Prisma.PropertyEnvironmentGetPayload<object>) {
+    return {
+      uuid: r.uuid,
+      greenBuilding: r.greenBuilding,
+      solarPower: r.solarPower,
+      rainwaterHarvesting: r.rainwaterHarvesting,
+      waterSaving: r.waterSaving,
+      greenCertification: r.greenCertification,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    };
+  }
+  private seo(r: Prisma.PropertySeoGetPayload<object>) {
+    return {
+      uuid: r.uuid,
+      title: r.title,
+      description: r.description,
+      keywords: r.keywords,
+      canonicalUrl: r.canonicalUrl,
+      ogImageUrl: r.ogImageUrl,
+      robots: r.robots,
+      metadataVersion: r.metadataVersion,
+      schemaType: r.schemaType,
+      source: r.source,
+      tags: r.tags,
+      customFields: r.customFields,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    };
+  }
+  private media(r: Prisma.PropertyMediaGetPayload<object>) {
+    return {
+      uuid: r.uuid,
+      type: r.type,
+      category: r.category,
+      url: r.url,
+      thumbnailUrl: r.thumbnailUrl,
+      mimeType: r.mimeType,
+      extension: r.extension,
+      fileSizeBytes: r.fileSizeBytes,
+      widthPx: r.widthPx,
+      heightPx: r.heightPx,
+      durationMs: r.durationMs,
+      sortOrder: r.sortOrder,
+      isCover: r.isCover,
+      metadata: r.metadata,
+      provider: r.provider,
+      storageKey: r.storageKey,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    };
+  }
 }
