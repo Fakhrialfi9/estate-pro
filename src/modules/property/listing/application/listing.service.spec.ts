@@ -37,7 +37,9 @@ describe('ListingService', () => {
     const findOne = vi
       .fn()
       .mockRejectedValue(new ListingNotFoundError('missing'));
-    const update = vi.fn().mockRejectedValue(new ListingConflictError('conflict'));
+    const update = vi
+      .fn()
+      .mockRejectedValue(new ListingConflictError('conflict'));
     const repository = { findOne, update } as unknown as ListingRepository;
     const record = vi.fn();
     const audit = { record } as unknown as SecurityAuditRepository;
