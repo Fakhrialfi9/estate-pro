@@ -21,9 +21,10 @@ const EXPLAIN_COLUMNS = [
   'Extra',
 ] as const;
 
-const EXPLAIN_FIELD_INDEX: Readonly<Record<string, number>> = Object.fromEntries(
-  EXPLAIN_COLUMNS.map((column, index) => [column.toLowerCase(), index]),
-);
+const EXPLAIN_FIELD_INDEX: Readonly<Record<string, number>> =
+  Object.fromEntries(
+    EXPLAIN_COLUMNS.map((column, index) => [column.toLowerCase(), index]),
+  );
 
 const explainField = (
   row: ExplainRow | undefined,
