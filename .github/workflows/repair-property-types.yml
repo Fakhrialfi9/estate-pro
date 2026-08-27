@@ -1,12 +1,8 @@
-name: One-time Property Type Repair
+name: Finalize Property Type Repair
 
 on:
   push:
     branches: [main]
-
-concurrency:
-  group: one-time-property-type-repair
-  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -15,28 +11,22 @@ jobs:
   repair:
     if: github.event.head_commit.message != 'fix: resolve property strict typing errors'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     env:
       DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Install MariaDB
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mariadb-server
-          sudo systemctl start mariadb
-          sudo mysql -e "CREATE DATABASE IF NOT EXISTS estate_pro_test;"
-          sudo mysql -e "CREATE USER IF NOT EXISTS 'test'@'127.0.0.1' IDENTIFIED BY 'test-password';"
-          sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_test.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
       - name: Install dependencies
         run: npm ci
-      - name: Apply remaining strict type repairs
+      - name: Apply strict repairs and remove Python files
         shell: bash
         run: |
           set -euo pipefail
@@ -79,122 +69,21 @@ jobs:
           );
 
           const store = 'src/modules/property/infrastructure/persistence/prisma-property-master.store.ts';
-          replaceIfPresent(
-            store,
-            `import {
-  normalizeCode,
-  normalizeSlug,
-  type ActorContext,
-  type FacilityCategory,
-  type PageRequest,
-  type PropertyStatus,
-} from '../../domain/property-master.types.js';`,
-            `import {
-  normalizeCode,
-  normalizeSlug,
-  type ActorContext,
-  type AvailabilityStatus,
-  type FacilityCategory,
-  type PageRequest,
-  type PageResult,
-  type PropertyStatus,
-} from '../../domain/property-master.types.js';`,
-          );
-          replaceIfPresent(
-            store,
-            `import type {
-  MasterQuery,
-  PageResult,
-  PropertyMasterRepository,
-} from '../../domain/repositories/property-master.repository.js';`,
-            `import type {
-  MasterQuery,
-  PropertyMasterRepository,
-} from '../../domain/repositories/property-master.repository.js';`,
-          );
-          replaceIfPresent(
-            store,
-            `const text = (value: unknown, fallback = ''): string =>
-  typeof value === 'string' ? value : fallback;`,
-            `const text = (value: unknown, fallback = ''): string =>
-  typeof value === 'string' ? value : fallback;
+          replaceIfPresent(store, `  type ActorContext,\n  type FacilityCategory,\n  type PageRequest,\n  type PropertyStatus,`, `  type ActorContext,\n  type AvailabilityStatus,\n  type FacilityCategory,\n  type PageRequest,\n  type PageResult,\n  type PropertyStatus,`);
+          replaceIfPresent(store, `import type {\n  MasterQuery,\n  PageResult,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';`, `import type {\n  MasterQuery,\n  PropertyMasterRepository,\n} from '../../domain/repositories/property-master.repository.js';`);
+          replaceIfPresent(store, `const text = (value: unknown, fallback = ''): string =>\n  typeof value === 'string' ? value : fallback;`, `const text = (value: unknown, fallback = ''): string =>\n  typeof value === 'string' ? value : fallback;\n\nconst availabilityStatus = (value: unknown): AvailabilityStatus => {\n  const status = text(value, 'AVAILABLE');\n  if (status !== 'AVAILABLE' && status !== 'UNAVAILABLE')\n    throw new MasterHierarchyError('Invalid availability status');\n  return status;\n};`);
+          replaceIfPresent(store, `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];`, `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');`);
+          replaceIfPresent(store, `      return this.prisma.facility.update({ where: { id: current.id }, data });`, `      const id = current.id;\n      if (typeof id !== 'number' && typeof id !== 'bigint')\n        throw new MasterNotFoundError('Facility id is invalid');\n      return this.prisma.facility.update({ where: { id }, data });`);
+          replaceIfPresent(store, `            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE'),`, `            availabilityStatus: availabilityStatus(input.availabilityStatus),`);
+          replaceIfPresent(store, `    slug: string;\n    description?: string;\n    icon?: string;\n    isActive?: boolean;\n    sortOrder?: number;`, `    slug?: string;\n    description?: string;\n    icon?: string;\n    isActive?: boolean;\n    sortOrder?: number;`);
+          replaceIfPresent(store, `    slug: string;\n    description?: string;\n    isActive?: boolean;\n    sortOrder?: number;`, `    slug?: string;\n    description?: string;\n    isActive?: boolean;\n    sortOrder?: number;`);
+          replaceIfPresent(store, `    slug: string;\n    category: FacilityCategory;\n    icon?: string;`, `    slug?: string;\n    category: FacilityCategory;\n    icon?: string;`);
 
-const availabilityStatus = (value: unknown): AvailabilityStatus => {
-  const status = text(value, 'AVAILABLE');
-  if (status !== 'AVAILABLE' && status !== 'UNAVAILABLE')
-    throw new MasterHierarchyError('Invalid availability status');
-  return status;
-};`,
-          );
-          replaceIfPresent(
-            store,
-            `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];`,
-            `const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');`,
-          );
-          replaceIfPresent(
-            store,
-            `      return this.prisma.facility.update({ where: { id: current.id }, data });`,
-            `      const id = current.id;
-      if (typeof id !== 'number' && typeof id !== 'bigint')
-        throw new MasterNotFoundError('Facility id is invalid');
-      return this.prisma.facility.update({ where: { id }, data });`,
-          );
-          replaceIfPresent(
-            store,
-            `            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE'),`,
-            `            availabilityStatus: availabilityStatus(input.availabilityStatus),`,
-          );
-          replaceIfPresent(
-            store,
-            `    slug: string;
-    description?: string;
-    icon?: string;
-    isActive?: boolean;
-    sortOrder?: number;`,
-            `    slug?: string;
-    description?: string;
-    icon?: string;
-    isActive?: boolean;
-    sortOrder?: number;`,
-          );
-          replaceIfPresent(
-            store,
-            `    slug: string;
-    description?: string;
-    isActive?: boolean;
-    sortOrder?: number;`,
-            `    slug?: string;
-    description?: string;
-    isActive?: boolean;
-    sortOrder?: number;`,
-          );
-          replaceIfPresent(
-            store,
-            `    slug: string;
-    category: FacilityCategory;
-    icon?: string;`,
-            `    slug?: string;
-    category: FacilityCategory;
-    icon?: string;`,
-          );
-
-          replaceIfPresent(
-            'src/modules/property/listing/infrastructure/listing.repository.ts',
-            `        })
-        .catch((error: unknown) => this.mapError(error)),
-    );
-  }
-
-  async expireDue`,
-            `        }),
-    );
-  }
-
-  async expireDue`,
-          );
+          const listing = 'src/modules/property/listing/infrastructure/listing.repository.ts';
+          replaceIfPresent(listing, `        })\n        .catch((error: unknown) => this.mapError(error)),\n    );\n  }\n\n  async expireDue`, `        }),\n    );\n  }\n\n  async expireDue`);
 
           const controller = 'src/modules/property/presentation/property-master.controller.ts';
-          const controllerReplacements = [
+          for (const [from, to] of [
             ['this.service.createCategory(d, actor(r, ua, rid))', 'this.service.createCategory({ ...d }, actor(r, ua, rid))'],
             ['.updateCategory(uuid, d.version, d, actor(r, ua, rid))', '.updateCategory(uuid, d.version, { ...d }, actor(r, ua, rid))'],
             ['this.service.createSubcategory(d, actor(r, ua, rid))', 'this.service.createSubcategory({ ...d }, actor(r, ua, rid))'],
@@ -205,8 +94,7 @@ const availabilityStatus = (value: unknown): AvailabilityStatus => {
             ['.updateFacility(uuid, d.version, d, actor(r, ua, rid))', '.updateFacility(uuid, d.version, { ...d }, actor(r, ua, rid))'],
             ['this.service.createProperty(d, actor(r, ua, rid))', 'this.service.createProperty({ ...d }, actor(r, ua, rid))'],
             ['.updateProperty(uuid, d.version, d, actor(r, ua, rid))', '.updateProperty(uuid, d.version, { ...d }, actor(r, ua, rid))'],
-          ];
-          for (const [from, to] of controllerReplacements) replaceIfPresent(controller, from, to);
+          ]) replaceIfPresent(controller, from, to);
 
           const walk = (dir) => {
             for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -219,7 +107,6 @@ const availabilityStatus = (value: unknown): AvailabilityStatus => {
           walk('.');
           NODE
 
-          test -z "$(find . -type f -name '*.py' -not -path './.git/*' -not -path './node_modules/*' -print)"
           npx prettier --write \
             src/modules/property/domain/property-extras.ts \
             src/modules/property/domain/repositories/property-master.repository.ts \
@@ -232,19 +119,11 @@ const availabilityStatus = (value: unknown): AvailabilityStatus => {
           npm run format:check
           npm run lint
           npm run typecheck
+          test -z "$(find . -type f -name '*.py' -not -path './.git/*' -not -path './node_modules/*' -print)"
+
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- \
-            src/modules/property/domain/property-extras.ts \
-            src/modules/property/domain/repositories/property-master.repository.ts \
-            src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts \
-            src/modules/property/infrastructure/persistence/prisma-property-master.store.ts \
-            src/modules/property/listing/domain/listing.types.ts \
-            src/modules/property/listing/infrastructure/listing.repository.ts \
-            src/modules/property/application/property-master.service.ts \
-            src/modules/property/presentation/property-master.controller.ts \
-            scripts
-          git add -u -- scripts
-          git rm -f .github/workflows/repair-property-types.yml || true
+          git add -A
+          git rm -f .github/workflows/repair-property-types.yml
           git commit -m 'fix: resolve property strict typing errors'
           git push origin HEAD:main
