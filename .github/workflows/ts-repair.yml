@@ -15,14 +15,84 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Repair strict Prisma object inputs
-        shell: bash
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply deterministic strict-type fixes
+        shell: python
         run: |
-          python3 - <<'PY'
           from pathlib import Path
 
+          def match_brace(text: str, start: int) -> int:
+              depth = 0
+              quote = None
+              i = start
+              while i < len(text):
+                  c = text[i]
+                  if quote:
+                      if c == '\\':
+                          i += 2
+                          continue
+                      if c == quote:
+                          quote = None
+                      i += 1
+                      continue
+                  if c in "'\"`":
+                      quote = c
+                      i += 1
+                      continue
+                  if c == '{':
+                      depth += 1
+                  elif c == '}':
+                      depth -= 1
+                      if depth == 0:
+                          return i
+                  i += 1
+              raise RuntimeError('Unbalanced braces')
+
+          def wrap_objects(path: Path, keys: tuple[str, ...]) -> None:
+              text = path.read_text()
+              changed = False
+              for key in keys:
+                  cursor = 0
+                  needle = f'{key}: {{'
+                  while True:
+                      pos = text.find(needle, cursor)
+                      if pos < 0:
+                          break
+                      prefix = text[max(0, pos - 32):pos]
+                      if 'omitUndefined(' in prefix:
+                          cursor = pos + len(needle)
+                          continue
+                      brace = pos + len(needle) - 1
+                      end = match_brace(text, brace)
+                      text = (
+                          text[:pos]
+                          + f'{key}: omitUndefined('
+                          + text[pos + len(key) + 2:]
+                      )
+                      end += len('omitUndefined(')
+                      text = text[: end + 1] + ')' + text[end + 1:]
+                      cursor = end + 2
+                      changed = True
+              if changed and "from '../../../../common/omit-undefined.js'" not in text:
+                  if 'src/modules/property/listing/infrastructure' in str(path):
+                      imp = "import { omitUndefined } from '../../../common/omit-undefined.js';\n"
+                  else:
+                      imp = "import { omitUndefined } from '../../../../common/omit-undefined.js';\n"
+                  text = imp + text
+              if changed:
+                  path.write_text(text)
+
           helper = Path('src/common/omit-undefined.ts')
-          helper.write_text('''type DeepDefined<T> = T extends Date
+          if not helper.exists():
+              helper.write_text('''type DeepDefined<T> = T extends Date
   ? T
   : T extends readonly (infer U)[]
     ? readonly DeepDefined<U>[]
@@ -49,91 +119,154 @@ export const omitUndefined = <T extends object>(input: T): DeepDefined<T> =>
   clean(input) as DeepDefined<T>;
 ''')
 
-          def matching_brace(text: str, start: int) -> int:
-              depth = 0
-              i = start
-              quote = None
-              while i < len(text):
-                  c = text[i]
-                  if quote:
-                      if c == '\\':
-                          i += 2
-                          continue
-                      if c == quote:
-                          quote = None
-                      i += 1
-                      continue
-                  if c in "'\"`":
-                      quote = c
-                      i += 1
-                      continue
-                  if c == '/' and i + 1 < len(text) and text[i + 1] == '/':
-                      i = text.find(chr(10), i + 2)
-                      if i < 0:
-                          return len(text) - 1
-                      continue
-                  if c == '/' and i + 1 < len(text) and text[i + 1] == '*':
-                      i = text.find('*/', i + 2)
-                      if i < 0:
-                          return len(text) - 1
-                      i += 2
-                      continue
-                  if c == '{':
-                      depth += 1
-                  elif c == '}':
-                      depth -= 1
-                      if depth == 0:
-                          return i
-                  i += 1
-              return -1
+          # Audit contract fixes.
+          p = Path('src/modules/property/application/property-details.service.ts')
+          t = p.read_text()
+          t = t.replace("      actorType: 'user',", "      actorType: 'AUTHENTICATED',")
+          t = t.replace("      result: 'success',", "      result: 'SUCCESS',")
+          old = """      changes:\n        typeof changes === 'object' && changes !== null\n          ? (changes as Record<string, unknown>)\n          : undefined,\n"""
+          new = """      changes:\n        typeof changes === 'object' && changes !== null\n          ? Object.entries(changes as Record<string, unknown>).flatMap(\n              ([field, value]) =>\n                typeof value === 'string' ||\n                typeof value === 'boolean' ||\n                (typeof value === 'number' && Number.isFinite(value)) ||\n                value === null\n                  ? [{ field, oldValue: null, newValue: value }]\n                  : [],\n            )\n          : undefined,\n"""
+          if old in t:
+              t = t.replace(old, new)
+          p.write_text(t)
 
-          roots = [Path('src/modules/property/infrastructure'), Path('src/modules/property/listing/infrastructure')]
-          for root in roots:
-              for path in root.rglob('*.ts'):
-                  if path.name.endswith('.spec.ts'):
-                      continue
-                  text = path.read_text()
-                  changed = False
-                  for key in ('data', 'where', 'select'):
-                      pos = 0
-                      needle = f'{key}: {{'
-                      while True:
-                          found = text.find(needle, pos)
-                          if found < 0:
-                              break
-                          brace = found + len(needle) - 1
-                          end = matching_brace(text, brace)
-                          if end < 0:
-                              break
-                          if 'omitUndefined(' not in text[max(0, found - 24):brace + 1]:
-                              text = text[:found] + f'{key}: omitUndefined(' + text[found + len(key) + 2:]
-                              end += len('omitUndefined(')
-                              text = text[:end + 1] + ')' + text[end + 1:]
-                              changed = True
-                              pos = end + 2
-                          else:
-                              pos = end + 1
-                  if changed:
-                      text = f"import {{ omitUndefined }} from '../../../../common/omit-undefined.js';" + chr(10) + text
-                      path.write_text(text)
+          p = Path('src/modules/property/application/property-master.service.ts')
+          t = p.read_text()
+          marker = "import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';\n"
+          if "type SecurityAuditChange" not in t:
+              t = t.replace(
+                  marker,
+                  marker + "import type { SecurityAuditChange } from '../../../common/audit/security-audit.port.js';\n",
+              )
+          p.write_text(t)
 
-          repo = Path('src/modules/property/domain/repositories/property-master.repository.ts')
-          txt = repo.read_text()
-          if 'export type { PageResult }' not in txt:
-              repo.write_text("export type { PageResult } from '../property-master.types.js';" + chr(10) + txt)
+          # Strict indexed access / BigInt helpers.
+          p = Path('src/modules/property/domain/property-extras.ts')
+          t = p.read_text()
+          t = t.replace("const [w, f = ''] = this.amount.split('.');", "const [w = '0', f = ''] = this.amount.split('.');")
+          t = t.replace("const [w, f = ''] = v.split('.'),\n    x =", "const [w = '0', f = ''] = v.split('.'),\n    x =")
+          t = t.replace("const [a, b] = o;", "const [a = 0, b = 0] = o;")
+          p.write_text(t)
 
-          store = Path('src/modules/property/infrastructure/persistence/prisma-property-master.store.ts')
-          txt = store.read_text()
-          txt = txt.replace("  type PageRequest,\n  type PropertyStatus,", "  type PageRequest,\n  type PageResult,\n  type PropertyStatus,")
-          txt = txt.replace("  MasterQuery,\n  PageResult,\n  PropertyMasterRepository,", "  MasterQuery,\n  PropertyMasterRepository,")
-          txt = txt.replace("const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];", "const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');")
-          store.write_text(txt)
-          PY
-          npx prettier --write src/common/omit-undefined.ts src/modules/property/infrastructure src/modules/property/listing/infrastructure src/modules/property/domain/repositories/property-master.repository.ts
+          p = Path('src/modules/property/listing/domain/listing.types.ts')
+          t = p.read_text()
+          t = t.replace("const [whole, fraction = ''] = value.split('.');", "const [whole = '0', fraction = ''] = value.split('.');")
+          t = t.replace("const [whole] = normalized.split('.');", "const [whole = '0'] = normalized.split('.');")
+          p.write_text(t)
+
+          # Property detail persistence: remove undefined from dynamic Prisma inputs.
+          p = Path('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts')
+          t = p.read_text()
+          t = t.replace("              data: common,", "              data: omitUndefined(common),")
+          t = t.replace("            data: scalar,", "            data: omitUndefined(scalar),")
+          t = t.replace("            data,\n          });", "            data: omitUndefined(data),\n          });")
+          t = t.replace("              : current?.yearBuilt,", "              : (current?.yearBuilt ?? null),")
+          t = t.replace("              : current?.yearRenovated,", "              : (current?.yearRenovated ?? null),")
+          t = t.replace("            data: {\n            roomType:", "            data: omitUndefined({\n            roomType:")
+          # Close the room update data object only at the known updatedBy boundary.
+          t = t.replace("            updatedBy: actor.actorUuid ?? null,\n          },\n        });", "            updatedBy: actor.actorUuid ?? null,\n          }),\n        });", 1)
+          # Facility patch indexed array: narrow the indexed value first.
+          target = """        for (let i = 0; i < inputs.length; i++) {\n          const current = existing[i];\n          const input = inputs[i];\n"""
+          if target in t:
+              t = t.replace(target, """        for (let i = 0; i < inputs.length; i++) {\n          const current = existing[i];\n          const input = inputs[i];\n          if (input === undefined) throw new PropertyDetailInvalidStateError('Facility input is missing');\n""")
+          p.write_text(t)
+
+          # Property extras persistence: dynamic create/update inputs must omit undefined keys.
+          p = Path('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts')
+          t = p.read_text()
+          p.read_text()
+          p.write_text(t)
+
+          # Generic safe wrapping for Prisma data/where/select objects in the two property persistence areas.
+          for path in [
+              Path('src/modules/property/infrastructure/persistence/prisma-property-details.repository.ts'),
+              Path('src/modules/property/infrastructure/persistence/prisma-property-extras.repository.ts'),
+              Path('src/modules/property/listing/infrastructure/listing.repository.ts'),
+          ]:
+              wrap_objects(path, ('data', 'where', 'select'))
+
+          # The generic wrapper above can safely remove undefined query/data members, but these
+          # non-object assignments need semantic fixes at their source.
+          p = Path('src/modules/property/infrastructure/persistence/prisma-property-master.store.ts')
+          t = p.read_text()
+          t = t.replace("  MasterQuery,\n  PageResult,\n  PropertyMasterRepository,", "  MasterQuery,\n  PropertyMasterRepository,")
+          t = t.replace(
+              "  const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : allowed[0];",
+              "  const field = q.sortBy && allowed.includes(q.sortBy) ? q.sortBy : (allowed[0] ?? 'uuid');",
+          )
+          t = t.replace(
+              "      return this.prisma.facility.update({ where: { id: current.id }, data });",
+              "      const id = current.id;\n      if (typeof id !== 'number' && typeof id !== 'bigint')\n        throw new MasterNotFoundError();\n      return this.prisma.facility.update({ where: { id }, data });",
+          )
+          t = t.replace(
+              "            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE'),",
+              "            availabilityStatus: text(input.availabilityStatus, 'AVAILABLE') as 'AVAILABLE' | 'UNAVAILABLE',",
+          )
+          p.write_text(t)
+
+          # Listing infrastructure: fix run() error return and remove undefined dynamic args.
+          p = Path('src/modules/property/listing/infrastructure/listing.repository.ts')
+          t = p.read_text()
+          t = t.replace(
+              "    return this.run(() =>\n      this.prisma.$transaction(async (tx) => {",
+              "    return this.run(async () =>\n      this.prisma.$transaction(async (tx) => {",
+          )
+          p.write_text(t)
+
+          # Presentation: authenticated request helper must omit optional undefined values.
+          for name in ('property-lifecycle.controller.ts', 'property-master.controller.ts'):
+              p = Path('src/modules/property/presentation') / name
+              t = p.read_text()
+              old = """const actor = (\n  r: AuthenticatedRequest,\n  userAgent?: string,\n  requestId?: string,\n) => ({ actorUuid: r.user?.sub, ipAddress: r.ip, userAgent, requestId });\n"""
+              new = """const actor = (\n  r: AuthenticatedRequest,\n  userAgent?: string,\n  requestId?: string,\n) => {\n  const actorUuid = r.user?.sub;\n  if (!actorUuid) throw new ForbiddenException('Authenticated user is required');\n  return {\n    actorUuid,\n    ipAddress: r.ip,\n    ...(userAgent !== undefined ? { userAgent } : {}),\n    ...(requestId !== undefined ? { requestId } : {}),\n  };\n};\n"""
+              if old in t:
+                  t = t.replace("  BadRequestException,\n", "  BadRequestException,\n  ForbiddenException,\n")
+                  t = t.replace(old, new)
+              # DTOs are deliberately converted at the controller boundary rather than cast.
+              if name == 'property-master.controller.ts':
+                  if "const record =" not in t:
+                      insert = """const record = (value: object): RecordValue =>\n  Object.fromEntries(Object.entries(value));\n"""
+                      t = t.replace("const sanitize = (value: unknown): unknown => {", insert + "const sanitize = (value: unknown): unknown => {")
+                  t = t.replace(".updateCategory(uuid, d.version, d, actor(r, ua, rid))", ".updateCategory(uuid, d.version, record(d), actor(r, ua, rid))")
+                  t = t.replace(".updateSubcategory(uuid, d.version, d, actor(r, ua, rid))", ".updateSubcategory(uuid, d.version, record(d), actor(r, ua, rid))")
+                  t = t.replace(".createLocation(levelOf(level), d, actor(r, ua, rid))", ".createLocation(levelOf(level), record(d), actor(r, ua, rid))")
+                  t = t.replace(".updateLocation(levelOf(level), uuid, d.version, d, actor(r, ua, rid))", ".updateLocation(levelOf(level), uuid, d.version, record(d), actor(r, ua, rid))")
+                  t = t.replace(".updateFacility(uuid, d.version, d, actor(r, ua, rid))", ".updateFacility(uuid, d.version, record(d), actor(r, ua, rid))")
+                  t = t.replace(".createProperty(d, actor(r, ua, rid))", ".createProperty(record(d), actor(r, ua, rid))")
+                  t = t.replace(".updateProperty(uuid, d.version, d, actor(r, ua, rid))", ".updateProperty(uuid, d.version, record(d), actor(r, ua, rid))")
+              p.write_text(t)
+
+          # Creation DTOs match the repository contract: slug is required for catalog/facility creation.
+          p = Path('src/modules/property/presentation/property-master.dto.ts')
+          t = p.read_text()
+          t = t.replace("  @IsOptional() @IsString() @MaxLength(100) slug?: string;", "  @IsString() @MaxLength(100) slug!: string;", 1)
+          t = t.replace("  @IsOptional() @IsString() @MaxLength(100) slug?: string;", "  @IsString() @MaxLength(100) slug!: string;", 1)
+          t = t.replace("  @IsOptional() @IsString() @MaxLength(100) slug?: string;", "  @IsString() @MaxLength(100) slug!: string;", 1)
+          p.write_text(t)
+
+          # Keep the domain repository's re-export explicit.
+          p = Path('src/modules/property/domain/repositories/property-master.repository.ts')
+          t = p.read_text()
+          line = "export type { PageResult } from '../property-master.types.js';\n"
+          if line not in t:
+              t = line + t
+          p.write_text(t)
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Verify typecheck before commit
+        run: npm run typecheck
+
+      - name: Commit repaired source
+        shell: bash
+        run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/common/omit-undefined.ts src/modules/property/infrastructure src/modules/property/listing/infrastructure src/modules/property/domain/repositories/property-master.repository.ts
-          if ! git diff --cached --quiet; then
-            git commit -m '[ts-repair] fix strict Prisma input typing'
-            git push origin HEAD:main
+          git add src
+          if git diff --cached --quiet; then
+            echo 'No source changes required.'
+            exit 0
           fi
+          git commit -m '[ts-repair] fix strict property type contracts'
+          git push origin HEAD:main
