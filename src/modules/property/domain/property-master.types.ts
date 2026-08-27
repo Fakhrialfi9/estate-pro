@@ -1,3 +1,5 @@
+import { MasterHierarchyError, MasterStateError } from './errors.js';
+
 export type PropertyStatus =
   | 'DRAFT'
   | 'IN_REVIEW'
@@ -64,12 +66,16 @@ export const assertTransition = (
   to: PropertyStatus,
 ): void => {
   if (from !== to && !transitions[from].includes(to))
-    throw new Error(`Invalid property status transition: ${from} -> ${to}`);
+    throw new MasterStateError(
+      `Invalid property status transition: ${from} -> ${to}`,
+    );
 };
 export const assertAvailability = (
   from?: Date | null,
   to?: Date | null,
 ): void => {
   if (from && to && from > to)
-    throw new Error('availableFrom must not be later than availableTo');
+    throw new MasterHierarchyError(
+      'availableFrom must not be later than availableTo',
+    );
 };
