@@ -7,11 +7,19 @@ type ExplainRow = Record<string, unknown>;
 
 const explainField = (row: ExplainRow | undefined, field: string): unknown => {
   if (!row) return undefined;
+
   const expected = field.toLowerCase();
+  const directValue = row[field];
+  if (directValue !== undefined) return directValue;
+
+  const caseInsensitiveValue = row[expected] ?? row[field.toUpperCase()];
+  if (caseInsensitiveValue !== undefined) return caseInsensitiveValue;
+
   const entry = Object.entries(row).find(
     ([key]) => key.toLowerCase() === expected,
   );
   if (entry) return entry[1];
+
   return Object.values(row).find((value) =>
     field === 'table' ? value === 'properties' : typeof value === 'string',
   );
