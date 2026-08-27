@@ -33,7 +33,13 @@ import {
 const isNamedMasterError = (
   error: unknown,
   names: readonly string[],
-): boolean => error instanceof Error && names.includes(error.name);
+): boolean => {
+  if (error instanceof Error && names.includes(error.name)) return true;
+  if (typeof error !== 'object' || error === null) return false;
+  if (!('name' in error)) return false;
+  const name = error.name;
+  return typeof name === 'string' && names.includes(name);
+};
 
 const isMasterError = (
   error: unknown,
