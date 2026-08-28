@@ -28,7 +28,7 @@ const permission = PermissionEntity.create({
   name: 'Read Listings',
   code: 'listings.read',
   module: 'listings',
-  domain: 'listing',
+  domain: 'listings',
   action: 'read',
   createdAt: new Date(),
   updatedAt: new Date(),
