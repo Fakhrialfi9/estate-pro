@@ -47,13 +47,13 @@ model Property {
   specification         PropertySpecification?
   utilities             PropertyUtility?
 
-  @@index([status, deletedAt, updatedAt, id])
   @@index([availabilityStatus, availableFrom, availableTo])
-  @@index([propertyTypeId, propertyCategoryId, propertySubcategoryId])
-  @@index([subdistrictId])
-  @@index([deletedAt])
   @@index([propertyCategoryId], map: "properties_property_category_id_fkey")
   @@index([propertySubcategoryId], map: "properties_property_subcategory_id_fkey")
+  @@index([deletedAt], map: "properties_deleted_idx")
+  @@index([status, deletedAt, updatedAt, id], map: "properties_status_deleted_updated_idx")
+  @@index([subdistrictId], map: "properties_subdistrict_idx")
+  @@index([propertyTypeId, propertyCategoryId, propertySubcategoryId], map: "properties_type_category_subcategory_idx")
   @@map("properties")
 }
 
@@ -69,8 +69,8 @@ model PropertyFacility {
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@id([propertyId, facilityId])
-  @@index([facilityId])
-  @@index([propertyId, available])
+  @@index([facilityId], map: "property_facilities_facility_idx")
+  @@index([propertyId, available], map: "property_facilities_property_available_idx")
   @@map("property_facilities")
 }
 

@@ -32,9 +32,9 @@ model Province {
   propertyLocations PropertyLocation[]
   country           Country            @relation(fields: [countryId], references: [id])
 
-  @@unique([countryId, code])
-  @@unique([countryId, slug])
-  @@index([countryId])
-  @@index([isActive, deletedAt, sortOrder])
+  @@unique([countryId, code], map: "provinces_country_code_key")
+  @@unique([countryId, slug], map: "provinces_country_slug_key")
+  @@index([isActive, deletedAt, sortOrder], map: "provinces_active_deleted_sort_idx")
+  @@index([countryId], map: "provinces_country_idx")
   @@map("provinces")
 }

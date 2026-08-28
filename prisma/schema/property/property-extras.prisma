@@ -48,7 +48,7 @@ model PropertyLegal {
   updatedAt             DateTime                @updatedAt @map("updated_at")
   property              Property                @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
-  @@index([verificationStatus, ownershipStatus])
+  @@index([verificationStatus, ownershipStatus], map: "property_legal_status_idx")
   @@map("property_legal")
 }
 
@@ -70,9 +70,9 @@ model PropertyCertificate {
   deletedAt    DateTime?         @map("deleted_at")
   property     Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
-  @@unique([propertyId, numberHash])
-  @@index([propertyId, type, deletedAt])
-  @@index([status, expiryDate])
+  @@unique([propertyId, numberHash], map: "property_certificates_property_number_key")
+  @@index([propertyId, type, deletedAt], map: "property_certificates_property_type_deleted_idx")
+  @@index([status, expiryDate], map: "property_certificates_status_expiry_idx")
   @@map("property_certificates")
 }
 
@@ -97,7 +97,7 @@ model PropertyFinancial {
   updatedAt             DateTime         @updatedAt
   property              Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
-  @@index([currency, investmentRating])
+  @@index([currency, investmentRating], map: "property_financials_currency_rating_idx")
   @@map("property_financials")
 }
 
@@ -208,9 +208,9 @@ model PropertyMedia {
   updatedAt     DateTime              @updatedAt
   property      Property              @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
-  @@index([propertyId, deletedAt, sortOrder, id])
-  @@index([propertyId, type, deletedAt])
-  @@index([propertyId, isCover, deletedAt])
+  @@index([propertyId, isCover, deletedAt], map: "property_media_cover_idx")
+  @@index([propertyId, deletedAt, sortOrder, id], map: "property_media_property_deleted_order_idx")
+  @@index([propertyId, type, deletedAt], map: "property_media_property_type_deleted_idx")
   @@map("property_media")
 }
 

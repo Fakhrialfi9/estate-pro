@@ -76,12 +76,12 @@ model PropertyLocation {
   province           Province?          @relation(fields: [provinceId], references: [id], onDelete: Restrict)
   subdistrict        Subdistrict?       @relation(fields: [subdistrictId], references: [id], onDelete: Restrict)
 
-  @@index([countryId, provinceId, cityId, districtId, subdistrictId])
-  @@index([latitude, longitude])
   @@index([cityId], map: "property_locations_city_id_fkey")
   @@index([districtId], map: "property_locations_district_id_fkey")
   @@index([provinceId], map: "property_locations_province_id_fkey")
   @@index([subdistrictId], map: "property_locations_subdistrict_id_fkey")
+  @@index([latitude, longitude], map: "property_locations_coordinates_idx")
+  @@index([countryId, provinceId, cityId, districtId, subdistrictId], map: "property_locations_hierarchy_idx")
   @@map("property_locations")
 }
 
@@ -141,8 +141,8 @@ model PropertyRoom {
   deletedAt          DateTime? @map("deleted_at")
   property           Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
-  @@index([propertyId, deletedAt, sortOrder])
-  @@index([propertyId, roomType, deletedAt])
+  @@index([propertyId, deletedAt, sortOrder], map: "property_rooms_property_deleted_order_idx")
+  @@index([propertyId, roomType, deletedAt], map: "property_rooms_property_type_deleted_idx")
   @@map("property_rooms")
 }
 

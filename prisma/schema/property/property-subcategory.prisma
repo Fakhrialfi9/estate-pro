@@ -14,10 +14,10 @@ model PropertySubcategory {
   properties         Property[]
   propertyCategory   PropertyCategory @relation(fields: [propertyCategoryId], references: [id])
 
-  @@unique([propertyCategoryId, code])
-  @@unique([propertyCategoryId, slug])
-  @@index([propertyCategoryId])
-  @@index([isActive])
-  @@index([sortOrder])
+  @@unique([propertyCategoryId, code], map: "property_subcategories_category_code_key")
+  @@unique([propertyCategoryId, slug], map: "property_subcategories_category_slug_key")
+  @@index([isActive], map: "property_subcategories_active_idx")
+  @@index([propertyCategoryId], map: "property_subcategories_category_idx")
+  @@index([sortOrder], map: "property_subcategories_sort_idx")
   @@map("property_subcategories")
 }

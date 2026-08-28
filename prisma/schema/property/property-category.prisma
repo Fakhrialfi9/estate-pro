@@ -16,11 +16,11 @@ model PropertyCategory {
   propertyType   PropertyType          @relation(fields: [propertyTypeId], references: [id])
   subcategories  PropertySubcategory[]
 
-  @@unique([propertyTypeId, code])
-  @@unique([propertyTypeId, slug])
-  @@index([propertyTypeId])
-  @@index([isActive])
-  @@index([sortOrder])
-  @@index([isActive, deletedAt, sortOrder])
+  @@unique([propertyTypeId, code], map: "property_categories_type_code_key")
+  @@unique([propertyTypeId, slug], map: "property_categories_type_slug_key")
+  @@index([isActive, deletedAt, sortOrder], map: "property_categories_active_deleted_sort_idx")
+  @@index([isActive], map: "property_categories_active_idx")
+  @@index([sortOrder], map: "property_categories_sort_idx")
+  @@index([propertyTypeId], map: "property_categories_type_idx")
   @@map("property_categories")
 }

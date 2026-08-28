@@ -60,9 +60,9 @@ model Subdistrict {
   propertyLocations PropertyLocation[]
   district          District           @relation(fields: [districtId], references: [id])
 
-  @@unique([districtId, code])
-  @@unique([districtId, slug])
-  @@index([districtId])
-  @@index([isActive, deletedAt, sortOrder])
+  @@unique([districtId, code], map: "subdistricts_district_code_key")
+  @@unique([districtId, slug], map: "subdistricts_district_slug_key")
+  @@index([isActive, deletedAt, sortOrder], map: "subdistricts_active_deleted_sort_idx")
+  @@index([districtId], map: "subdistricts_district_idx")
   @@map("subdistricts")
 }

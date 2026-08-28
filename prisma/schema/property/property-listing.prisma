@@ -24,10 +24,10 @@ model PropertyListing {
   price           PropertyListingPrice?
   property        Property                       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
-  @@index([status, visibility, featured, expiresAt, id])
-  @@index([transactionType, status, visibility, id])
   @@index([verifiedAt])
   @@index([publishedAt])
+  @@index([status, visibility, featured, expiresAt, id], map: "property_listings_status_visibility_featured_expires_id_idx")
+  @@index([transactionType, status, visibility, id], map: "property_listings_transaction_status_visibility_id_idx")
   @@map("property_listings")
 }
 
@@ -47,7 +47,7 @@ model PropertyListingPrice {
   listing     PropertyListing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([currency, priceType])
-  @@index([minPrice, maxPrice])
+  @@index([minPrice, maxPrice], map: "property_listing_prices_min_max_idx")
   @@map("property_listing_prices")
 }
 
@@ -67,8 +67,8 @@ model PropertyListingPaymentOption {
   updatedAt          DateTime          @updatedAt @map("updated_at")
   listing            PropertyListing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
-  @@unique([listingId, optionType])
-  @@index([optionType, tenorMonths])
+  @@unique([listingId, optionType], map: "property_listing_payment_options_listing_option_key")
+  @@index([optionType, tenorMonths], map: "property_listing_payment_options_type_tenor_idx")
   @@map("property_listing_payment_options")
 }
 
@@ -87,9 +87,9 @@ model PropertyAgentAssignment {
   updatedAt        DateTime  @updatedAt @map("updated_at")
   property         Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
-  @@unique([propertyId, agentUserUuid])
-  @@index([agentUserUuid, unassignedAt])
-  @@index([propertyId, isPrimary, unassignedAt])
+  @@unique([propertyId, agentUserUuid], map: "property_agent_assignments_property_agent_key")
+  @@index([agentUserUuid, unassignedAt], map: "property_agent_assignments_agent_active_idx")
+  @@index([propertyId, isPrimary, unassignedAt], map: "property_agent_assignments_property_primary_active_idx")
   @@map("property_agent_assignments")
 }
 
@@ -135,8 +135,8 @@ model PropertyListingEngagement {
   updatedAt DateTime        @updatedAt @map("updated_at")
   listing   PropertyListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
-  @@unique([listingId, userUuid])
-  @@index([userUuid, isSaved])
+  @@unique([listingId, userUuid], map: "property_listing_engagements_listing_user_key")
+  @@index([userUuid, isSaved], map: "property_listing_engagements_user_saved_idx")
   @@map("property_listing_engagements")
 }
 
