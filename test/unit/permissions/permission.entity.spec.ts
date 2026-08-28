@@ -17,17 +17,17 @@ describe('PermissionEntity', () => {
     updatedAt: new Date(),
   };
 
-  it('normalizes canonical permission identity to module.action', () => {
+  it('normalizes canonical permission identity to domain.action', () => {
     const permission = PermissionEntity.create({
       ...base,
-      code: 'USERS.READ',
-      module: ' USERS ',
-      domain: ' Users ',
+      code: 'PROPERTY-TYPES.READ',
+      module: ' property ',
+      domain: ' Property-Types ',
       action: ' READ ',
     });
 
-    expect(permission.code).toBe('users.read');
-    expect(permission.resource).toBe('users:users');
+    expect(permission.code).toBe('property-types.read');
+    expect(permission.resource).toBe('property:property-types');
     expect(
       buildPermissionCode(
         permission.module,
@@ -35,6 +35,26 @@ describe('PermissionEntity', () => {
         permission.action,
       ),
     ).toBe(permission.code);
+  });
+
+  it('supports nested action segments in the canonical permission code', () => {
+    const permission = PermissionEntity.create({
+      ...base,
+      name: 'Read Sensitive Property Data',
+      code: 'properties.sensitive.read',
+      module: 'property',
+      domain: 'properties',
+      action: 'sensitive.read',
+    });
+
+    expect(permission.code).toBe('properties.sensitive.read');
+    expect(
+      buildPermissionCode(
+        permission.module,
+        permission.domain,
+        permission.action,
+      ),
+    ).toBe('properties.sensitive.read');
   });
 
   it('derives system protection from the stable dotted identifier', () => {
