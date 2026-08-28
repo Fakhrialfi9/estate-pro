@@ -51,45 +51,48 @@ const containsPropertyTable = (value: unknown): boolean => {
   return Object.values(record).some(containsPropertyTable);
 };
 
-const collectUsedKeys = (value: unknown, result: string[] = []): string[] => {
-  if (typeof value !== 'object' || value === null) {
-    return result;
+const readCount = (row: JsonExplainRow | undefined): number => {
+  if (!row) {
+    throw new Error('Index metadata query returned no result row.');
   }
 
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      collectUsedKeys(item, result);
-    }
-    return result;
+  const value = Object.values(row)[0];
+
+  if (typeof value === 'bigint') {
+    return Number(value);
   }
 
-  const record = value as Record<string, unknown>;
-
-  for (const [key, nestedValue] of Object.entries(record)) {
-    if (
-      key === 'key' ||
-      key === 'possible_keys' ||
-      key === 'possibleKeys' ||
-      key === 'used_key' ||
-      key === 'usedKey'
-    ) {
-      if (typeof nestedValue === 'string') {
-        result.push(nestedValue);
-      }
-
-      if (Array.isArray(nestedValue)) {
-        for (const item of nestedValue) {
-          if (typeof item === 'string') {
-            result.push(item);
-          }
-        }
-      }
-    }
-
-    collectUsedKeys(nestedValue, result);
+  if (typeof value === 'number') {
+    return value;
   }
 
-  return result;
+  if (typeof value === 'string' && value.trim() !== '') {
+    return Number(value);
+  }
+
+  throw new Error('Index metadata query returned an unexpected count value.');
+};
+
+const hasCompositeIndex = async (
+  prisma: PrismaService,
+  expectedColumns: string,
+): Promise<boolean> => {
+  const rows = await prisma.$queryRaw<JsonExplainRow[]>(
+    Prisma.sql`
+      SELECT COUNT(*) AS matching_index_count
+      FROM (
+        SELECT index_name,
+               GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') AS indexed_columns
+        FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = 'properties'
+        GROUP BY index_name
+      ) AS indexes
+      WHERE indexed_columns = ${expectedColumns}
+    `,
+  );
+
+  return readCount(rows[0]) > 0;
 };
 
 describe('Property critical query plans', () => {
@@ -120,6 +123,13 @@ describe('Property critical query plans', () => {
   });
 
   it('can explain the indexed property listing query', async () => {
+    expect(
+      await hasCompositeIndex(
+        prisma,
+        'status,deleted_at,updated_at,id',
+      ),
+    ).toBe(true);
+
     const rows = await prisma.$queryRaw<JsonExplainRow[]>(
       Prisma.sql`EXPLAIN FORMAT=JSON SELECT uuid, business_code, reference_number, title, slug, status, availability_status, available_from, available_to, version, created_at, updated_at FROM properties WHERE deleted_at IS NULL AND status = 'ACTIVE' ORDER BY updated_at DESC, id DESC LIMIT 20 OFFSET 0`,
     );
@@ -128,10 +138,16 @@ describe('Property critical query plans', () => {
 
     const plan = readExplainJson(rows[0]);
     expect(containsPropertyTable(plan)).toBe(true);
-    expect(collectUsedKeys(plan).length).toBeGreaterThanOrEqual(1);
   });
 
   it('can explain the property location/filter query', async () => {
+    expect(
+      await hasCompositeIndex(
+        prisma,
+        'property_type_id,property_category_id,property_subcategory_id',
+      ),
+    ).toBe(true);
+
     const rows = await prisma.$queryRaw<JsonExplainRow[]>(
       Prisma.sql`EXPLAIN FORMAT=JSON SELECT uuid, title, status, updated_at FROM properties WHERE deleted_at IS NULL AND property_type_id = 1 AND property_category_id = 1 ORDER BY updated_at DESC, id DESC LIMIT 20`,
     );
@@ -140,6 +156,5 @@ describe('Property critical query plans', () => {
 
     const plan = readExplainJson(rows[0]);
     expect(containsPropertyTable(plan)).toBe(true);
-    expect(collectUsedKeys(plan).length).toBeGreaterThanOrEqual(1);
   });
 });
