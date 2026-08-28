@@ -1,7 +1,11 @@
 import { PERMISSIONS } from './permissions/data.ts';
 import { seedPermissions } from './permissions/seed.ts';
 import { seedRoles, seedRolePermissions } from './roles/seed.ts';
-import { assignAdminRole, seedAdminUser } from './users/seed.ts';
+import {
+  assignAdminRole,
+  seedAdminUser,
+  seedDevelopmentUsers,
+} from './users/seed.ts';
 import { createDatabaseClient } from './database.ts';
 
 export async function seedDatabase(): Promise<void> {
@@ -26,6 +30,7 @@ export async function seedDatabase(): Promise<void> {
       }
 
       await assignAdminRole(tx, adminUserId, adminRoleId);
+      await seedDevelopmentUsers(tx);
     });
   } finally {
     await prisma.$disconnect();
