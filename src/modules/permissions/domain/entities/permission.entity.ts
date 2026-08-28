@@ -16,6 +16,8 @@ export interface PermissionUpdate {
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SEGMENT_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+const ACTION_PATTERN =
+  /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*)?$/;
 const CODE_PATTERN =
   /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*)?$/;
 const MAX_NAME_LENGTH = 150;
@@ -48,13 +50,13 @@ export const buildPermissionCode = (
   const normalizedAction = normalizePermissionSegment(action);
 
   // `manage.protected` is the reserved three-segment capability used by
-  // protected system-level authorization checks. Regular permissions are
-  // intentionally identified by the stable `module.action` form.
+  // protected system-level authorization checks. Regular permissions use the
+  // stable `domain.action` form; module remains metadata for resource grouping.
   if (normalizedDomain === 'manage' && normalizedAction === 'protected') {
     return `${normalizedModule}.${normalizedDomain}.${normalizedAction}`;
   }
 
-  return `${normalizedModule}.${normalizedAction}`;
+  return `${normalizedDomain}.${normalizedAction}`;
 };
 
 export const isProtectedPermissionCode = (code: string): boolean =>
@@ -162,7 +164,7 @@ export class PermissionEntity {
     if (
       !snapshot.action ||
       snapshot.action.length > MAX_ACTION_LENGTH ||
-      !SEGMENT_PATTERN.test(snapshot.action)
+      !ACTION_PATTERN.test(snapshot.action)
     ) {
       throw new Error('Invalid permission action');
     }
