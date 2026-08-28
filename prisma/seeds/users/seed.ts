@@ -3,44 +3,46 @@ import { randomUUID } from 'node:crypto';
 import argon2 from 'argon2';
 import type { SeedTransaction } from '../database.ts';
 import { ARGON2_CONFIG } from '../config.ts';
-import { ADMIN_USER } from './data.ts';
+import { ADMIN_USER, SEED_USERS, type UserSeed } from './data.ts';
 
-export async function seedAdminUser(
+async function upsertSeedUser(
   client: SeedTransaction,
+  seed: UserSeed,
 ): Promise<bigint> {
-  const passwordHash = await argon2.hash(ADMIN_USER.password, {
+  const passwordHash = await argon2.hash(seed.password, {
     type: argon2.argon2id,
     ...ARGON2_CONFIG,
   });
 
   const [userByEmail, userByUsername] = await Promise.all([
     client.authenticationUser.findUnique({
-      where: { email: ADMIN_USER.email },
+      where: { email: seed.email },
       select: { id: true },
     }),
     client.authenticationUser.findUnique({
-      where: { username: ADMIN_USER.username },
+      where: { username: seed.username },
       select: { id: true },
     }),
   ]);
 
   if (userByEmail && userByUsername && userByEmail.id !== userByUsername.id) {
     throw new Error(
-      `Seed admin identity conflict: email ${ADMIN_USER.email} and username ${ADMIN_USER.username} belong to different users.`,
+      `Seed user identity conflict: email ${seed.email} and username ${seed.username} belong to different users.`,
     );
   }
 
   const existingUserId = userByEmail?.id ?? userByUsername?.id;
+  const now = new Date();
 
   const user = existingUserId
     ? await client.authenticationUser.update({
         where: { id: existingUserId },
         data: {
-          username: ADMIN_USER.username,
-          email: ADMIN_USER.email,
-          phone: ADMIN_USER.phone,
-          status: ADMIN_USER.status,
-          isActive: true,
+          username: seed.username,
+          email: seed.email,
+          phone: seed.phone,
+          status: seed.status,
+          isActive: seed.status === 'active',
           isVerified: true,
           deletedAt: null,
         },
@@ -48,11 +50,11 @@ export async function seedAdminUser(
     : await client.authenticationUser.create({
         data: {
           uuid: randomUUID(),
-          username: ADMIN_USER.username,
-          email: ADMIN_USER.email,
-          phone: ADMIN_USER.phone,
-          status: ADMIN_USER.status,
-          isActive: true,
+          username: seed.username,
+          email: seed.email,
+          phone: seed.phone,
+          status: seed.status,
+          isActive: seed.status === 'active',
           isVerified: true,
         },
       });
@@ -61,12 +63,12 @@ export async function seedAdminUser(
     where: { userId: user.id },
     update: {
       passwordHash,
-      passwordChangedAt: new Date(),
+      passwordChangedAt: now,
     },
     create: {
       userId: user.id,
       passwordHash,
-      passwordChangedAt: new Date(),
+      passwordChangedAt: now,
     },
   });
 
@@ -83,6 +85,24 @@ export async function seedAdminUser(
   });
 
   return user.id;
+}
+
+export async function seedAdminUser(
+  client: SeedTransaction,
+): Promise<bigint> {
+  return upsertSeedUser(client, ADMIN_USER);
+}
+
+export async function seedDevelopmentUsers(
+  client: SeedTransaction,
+): Promise<readonly bigint[]> {
+  const userIds: bigint[] = [];
+
+  for (const user of SEED_USERS) {
+    userIds.push(await upsertSeedUser(client, user));
+  }
+
+  return userIds;
 }
 
 export async function assignAdminRole(
