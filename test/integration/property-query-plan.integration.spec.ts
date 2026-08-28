@@ -9,7 +9,9 @@ type JsonExplainResult = {
   query_block?: Record<string, unknown>;
 };
 
-const readExplainJson = (row: JsonExplainRow | undefined): JsonExplainResult => {
+const readExplainJson = (
+  row: JsonExplainRow | undefined,
+): JsonExplainResult => {
   if (!row) {
     throw new Error('EXPLAIN FORMAT=JSON returned no result row.');
   }
@@ -22,11 +24,7 @@ const readExplainJson = (row: JsonExplainRow | undefined): JsonExplainResult => 
 
   const parsed: unknown = JSON.parse(rawValue);
 
-  if (
-    typeof parsed !== 'object' ||
-    parsed === null ||
-    Array.isArray(parsed)
-  ) {
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     throw new Error('EXPLAIN FORMAT=JSON returned an invalid JSON document.');
   }
 
@@ -124,10 +122,7 @@ describe('Property critical query plans', () => {
 
   it('can explain the indexed property listing query', async () => {
     expect(
-      await hasCompositeIndex(
-        prisma,
-        'status,deleted_at,updated_at,id',
-      ),
+      await hasCompositeIndex(prisma, 'status,deleted_at,updated_at,id'),
     ).toBe(true);
 
     const rows = await prisma.$queryRaw<JsonExplainRow[]>(
