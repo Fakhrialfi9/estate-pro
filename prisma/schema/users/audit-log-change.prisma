@@ -1,12 +1,12 @@
 model AuditLogChange {
-    id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
-    auditLogId BigInt   @map("audit_log_id") @db.UnsignedBigInt
-    field      String   @db.VarChar(100)
-    oldValue   Json?    @map("old_value")
-    newValue   Json?    @map("new_value")
-    createdAt  DateTime @default(now()) @map("created_at")
-    auditLog   AuditLog @relation(fields: [auditLogId], references: [id])
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  auditLogId BigInt   @map("audit_log_id") @db.UnsignedBigInt
+  field      String   @db.VarChar(100)
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  createdAt  DateTime @default(now()) @map("created_at")
+  auditLog   AuditLog @relation(fields: [auditLogId], references: [id])
 
-    @@index([auditLogId])
-    @@map("audit_log_changes")
+  @@index([auditLogId])
+  @@map("audit_log_changes")
 }

@@ -1,3 +1,79 @@
+model Property {
+  id                    BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid                  String                    @unique @default(uuid()) @db.Char(36)
+  businessCode          String                    @unique @map("business_code") @db.VarChar(40)
+  referenceNumber       String                    @unique @map("reference_number") @db.VarChar(80)
+  propertyTypeId        BigInt                    @map("property_type_id") @db.UnsignedBigInt
+  propertyCategoryId    BigInt                    @map("property_category_id") @db.UnsignedBigInt
+  propertySubcategoryId BigInt?                   @map("property_subcategory_id") @db.UnsignedBigInt
+  subdistrictId         BigInt?                   @map("subdistrict_id") @db.UnsignedBigInt
+  title                 String                    @db.VarChar(200)
+  slug                  String                    @unique @db.VarChar(220)
+  shortDescription      String?                   @map("short_description") @db.VarChar(500)
+  description           String?                   @db.Text
+  status                PropertyStatus            @default(DRAFT)
+  availabilityStatus    AvailabilityStatus        @default(AVAILABLE) @map("availability_status")
+  availableFrom         DateTime?                 @map("available_from")
+  availableTo           DateTime?                 @map("available_to")
+  version               Int                       @default(1)
+  publishedAt           DateTime?                 @map("published_at")
+  verifiedAt            DateTime?                 @map("verified_at")
+  createdBy             String?                   @map("created_by") @db.Char(36)
+  updatedBy             String?                   @map("updated_by") @db.Char(36)
+  verifiedBy            String?                   @map("verified_by") @db.Char(36)
+  deletedAt             DateTime?                 @map("deleted_at")
+  deletedBy             String?                   @map("deleted_by") @db.Char(36)
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+  propertyCategory      PropertyCategory          @relation(fields: [propertyCategoryId], references: [id])
+  propertySubcategory   PropertySubcategory?      @relation(fields: [propertySubcategoryId], references: [id], onDelete: Restrict)
+  propertyType          PropertyType              @relation(fields: [propertyTypeId], references: [id])
+  subdistrict           Subdistrict?              @relation(fields: [subdistrictId], references: [id], onDelete: Restrict)
+  agentAssignments      PropertyAgentAssignment[]
+  building              PropertyBuilding?
+  certificates          PropertyCertificate[]
+  environment           PropertyEnvironment?
+  facilities            PropertyFacility[]
+  features              PropertyFeatures?
+  financial             PropertyFinancial?
+  legal                 PropertyLegal?
+  listing               PropertyListing?
+  location              PropertyLocation?
+  media                 PropertyMedia[]
+  owner                 PropertyOwner?
+  rooms                 PropertyRoom[]
+  security              PropertySecurity?
+  seo                   PropertySeo?
+  specification         PropertySpecification?
+  utilities             PropertyUtility?
+
+  @@index([status, deletedAt, updatedAt, id])
+  @@index([availabilityStatus, availableFrom, availableTo])
+  @@index([propertyTypeId, propertyCategoryId, propertySubcategoryId])
+  @@index([subdistrictId])
+  @@index([deletedAt])
+  @@index([propertyCategoryId], map: "properties_property_category_id_fkey")
+  @@index([propertySubcategoryId], map: "properties_property_subcategory_id_fkey")
+  @@map("properties")
+}
+
+model PropertyFacility {
+  propertyId BigInt   @map("property_id") @db.UnsignedBigInt
+  facilityId BigInt   @map("facility_id") @db.UnsignedBigInt
+  createdAt  DateTime @default(now()) @map("created_at")
+  available  Boolean  @default(true)
+  quantity   Int?
+  notes      String?  @db.VarChar(500)
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  facility   Facility @relation(fields: [facilityId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, facilityId])
+  @@index([facilityId])
+  @@index([propertyId, available])
+  @@map("property_facilities")
+}
+
 enum PropertyStatus {
   DRAFT
   IN_REVIEW
@@ -10,76 +86,4 @@ enum PropertyStatus {
 enum AvailabilityStatus {
   AVAILABLE
   UNAVAILABLE
-}
-
-model Property {
-  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid String @unique @default(uuid()) @db.Char(36)
-  businessCode String @unique @map("business_code") @db.VarChar(40)
-  referenceNumber String @unique @map("reference_number") @db.VarChar(80)
-  propertyTypeId BigInt @map("property_type_id") @db.UnsignedBigInt
-  propertyCategoryId BigInt @map("property_category_id") @db.UnsignedBigInt
-  propertySubcategoryId BigInt? @map("property_subcategory_id") @db.UnsignedBigInt
-  subdistrictId BigInt? @map("subdistrict_id") @db.UnsignedBigInt
-  title String @db.VarChar(200)
-  slug String @unique @db.VarChar(220)
-  shortDescription String? @map("short_description") @db.VarChar(500)
-  description String? @db.Text
-  status PropertyStatus @default(DRAFT)
-  availabilityStatus AvailabilityStatus @default(AVAILABLE) @map("availability_status")
-  availableFrom DateTime? @map("available_from")
-  availableTo DateTime? @map("available_to")
-  version Int @default(1)
-  publishedAt DateTime? @map("published_at")
-  verifiedAt DateTime? @map("verified_at")
-  createdBy String? @map("created_by") @db.Char(36)
-  updatedBy String? @map("updated_by") @db.Char(36)
-  verifiedBy String? @map("verified_by") @db.Char(36)
-  deletedAt DateTime? @map("deleted_at")
-  deletedBy String? @map("deleted_by") @db.Char(36)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  propertyType PropertyType @relation(fields: [propertyTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  propertyCategory PropertyCategory @relation(fields: [propertyCategoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  propertySubcategory PropertySubcategory? @relation(fields: [propertySubcategoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  subdistrict Subdistrict? @relation(fields: [subdistrictId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  specification PropertySpecification?
-  location PropertyLocation?
-  building PropertyBuilding?
-  rooms PropertyRoom[]
-  facilities PropertyFacility[]
-  utilities PropertyUtility?
-  legal PropertyLegal?
-  certificates PropertyCertificate[]
-  financial PropertyFinancial?
-  features PropertyFeatures?
-  security PropertySecurity?
-  environment PropertyEnvironment?
-  seo PropertySeo?
-  media PropertyMedia[]
-  listing PropertyListing?
-  agentAssignments PropertyAgentAssignment[]
-  owner PropertyOwner?
-  @@index([status, deletedAt, updatedAt, id])
-  @@index([availabilityStatus, availableFrom, availableTo])
-  @@index([propertyTypeId, propertyCategoryId, propertySubcategoryId])
-  @@index([subdistrictId])
-  @@index([deletedAt])
-  @@map("properties")
-}
-
-model PropertyFacility {
-  propertyId BigInt @map("property_id") @db.UnsignedBigInt
-  facilityId BigInt @map("facility_id") @db.UnsignedBigInt
-  available Boolean @default(true)
-  quantity Int?
-  notes String? @db.VarChar(500)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  @@id([propertyId, facilityId])
-  @@index([facilityId])
-  @@index([propertyId, available])
-  @@map("property_facilities")
 }

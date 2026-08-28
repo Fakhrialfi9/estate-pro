@@ -1,16 +1,16 @@
 model AuthorizationPermission {
-    id        BigInt                        @id @default(autoincrement()) @db.UnsignedBigInt
-    uuid      String                        @unique @db.Char(36)
-    name      String                        @db.VarChar(150)
-    code      String                        @unique @db.VarChar(150)
-    module    String                        @db.VarChar(100)
-    domain    String                        @db.VarChar(100)
-    action    String                        @db.VarChar(50)
-    createdAt DateTime                      @default(now()) @map("created_at")
-    updatedAt DateTime                      @updatedAt @map("updated_at")
-    roles     AuthorizationRolePermission[]
+  id        BigInt                        @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid      String                        @unique @db.Char(36)
+  name      String                        @db.VarChar(150)
+  code      String                        @unique @db.VarChar(150)
+  module    String                        @db.VarChar(100)
+  domain    String                        @db.VarChar(100)
+  action    String                        @db.VarChar(50)
+  createdAt DateTime                      @default(now()) @map("created_at")
+  updatedAt DateTime                      @updatedAt @map("updated_at")
+  roles     AuthorizationRolePermission[]
 
-    @@index([module])
-    @@index([domain])
-    @@map("authorization_permissions")
+  @@index([module])
+  @@index([domain])
+  @@map("authorization_permissions")
 }

@@ -1,26 +1,26 @@
 model PropertyCategory {
-    id             BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
-    uuid           String       @unique @default(uuid()) @db.Char(36)
-    propertyTypeId BigInt       @map("property_type_id") @db.UnsignedBigInt
-    code           String       @db.VarChar(50)
-    name           String       @db.VarChar(150)
-    slug           String       @db.VarChar(100)
-    description    String?      @db.Text
-    icon           String?      @db.VarChar(100)
-    isActive       Boolean      @default(true) @map("is_active")
-    sortOrder      Int          @default(0) @map("sort_order")
-    createdAt      DateTime     @default(now()) @map("created_at")
-    updatedAt      DateTime     @updatedAt @map("updated_at")
-    deletedAt      DateTime?    @map("deleted_at")
-    propertyType   PropertyType @relation(fields: [propertyTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-    subcategories  PropertySubcategory[]
-    properties     Property[]
+  id             BigInt                @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid           String                @unique @default(uuid()) @db.Char(36)
+  propertyTypeId BigInt                @map("property_type_id") @db.UnsignedBigInt
+  code           String                @db.VarChar(50)
+  name           String                @db.VarChar(150)
+  slug           String                @db.VarChar(100)
+  description    String?               @db.Text
+  icon           String?               @db.VarChar(100)
+  isActive       Boolean               @default(true) @map("is_active")
+  sortOrder      Int                   @default(0) @map("sort_order")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+  deletedAt      DateTime?             @map("deleted_at")
+  properties     Property[]
+  propertyType   PropertyType          @relation(fields: [propertyTypeId], references: [id])
+  subcategories  PropertySubcategory[]
 
-    @@unique([propertyTypeId, code])
-    @@unique([propertyTypeId, slug])
-    @@index([propertyTypeId])
-    @@index([isActive])
-    @@index([sortOrder])
-    @@index([isActive, deletedAt, sortOrder])
-    @@map("property_categories")
+  @@unique([propertyTypeId, code])
+  @@unique([propertyTypeId, slug])
+  @@index([propertyTypeId])
+  @@index([isActive])
+  @@index([sortOrder])
+  @@index([isActive, deletedAt, sortOrder])
+  @@map("property_categories")
 }

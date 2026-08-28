@@ -1,15 +1,15 @@
 model AuthorizationRole {
-    id          BigInt                        @id @default(autoincrement()) @db.UnsignedBigInt
-    uuid        String                        @unique @db.Char(36)
-    name        String                        @db.VarChar(100)
-    code        String                        @unique @db.VarChar(100)
-    description String?                       @db.Text
-    isActive    Boolean                       @default(true) @map("is_active")
-    createdAt   DateTime                      @default(now()) @map("created_at")
-    updatedAt   DateTime                      @updatedAt @map("updated_at")
-    users       AuthorizationUserRole[]
-    permissions AuthorizationRolePermission[]
+  id          BigInt                        @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String                        @unique @db.Char(36)
+  name        String                        @db.VarChar(100)
+  code        String                        @unique @db.VarChar(100)
+  description String?                       @db.Text
+  isActive    Boolean                       @default(true) @map("is_active")
+  createdAt   DateTime                      @default(now()) @map("created_at")
+  updatedAt   DateTime                      @updatedAt @map("updated_at")
+  permissions AuthorizationRolePermission[]
+  users       AuthorizationUserRole[]
 
-    @@index([isActive])
-    @@map("authorization_roles")
+  @@index([isActive])
+  @@map("authorization_roles")
 }

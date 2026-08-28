@@ -1,31 +1,31 @@
 model AuditLog {
-    id          BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
-    uuid        String              @unique @db.Char(36)
-    actorUserId BigInt?             @map("actor_user_id") @db.UnsignedBigInt
-    userId      BigInt?             @map("user_id") @db.UnsignedBigInt
-    action      String              @db.VarChar(100)
-    actorType   String              @default("SYSTEM") @map("actor_type") @db.VarChar(24)
-    entityType  String?             @map("entity_type") @db.VarChar(100)
-    entityId    BigInt?             @map("entity_id") @db.UnsignedBigInt
-    resourceId  String?             @map("resource_id") @db.VarChar(100)
-    result      String              @default("SUCCESS") @db.VarChar(16)
-    reason      String?             @db.VarChar(100)
-    ipAddress   String?             @map("ip_address") @db.VarChar(45)
-    userAgent   String?             @map("user_agent") @db.Text
-    requestId   String?             @map("request_id") @db.VarChar(100)
-    createdAt   DateTime            @default(now()) @map("created_at")
-    actor       AuthenticationUser? @relation("AuditActor", fields: [actorUserId], references: [id])
-    user        AuthenticationUser? @relation("AuditSubject", fields: [userId], references: [id])
-    changes     AuditLogChange[]
+  id          BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String              @unique @db.Char(36)
+  userId      BigInt?             @map("user_id") @db.UnsignedBigInt
+  action      String              @db.VarChar(100)
+  entityType  String?             @map("entity_type") @db.VarChar(100)
+  entityId    BigInt?             @map("entity_id") @db.UnsignedBigInt
+  ipAddress   String?             @map("ip_address") @db.VarChar(45)
+  userAgent   String?             @map("user_agent") @db.Text
+  requestId   String?             @map("request_id") @db.VarChar(100)
+  createdAt   DateTime            @default(now()) @map("created_at")
+  actorUserId BigInt?             @map("actor_user_id") @db.UnsignedBigInt
+  actorType   String              @default("SYSTEM") @map("actor_type") @db.VarChar(24)
+  resourceId  String?             @map("resource_id") @db.VarChar(100)
+  result      String              @default("SUCCESS") @db.VarChar(16)
+  reason      String?             @db.VarChar(100)
+  changes     AuditLogChange[]
+  actor       AuthenticationUser? @relation("AuditActor", fields: [actorUserId], references: [id])
+  user        AuthenticationUser? @relation("AuditSubject", fields: [userId], references: [id])
 
-    @@index([actorUserId])
-    @@index([userId])
-    @@index([action])
-    @@index([entityType])
-    @@index([entityId])
-    @@index([resourceId])
-    @@index([result])
-    @@index([requestId])
-    @@index([createdAt])
-    @@map("audit_logs")
+  @@index([actorUserId])
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([resourceId])
+  @@index([result])
+  @@index([requestId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

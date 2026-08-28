@@ -1,11 +1,12 @@
 model AuthorizationRolePermission {
-    roleId       BigInt                  @map("role_id") @db.UnsignedBigInt
-    permissionId BigInt                  @map("permission_id") @db.UnsignedBigInt
-    createdAt    DateTime                @default(now()) @map("created_at")
-    updatedAt    DateTime                @updatedAt @map("updated_at")
-    role         AuthorizationRole       @relation(fields: [roleId], references: [id])
-    permission   AuthorizationPermission @relation(fields: [permissionId], references: [id])
+  roleId       BigInt                  @map("role_id") @db.UnsignedBigInt
+  permissionId BigInt                  @map("permission_id") @db.UnsignedBigInt
+  createdAt    DateTime                @default(now()) @map("created_at")
+  updatedAt    DateTime                @updatedAt @map("updated_at")
+  permission   AuthorizationPermission @relation(fields: [permissionId], references: [id])
+  role         AuthorizationRole       @relation(fields: [roleId], references: [id])
 
-    @@id([roleId, permissionId])
-    @@map("authorization_role_permissions")
+  @@id([roleId, permissionId])
+  @@index([permissionId], map: "authorization_role_permissions_permission_id_fkey")
+  @@map("authorization_role_permissions")
 }

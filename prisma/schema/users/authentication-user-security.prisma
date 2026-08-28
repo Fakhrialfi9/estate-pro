@@ -1,15 +1,15 @@
 model AuthenticationUserSecurity {
-    id                  BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
-    userId              BigInt             @unique @map("user_id") @db.UnsignedBigInt
-    emailVerifiedAt     DateTime?          @map("email_verified_at")
-    phoneVerifiedAt     DateTime?          @map("phone_verified_at")
-    lastLoginAt         DateTime?          @map("last_login_at")
-    lastLoginIp         String?            @map("last_login_ip") @db.VarChar(45)
-    failedLoginAttempts Int                @default(0) @map("failed_login_attempts") @db.UnsignedInt
-    lockedUntil         DateTime?          @map("locked_until")
-    createdAt           DateTime           @default(now()) @map("created_at")
-    updatedAt           DateTime           @updatedAt @map("updated_at")
-    user                AuthenticationUser @relation(fields: [userId], references: [id])
+  id                  BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  userId              BigInt             @unique @map("user_id") @db.UnsignedBigInt
+  emailVerifiedAt     DateTime?          @map("email_verified_at")
+  phoneVerifiedAt     DateTime?          @map("phone_verified_at")
+  lastLoginAt         DateTime?          @map("last_login_at")
+  lastLoginIp         String?            @map("last_login_ip") @db.VarChar(45)
+  failedLoginAttempts Int                @default(0) @map("failed_login_attempts") @db.UnsignedInt
+  lockedUntil         DateTime?          @map("locked_until")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  user                AuthenticationUser @relation(fields: [userId], references: [id])
 
-    @@map("authentication_user_security")
+  @@map("authentication_user_security")
 }

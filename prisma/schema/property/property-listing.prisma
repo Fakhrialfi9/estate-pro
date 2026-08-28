@@ -1,3 +1,145 @@
+model PropertyListing {
+  id              BigInt                         @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid            String                         @unique @default(uuid()) @db.Char(36)
+  propertyId      BigInt                         @unique @map("property_id") @db.UnsignedBigInt
+  listingCode     String                         @unique @map("listing_code") @db.VarChar(80)
+  transactionType ListingTransactionType         @map("transaction_type")
+  status          ListingStatus                  @default(DRAFT)
+  visibility      ListingVisibility              @default(PRIVATE)
+  featured        Boolean                        @default(false)
+  premium         Boolean                        @default(false)
+  verifiedAt      DateTime?                      @map("verified_at")
+  verifiedBy      String?                        @map("verified_by") @db.Char(36)
+  publishedAt     DateTime?                      @map("published_at")
+  expiresAt       DateTime?                      @map("expires_at")
+  rejectionReason String?                        @map("rejection_reason") @db.VarChar(1000)
+  version         Int                            @default(1)
+  createdBy       String?                        @map("created_by") @db.Char(36)
+  updatedBy       String?                        @map("updated_by") @db.Char(36)
+  createdAt       DateTime                       @default(now()) @map("created_at")
+  updatedAt       DateTime                       @updatedAt @map("updated_at")
+  analytics       PropertyListingAnalytics?
+  engagements     PropertyListingEngagement[]
+  paymentOptions  PropertyListingPaymentOption[]
+  price           PropertyListingPrice?
+  property        Property                       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([status, visibility, featured, expiresAt, id])
+  @@index([transactionType, status, visibility, id])
+  @@index([verifiedAt])
+  @@index([publishedAt])
+  @@map("property_listings")
+}
+
+model PropertyListingPrice {
+  id          BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String           @unique @default(uuid()) @db.Char(36)
+  listingId   BigInt           @unique @map("listing_id") @db.UnsignedBigInt
+  priceType   ListingPriceType @map("price_type")
+  currency    String           @db.Char(3)
+  minPrice    Decimal?         @map("min_price") @db.Decimal(24, 2)
+  maxPrice    Decimal?         @map("max_price") @db.Decimal(24, 2)
+  pricePerSqm Decimal?         @map("price_per_sqm") @db.Decimal(24, 4)
+  createdBy   String?          @map("created_by") @db.Char(36)
+  updatedBy   String?          @map("updated_by") @db.Char(36)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  listing     PropertyListing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([currency, priceType])
+  @@index([minPrice, maxPrice])
+  @@map("property_listing_prices")
+}
+
+model PropertyListingPaymentOption {
+  id                 BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid               String            @unique @default(uuid()) @db.Char(36)
+  listingId          BigInt            @map("listing_id") @db.UnsignedBigInt
+  optionType         PaymentOptionType @map("option_type")
+  downPaymentAmount  Decimal?          @map("down_payment_amount") @db.Decimal(24, 2)
+  downPaymentPercent Decimal?          @map("down_payment_percent") @db.Decimal(7, 4)
+  installmentAmount  Decimal?          @map("installment_amount") @db.Decimal(24, 2)
+  tenorMonths        Int?              @map("tenor_months")
+  notes              String?           @db.VarChar(500)
+  createdBy          String?           @map("created_by") @db.Char(36)
+  updatedBy          String?           @map("updated_by") @db.Char(36)
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  listing            PropertyListing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, optionType])
+  @@index([optionType, tenorMonths])
+  @@map("property_listing_payment_options")
+}
+
+model PropertyAgentAssignment {
+  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid             String    @unique @default(uuid()) @db.Char(36)
+  propertyId       BigInt    @map("property_id") @db.UnsignedBigInt
+  agentUserUuid    String    @map("agent_user_uuid") @db.Char(36)
+  agentDisplayName String    @map("agent_display_name") @db.VarChar(160)
+  isPrimary        Boolean   @default(false) @map("is_primary")
+  assignedAt       DateTime  @default(now()) @map("assigned_at")
+  unassignedAt     DateTime? @map("unassigned_at")
+  createdBy        String?   @map("created_by") @db.Char(36)
+  updatedBy        String?   @map("updated_by") @db.Char(36)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  property         Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, agentUserUuid])
+  @@index([agentUserUuid, unassignedAt])
+  @@index([propertyId, isPrimary, unassignedAt])
+  @@map("property_agent_assignments")
+}
+
+model PropertyOwner {
+  id                BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid              String            @unique @default(uuid()) @db.Char(36)
+  propertyId        BigInt            @unique @map("property_id") @db.UnsignedBigInt
+  ownerType         PropertyOwnerType @map("owner_type")
+  displayNameMasked String            @map("display_name_masked") @db.VarChar(160)
+  referenceHash     String?           @map("reference_hash") @db.Char(64)
+  companyNameMasked String?           @map("company_name_masked") @db.VarChar(160)
+  createdBy         String?           @map("created_by") @db.Char(36)
+  updatedBy         String?           @map("updated_by") @db.Char(36)
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  property          Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_owners")
+}
+
+model PropertyListingAnalytics {
+  id           BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  listingId    BigInt          @unique @map("listing_id") @db.UnsignedBigInt
+  viewCount    BigInt          @default(0) @map("view_count") @db.UnsignedBigInt
+  inquiryCount BigInt          @default(0) @map("inquiry_count") @db.UnsignedBigInt
+  shareCount   BigInt          @default(0) @map("share_count") @db.UnsignedBigInt
+  saveCount    BigInt          @default(0) @map("save_count") @db.UnsignedBigInt
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  listing      PropertyListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("property_listing_analytics")
+}
+
+model PropertyListingEngagement {
+  id        BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid      String          @unique @default(uuid()) @db.Char(36)
+  listingId BigInt          @map("listing_id") @db.UnsignedBigInt
+  userUuid  String          @map("user_uuid") @db.Char(36)
+  isSaved   Boolean         @default(false) @map("is_saved")
+  viewedAt  DateTime?       @map("viewed_at")
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  listing   PropertyListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, userUuid])
+  @@index([userUuid, isSaved])
+  @@map("property_listing_engagements")
+}
+
 enum ListingTransactionType {
   SALE
   RENT
@@ -48,140 +190,4 @@ enum PropertyOwnerType {
   JOINT
   GOVERNMENT
   OTHER
-}
-
-model PropertyListing {
-  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid String @unique @default(uuid()) @db.Char(36)
-  propertyId BigInt @unique @map("property_id") @db.UnsignedBigInt
-  listingCode String @unique @map("listing_code") @db.VarChar(80)
-  transactionType ListingTransactionType @map("transaction_type")
-  status ListingStatus @default(DRAFT)
-  visibility ListingVisibility @default(PRIVATE)
-  featured Boolean @default(false)
-  premium Boolean @default(false)
-  verifiedAt DateTime? @map("verified_at")
-  verifiedBy String? @map("verified_by") @db.Char(36)
-  publishedAt DateTime? @map("published_at")
-  expiresAt DateTime? @map("expires_at")
-  rejectionReason String? @map("rejection_reason") @db.VarChar(1000)
-  version Int @default(1)
-  createdBy String? @map("created_by") @db.Char(36)
-  updatedBy String? @map("updated_by") @db.Char(36)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  price PropertyListingPrice?
-  paymentOptions PropertyListingPaymentOption[]
-  analytics PropertyListingAnalytics?
-  engagements PropertyListingEngagement[]
-
-  @@index([status, visibility, featured, expiresAt, id])
-  @@index([transactionType, status, visibility, id])
-  @@index([verifiedAt])
-  @@index([publishedAt])
-  @@map("property_listings")
-}
-
-model PropertyListingPrice {
-  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid String @unique @default(uuid()) @db.Char(36)
-  listingId BigInt @unique @map("listing_id") @db.UnsignedBigInt
-  priceType ListingPriceType @map("price_type")
-  currency String @db.Char(3)
-  minPrice Decimal? @map("min_price") @db.Decimal(24, 2)
-  maxPrice Decimal? @map("max_price") @db.Decimal(24, 2)
-  pricePerSqm Decimal? @map("price_per_sqm") @db.Decimal(24, 4)
-  createdBy String? @map("created_by") @db.Char(36)
-  updatedBy String? @map("updated_by") @db.Char(36)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  listing PropertyListing @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  @@index([currency, priceType])
-  @@index([minPrice, maxPrice])
-  @@map("property_listing_prices")
-}
-
-model PropertyListingPaymentOption {
-  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid String @unique @default(uuid()) @db.Char(36)
-  listingId BigInt @map("listing_id") @db.UnsignedBigInt
-  optionType PaymentOptionType @map("option_type")
-  downPaymentAmount Decimal? @map("down_payment_amount") @db.Decimal(24, 2)
-  downPaymentPercent Decimal? @map("down_payment_percent") @db.Decimal(7, 4)
-  installmentAmount Decimal? @map("installment_amount") @db.Decimal(24, 2)
-  tenorMonths Int? @map("tenor_months")
-  notes String? @db.VarChar(500)
-  createdBy String? @map("created_by") @db.Char(36)
-  updatedBy String? @map("updated_by") @db.Char(36)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  listing PropertyListing @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  @@unique([listingId, optionType])
-  @@index([optionType, tenorMonths])
-  @@map("property_listing_payment_options")
-}
-
-model PropertyAgentAssignment {
-  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid String @unique @default(uuid()) @db.Char(36)
-  propertyId BigInt @map("property_id") @db.UnsignedBigInt
-  agentUserUuid String @map("agent_user_uuid") @db.Char(36)
-  agentDisplayName String @map("agent_display_name") @db.VarChar(160)
-  isPrimary Boolean @default(false) @map("is_primary")
-  assignedAt DateTime @default(now()) @map("assigned_at")
-  unassignedAt DateTime? @map("unassigned_at")
-  createdBy String? @map("created_by") @db.Char(36)
-  updatedBy String? @map("updated_by") @db.Char(36)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  @@unique([propertyId, agentUserUuid])
-  @@index([agentUserUuid, unassignedAt])
-  @@index([propertyId, isPrimary, unassignedAt])
-  @@map("property_agent_assignments")
-}
-
-model PropertyOwner {
-  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid String @unique @default(uuid()) @db.Char(36)
-  propertyId BigInt @unique @map("property_id") @db.UnsignedBigInt
-  ownerType PropertyOwnerType @map("owner_type")
-  displayNameMasked String @map("display_name_masked") @db.VarChar(160)
-  referenceHash String? @map("reference_hash") @db.Char(64)
-  companyNameMasked String? @map("company_name_masked") @db.VarChar(160)
-  createdBy String? @map("created_by") @db.Char(36)
-  updatedBy String? @map("updated_by") @db.Char(36)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  @@map("property_owners")
-}
-
-model PropertyListingAnalytics {
-  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  listingId BigInt @unique @map("listing_id") @db.UnsignedBigInt
-  viewCount BigInt @default(0) @map("view_count") @db.UnsignedBigInt
-  inquiryCount BigInt @default(0) @map("inquiry_count") @db.UnsignedBigInt
-  shareCount BigInt @default(0) @map("share_count") @db.UnsignedBigInt
-  saveCount BigInt @default(0) @map("save_count") @db.UnsignedBigInt
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  listing PropertyListing @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  @@map("property_listing_analytics")
-}
-
-model PropertyListingEngagement {
-  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid String @unique @default(uuid()) @db.Char(36)
-  listingId BigInt @map("listing_id") @db.UnsignedBigInt
-  userUuid String @map("user_uuid") @db.Char(36)
-  isSaved Boolean @default(false) @map("is_saved")
-  viewedAt DateTime? @map("viewed_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  listing PropertyListing @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  @@unique([listingId, userUuid])
-  @@index([userUuid, isSaved])
-  @@map("property_listing_engagements")
 }

@@ -1,32 +1,32 @@
 model AuthenticationUser {
-    id                     BigInt                                    @id @default(autoincrement()) @db.UnsignedBigInt
-    uuid                   String                                    @unique @default(uuid()) @db.Char(36)
-    username               String?                                   @unique @db.VarChar(100)
-    email                  String?                                   @unique @db.VarChar(191)
-    phone                  String?                                   @unique @db.VarChar(30)
-    status                 String                                    @default("pending") @db.VarChar(30)
-    isActive               Boolean                                   @default(true) @map("is_active")
-    isVerified             Boolean                                   @default(false) @map("is_verified")
-    createdAt              DateTime                                  @default(now()) @map("created_at")
-    updatedAt              DateTime                                  @updatedAt @map("updated_at")
-    deletedAt              DateTime?                                 @map("deleted_at")
-    profile                AuthenticationUserProfile?
-    credentials            AuthenticationUserCredential?
-    security               AuthenticationUserSecurity?
-    sessions               AuthenticationUserSession[]
-    twoFactor              AuthenticationUserTwoFactor?
-    twoFactorRecoveryCodes AuthenticationUserTwoFactorRecoveryCode[]
-    twoFactorChallenges    AuthenticationUserTwoFactorChallenge[]
-    passwordResetTokens    AuthenticationPasswordResetToken[]
-    roles                  AuthorizationUserRole[]                   @relation("UserRoles")
-    assignedUserRoles      AuthorizationUserRole[]                   @relation("AssignedBy")
-    auditLogs              AuditLog[]                                @relation("AuditSubject")
-    auditActorLogs         AuditLog[]                                @relation("AuditActor")
+  id                     BigInt                                    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid                   String                                    @unique @default(uuid()) @db.Char(36)
+  username               String?                                   @unique @db.VarChar(100)
+  email                  String?                                   @unique
+  phone                  String?                                   @unique @db.VarChar(30)
+  status                 String                                    @default("pending") @db.VarChar(30)
+  isActive               Boolean                                   @default(true) @map("is_active")
+  isVerified             Boolean                                   @default(false) @map("is_verified")
+  createdAt              DateTime                                  @default(now()) @map("created_at")
+  updatedAt              DateTime                                  @updatedAt @map("updated_at")
+  deletedAt              DateTime?                                 @map("deleted_at")
+  auditActorLogs         AuditLog[]                                @relation("AuditActor")
+  auditLogs              AuditLog[]                                @relation("AuditSubject")
+  passwordResetTokens    AuthenticationPasswordResetToken[]
+  credentials            AuthenticationUserCredential?
+  profile                AuthenticationUserProfile?
+  security               AuthenticationUserSecurity?
+  sessions               AuthenticationUserSession[]
+  twoFactorChallenges    AuthenticationUserTwoFactorChallenge[]
+  twoFactorRecoveryCodes AuthenticationUserTwoFactorRecoveryCode[]
+  twoFactor              AuthenticationUserTwoFactor?
+  assignedUserRoles      AuthorizationUserRole[]                   @relation("AssignedBy")
+  roles                  AuthorizationUserRole[]                   @relation("UserRoles")
 
-    @@index([status])
-    @@index([isActive])
-    @@index([deletedAt])
-    @@index([status, deletedAt])
-    @@index([isActive, deletedAt])
-    @@map("authentication_users")
+  @@index([status])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
+  @@index([isActive, deletedAt])
+  @@map("authentication_users")
 }

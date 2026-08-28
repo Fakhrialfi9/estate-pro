@@ -1,17 +1,17 @@
 model AuthenticationUserTwoFactor {
-    id                         BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
-    userId                     BigInt             @unique @map("user_id") @db.UnsignedBigInt
-    method                     String             @default("totp") @db.VarChar(30)
-    secretEncrypted            String             @map("secret_encrypted") @db.Text
-    enrollmentStartedAt        DateTime?          @map("enrollment_started_at")
-    enabledAt                  DateTime?          @map("enabled_at")
-    lastUsedAt                 DateTime?          @map("last_used_at")
-    lastUsedTimeStep           BigInt?            @map("last_used_time_step") @db.UnsignedBigInt
-    failedVerificationAttempts Int                @default(0) @map("failed_verification_attempts") @db.UnsignedInt
-    lockedUntil                DateTime?          @map("locked_until")
-    createdAt                  DateTime           @default(now()) @map("created_at")
-    updatedAt                  DateTime           @updatedAt @map("updated_at")
-    user                       AuthenticationUser @relation(fields: [userId], references: [id])
+  id                         BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  userId                     BigInt             @unique @map("user_id") @db.UnsignedBigInt
+  method                     String             @default("totp") @db.VarChar(30)
+  secretEncrypted            String             @map("secret_encrypted") @db.Text
+  enabledAt                  DateTime?          @map("enabled_at")
+  lastUsedAt                 DateTime?          @map("last_used_at")
+  createdAt                  DateTime           @default(now()) @map("created_at")
+  updatedAt                  DateTime           @updatedAt @map("updated_at")
+  enrollmentStartedAt        DateTime?          @map("enrollment_started_at")
+  lastUsedTimeStep           BigInt?            @map("last_used_time_step") @db.UnsignedBigInt
+  failedVerificationAttempts Int                @default(0) @map("failed_verification_attempts") @db.UnsignedInt
+  lockedUntil                DateTime?          @map("locked_until")
+  user                       AuthenticationUser @relation(fields: [userId], references: [id])
 
-    @@map("authentication_user_two_factors")
+  @@map("authentication_user_two_factors")
 }
