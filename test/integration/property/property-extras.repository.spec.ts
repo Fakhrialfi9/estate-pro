@@ -85,6 +85,39 @@ describe('property extras repository integration', () => {
     )) as { electricityProvider: null };
     expect(y.electricityProvider).toBeNull();
   });
+  it('upserts property features using snake_case database timestamps', async () => {
+    const x = (await repo.upsertFeatures(
+      propertyUuid,
+      {
+        petFriendly: true,
+        childFriendly: true,
+        wheelchairAccessible: true,
+        elderlyFriendly: true,
+        smokingAllowed: false,
+        eventsAllowed: false,
+        rentalAllowed: true,
+      },
+      actor,
+    )) as {
+      petFriendly: boolean;
+      childFriendly: boolean;
+      wheelchairAccessible: boolean;
+      elderlyFriendly: boolean;
+      smokingAllowed: boolean;
+      eventsAllowed: boolean;
+      rentalAllowed: boolean;
+    };
+
+    expect(x).toEqual({
+      petFriendly: true,
+      childFriendly: true,
+      wheelchairAccessible: true,
+      elderlyFriendly: true,
+      smokingAllowed: false,
+      eventsAllowed: false,
+      rentalAllowed: true,
+    });
+  });
   it('masks certificate number and blocks foreign resource access', async () => {
     const c = (await repo.createCertificate(
       propertyUuid,
