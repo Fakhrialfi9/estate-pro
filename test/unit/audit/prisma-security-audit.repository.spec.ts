@@ -26,10 +26,9 @@ describe('PrismaSecurityAuditRepository', () => {
       $transaction: vi.fn(),
     };
 
+    const transaction = vi.fn(async (callback) => callback(tx));
     const prisma = {
-      $transaction: async (
-        callback: (...args: [typeof tx]) => Promise<void>,
-      ) => callback(tx),
+      $transaction: transaction,
     } as unknown as PrismaService;
     const config = {
       get: vi.fn().mockReturnValue(1024),
@@ -66,6 +65,7 @@ describe('PrismaSecurityAuditRepository', () => {
 
     await repository.record(event);
 
+    expect(transaction).toHaveBeenCalledOnce();
     expect(auditLogCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         action: 'property.utilities.update',
