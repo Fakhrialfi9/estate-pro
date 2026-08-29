@@ -91,6 +91,21 @@ const ALLOWED_ACTIONS = new Set<string>([
   'property.facility.update',
   'property.facility.detach',
   'property.facility.bulk_attach',
+  'property.utilities.update',
+  'property.legal.update',
+  'property.certificate.create',
+  'property.certificate.update',
+  'property.certificate.delete',
+  'property.financial.update',
+  'property.features.update',
+  'property.security.update',
+  'property.environment.update',
+  'property.seo.update',
+  'property.media.create',
+  'property.media.update',
+  'property.media.delete',
+  'property.media.set_cover',
+  'property.media.reorder',
 ]);
 const FAILURE_ACTION_PATTERN = /(FAILURE|BLOCKED|ATTEMPTED)$/;
 const ADMIN_RESOURCE_TYPES = new Set([
