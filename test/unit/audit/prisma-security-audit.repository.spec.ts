@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { ConfigService } from '@nestjs/config';
-import {
-  PrismaSecurityAuditRepository,
-} from '../../../src/infrastructure/audit/prisma-security-audit.repository.js';
+import { PrismaSecurityAuditRepository } from '../../../src/infrastructure/audit/prisma-security-audit.repository.js';
 import type { SecurityAuditEvent } from '../../../src/common/audit/security-audit.port.js';
 import { PrismaService } from '../../../src/infrastructure/database/prisma/prisma.service.js';
 
@@ -31,9 +29,7 @@ describe('PrismaSecurityAuditRepository', () => {
       };
 
       const prisma = {
-        $transaction: async (
-          callback: (client: typeof tx) => Promise<void>,
-        ) => callback(tx),
+        $transaction: async (callback: () => Promise<void>) => callback(),
       } as unknown as PrismaService;
       const config = {
         get: vi.fn().mockReturnValue(1024),
