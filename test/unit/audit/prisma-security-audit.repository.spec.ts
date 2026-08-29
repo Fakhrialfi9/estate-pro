@@ -48,11 +48,7 @@ describe('PrismaSecurityAuditRepository', () => {
         requestId: 'request-123',
         result: 'SUCCESS',
         changes: [
-          {
-            field: 'electricityProvider',
-            oldValue: null,
-            newValue: 'PLN',
-          },
+          { field: 'electricityProvider', oldValue: null, newValue: 'PLN' },
           {
             field: 'electricityMeterNumberMasked',
             oldValue: null,
