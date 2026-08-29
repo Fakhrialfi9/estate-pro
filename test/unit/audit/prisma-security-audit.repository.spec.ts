@@ -28,7 +28,7 @@ describe('PrismaSecurityAuditRepository', () => {
 
     const prisma = {
       $transaction: async (
-        callback: (transactionClient: typeof tx) => Promise<void>,
+        callback: (...args: [typeof tx]) => Promise<void>,
       ) => callback(tx),
     } as unknown as PrismaService;
     const config = {
