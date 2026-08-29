@@ -130,7 +130,7 @@ model PropertySecurity {
   accessControl  Boolean  @default(false) @map("access_control")
   gatedCommunity Boolean  @default(false) @map("gated_community")
   smartLock      Boolean  @default(false) @map("smart_lock")
-  alarmSystem    Boolean  @default(false) @map("alarm_system")
+  alarmSystem   Boolean  @default(false) @map("alarm_system")
   createdBy      String?  @map("created_by") @db.Char(36)
   updatedBy      String?  @map("updated_by") @db.Char(36)
   createdAt      DateTime @default(now()) @map("created_at")
@@ -189,7 +189,7 @@ model PropertyMedia {
   category      PropertyMediaCategory @default(OTHER)
   url           String                @db.VarChar(2048)
   thumbnailUrl  String?               @map("thumbnail_url") @db.VarChar(2048)
-  mimeType      String                @db.VarChar(120)
+  mimeType      String                @map("mime_type") @db.VarChar(120)
   extension     String?               @db.VarChar(10)
   fileSizeBytes Int?                  @map("file_size_bytes") @db.UnsignedInt
   widthPx       Int?                  @map("width_px") @db.UnsignedInt
