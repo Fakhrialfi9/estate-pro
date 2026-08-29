@@ -59,6 +59,21 @@ export const AUDIT_ACTIONS = {
   PROPERTY_FACILITY_UPDATED: 'property.facility.update',
   PROPERTY_FACILITY_DETACHED: 'property.facility.detach',
   PROPERTY_FACILITIES_BULK_ATTACHED: 'property.facility.bulk_attach',
+  PROPERTY_UTILITY_UPDATED: 'property.utilities.update',
+  PROPERTY_LEGAL_UPDATED: 'property.legal.update',
+  PROPERTY_CERTIFICATE_CREATED: 'property.certificate.create',
+  PROPERTY_CERTIFICATE_UPDATED: 'property.certificate.update',
+  PROPERTY_CERTIFICATE_DELETED: 'property.certificate.delete',
+  PROPERTY_FINANCIAL_UPDATED: 'property.financial.update',
+  PROPERTY_FEATURES_UPDATED: 'property.features.update',
+  PROPERTY_SECURITY_UPDATED: 'property.security.update',
+  PROPERTY_ENVIRONMENT_UPDATED: 'property.environment.update',
+  PROPERTY_SEO_UPDATED: 'property.seo.update',
+  PROPERTY_MEDIA_CREATED: 'property.media.create',
+  PROPERTY_MEDIA_UPDATED: 'property.media.update',
+  PROPERTY_MEDIA_DELETED: 'property.media.delete',
+  PROPERTY_MEDIA_SET_COVER: 'property.media.set_cover',
+  PROPERTY_MEDIA_REORDERED: 'property.media.reorder',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
@@ -83,5 +98,14 @@ export const AUDIT_RESOURCE_TYPES = [
   'property_building',
   'property_room',
   'property_facility',
+  'property_utilities',
+  'property_legal',
+  'property_certificate',
+  'property_financial',
+  'property_features',
+  'property_security',
+  'property_environment',
+  'property_seo',
+  'property_media',
 ] as const;
 export const AUDIT_RESULT_VALUES = ['SUCCESS', 'FAILURE'] as const;
