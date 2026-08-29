@@ -93,8 +93,8 @@ model PropertyFinancial {
   investmentRating      InvestmentRating @default(NOT_RATED) @map("investment_rating")
   createdBy             String?          @map("created_by") @db.Char(36)
   updatedBy             String?          @map("updated_by") @db.Char(36)
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
+  createdAt             DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt             DateTime         @updatedAt @map("updated_at") @db.DateTime(3)
   property              Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@index([currency, investmentRating], map: "property_financials_currency_rating_idx")
@@ -114,8 +114,8 @@ model PropertyFeatures {
   rentalAllowed        Boolean  @default(true) @map("rental_allowed")
   createdBy            String?  @map("created_by") @db.Char(36)
   updatedBy            String?  @map("updated_by") @db.Char(36)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
   property             Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("property_features")
@@ -133,8 +133,8 @@ model PropertySecurity {
   alarmSystem    Boolean  @default(false) @map("alarm_system")
   createdBy      String?  @map("created_by") @db.Char(36)
   updatedBy      String?  @map("updated_by") @db.Char(36)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
   property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("property_security")
@@ -151,8 +151,8 @@ model PropertyEnvironment {
   greenCertification  String?  @map("green_certification") @db.VarChar(200)
   createdBy           String?  @map("created_by") @db.Char(36)
   updatedBy           String?  @map("updated_by") @db.Char(36)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
   property            Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("property_environment")
@@ -175,10 +175,9 @@ model PropertySeo {
   customFields    Json?                @map("custom_fields")
   createdBy       String?              @map("created_by") @db.Char(36)
   updatedBy       String?              @map("updated_by") @db.Char(36)
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
   property        Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
   @@map("property_seo")
 }
 
@@ -190,7 +189,7 @@ model PropertyMedia {
   category      PropertyMediaCategory @default(OTHER)
   url           String                @db.VarChar(2048)
   thumbnailUrl  String?               @map("thumbnail_url") @db.VarChar(2048)
-  mimeType      String                @map("mime_type") @db.VarChar(120)
+  mimeType      String                @db.VarChar(120)
   extension     String?               @db.VarChar(10)
   fileSizeBytes Int?                  @map("file_size_bytes") @db.UnsignedInt
   widthPx       Int?                  @map("width_px") @db.UnsignedInt
@@ -204,8 +203,8 @@ model PropertyMedia {
   createdBy     String?               @map("created_by") @db.Char(36)
   updatedBy     String?               @map("updated_by") @db.Char(36)
   deletedAt     DateTime?             @map("deleted_at")
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
   property      Property              @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@index([propertyId, isCover, deletedAt], map: "property_media_cover_idx")
