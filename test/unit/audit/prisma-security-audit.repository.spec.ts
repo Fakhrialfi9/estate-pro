@@ -13,7 +13,7 @@ describe('PrismaSecurityAuditRepository', () => {
       const auditLogCreate = vi.fn().mockResolvedValue({ id: 1n });
       const auditLogChangeCreateMany = vi.fn().mockResolvedValue(undefined);
 
-      const tx = {
+      const transactionClient = {
         authenticationUser: {
           findFirst: vi.fn().mockResolvedValue({ id: 7n, uuid: actorUuid }),
         },
@@ -30,8 +30,8 @@ describe('PrismaSecurityAuditRepository', () => {
 
       const prisma = {
         $transaction: async (
-          callback: (...args: [typeof tx]) => Promise<void>,
-        ) => callback(tx),
+          callback: (...args: [typeof transactionClient]) => Promise<void>,
+        ) => callback(transactionClient),
       } as unknown as PrismaService;
       const config = {
         get: vi.fn().mockReturnValue(1024),
