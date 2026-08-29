@@ -29,7 +29,9 @@ describe('PrismaSecurityAuditRepository', () => {
       };
 
       const prisma = {
-        $transaction: async (callback: () => Promise<void>) => callback(),
+        $transaction: async (
+          callback: (...args: [typeof tx]) => Promise<void>,
+        ) => callback(tx),
       } as unknown as PrismaService;
       const config = {
         get: vi.fn().mockReturnValue(1024),
