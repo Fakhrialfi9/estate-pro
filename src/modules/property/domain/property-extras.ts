@@ -124,7 +124,12 @@ export const MEDIA_CATEGORIES = [
   'OTHER',
 ] as const;
 export type JsonValue =
-  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 export type UtilityPatch = {
   electricityProvider?: string | null;
   electricityCapacityKva?: string | null;

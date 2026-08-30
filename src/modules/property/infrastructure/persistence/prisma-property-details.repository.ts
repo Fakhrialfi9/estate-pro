@@ -38,7 +38,9 @@ const trim = (value: string | null | undefined): string | null | undefined =>
   value === undefined ? undefined : value === null ? null : value.trim();
 
 @Injectable()
-export class PrismaPropertyDetailsRepository implements PropertyDetailsRepository {
+export class PrismaPropertyDetailsRepository
+  implements PropertyDetailsRepository
+{
   constructor(private readonly prisma: PrismaService) {}
 
   private async propertyId(

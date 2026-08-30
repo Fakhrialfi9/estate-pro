@@ -22,7 +22,9 @@ type Delegate = {
 type PrismaShape = { authenticationUserTwoFactorChallenge: Delegate };
 
 @Injectable()
-export class PrismaTwoFactorChallengeRepository implements TwoFactorChallengeRepository {
+export class PrismaTwoFactorChallengeRepository
+  implements TwoFactorChallengeRepository
+{
   private readonly challenges: Delegate;
 
   constructor(prisma: PrismaService) {

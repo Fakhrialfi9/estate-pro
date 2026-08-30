@@ -31,7 +31,9 @@ type SessionDelegate = {
 type PrismaShape = { authenticationUserSession: SessionDelegate };
 
 @Injectable()
-export class PrismaAuthenticationSessionRepository implements AuthenticationSessionRepository {
+export class PrismaAuthenticationSessionRepository
+  implements AuthenticationSessionRepository
+{
   private readonly sessions: SessionDelegate;
 
   constructor(prisma: PrismaService) {

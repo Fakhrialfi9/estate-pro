@@ -38,12 +38,14 @@ export class PropertyUtilityDto {
   @IsOptional() @IsString() @MaxLength(120) electricityProvider?: string | null;
   @IsOptional() @IsString() @Matches(D2) electricityCapacityKva?: string | null;
   @IsOptional() @IsString() @MaxLength(32) electricityMeterNumberMasked?:
-    string | null;
+    | string
+    | null;
   @IsOptional()
   @IsEnum(UTILITY_WATER_SOURCES)
   waterSource?: (typeof UTILITY_WATER_SOURCES)[number];
   @IsOptional() @IsEnum(UTILITY_WATER_SOURCES) waterBackupSource?:
-    (typeof UTILITY_WATER_SOURCES)[number] | null;
+    | (typeof UTILITY_WATER_SOURCES)[number]
+    | null;
   @IsOptional()
   @IsEnum(UTILITY_GAS_TYPES)
   gasType?: (typeof UTILITY_GAS_TYPES)[number];
@@ -186,7 +188,8 @@ export class PropertyMediaDto {
   thumbnailUrl?: string | null;
   @IsString() @MaxLength(120) mimeType!: string;
   @IsOptional() @IsString() @Matches(/^\.?[A-Za-z0-9]{1,10}$/) extension?:
-    string | null;
+    | string
+    | null;
   @IsOptional() @IsInt() @Min(0) @Max(524288000) fileSizeBytes?: number | null;
   @IsOptional() @IsInt() @Min(1) @Max(50000) widthPx?: number | null;
   @IsOptional() @IsInt() @Min(1) @Max(50000) heightPx?: number | null;
@@ -212,7 +215,8 @@ export class PropertyMediaUpdateDto {
   thumbnailUrl?: string | null;
   @IsOptional() @IsString() @MaxLength(120) mimeType?: string;
   @IsOptional() @IsString() @Matches(/^\.?[A-Za-z0-9]{1,10}$/) extension?:
-    string | null;
+    | string
+    | null;
   @IsOptional() @IsInt() @Min(0) @Max(524288000) fileSizeBytes?: number | null;
   @IsOptional() @IsInt() @Min(1) @Max(50000) widthPx?: number | null;
   @IsOptional() @IsInt() @Min(1) @Max(50000) heightPx?: number | null;

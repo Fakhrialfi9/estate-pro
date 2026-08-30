@@ -17,7 +17,9 @@ type PrismaShape = {
 };
 
 @Injectable()
-export class PrismaTwoFactorRecoveryCodeRepository implements TwoFactorRecoveryCodeRepository {
+export class PrismaTwoFactorRecoveryCodeRepository
+  implements TwoFactorRecoveryCodeRepository
+{
   private readonly users: UserDelegate;
   private readonly recoveryCodes: RecoveryDelegate;
 

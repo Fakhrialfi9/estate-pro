@@ -1,7 +1,12 @@
 import { MasterHierarchyError, MasterStateError } from './errors.js';
 
 export type PropertyStatus =
-  'DRAFT' | 'IN_REVIEW' | 'ACTIVE' | 'ARCHIVED' | 'SOLD' | 'RENTED';
+  | 'DRAFT'
+  | 'IN_REVIEW'
+  | 'ACTIVE'
+  | 'ARCHIVED'
+  | 'SOLD'
+  | 'RENTED';
 export type AvailabilityStatus = 'AVAILABLE' | 'UNAVAILABLE';
 export type FacilityCategory =
   | 'OUTDOOR'

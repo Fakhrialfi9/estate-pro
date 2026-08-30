@@ -5,7 +5,13 @@ import type {
 
 export type PermissionFilterField = 'module' | 'domain' | 'action' | 'isSystem';
 export type PermissionSortField =
-  'name' | 'code' | 'module' | 'domain' | 'action' | 'createdAt' | 'updatedAt';
+  | 'name'
+  | 'code'
+  | 'module'
+  | 'domain'
+  | 'action'
+  | 'createdAt'
+  | 'updatedAt';
 
 export interface CreatePermissionData {
   name: string;

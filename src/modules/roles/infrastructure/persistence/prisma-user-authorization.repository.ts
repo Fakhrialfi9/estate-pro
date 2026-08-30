@@ -29,7 +29,9 @@ type PrismaAuthorizationShape = {
 };
 
 @Injectable()
-export class PrismaUserAuthorizationRepository implements UserAuthorizationRepository {
+export class PrismaUserAuthorizationRepository
+  implements UserAuthorizationRepository
+{
   private readonly users: UserDelegate;
   private readonly userRoles: UserRoleDelegate;
 

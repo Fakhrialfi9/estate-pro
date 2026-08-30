@@ -108,7 +108,8 @@ export class PropertyLocationDto {
   @IsOptional() @IsString() @MaxLength(80) unit?: string | null;
   @IsOptional() @IsString() @MaxLength(200) neighborhood?: string | null;
   @IsOptional() @IsString() @Matches(/^[0-9A-Za-z -]{3,20}$/) postalCode?:
-    string | null;
+    | string
+    | null;
   @IsOptional()
   @IsString()
   @Matches(SIGNED_COORDINATE_PATTERN)
@@ -123,7 +124,8 @@ export class PropertyLocationDto {
   @IsEnum(COORDINATE_ACCURACIES)
   coordinateAccuracy?: (typeof COORDINATE_ACCURACIES)[number];
   @IsOptional() @IsEnum(MAP_PROVIDERS) mapProvider?:
-    (typeof MAP_PROVIDERS)[number] | null;
+    | (typeof MAP_PROVIDERS)[number]
+    | null;
   @IsOptional() @IsString() @MaxLength(255) placeId?: string | null;
   @IsOptional()
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
