@@ -119,7 +119,9 @@ const makeLogin = (passwordValid = true, account = user()) => {
   const refreshTokens = {
     getSessionExpiresAt: vi
       .fn()
-      .mockImplementation((now: Date) => new Date(now.getTime() + 30 * 86400000)),
+      .mockImplementation(
+        (now: Date) => new Date(now.getTime() + 30 * 86400000),
+      ),
     issueForSession: vi.fn().mockResolvedValue({
       accessToken: 'signed.jwt.token',
       tokenType: 'Bearer',
