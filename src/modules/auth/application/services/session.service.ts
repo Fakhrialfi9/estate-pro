@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
+import type {
   AuthenticationSessionRepository,
   SessionAuditContext,
   SessionListQuery,
