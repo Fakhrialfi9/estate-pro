@@ -14,10 +14,13 @@ export class RefreshTokenCryptoService {
   digest(token: string): string {
     return digestRefreshToken(token);
   }
-  equalsDigest(left: string, right: string): boolean {
-    const a = Buffer.from(left, 'hex');
-    const b = Buffer.from(right, 'hex');
-    return a.length === b.length && timingSafeEqual(a, b);
+  equalsDigest(token: string, expectedDigest: string): boolean {
+    const actualDigest = Buffer.from(this.digest(token), 'hex');
+    const expected = Buffer.from(expectedDigest, 'hex');
+    return (
+      actualDigest.length === expected.length &&
+      timingSafeEqual(actualDigest, expected)
+    );
   }
 }
 
