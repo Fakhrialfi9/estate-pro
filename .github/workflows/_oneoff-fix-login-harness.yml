@@ -13,6 +13,8 @@ env:
   DATABASE_CONNECT_TIMEOUT_MS: 5000
   DATABASE_ACQUIRE_TIMEOUT_MS: 10000
   DATABASE_POOL_IDLE_TIMEOUT_SEC: 30
+  AUTH_LOGIN_RATE_LIMIT: 5
+  AUTH_LOGIN_RATE_LIMIT_TTL_MS: 60000
 
 jobs:
   fix-and-validate:
@@ -48,23 +50,26 @@ jobs:
           path = Path('test/security/security-hardening-272-295.spec.ts')
           text = path.read_text()
 
-          old = '''  const twoFactor = { isEnabled: vi.fn().mockResolvedValue(false) };\n  const config = {\n'''
-          new = '''  const refreshTokens = {\n    getSessionExpiresAt: vi\n      .fn()\n      .mockReturnValue(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),\n    issueForSession: vi.fn().mockResolvedValue({\n      accessToken: 'signed.jwt',\n      refreshToken: 'opaque.refresh.token',\n      tokenType: 'Bearer',\n      expiresIn: 60,\n      refreshTokenExpiresIn: 30 * 24 * 60 * 60,\n    }),\n  };\n  const twoFactor = { isEnabled: vi.fn().mockResolvedValue(false) };\n  const config = {\n'''
-          if old not in text:
-              raise SystemExit('expected stale harness block not found')
-          text = text.replace(old, new, 1)
+          if 'const refreshTokens = {' not in text:
+              old = '''  const twoFactor = { isEnabled: vi.fn().mockResolvedValue(false) };\n  const config = {\n'''
+              new = '''  const refreshTokens = {\n    getSessionExpiresAt: vi\n      .fn()\n      .mockReturnValue(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),\n    issueForSession: vi.fn().mockResolvedValue({\n      accessToken: 'signed.jwt',\n      refreshToken: 'opaque.refresh.token',\n      tokenType: 'Bearer',\n      expiresIn: 60,\n      refreshTokenExpiresIn: 30 * 24 * 60 * 60,\n    }),\n  };\n  const twoFactor = { isEnabled: vi.fn().mockResolvedValue(false) };\n  const config = {\n'''
+              if old not in text:
+                  raise SystemExit('expected stale harness block not found')
+              text = text.replace(old, new, 1)
 
-          old = '''    sessions as never,\n    config as never,\n    twoFactor as never,\n'''
-          new = '''    sessions as never,\n    refreshTokens as never,\n    config as never,\n    twoFactor as never,\n'''
-          if old not in text:
-              raise SystemExit('expected constructor block not found')
-          text = text.replace(old, new, 1)
+          if '    refreshTokens as never,\n' not in text:
+              old = '''    sessions as never,\n    config as never,\n    twoFactor as never,\n'''
+              new = '''    sessions as never,\n    refreshTokens as never,\n    config as never,\n    twoFactor as never,\n'''
+              if old not in text:
+                  raise SystemExit('expected constructor block not found')
+              text = text.replace(old, new, 1)
 
-          old = '''    sessions,\n    getCreatedSessionId: () => createdSessionId,\n'''
-          new = '''    sessions,\n    refreshTokens,\n    getCreatedSessionId: () => createdSessionId,\n'''
-          if old not in text:
-              raise SystemExit('expected return block not found')
-          text = text.replace(old, new, 1)
+          if '    refreshTokens,\n    getCreatedSessionId' not in text:
+              old = '''    sessions,\n    getCreatedSessionId: () => createdSessionId,\n'''
+              new = '''    sessions,\n    refreshTokens,\n    getCreatedSessionId: () => createdSessionId,\n'''
+              if old not in text:
+                  raise SystemExit('expected return block not found')
+              text = text.replace(old, new, 1)
 
           path.write_text(text)
           PY
@@ -89,6 +94,9 @@ jobs:
 
       - name: Full test suite
         run: npm test
+
+      - name: E2E test suite
+        run: npm run test:e2e
 
       - name: Production build
         run: npm run build
