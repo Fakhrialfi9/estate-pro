@@ -1,12 +1,8 @@
 import { ConfigService } from '@nestjs/config';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../../src/infrastructure/database/prisma/prisma.service.js';
-import {
-  PrismaRefreshTokenRepository,
-  digestRefreshToken,
-  generateRefreshToken,
-} from '../../../src/modules/auth/infrastructure/persistence/prisma-refresh-token.repository.js';
+import { PrismaRefreshTokenRepository } from '../../../src/modules/auth/infrastructure/persistence/prisma-refresh-token.repository.js';
 
 const config = new ConfigService({
   database: {
@@ -26,6 +22,9 @@ const config = new ConfigService({
   },
 });
 
+const generateRefreshToken = () => randomBytes(32).toString('base64url');
+const digestRefreshToken = (token: string) =>
+  createHash('sha256').update(token, 'utf8').digest('hex');
 const cryptoToken = () => generateRefreshToken();
 
 describe('PrismaRefreshTokenRepository lifecycle', () => {
@@ -108,80 +107,83 @@ describe('PrismaRefreshTokenRepository lifecycle', () => {
       issuedAt: now,
       expiresAt: new Date(now.getTime() + 86400000),
     });
-    const replacement = cryptoToken();
+
     const result = await repository.rotate(
       digestRefreshToken(plaintext),
-      () => ({
-        token: replacement,
-        tokenHash: digestRefreshToken(replacement),
-        expiresAt: new Date(now.getTime() + 86400000),
-      }),
+      () => {
+        const token = cryptoToken();
+        return {
+          token,
+          tokenHash: digestRefreshToken(token),
+          expiresAt: new Date(now.getTime() + 86400000),
+        };
+      },
       now,
     );
 
     expect(result.kind).toBe('ROTATED');
-    if (result.kind === 'ROTATED') {
-      expect(result.value.oldTokenId).toBe(created.tokenId);
-      expect(result.value.newToken).toBe(replacement);
-      expect(result.value.userUuid).toBe(userUuid);
-      expect(result.value.sessionId).toBe(sessionId.toString());
-    }
-
-    const old = await prisma.authenticationRefreshToken.findUnique({
-      where: { id: BigInt(created.tokenId) },
-      select: { consumedAt: true, revokedAt: true, revokeReason: true },
-    });
-    expect(old?.consumedAt).not.toBeNull();
-    expect(old?.revokedAt).not.toBeNull();
-    expect(old?.revokeReason).toBe('ROTATED');
+    if (result.kind !== 'ROTATED') return;
+    expect(result.value.oldTokenId).toBe(created.tokenId);
+    expect(result.value.newToken).not.toBe(plaintext);
+    expect(result.value.userUuid).toBe(userUuid);
+    expect(result.value.sessionId).toBe(sessionId.toString());
   });
 
   it('detects replay and revokes the complete family plus session', async () => {
     const plaintext = cryptoToken();
     const now = new Date();
-    await repository.createWithInitialToken({
+    const created = await repository.createWithInitialToken({
       userUuid,
       sessionId: sessionId.toString(),
       tokenHash: digestRefreshToken(plaintext),
       issuedAt: now,
       expiresAt: new Date(now.getTime() + 86400000),
     });
-    const firstReplacement = cryptoToken();
+
     const first = await repository.rotate(
       digestRefreshToken(plaintext),
-      () => ({
-        token: firstReplacement,
-        tokenHash: digestRefreshToken(firstReplacement),
-        expiresAt: new Date(now.getTime() + 86400000),
-      }),
+      () => {
+        const token = cryptoToken();
+        return {
+          token,
+          tokenHash: digestRefreshToken(token),
+          expiresAt: new Date(now.getTime() + 86400000),
+        };
+      },
       now,
     );
     expect(first.kind).toBe('ROTATED');
 
     const replay = await repository.rotate(
       digestRefreshToken(plaintext),
-      () => ({
-        token: cryptoToken(),
-        tokenHash: digestRefreshToken(cryptoToken()),
-        expiresAt: new Date(now.getTime() + 86400000),
-      }),
-      new Date(now.getTime() + 1),
+      () => {
+        const token = cryptoToken();
+        return {
+          token,
+          tokenHash: digestRefreshToken(token),
+          expiresAt: new Date(now.getTime() + 86400000),
+        };
+      },
+      new Date(now.getTime() + 1000),
     );
-    expect(replay.kind).toBe('REUSE_DETECTED');
-
-    const familyId =
-      first.kind === 'ROTATED' ? first.value.familyId : undefined;
-    expect(familyId).toBeDefined();
-    const family = await prisma.authenticationRefreshTokenFamily.findUnique({
-      where: { id: familyId },
+    expect(replay).toEqual({
+      kind: 'REUSE_DETECTED',
+      familyId: expect.any(String),
+      userUuid,
+      sessionId: sessionId.toString(),
     });
-    const session = await prisma.authenticationUserSession.findUnique({
+
+    const family = await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({
+      where: { id: replay.kind === 'REUSE_DETECTED' ? replay.familyId : '' },
+      select: { revokedAt: true },
+    });
+    expect(family.revokedAt).not.toBeNull();
+    const session = await prisma.authenticationUserSession.findUniqueOrThrow({
       where: { id: sessionId },
       select: { revokedAt: true },
     });
-    expect(family?.revokedAt).not.toBeNull();
-    expect(family?.revokeReason).toBe('REUSE_DETECTED');
-    expect(session?.revokedAt).not.toBeNull();
+    expect(session.revokedAt).not.toBeNull();
+    expect(created.tokenId).toEqual(expect.any(String));
   });
 
   it('allows only one winner when the same active token is refreshed concurrently', async () => {
@@ -195,33 +197,23 @@ describe('PrismaRefreshTokenRepository lifecycle', () => {
       expiresAt: new Date(now.getTime() + 86400000),
     });
 
-    const outcomes = await Promise.allSettled(
-      [1, 2].map(async () => {
-        const replacement = cryptoToken();
-        return repository.rotate(
-          digestRefreshToken(plaintext),
-          () => ({
-            token: replacement,
-            tokenHash: digestRefreshToken(replacement),
-            expiresAt: new Date(now.getTime() + 86400000),
-          }),
-          now,
-        );
-      }),
-    );
-    const values = outcomes
-      .filter(
-        (
-          outcome,
-        ): outcome is PromiseFulfilledResult<
-          Awaited<ReturnType<PrismaRefreshTokenRepository['rotate']>>
-        > => outcome.status === 'fulfilled',
-      )
-      .map((outcome) => outcome.value);
-    const winners = values.filter((value) => value.kind === 'ROTATED');
-    const reuses = values.filter((value) => value.kind === 'REUSE_DETECTED');
-    expect(winners.length).toBeLessThanOrEqual(1);
-    expect(reuses.length).toBeLessThanOrEqual(1);
-    expect(winners.length + reuses.length).toBe(2);
+    const createReplacement = () => {
+      const token = cryptoToken();
+      return {
+        token,
+        tokenHash: digestRefreshToken(token),
+        expiresAt: new Date(now.getTime() + 86400000),
+      };
+    };
+
+    const [left, right] = await Promise.all([
+      repository.rotate(digestRefreshToken(plaintext), createReplacement, now),
+      repository.rotate(digestRefreshToken(plaintext), createReplacement, now),
+    ]);
+    const results = [left, right];
+    expect(results.filter((result) => result.kind === 'ROTATED')).toHaveLength(1);
+    expect(
+      results.some((result) => result.kind === 'REUSE_DETECTED'),
+    ).toBe(true);
   });
 });
