@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
@@ -12,6 +12,10 @@ import {
   REFRESH_TOKEN_SECURITY_PORT,
   type RefreshTokenSecurityPort,
 } from '../../src/common/security/refresh-token-security.port.js';
+import {
+  REFRESH_TOKEN_REPOSITORY,
+  type RefreshTokenRepository,
+} from '../../src/modules/auth/domain/repositories/refresh-token.repository.js';
 import { digestRefreshToken } from '../../src/modules/auth/application/services/refresh-token-crypto.service.js';
 import { PrismaRefreshTokenRepository } from '../../src/modules/auth/infrastructure/persistence/prisma-refresh-token.repository.js';
 
@@ -31,6 +35,7 @@ let prisma: PrismaService;
 let hasher: PasswordHasherService;
 let security: RefreshTokenSecurityPort;
 let repository: PrismaRefreshTokenRepository;
+let appRefreshTokenRepository: RefreshTokenRepository;
 let userUuid: string;
 let testClientIp: string;
 
@@ -107,6 +112,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
     prisma = app.get(PrismaService);
     hasher = app.get(PasswordHasherService);
     security = app.get(REFRESH_TOKEN_SECURITY_PORT);
+    appRefreshTokenRepository = app.get(REFRESH_TOKEN_REPOSITORY);
     repository = new PrismaRefreshTokenRepository(prisma);
   });
 
@@ -322,7 +328,19 @@ describe('Refresh-token lifecycle E2E matrix', () => {
     await refresh(result.refreshToken).expect(200);
     const logs = await prisma.auditLog.findMany({
       where: { user: { uuid: userUuid } },
-      select: { metadata: true },
+      select: {
+        action: true,
+        entityType: true,
+        resourceId: true,
+        result: true,
+        reason: true,
+        ipAddress: true,
+        userAgent: true,
+        requestId: true,
+        changes: {
+          select: { field: true, oldValue: true, newValue: true },
+        },
+      },
     });
     expect(JSON.stringify(logs)).not.toContain(result.refreshToken);
   });
@@ -401,14 +419,16 @@ describe('Refresh-token lifecycle E2E matrix', () => {
 
   it('RT-030 database failure returns a safe failure without exposing database details', async () => {
     const result = await login();
-    await prisma.$disconnect();
+    const rotateSpy = vi
+      .spyOn(appRefreshTokenRepository, 'rotate')
+      .mockRejectedValueOnce(new Error('simulated database failure'));
     try {
       const response = await refresh(result.refreshToken);
       expect([401, 500, 503]).toContain(response.status);
       const text = JSON.stringify(response.body);
       expect(text).not.toMatch(/mysql|mariadb|prisma|ECONN|DATABASE_URL/i);
     } finally {
-      await prisma.$connect();
+      rotateSpy.mockRestore();
     }
   });
 });
