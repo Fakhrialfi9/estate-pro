@@ -15,7 +15,7 @@ import { RefreshTokenCryptoService } from './application/services/refresh-token-
 import { TotpService } from './application/services/totp.service.js';
 import { TwoFactorCryptoService } from './application/services/two-factor-crypto.service.js';
 import { TwoFactorService } from './application/services/two-factor.service.js';
-import { AuthController, RefreshTokenController } from './presentation/auth.controller.js';
+import { AuthController } from './presentation/auth.controller.js';
 import { TwoFactorController } from './presentation/two-factor.controller.js';
 import { AdminSessionController, SessionController } from './presentation/session.controller.js';
 import { JwtAuthGuard } from './security/jwt-auth.guard.js';
@@ -45,19 +45,12 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
 @Global()
 @Module({
   imports: [ConfigModule, DatabaseModule, UsersModule, AuditModule, PasswordHashingModule, JwtModule.registerAsync({
-    imports: [ConfigModule],
-    inject: [ConfigService],
-    useFactory: (config: ConfigService) => ({
+    imports: [ConfigModule], inject: [ConfigService], useFactory: (config: ConfigService) => ({
       secret: config.getOrThrow<string>('auth.jwt.secret'),
-      signOptions: {
-        expiresIn: config.getOrThrow<string>('auth.jwt.expiresIn') as RequiredExpiresIn,
-        issuer: config.getOrThrow<string>('auth.jwt.issuer'),
-        audience: config.getOrThrow<string>('auth.jwt.audience'),
-        algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>('auth.jwt.algorithm'),
-      },
+      signOptions: { expiresIn: config.getOrThrow<string>('auth.jwt.expiresIn') as RequiredExpiresIn, issuer: config.getOrThrow<string>('auth.jwt.issuer'), audience: config.getOrThrow<string>('auth.jwt.audience'), algorithm: config.getOrThrow<'HS256' | 'HS384' | 'HS512'>('auth.jwt.algorithm') },
     }),
   })],
-  controllers: [AuthController, RefreshTokenController, TwoFactorController, SessionController, AdminSessionController],
+  controllers: [AuthController, TwoFactorController, SessionController, AdminSessionController],
   providers: [
     LoginService, LogoutService, SessionService, JwtTokenService, RefreshTokenService, RefreshTokenCryptoService,
     TotpService, TwoFactorCryptoService, TwoFactorService, JwtAuthGuard, SessionAdminGuard,
@@ -77,6 +70,5 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
   exports: [JwtTokenService, JwtAuthGuard, SessionService, RefreshTokenService, REFRESH_TOKEN_SECURITY_PORT, TwoFactorService, AUTHENTICATION_SESSION_REPOSITORY, SESSION_SECURITY_PORT, ACCESS_TOKEN_VERIFIER, AUTHENTICATION_SESSION_PORT],
 })
 export class AuthModule {}
-
 export { JwtAuthGuard } from './security/jwt-auth.guard.js';
 export type { AccessTokenVerifier } from '../../common/security/access-token-verifier.port.js';
