@@ -13,11 +13,6 @@ describe('production configuration', () => {
       API_PREFIX: 'api',
       API_VERSION: 'v1',
       DATABASE_URL: 'mysql://app:password@127.0.0.1:3306/estate_pro',
-      DATABASE_HOST: '127.0.0.1',
-      DATABASE_PORT: 3306,
-      DATABASE_NAME: 'estate_pro',
-      DATABASE_USER: 'app',
-      DATABASE_PASSWORD: 'password',
       JWT_SECRET: 'production-only-secret-that-is-long-and-random-123456',
       TWO_FACTOR_ENCRYPTION_KEY:
         'production-two-factor-key-that-is-long-and-random-123456',
