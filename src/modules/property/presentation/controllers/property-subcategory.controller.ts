@@ -14,21 +14,21 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
-import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
-import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
-import { PropertyMasterService } from '../application/property-master.service.js';
+import { JwtAuthGuard } from '../../../auth/security/jwt-auth.guard.js';
+import { AuthorizationGuard } from '../../../../common/security/authorization.guard.js';
+import { RequirePermissions } from '../../../../common/security/authorization.decorators.js';
+import { PropertyMasterService } from '../../application/property-master.service.js';
 import {
   CatalogUpdateDto,
   ListQuery,
   SubcategoryDto,
-} from './property-master.dto.js';
+} from '../property-master.dto.js';
 import {
   actor,
   listResponse,
   response,
   type AuthenticatedRequest,
-} from './controllers/property-controller.support.js';
+} from './property-controller.support.js';
 
 @ApiTags('Property Subcategories')
 @ApiBearerAuth()
@@ -36,6 +36,7 @@ import {
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class PropertySubcategoryController {
   constructor(private readonly service: PropertyMasterService) {}
+
   @Post('subcategories')
   @RequirePermissions('property-subcategories.create')
   create(
@@ -48,16 +49,19 @@ export class PropertySubcategoryController {
       .createSubcategory({ ...d }, actor(r, ua, rid))
       .then(response);
   }
-  @Get('subcategories') @RequirePermissions('property-subcategories.read') list(
-    @Query() q: ListQuery,
-  ) {
+
+  @Get('subcategories')
+  @RequirePermissions('property-subcategories.read')
+  list(@Query() q: ListQuery) {
     return this.service.listSubcategories(q).then(listResponse);
   }
+
   @Get('subcategories/:uuid')
   @RequirePermissions('property-subcategories.read')
   get(@Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string) {
     return this.service.getSubcategory(uuid).then(response);
   }
+
   @Patch('subcategories/:uuid')
   @RequirePermissions('property-subcategories.update')
   update(
@@ -71,6 +75,7 @@ export class PropertySubcategoryController {
       .updateSubcategory(uuid, d.version, { ...d }, actor(r, ua, rid))
       .then(response);
   }
+
   @Delete('subcategories/:uuid')
   @HttpCode(204)
   @RequirePermissions('property-subcategories.delete')
