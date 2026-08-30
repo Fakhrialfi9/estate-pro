@@ -14,22 +14,21 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import type { Request } from 'express';
-import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
-import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
-import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
-import { PropertyMasterService } from '../application/property-master.service.js';
+import { JwtAuthGuard } from '../../../auth/security/jwt-auth.guard.js';
+import { AuthorizationGuard } from '../../../../common/security/authorization.guard.js';
+import { RequirePermissions } from '../../../../common/security/authorization.decorators.js';
+import { PropertyMasterService } from '../../application/property-master.service.js';
 import {
   CatalogDto,
   CatalogUpdateDto,
   ListQuery,
-} from './property-master.dto.js';
+} from '../property-master.dto.js';
 import {
   actor,
   listResponse,
   response,
   type AuthenticatedRequest,
-} from './controllers/property-controller.support.js';
+} from './property-controller.support.js';
 
 @ApiTags('Property Categories')
 @ApiBearerAuth()
@@ -37,7 +36,10 @@ import {
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class PropertyCategoryController {
   constructor(private readonly service: PropertyMasterService) {}
-  @Post('categories') @RequirePermissions('property-categories.create') create(
+
+  @Post('categories')
+  @RequirePermissions('property-categories.create')
+  create(
     @Req() r: AuthenticatedRequest,
     @Body() d: CatalogDto,
     @Headers('user-agent') ua?: string,
@@ -47,16 +49,19 @@ export class PropertyCategoryController {
       .createCategory({ ...d }, actor(r, ua, rid))
       .then(response);
   }
-  @Get('categories') @RequirePermissions('property-categories.read') list(
-    @Query() q: ListQuery,
-  ) {
+
+  @Get('categories')
+  @RequirePermissions('property-categories.read')
+  list(@Query() q: ListQuery) {
     return this.service.listCategories(q).then(listResponse);
   }
-  @Get('categories/:uuid') @RequirePermissions('property-categories.read') get(
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-  ) {
+
+  @Get('categories/:uuid')
+  @RequirePermissions('property-categories.read')
+  get(@Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string) {
     return this.service.getCategory(uuid).then(response);
   }
+
   @Patch('categories/:uuid')
   @RequirePermissions('property-categories.update')
   update(
@@ -70,6 +75,7 @@ export class PropertyCategoryController {
       .updateCategory(uuid, d.version, { ...d }, actor(r, ua, rid))
       .then(response);
   }
+
   @Delete('categories/:uuid')
   @HttpCode(204)
   @RequirePermissions('property-categories.delete')
