@@ -72,9 +72,7 @@ function getSafeTestDatabaseUrl(
   }
 
   const testDatabaseUrl = new URL(url.toString());
-  testDatabaseUrl.pathname = `/${encodeURIComponent(
-    `${databaseName}_test`,
-  )}`;
+  testDatabaseUrl.pathname = `/${encodeURIComponent(`${databaseName}_test`)}`;
   return testDatabaseUrl.toString();
 }
 
