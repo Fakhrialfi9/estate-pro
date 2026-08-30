@@ -16,10 +16,7 @@ import { RefreshTokenObservabilityService } from './application/services/refresh
 import { TotpService } from './application/services/totp.service.js';
 import { TwoFactorCryptoService } from './application/services/two-factor-crypto.service.js';
 import { TwoFactorService } from './application/services/two-factor.service.js';
-import {
-  AuthController,
-  RefreshTokenController,
-} from './presentation/auth.controller.js';
+import { AuthController } from './presentation/auth.controller.js';
 import { TwoFactorController } from './presentation/two-factor.controller.js';
 import {
   AdminSessionController,
@@ -77,7 +74,6 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
   ],
   controllers: [
     AuthController,
-    RefreshTokenController,
     TwoFactorController,
     SessionController,
     AdminSessionController,
