@@ -25,17 +25,22 @@ import { SystemModule } from './modules/system/system.module.js';
 
 const shouldSkipThrottling = (context: ExecutionContext): boolean =>
   context.getClass() === HealthController;
-const validateEnvironment = (env: Record<string, unknown>) => {
+
+const validateEnvironment = (
+  env: Record<string, unknown>,
+): Record<string, unknown> => {
   const schemaKeys = configurationValidationSchema.describe().keys;
-  const appEnvironment = Object.fromEntries(
-    Object.keys(schemaKeys).map((key) => [key, env[key]]),
-  );
+  const appEnvironment: Record<string, unknown> = {};
+  for (const key of Object.keys(schemaKeys)) {
+    appEnvironment[key] = env[key];
+  }
+
   const result = configurationValidationSchema.validate(appEnvironment, {
     abortEarly: false,
     allowUnknown: false,
   });
   if (result.error) throw result.error;
-  return result.value;
+  return result.value as Record<string, unknown>;
 };
 
 @Module({
@@ -59,25 +64,44 @@ const validateEnvironment = (env: Record<string, unknown>) => {
             limit: configService.getOrThrow<number>('rateLimit.limit'),
           },
         ],
-        skipIf: shouldSkipThrottling,
       }),
     }),
-    AuditModule,
-    AuthModule,
     DatabaseModule,
-    HealthModule,
+    ObservabilityModule,
+    AuditModule,
     UsersModule,
-    RolesModule,
+    AuthModule,
     PermissionsModule,
     PropertyModule,
+    RolesModule,
     SystemModule,
-    ObservabilityModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+    GlobalExceptionFilter,
+    {
+      provide: APP_FILTER,
+      useExisting: GlobalExceptionFilter,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        new (class extends ThrottlerGuard {
+          protected override shouldSkip(
+            context: ExecutionContext,
+          ): Promise<boolean> {
+            if (shouldSkipThrottling(context)) return Promise.resolve(true);
+            return Promise.resolve(false);
+          }
+        })(configService),
+    },
   ],
 })
 export class AppModule {}
