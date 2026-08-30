@@ -15,6 +15,7 @@ describe('property extras repository integration', () => {
   let repo: PropertyExtrasRepository;
   let propertyUuid: string;
   const actor = { actorUuid: randomUUID() };
+
   async function property() {
     const t = await prisma.propertyType.create({
       data: {
@@ -45,6 +46,7 @@ describe('property extras repository integration', () => {
       },
     });
   }
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -56,6 +58,7 @@ describe('property extras repository integration', () => {
     repo = nest.get(PROPERTY_EXTRAS_REPOSITORY);
     propertyUuid = (await property()).uuid;
   });
+
   afterEach(async () => {
     await prisma.propertyMedia.deleteMany();
     await prisma.propertyCertificate.deleteMany();
@@ -67,10 +70,12 @@ describe('property extras repository integration', () => {
     await prisma.propertyLegal.deleteMany();
     await prisma.propertyUtility.deleteMany();
   });
+
   afterAll(async () => {
     await prisma.property.deleteMany({ where: { uuid: propertyUuid } });
     await app.close();
   });
+
   it('upserts scoped utilities and supports explicit null clearing', async () => {
     const x = (await repo.upsertUtilities(
       propertyUuid,
@@ -78,6 +83,7 @@ describe('property extras repository integration', () => {
       actor,
     )) as { electricityProvider: string };
     expect(x.electricityProvider).toBe('PLN');
+
     const y = (await repo.upsertUtilities(
       propertyUuid,
       { electricityProvider: null },
@@ -85,30 +91,9 @@ describe('property extras repository integration', () => {
     )) as { electricityProvider: null };
     expect(y.electricityProvider).toBeNull();
   });
-  it('upserts property features using snake_case database timestamps', async () => {
-    const x = (await repo.upsertFeatures(
-      propertyUuid,
-      {
-        petFriendly: true,
-        childFriendly: true,
-        wheelchairAccessible: true,
-        elderlyFriendly: true,
-        smokingAllowed: false,
-        eventsAllowed: false,
-        rentalAllowed: true,
-      },
-      actor,
-    )) as {
-      petFriendly: boolean;
-      childFriendly: boolean;
-      wheelchairAccessible: boolean;
-      elderlyFriendly: boolean;
-      smokingAllowed: boolean;
-      eventsAllowed: boolean;
-      rentalAllowed: boolean;
-    };
 
-    expect(x).toEqual({
+  it('upserts property features and preserves persisted metadata', async () => {
+    const expected = {
       petFriendly: true,
       childFriendly: true,
       wheelchairAccessible: true,
@@ -116,8 +101,24 @@ describe('property extras repository integration', () => {
       smokingAllowed: false,
       eventsAllowed: false,
       rentalAllowed: true,
-    });
+    };
+
+    const result = (await repo.upsertFeatures(
+      propertyUuid,
+      expected,
+      actor,
+    )) as typeof expected & {
+      uuid: string;
+      createdAt: Date;
+      updatedAt: Date;
+    };
+
+    expect(result).toMatchObject(expected);
+    expect(result.uuid).toEqual(expect.any(String));
+    expect(result.createdAt).toBeInstanceOf(Date);
+    expect(result.updatedAt).toBeInstanceOf(Date);
   });
+
   it('masks certificate number and blocks foreign resource access', async () => {
     const c = (await repo.createCertificate(
       propertyUuid,
@@ -142,6 +143,7 @@ describe('property extras repository integration', () => {
       ),
     ).rejects.toThrow('Certificate not found');
   });
+
   it('keeps cover unique and requires complete reorder set', async () => {
     const a = (await repo.addMedia(
       propertyUuid,
