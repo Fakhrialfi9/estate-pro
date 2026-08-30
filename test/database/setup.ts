@@ -170,7 +170,7 @@ export function prepareTestDatabase(): void {
   const databaseUrl = resolveTestDatabaseUrl();
   synchronizeDatabaseEnvironment(databaseUrl);
 
-  execFileSync(PRISMA_COMMAND, ['db', 'push', '--accept-data-loss'], {
+  execFileSync(PRISMA_COMMAND, ['migrate', 'deploy'], {
     cwd: process.cwd(),
     env: process.env,
     stdio: 'inherit',
