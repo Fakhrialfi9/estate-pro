@@ -79,7 +79,9 @@ describe('Dynamic HTTP security baseline — STEPS 227–260', () => {
       password: '<script>alert(1)</script>',
     });
     expect(injection.status).toBe(401);
-    expect(JSON.stringify(injection.body)).not.toContain("admin' OR '1'='1");
+    expect(JSON.stringify(injection.body)).not.toContain(
+      "admin' OR '1'='1",
+    );
     expect(JSON.stringify(injection.body)).not.toContain(
       '<script>alert(1)</script>',
     );
