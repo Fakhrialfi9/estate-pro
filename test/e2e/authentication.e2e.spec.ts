@@ -69,6 +69,8 @@ async function cleanup(): Promise<void> {
   await prisma.authenticationUserTwoFactorRecoveryCode.deleteMany();
   await prisma.authenticationUserTwoFactor.deleteMany();
   await prisma.authenticationPasswordResetToken.deleteMany();
+  await prisma.authenticationRefreshToken.deleteMany();
+  await prisma.authenticationRefreshTokenFamily.deleteMany();
   await prisma.authenticationUserSession.deleteMany();
   await prisma.authenticationUserCredential.deleteMany();
   await prisma.authenticationUserSecurity.deleteMany();
