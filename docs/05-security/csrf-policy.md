@@ -1,20 +1,18 @@
-# CSRF policy
+# CSRF Policy
 
-Estate Pro is currently a stateless HTTP API foundation. Authentication is not implemented yet, and the planned API boundary uses bearer credentials rather than an authentication cookie.
+Estate Pro uses an explicit bearer/JSON credential transport for authentication and refresh. The refresh token is submitted in the request body to `POST /api/v1/auth/refresh`; the server does not read a refresh credential from a browser cookie. Therefore the browser does not automatically attach the refresh credential to a cross-site request.
 
-Therefore CSRF protection is **not enabled** at this stage. CSRF primarily protects browser-automatically-attached credentials such as cookies; adding a CSRF middleware to a stateless bearer-token API without that threat model would add complexity without addressing the relevant attack.
+## Current controls
+- Refresh token is not stored in an authentication cookie.
+- CORS origins are explicit and configuration driven.
+- Refresh responses use `Cache-Control: no-store`.
+- The refresh endpoint does not issue an authentication cookie.
+- HTTPS is required at the production transport boundary.
+
+CORS is defense-in-depth, not the primary CSRF mechanism for the current non-ambient refresh credential.
 
 ## Revisit condition
+If authentication or refresh changes to cookie-based transport, implement CSRF protection before release. The decision must include SameSite/Secure cookie attributes, trusted-origin validation, state-changing method policy, and a CSRF token mechanism appropriate to the browser architecture.
 
-If authentication later stores credentials in cookies, or the API introduces state-changing browser flows that rely on ambient credentials, this policy must be revisited before those endpoints are released.
-
-The decision must consider:
-
-- credential transport (Authorization header vs cookie)
-- same-origin and cross-origin behavior
-- CORS configuration
-- SameSite and Secure cookie policy
-- state-changing HTTP methods
-- whether a CSRF token is required by the chosen browser authentication model
-
-This is an architectural decision, not a checklist item.
+## Test evidence
+The dynamic security suite verifies the refresh response does not establish cookie-based authentication and remains non-cacheable. Existing E2E refresh tests validate real HTTP rotation, replay rejection, logout invalidation, account-state enforcement, and concurrent refresh behavior.
