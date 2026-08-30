@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   sync-lockfile:
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -40,6 +39,7 @@ jobs:
           git push origin HEAD:main
 
   validate:
+    needs: sync-lockfile
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -49,8 +49,10 @@ jobs:
       DATABASE_ACQUIRE_TIMEOUT_MS: 10000
       DATABASE_POOL_IDLE_TIMEOUT_SEC: 30
     steps:
-      - name: Checkout
+      - name: Checkout latest main
         uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
