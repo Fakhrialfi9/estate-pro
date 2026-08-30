@@ -26,6 +26,7 @@ const config = {
         'auth.jwt.audience': 'estate-pro-client',
         'auth.jwt.algorithm': 'HS256',
         'auth.jwt.expiresIn': '60s',
+        'auth.refreshToken.expiresIn': '30d',
         'auth.login.lockoutThreshold': 5,
         'auth.login.lockoutWindowMs': 900000,
         'auth.login.lockoutDurationMs': 900000,
@@ -114,7 +115,19 @@ const makeLogin = (passwordValid = true, account = user()) => {
     }),
   } as unknown as CredentialRepository;
   const security = new SecurityStateFake();
-  const sessions = { create: vi.fn().mockResolvedValue(undefined) };
+  const sessions = { create: vi.fn().mockResolvedValue({ id: 's-1' }) };
+  const refreshTokens = {
+    getSessionExpiresAt: vi
+      .fn()
+      .mockImplementation((now: Date) => new Date(now.getTime() + 30 * 86400000)),
+    issueForSession: vi.fn().mockResolvedValue({
+      accessToken: 'signed.jwt.token',
+      tokenType: 'Bearer',
+      expiresIn: 900,
+      refreshToken: 'opaque-refresh-token',
+      refreshTokenExpiresIn: 30 * 86400,
+    }),
+  };
   const auditEvents: SecurityAuditEvent[] = [];
   const auditRecord = vi.fn((event: SecurityAuditEvent): Promise<void> => {
     auditEvents.push(event);
@@ -142,6 +155,7 @@ const makeLogin = (passwordValid = true, account = user()) => {
     hasher as never,
     jwt as never,
     sessions as never,
+    refreshTokens as never,
     config as never,
     twoFactor as never,
   );
@@ -149,6 +163,7 @@ const makeLogin = (passwordValid = true, account = user()) => {
     service,
     security,
     sessions,
+    refreshTokens,
     auditEvents,
     hasherVerifyMock,
     users,
@@ -167,6 +182,7 @@ describe('authentication security steps 102-106', () => {
     });
     expect(result?.accessToken).toBe('signed.jwt.token');
     expect(ctx.sessions.create).toHaveBeenCalledOnce();
+    expect(ctx.refreshTokens.issueForSession).toHaveBeenCalledOnce();
     expect((await ctx.security.getState('u-1')).failedLoginAttempts).toBe(0);
     expect(ctx.auditEvents[0]?.action).toBe('LOGIN_SUCCESS');
     expect(JSON.stringify(result)).not.toContain('argon2-hash');
@@ -202,6 +218,7 @@ describe('authentication security steps 102-106', () => {
         password: 'CorrectPassword!',
       }),
     ).resolves.toBeNull();
+    expect(ctx.refreshTokens.issueForSession).not.toHaveBeenCalled();
   });
 
   it('106: locks after threshold and rejects locked attempts', async () => {
