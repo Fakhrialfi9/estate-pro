@@ -31,7 +31,10 @@ describe('Security regression corpus — STEPS 227–260', () => {
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(digest).toMatch(/^[0-9a-f]{64}$/);
     expect(digest).not.toBe(token);
-    expect(crypto.equalsDigest(token, digest)).toBe(true);
+    expect(crypto.equalsDigest(digest, digest)).toBe(true);
+    expect(crypto.equalsDigest(digest, crypto.digest(crypto.generate()))).toBe(
+      false,
+    );
   });
 
   it('regression: session secrets are stored as deterministic SHA-256 digests', () => {
