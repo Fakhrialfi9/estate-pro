@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   sync-lockfile:
-    if: github.event_name == 'push' && startsWith(github.event.head_commit.message, 'build(seed): pin tsx as explicit development dependency')
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
