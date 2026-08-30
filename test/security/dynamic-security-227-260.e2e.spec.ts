@@ -104,7 +104,7 @@ describe('Dynamic HTTP security baseline — STEPS 227–260', () => {
     const rotated = await http()
       .post(`${AUTH}/refresh`)
       .send({ refreshToken: first.refreshToken })
-      .expect(201);
+      .expect(200);
     const second = rotated.body as AuthResponse;
     expect(second.refreshToken).not.toBe(first.refreshToken);
     expect(second.accessToken).not.toBe(first.accessToken);
@@ -137,7 +137,7 @@ describe('Dynamic HTTP security baseline — STEPS 227–260', () => {
       .post(`${AUTH}/refresh`)
       .set('Origin', 'https://attacker.example')
       .send({ refreshToken: auth.refreshToken })
-      .expect(201);
+      .expect(200);
     expect(response.headers['set-cookie']).toBeUndefined();
     expect(response.headers['cache-control']).toContain('no-store');
   });
