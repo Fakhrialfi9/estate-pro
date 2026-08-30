@@ -15,7 +15,9 @@ export default registerAs('database', () => {
     pool: {
       connectionLimit: Number(process.env.DATABASE_POOL_CONNECTION_LIMIT ?? 10),
       connectTimeoutMs: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS ?? 5000),
-      acquireTimeoutMs: Number(process.env.DATABASE_ACQUIRE_TIMEOUT_MS ?? 10000),
+      acquireTimeoutMs: Number(
+        process.env.DATABASE_ACQUIRE_TIMEOUT_MS ?? 10000,
+      ),
       idleTimeoutSec: Number(process.env.DATABASE_POOL_IDLE_TIMEOUT_SEC ?? 300),
     },
   };

@@ -8,12 +8,24 @@ import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 import { PasswordHasherService } from '../../src/modules/auth/application/services/password-hasher.service.js';
-import { REFRESH_TOKEN_SECURITY_PORT, type RefreshTokenSecurityPort } from '../../src/common/security/refresh-token-security.port.js';
-import { digestRefreshToken, PrismaRefreshTokenRepository } from '../../src/modules/auth/infrastructure/persistence/prisma-refresh-token.repository.js';
+import {
+  REFRESH_TOKEN_SECURITY_PORT,
+  type RefreshTokenSecurityPort,
+} from '../../src/common/security/refresh-token-security.port.js';
+import {
+  digestRefreshToken,
+  PrismaRefreshTokenRepository,
+} from '../../src/modules/auth/infrastructure/persistence/prisma-refresh-token.repository.js';
 
 const PASSWORD = 'Strong-Test-Password-123!';
 const endpoint = '/api/v1/auth';
-type AuthResponse = { accessToken: string; refreshToken: string; tokenType: 'Bearer'; expiresIn: number; refreshTokenExpiresIn: number };
+type AuthResponse = {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: 'Bearer';
+  expiresIn: number;
+  refreshTokenExpiresIn: number;
+};
 type ErrorResponse = { message: string };
 
 let app: NestExpressApplication;
@@ -62,8 +74,13 @@ async function cleanup(): Promise<void> {
 }
 
 async function login(): Promise<AuthResponse> {
-  const user = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid: userUuid } });
-  const response = await http().post(`${endpoint}/login`).send({ identifier: user.email, password: PASSWORD }).expect(201);
+  const user = await prisma.authenticationUser.findUniqueOrThrow({
+    where: { uuid: userUuid },
+  });
+  const response = await http()
+    .post(`${endpoint}/login`)
+    .send({ identifier: user.email, password: PASSWORD })
+    .expect(201);
   return body<AuthResponse>(response);
 }
 
@@ -79,7 +96,9 @@ async function tokenRow(token: string) {
 
 describe('Refresh-token lifecycle E2E matrix', () => {
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication<NestExpressApplication>();
     configureApplication(app);
     await app.init();
@@ -137,7 +156,10 @@ describe('Refresh-token lifecycle E2E matrix', () => {
   it('RT-006 expired token returns 401', async () => {
     const result = await login();
     const row = await tokenRow(result.refreshToken);
-    await prisma.authenticationRefreshToken.update({ where: { id: row.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    await prisma.authenticationRefreshToken.update({
+      where: { id: row.id },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
     await refresh(result.refreshToken).expect(401);
   });
 
@@ -153,13 +175,19 @@ describe('Refresh-token lifecycle E2E matrix', () => {
   it('RT-009 revoked token returns 401', async () => {
     const result = await login();
     const row = await tokenRow(result.refreshToken);
-    await prisma.authenticationRefreshToken.update({ where: { id: row.id }, data: { revokedAt: new Date(), revokeReason: 'SESSION_REVOKED' } });
+    await prisma.authenticationRefreshToken.update({
+      where: { id: row.id },
+      data: { revokedAt: new Date(), revokeReason: 'SESSION_REVOKED' },
+    });
     await refresh(result.refreshToken).expect(401);
   });
 
   it('RT-010 logout then refresh returns 401', async () => {
     const result = await login();
-    await http().post(`${endpoint}/logout`).set('Authorization', `Bearer ${result.accessToken}`).expect(201);
+    await http()
+      .post(`${endpoint}/logout`)
+      .set('Authorization', `Bearer ${result.accessToken}`)
+      .expect(201);
     await refresh(result.refreshToken).expect(401);
   });
 
@@ -177,8 +205,13 @@ describe('Refresh-token lifecycle E2E matrix', () => {
 
   it('RT-013 account disabled then refresh returns 401', async () => {
     const result = await login();
-    const user = await prisma.authenticationUser.findUniqueOrThrow({ where: { uuid: userUuid } });
-    await prisma.authenticationUser.update({ where: { id: user.id }, data: { status: 'inactive', isActive: false } });
+    const user = await prisma.authenticationUser.findUniqueOrThrow({
+      where: { uuid: userUuid },
+    });
+    await prisma.authenticationUser.update({
+      where: { id: user.id },
+      data: { status: 'inactive', isActive: false },
+    });
     await security.revokeAllForUser(userUuid, 'ACCOUNT_DISABLED');
     await refresh(result.refreshToken).expect(401);
   });
@@ -186,15 +219,25 @@ describe('Refresh-token lifecycle E2E matrix', () => {
   it('RT-014 admin session revoke then refresh returns 401', async () => {
     const result = await login();
     const row = await tokenRow(result.refreshToken);
-    const family = await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({ where: { id: row.familyId } });
-    await security.revokeForSession(userUuid, family.sessionId.toString(), 'ADMIN_REVOKED');
+    const family =
+      await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({
+        where: { id: row.familyId },
+      });
+    await security.revokeForSession(
+      userUuid,
+      family.sessionId.toString(),
+      'ADMIN_REVOKED',
+    );
     await refresh(result.refreshToken).expect(401);
   });
 
   it('RT-015 family revocation then refresh returns 401', async () => {
     const result = await login();
     const row = await tokenRow(result.refreshToken);
-    await prisma.authenticationRefreshTokenFamily.update({ where: { id: row.familyId }, data: { revokedAt: new Date(), revokeReason: 'SECURITY_EVENT' } });
+    await prisma.authenticationRefreshTokenFamily.update({
+      where: { id: row.familyId },
+      data: { revokedAt: new Date(), revokeReason: 'SECURITY_EVENT' },
+    });
     await refresh(result.refreshToken).expect(401);
   });
 
@@ -209,7 +252,10 @@ describe('Refresh-token lifecycle E2E matrix', () => {
     const original = await tokenRow(result.refreshToken);
     await refresh(result.refreshToken).expect(201);
     await refresh(result.refreshToken).expect(401);
-    const family = await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({ where: { id: original.familyId } });
+    const family =
+      await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({
+        where: { id: original.familyId },
+      });
     expect(family.revokedAt).not.toBeNull();
     expect(family.revokeReason).toBe('REUSE_DETECTED');
   });
@@ -219,8 +265,13 @@ describe('Refresh-token lifecycle E2E matrix', () => {
     const original = await tokenRow(result.refreshToken);
     await refresh(result.refreshToken).expect(201);
     await refresh(result.refreshToken).expect(401);
-    const family = await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({ where: { id: original.familyId } });
-    const session = await prisma.authenticationUserSession.findUniqueOrThrow({ where: { id: family.sessionId } });
+    const family =
+      await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({
+        where: { id: original.familyId },
+      });
+    const session = await prisma.authenticationUserSession.findUniqueOrThrow({
+      where: { id: family.sessionId },
+    });
     expect(session.revokedAt).not.toBeNull();
   });
 
@@ -240,38 +291,51 @@ describe('Refresh-token lifecycle E2E matrix', () => {
       refresh(result.refreshToken),
       refresh(result.refreshToken),
     ]);
-    expect(responses.filter((response) => response.status === 401)).toHaveLength(1);
+    expect(
+      responses.filter((response) => response.status === 401),
+    ).toHaveLength(1);
   });
 
   it('RT-021 refresh remains valid when the access-token lifetime is no longer relevant', async () => {
     const result = await login();
     const response = await refresh(result.refreshToken).expect(201);
-    expect(body<AuthResponse>(response).accessToken).toEqual(expect.any(String));
+    expect(body<AuthResponse>(response).accessToken).toEqual(
+      expect.any(String),
+    );
   });
 
   it('RT-022 a currently active session can refresh successfully', async () => {
     const result = await login();
     const response = await refresh(result.refreshToken).expect(201);
-    expect(body<AuthResponse>(response).accessToken).toEqual(expect.any(String));
+    expect(body<AuthResponse>(response).accessToken).toEqual(
+      expect.any(String),
+    );
   });
 
   it('RT-023 plaintext refresh token never appears in audit records', async () => {
     const result = await login();
     await refresh(result.refreshToken).expect(201);
-    const logs = await prisma.auditLog.findMany({ where: { user: { uuid: userUuid } }, select: { metadata: true } });
+    const logs = await prisma.auditLog.findMany({
+      where: { user: { uuid: userUuid } },
+      select: { metadata: true },
+    });
     expect(JSON.stringify(logs)).not.toContain(result.refreshToken);
   });
 
   it('RT-024 plaintext refresh token is absent from audit changes', async () => {
     const result = await login();
     await refresh(result.refreshToken).expect(201);
-    const changes = await prisma.auditLogChange.findMany({ select: { oldValue: true, newValue: true } });
+    const changes = await prisma.auditLogChange.findMany({
+      select: { oldValue: true, newValue: true },
+    });
     expect(JSON.stringify(changes)).not.toContain(result.refreshToken);
   });
 
   it('RT-025 refresh endpoint is rate limited', async () => {
     const result = await login();
-    const responses = await Promise.all(Array.from({ length: 12 }, () => refresh(result.refreshToken)));
+    const responses = await Promise.all(
+      Array.from({ length: 12 }, () => refresh(result.refreshToken)),
+    );
     expect(responses.some((response) => response.status === 429)).toBe(true);
   });
 
@@ -284,8 +348,15 @@ describe('Refresh-token lifecycle E2E matrix', () => {
   it('RT-027 token remains bound to its session/family security state', async () => {
     const result = await login();
     const row = await tokenRow(result.refreshToken);
-    const family = await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({ where: { id: row.familyId } });
-    await security.revokeForSession(userUuid, family.sessionId.toString(), 'SESSION_REVOKED');
+    const family =
+      await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({
+        where: { id: row.familyId },
+      });
+    await security.revokeForSession(
+      userUuid,
+      family.sessionId.toString(),
+      'SESSION_REVOKED',
+    );
     await refresh(result.refreshToken).expect(401);
   });
 
@@ -307,11 +378,17 @@ describe('Refresh-token lifecycle E2E matrix', () => {
     await expect(
       repository.rotate(
         digestRefreshToken(result.refreshToken),
-        () => ({ token: 'x', tokenHash: 'x'.repeat(1000), expiresAt: new Date(now.getTime() + 86400000) }),
+        () => ({
+          token: 'x',
+          tokenHash: 'x'.repeat(1000),
+          expiresAt: new Date(now.getTime() + 86400000),
+        }),
         now,
       ),
     ).rejects.toThrow();
-    const unchanged = await prisma.authenticationRefreshToken.findUniqueOrThrow({ where: { id: original.id } });
+    const unchanged = await prisma.authenticationRefreshToken.findUniqueOrThrow(
+      { where: { id: original.id } },
+    );
     expect(unchanged.consumedAt).toBeNull();
     expect(unchanged.revokedAt).toBeNull();
     await refresh(result.refreshToken).expect(201);

@@ -23,7 +23,10 @@ export class RefreshTokenObservabilityService {
   );
   private readonly latencyHistogram = this.meter.createHistogram(
     'auth_refresh_latency_ms',
-    { description: 'Refresh-token operation latency in milliseconds', unit: 'ms' },
+    {
+      description: 'Refresh-token operation latency in milliseconds',
+      unit: 'ms',
+    },
   );
 
   start(requestId?: string): { span: Span; startedAt: number } {

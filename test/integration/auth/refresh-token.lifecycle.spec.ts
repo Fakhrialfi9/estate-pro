@@ -18,7 +18,9 @@ const config = new ConfigService({
     pool: {
       connectionLimit: Number(process.env.DATABASE_POOL_CONNECTION_LIMIT ?? 10),
       connectTimeoutMs: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS ?? 5000),
-      acquireTimeoutMs: Number(process.env.DATABASE_ACQUIRE_TIMEOUT_MS ?? 10000),
+      acquireTimeoutMs: Number(
+        process.env.DATABASE_ACQUIRE_TIMEOUT_MS ?? 10000,
+      ),
       idleTimeoutSec: Number(process.env.DATABASE_POOL_IDLE_TIMEOUT_SEC ?? 300),
     },
   },
@@ -68,7 +70,9 @@ describe('PrismaRefreshTokenRepository lifecycle', () => {
     await prisma.authenticationRefreshToken.deleteMany({
       where: { family: { user: { uuid: userUuid } } },
     });
-    await prisma.authenticationRefreshTokenFamily.deleteMany({ where: { userId } });
+    await prisma.authenticationRefreshTokenFamily.deleteMany({
+      where: { userId },
+    });
     await prisma.authenticationUserSession.deleteMany({ where: { userId } });
     await prisma.authenticationUser.delete({ where: { id: userId } });
     await prisma.$disconnect();
@@ -145,22 +149,36 @@ describe('PrismaRefreshTokenRepository lifecycle', () => {
     const firstReplacement = cryptoToken();
     const first = await repository.rotate(
       digestRefreshToken(plaintext),
-      () => ({ token: firstReplacement, tokenHash: digestRefreshToken(firstReplacement), expiresAt: new Date(now.getTime() + 86400000) }),
+      () => ({
+        token: firstReplacement,
+        tokenHash: digestRefreshToken(firstReplacement),
+        expiresAt: new Date(now.getTime() + 86400000),
+      }),
       now,
     );
     expect(first.kind).toBe('ROTATED');
 
     const replay = await repository.rotate(
       digestRefreshToken(plaintext),
-      () => ({ token: cryptoToken(), tokenHash: digestRefreshToken(cryptoToken()), expiresAt: new Date(now.getTime() + 86400000) }),
+      () => ({
+        token: cryptoToken(),
+        tokenHash: digestRefreshToken(cryptoToken()),
+        expiresAt: new Date(now.getTime() + 86400000),
+      }),
       new Date(now.getTime() + 1),
     );
     expect(replay.kind).toBe('REUSE_DETECTED');
 
-    const familyId = first.kind === 'ROTATED' ? first.value.familyId : undefined;
+    const familyId =
+      first.kind === 'ROTATED' ? first.value.familyId : undefined;
     expect(familyId).toBeDefined();
-    const family = await prisma.authenticationRefreshTokenFamily.findUnique({ where: { id: familyId } });
-    const session = await prisma.authenticationUserSession.findUnique({ where: { id: sessionId }, select: { revokedAt: true } });
+    const family = await prisma.authenticationRefreshTokenFamily.findUnique({
+      where: { id: familyId },
+    });
+    const session = await prisma.authenticationUserSession.findUnique({
+      where: { id: sessionId },
+      select: { revokedAt: true },
+    });
     expect(family?.revokedAt).not.toBeNull();
     expect(family?.revokeReason).toBe('REUSE_DETECTED');
     expect(session?.revokedAt).not.toBeNull();
@@ -182,12 +200,24 @@ describe('PrismaRefreshTokenRepository lifecycle', () => {
         const replacement = cryptoToken();
         return repository.rotate(
           digestRefreshToken(plaintext),
-          () => ({ token: replacement, tokenHash: digestRefreshToken(replacement), expiresAt: new Date(now.getTime() + 86400000) }),
+          () => ({
+            token: replacement,
+            tokenHash: digestRefreshToken(replacement),
+            expiresAt: new Date(now.getTime() + 86400000),
+          }),
           now,
         );
       }),
     );
-    const values = outcomes.filter((outcome): outcome is PromiseFulfilledResult<Awaited<ReturnType<PrismaRefreshTokenRepository['rotate']>>> => outcome.status === 'fulfilled').map((outcome) => outcome.value);
+    const values = outcomes
+      .filter(
+        (
+          outcome,
+        ): outcome is PromiseFulfilledResult<
+          Awaited<ReturnType<PrismaRefreshTokenRepository['rotate']>>
+        > => outcome.status === 'fulfilled',
+      )
+      .map((outcome) => outcome.value);
     const winners = values.filter((value) => value.kind === 'ROTATED');
     const reuses = values.filter((value) => value.kind === 'REUSE_DETECTED');
     expect(winners.length).toBeLessThanOrEqual(1);

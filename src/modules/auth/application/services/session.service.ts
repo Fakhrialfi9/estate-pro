@@ -54,7 +54,10 @@ export class SessionService implements SessionSecurityPort {
     return createHash('sha256').update(secret, 'utf8').digest('hex');
   }
 
-  async create(userUuid: string, input: CreateSessionInput): Promise<SessionEntity> {
+  async create(
+    userUuid: string,
+    input: CreateSessionInput,
+  ): Promise<SessionEntity> {
     const now = new Date();
     if (input.expiresAt.getTime() <= now.getTime()) {
       throw new Error('Session expiry must be in the future');
@@ -81,38 +84,60 @@ export class SessionService implements SessionSecurityPort {
     return entity;
   }
 
-  async isActive(userUuid: string, sessionIdentifier: string, now = new Date()): Promise<boolean> {
+  async isActive(
+    userUuid: string,
+    sessionIdentifier: string,
+    now = new Date(),
+  ): Promise<boolean> {
     const session = /^\d+$/.test(sessionIdentifier)
       ? await this.sessions.findById(userUuid, sessionIdentifier)
       : await this.sessions.findBySecret(userUuid, sessionIdentifier);
     return session ? SessionEntity.create(session).isActiveAt(now) : false;
   }
 
-  async listOwn(userUuid: string, query: Partial<SessionListQuery> = {}, now = new Date()) {
+  async listOwn(
+    userUuid: string,
+    query: Partial<SessionListQuery> = {},
+    now = new Date(),
+  ) {
     const normalized: SessionListQuery = {
       limit: Math.min(Math.max(query.limit ?? 20, 1), MAX_PAGE_SIZE),
       offset: Math.max(query.offset ?? 0, 0),
       includeInactive: query.includeInactive ?? false,
     };
     const snapshots = await this.sessions.list(userUuid, normalized);
-    return snapshots.map((snapshot) => SessionEntity.create(snapshot).toSafeView(now));
+    return snapshots.map((snapshot) =>
+      SessionEntity.create(snapshot).toSafeView(now),
+    );
   }
 
-  async logoutCurrent(userUuid: string, sessionIdentifier: string, context: SessionAuditContext = {}): Promise<void> {
+  async logoutCurrent(
+    userUuid: string,
+    sessionIdentifier: string,
+    context: SessionAuditContext = {},
+  ): Promise<void> {
     const now = new Date();
     let publicSessionId: string | undefined;
     if (/^\d+$/.test(sessionIdentifier)) {
       publicSessionId = sessionIdentifier;
       await this.sessions.revokeById(userUuid, sessionIdentifier, now);
     } else {
-      const session = await this.sessions.findBySecret(userUuid, sessionIdentifier);
+      const session = await this.sessions.findBySecret(
+        userUuid,
+        sessionIdentifier,
+      );
       if (session) {
         publicSessionId = session.id;
         await this.sessions.revokeById(userUuid, session.id, now);
       }
     }
     if (publicSessionId !== undefined) {
-      await this.refreshTokens.revokeForSession(userUuid, publicSessionId, 'LOGOUT', context);
+      await this.refreshTokens.revokeForSession(
+        userUuid,
+        publicSessionId,
+        'LOGOUT',
+        context,
+      );
     }
     await this.audit.record({
       action: SESSION_AUDIT_ACTIONS.LOGOUT,
@@ -126,9 +151,18 @@ export class SessionService implements SessionSecurityPort {
     });
   }
 
-  async revokeOwnSession(userUuid: string, publicSessionId: string, context: SessionAuditContext = {}): Promise<void> {
+  async revokeOwnSession(
+    userUuid: string,
+    publicSessionId: string,
+    context: SessionAuditContext = {},
+  ): Promise<void> {
     await this.sessions.revokeById(userUuid, publicSessionId, new Date());
-    await this.refreshTokens.revokeForSession(userUuid, publicSessionId, 'SESSION_REVOKED', context);
+    await this.refreshTokens.revokeForSession(
+      userUuid,
+      publicSessionId,
+      'SESSION_REVOKED',
+      context,
+    );
     await this.audit.record({
       action: SESSION_AUDIT_ACTIONS.REVOKED,
       actorUuid: context.actorUserUuid ?? userUuid,
@@ -141,7 +175,10 @@ export class SessionService implements SessionSecurityPort {
     });
   }
 
-  async logoutAll(userUuid: string, context: SessionAuditContext = {}): Promise<number> {
+  async logoutAll(
+    userUuid: string,
+    context: SessionAuditContext = {},
+  ): Promise<number> {
     const now = new Date();
     const count = await this.sessions.revokeAll(userUuid, now);
     await this.refreshTokens.revokeAllForUser(userUuid, 'LOGOUT', context);
@@ -158,10 +195,20 @@ export class SessionService implements SessionSecurityPort {
     return count;
   }
 
-  async adminRevoke(actorUserUuid: string, targetUserUuid: string, publicSessionId: string, context: SessionAuditContext = {}): Promise<void> {
+  async adminRevoke(
+    actorUserUuid: string,
+    targetUserUuid: string,
+    publicSessionId: string,
+    context: SessionAuditContext = {},
+  ): Promise<void> {
     const now = new Date();
     await this.sessions.revokeById(targetUserUuid, publicSessionId, now);
-    await this.refreshTokens.revokeForSession(targetUserUuid, publicSessionId, 'ADMIN_REVOKED', context);
+    await this.refreshTokens.revokeForSession(
+      targetUserUuid,
+      publicSessionId,
+      'ADMIN_REVOKED',
+      context,
+    );
     await this.audit.record({
       action: SESSION_AUDIT_ACTIONS.ADMIN_REVOKED,
       actorUuid: actorUserUuid,

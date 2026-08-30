@@ -118,7 +118,11 @@ export class RefreshTokenService {
         throw new RefreshTokenInvalidError();
       }
       if (result.kind === 'EXPIRED') {
-        await this.recordRefreshFailure(result.snapshot.userUuid, context, 'EXPIRED');
+        await this.recordRefreshFailure(
+          result.snapshot.userUuid,
+          context,
+          'EXPIRED',
+        );
         await this.audit.record({
           action: 'REFRESH_TOKEN_REVOKED',
           actorUuid: result.snapshot.userUuid,
@@ -132,7 +136,11 @@ export class RefreshTokenService {
         throw new RefreshTokenExpiredError();
       }
       if (result.kind === 'REVOKED') {
-        await this.recordRefreshFailure(result.snapshot.userUuid, context, 'REVOKED');
+        await this.recordRefreshFailure(
+          result.snapshot.userUuid,
+          context,
+          'REVOKED',
+        );
         throw new RefreshTokenRevokedError();
       }
       if (result.kind === 'REUSE_DETECTED') {
