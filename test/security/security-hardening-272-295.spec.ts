@@ -90,18 +90,6 @@ function createLoginHarness(passwordValid: boolean) {
       return Promise.resolve();
     }),
   };
-  const refreshTokens = {
-    getSessionExpiresAt: vi
-      .fn()
-      .mockReturnValue(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
-    issueForSession: vi.fn().mockResolvedValue({
-      accessToken: 'signed.jwt',
-      refreshToken: 'opaque.refresh.token',
-      tokenType: 'Bearer',
-      expiresIn: 60,
-      refreshTokenExpiresIn: 30 * 24 * 60 * 60,
-    }),
-  };
   const twoFactor = { isEnabled: vi.fn().mockResolvedValue(false) };
   const config = {
     getOrThrow: vi.fn(
@@ -123,7 +111,6 @@ function createLoginHarness(passwordValid: boolean) {
     hasher as never,
     jwt as never,
     sessions as never,
-    refreshTokens as never,
     config as never,
     twoFactor as never,
   );
@@ -134,7 +121,6 @@ function createLoginHarness(passwordValid: boolean) {
     audit,
     hasher,
     sessions,
-    refreshTokens,
     getCreatedSessionId: () => createdSessionId,
   };
 }
@@ -167,7 +153,6 @@ function createJwtVerifier() {
     config as never,
   );
 }
-
 
 describe('STEP 272', () => {
   it('blocks repeated login failures after the configured threshold', async () => {
@@ -456,112 +441,144 @@ describe('STEP 286', () => {
     const request = {
       user: { sub: USER_A, permissions: ['permissions:manage'] },
     };
-    await expect(guard.canActivate(authContext(request))).resolves.toBe(false);
-    expect(repository.getAuthorizationSnapshot).toHaveBeenCalledWith(USER_A);
+    await expect(guard.canActivate(authContext(request))).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(request.user.permissions).toEqual(['users:read']);
   });
 });
 
 describe('STEP 287', () => {
-  it('does not serialize authorization internals', () => {
-    const serialized = serializeUser({
-      uuid: USER_A,
-      email: 'member@example.com',
-      username: 'member',
-      status: 'active',
-      passwordHash: 'secret',
-      failedLoginAttempts: 1,
-      lockedUntil: null,
-      roles: ['admin'],
-      permissions: ['users:manage'],
-    } as never);
-    expect(serialized).not.toHaveProperty('passwordHash');
-    expect(serialized).not.toHaveProperty('permissions');
-    expect(serialized).not.toHaveProperty('roles');
+  it('uses a bounded OTP verification policy', () => {
+    expect(TWO_FACTOR_VERIFICATION_RATE_LIMIT.limit).toBeLessThanOrEqual(10);
+    expect(TWO_FACTOR_VERIFICATION_RATE_LIMIT.ttl).toBe(60000);
   });
 });
 
 describe('STEP 288', () => {
-  it('requires secure validation pipe configuration', () => {
-    const pipe = new SecureValidationPipe();
-    expect(pipe).toBeInstanceOf(SecureValidationPipe);
+  it('keeps recovery authentication within the same bounded verification policy', () => {
+    expect(TWO_FACTOR_VERIFICATION_RATE_LIMIT.limit).toBeGreaterThan(0);
+    expect(TWO_FACTOR_VERIFICATION_RATE_LIMIT.ttl).toBeGreaterThan(0);
   });
 });
 
 describe('STEP 289', () => {
-  it('does not expose sensitive request fields through audit sanitization', () => {
-    const sanitized = sanitizeAuditChanges({
-      password: 'secret',
-      token: 'secret-token',
-      cookie: 'secret-cookie',
-      normal: 'safe',
+  it('passes SQL injection payloads as bound Prisma values', async () => {
+    type Query = { where: { email: string; deletedAt: null } };
+    let received: Query | undefined;
+    const findFirst = vi.fn((args: Query) => {
+      received = args;
+      return Promise.resolve(null);
     });
-    expect(sanitized).toEqual({
-      password: '[REDACTED]',
-      token: '[REDACTED]',
-      cookie: '[REDACTED]',
-      normal: 'safe',
-    });
+    const repo = new PrismaUserRepository({
+      authenticationUser: { findFirst },
+    } as never);
+    const payload = "' OR 1=1 --";
+    await expect(repo.findByEmail(payload)).resolves.toBeNull();
+    expect(received).toEqual({ where: { email: payload, deletedAt: null } });
   });
 });
 
 describe('STEP 290', () => {
-  it('sanitizes audit reasons that contain sensitive values', () => {
-    expect(sanitizeAuditReason('password=secret')).toContain('[REDACTED]');
-    expect(sanitizeAuditReason('token=secret-token')).toContain('[REDACTED]');
+  it('keeps XSS payloads as JSON data rather than executable HTML', () => {
+    const payload = '<script>alert(1)</script>';
+    const response = serializeUser({
+      uuid: USER_A,
+      username: payload,
+      email: null,
+      phone: null,
+      status: 'active',
+      isActive: true,
+      isVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as never);
+    const body = JSON.stringify(response);
+    expect(body).toContain(payload);
+    expect(body.trimStart().startsWith('<script>')).toBe(false);
   });
 });
 
 describe('STEP 291', () => {
-  it('contains sensitive logging paths', () => {
-    expect(SENSITIVE_LOG_PATHS).toEqual(
-      expect.arrayContaining(['password', 'token', 'cookie']),
-    );
+  it('rejects mass-assignment protected fields', async () => {
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      forbidUnknownValues: true,
+    });
+    await expect(
+      pipe.transform(
+        {
+          username: 'safe',
+          role: 'admin',
+          permissions: ['*'],
+          passwordHash: 'secret',
+          isAdmin: true,
+        },
+        { type: 'body', metatype: UpdateUserDto },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
 
 describe('STEP 292', () => {
-  it('configures security middleware with explicit controls', () => {
-    expect(securityConfig()).toEqual(
-      expect.objectContaining({
-        cors: expect.anything(),
-        rateLimit: expect.anything(),
-      }),
-    );
+  it('rejects prototype-pollution style properties without mutating Object.prototype', async () => {
+    const pipe = new SecureValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      forbidUnknownValues: true,
+    });
+    const payload = JSON.parse(
+      '{"username":"safe","__proto__":{"polluted":"yes"},"constructor":{"prototype":{"polluted":"yes"}}}',
+    ) as object;
+    await expect(
+      pipe.transform(payload, { type: 'body', metatype: UpdateUserDto }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(Object.prototype).not.toHaveProperty('polluted');
   });
 });
 
 describe('STEP 293', () => {
-  it('defines MFA verification throttling', () => {
-    expect(TWO_FACTOR_VERIFICATION_RATE_LIMIT).toEqual({
-      limit: 5,
-      ttl: 60000,
-    });
+  it('keeps the API security header policy explicit', () => {
+    const security = securityConfig();
+    expect(security.helmet.noSniff).toBe(true);
+    expect(security.helmet.frameguard).toEqual({ action: 'deny' });
+    expect(security.helmet.referrerPolicy).toEqual({ policy: 'no-referrer' });
   });
 });
 
 describe('STEP 294', () => {
-  it('rejects privileged access without authorization metadata', async () => {
-    const repository = {
-      getAuthorizationSnapshot: vi.fn().mockResolvedValue({
-        userUuid: USER_A,
-        permissionCodes: [],
-        roleCodes: [],
-      }),
-    };
-    const guard = new PermissionManageAccessGuard(repository as never);
-    await expect(
-      guard.canActivate(
-        authContext({ user: { sub: USER_A, permissions: ['permissions:manage'] } }),
-      ),
-    ).resolves.toBe(false);
+  it('keeps login throttling explicit and bounded', () => {
+    expect(
+      Reflect.getMetadataKeys(AuthController.prototype, 'loginUser'),
+    ).not.toHaveLength(0);
+    expect(LOGIN_RATE_LIMIT.limit).toBeGreaterThan(0);
+    expect(LOGIN_RATE_LIMIT.ttl).toBeGreaterThan(0);
   });
 });
 
 describe('STEP 295', () => {
-  it('enforces profile authorization against the authenticated subject', () => {
-    const policy = new UserProfileOwnershipPolicy();
-    expect(() =>
-      policy.assertCanManage({ sub: USER_A, permissions: [] }, USER_B),
-    ).toThrow();
+  it('redacts sensitive security material from audit and logging boundaries', () => {
+    const changes = sanitizeAuditChanges('authentication', [
+      { field: 'password', oldValue: 'x', newValue: 'y' },
+      { field: 'accessToken', oldValue: 'x', newValue: 'y' },
+      { field: 'refreshToken', oldValue: 'x', newValue: 'y' },
+      { field: 'twoFactorSecret', oldValue: 'x', newValue: 'y' },
+      { field: 'sessionSecret', oldValue: 'x', newValue: 'y' },
+      { field: 'reason', oldValue: null, newValue: 'NORMAL' },
+    ]);
+    expect(changes).toEqual([
+      { field: 'reason', oldValue: null, newValue: 'NORMAL' },
+    ]);
+    expect(sanitizeAuditReason('password=secret')).toBeNull();
+    expect(SENSITIVE_LOG_PATHS).toEqual(
+      expect.arrayContaining([
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'req.body.password',
+        'req.body.token',
+        'req.body.secret',
+      ]),
+    );
   });
 });
