@@ -7,7 +7,10 @@ import type {
   SecurityAuditRepository,
   SecurityAuditEvent,
 } from '../../common/audit/security-audit.port.js';
-import { AUDIT_ACTIONS, AUDIT_RESOURCE_TYPES } from '../../common/audit/audit-events.js';
+import {
+  AUDIT_ACTIONS,
+  AUDIT_RESOURCE_TYPES,
+} from '../../common/audit/audit-events.js';
 import {
   normalizeAuditResourceType,
   sanitizeAuditChanges,
