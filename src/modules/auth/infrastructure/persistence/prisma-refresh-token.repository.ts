@@ -176,7 +176,7 @@ export class PrismaRefreshTokenRepository
     });
   }
 
-  async revokeFamily(
+  async revokeForFamily(
     familyId: string,
     reason: RefreshTokenRevokeReason,
     now: Date,
@@ -192,6 +192,14 @@ export class PrismaRefreshTokenRepository
       });
       return family.count;
     });
+  }
+
+  async revokeFamily(
+    familyId: string,
+    reason: RefreshTokenRevokeReason,
+    now: Date,
+  ): Promise<number> {
+    return this.revokeForFamily(familyId, reason, now);
   }
 
   async revokeAllForUser(
