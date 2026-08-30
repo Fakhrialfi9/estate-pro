@@ -114,4 +114,27 @@ export async function seedDevelopmentUsers(
   return userIds;
 }
 
+export async function assignAdminRole(
+  client: SeedTransaction,
+  userId: bigint,
+  roleId: bigint,
+): Promise<void> {
+  await client.authorizationUserRole.upsert({
+    where: {
+      userId_roleId: { userId, roleId },
+    },
+    update: {
+      isActive: true,
+      revokedAt: null,
+    },
+    create: {
+      userId,
+      roleId,
+      isActive: true,
+      assignedBy: userId,
+      assignedAt: new Date(),
+    },
+  });
+}
+
 export { ADMIN_USER, SEED_USERS };
