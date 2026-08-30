@@ -8,6 +8,9 @@ export default registerAs('auth', () => ({
     audience: process.env.JWT_AUDIENCE ?? 'estate-pro-client',
     algorithm: process.env.JWT_ALGORITHM ?? 'HS256',
   },
+  refreshToken: {
+    expiresIn: process.env.AUTH_REFRESH_TOKEN_EXPIRES_IN ?? '30d',
+  },
   login: {
     lockoutThreshold: Number(process.env.AUTH_LOCKOUT_THRESHOLD ?? 5),
     lockoutWindowMs: Number(process.env.AUTH_LOCKOUT_WINDOW_MS ?? 900000),
@@ -26,15 +29,9 @@ export default registerAs('auth', () => ({
   twoFactor: {
     encryptionKey: process.env.TWO_FACTOR_ENCRYPTION_KEY,
     challengeTtlMs: Number(process.env.TWO_FACTOR_CHALLENGE_TTL_MS ?? 300000),
-    challengeMaxAttempts: Number(
-      process.env.TWO_FACTOR_CHALLENGE_MAX_ATTEMPTS ?? 5,
-    ),
-    otpLockoutThreshold: Number(
-      process.env.TWO_FACTOR_OTP_LOCKOUT_THRESHOLD ?? 5,
-    ),
-    otpLockoutDurationMs: Number(
-      process.env.TWO_FACTOR_OTP_LOCKOUT_DURATION_MS ?? 900000,
-    ),
+    challengeMaxAttempts: Number(process.env.TWO_FACTOR_CHALLENGE_MAX_ATTEMPTS ?? 5),
+    otpLockoutThreshold: Number(process.env.TWO_FACTOR_OTP_LOCKOUT_THRESHOLD ?? 5),
+    otpLockoutDurationMs: Number(process.env.TWO_FACTOR_OTP_LOCKOUT_DURATION_MS ?? 900000),
     recoveryCodeCount: Number(process.env.TWO_FACTOR_RECOVERY_CODE_COUNT ?? 10),
   },
 }));
