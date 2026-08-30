@@ -74,12 +74,10 @@ describe('Dynamic HTTP security baseline — STEPS 227–260', () => {
 
   it('blocks unauthenticated access and rejects injection/mass-assignment payloads at the HTTP boundary', async () => {
     await http().get(`${AUTH}/me`).expect(401);
-    const injection = await http()
-      .post(`${AUTH}/login`)
-      .send({
-        identifier: "admin' OR '1'='1",
-        password: '<script>alert(1)</script>',
-      });
+    const injection = await http().post(`${AUTH}/login`).send({
+      identifier: "admin' OR '1'='1",
+      password: '<script>alert(1)</script>',
+    });
     expect(injection.status).toBe(401);
     expect(JSON.stringify(injection.body)).not.toContain("admin' OR '1'='1");
     expect(JSON.stringify(injection.body)).not.toContain(
