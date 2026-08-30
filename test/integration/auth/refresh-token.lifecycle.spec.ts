@@ -1,6 +1,14 @@
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
 import { PrismaService } from '../../../src/infrastructure/database/prisma/prisma.service.js';
 import { PrismaRefreshTokenRepository } from '../../../src/modules/auth/infrastructure/persistence/prisma-refresh-token.repository.js';
 
@@ -33,13 +41,14 @@ describe('PrismaRefreshTokenRepository lifecycle', () => {
   let userId: bigint;
   let userUuid: string;
   let sessionId: bigint;
-  let sessionSecret: string;
 
   beforeAll(async () => {
     prisma = new PrismaService(config);
     await prisma.$connect();
     repository = new PrismaRefreshTokenRepository(prisma);
+  });
 
+  beforeEach(async () => {
     userUuid = randomUUID();
     const user = await prisma.authenticationUser.create({
       data: {
@@ -53,7 +62,8 @@ describe('PrismaRefreshTokenRepository lifecycle', () => {
       select: { id: true },
     });
     userId = user.id;
-    sessionSecret = generateRefreshToken();
+
+    const sessionSecret = generateRefreshToken();
     const session = await prisma.authenticationUserSession.create({
       data: {
         userId,
@@ -65,7 +75,7 @@ describe('PrismaRefreshTokenRepository lifecycle', () => {
     sessionId = session.id;
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await prisma.authenticationRefreshToken.deleteMany({
       where: { family: { user: { uuid: userUuid } } },
     });
@@ -74,6 +84,9 @@ describe('PrismaRefreshTokenRepository lifecycle', () => {
     });
     await prisma.authenticationUserSession.deleteMany({ where: { userId } });
     await prisma.authenticationUser.delete({ where: { id: userId } });
+  });
+
+  afterAll(async () => {
     await prisma.$disconnect();
   });
 
@@ -222,8 +235,7 @@ describe('PrismaRefreshTokenRepository lifecycle', () => {
       .map((outcome) => outcome.value);
     const winners = values.filter((value) => value.kind === 'ROTATED');
     const reuses = values.filter((value) => value.kind === 'REUSE_DETECTED');
-    expect(winners.length).toBeLessThanOrEqual(1);
-    expect(reuses.length).toBeLessThanOrEqual(1);
-    expect(winners.length + reuses.length).toBe(2);
+    expect(winners).toHaveLength(1);
+    expect(reuses).toHaveLength(1);
   });
 });
