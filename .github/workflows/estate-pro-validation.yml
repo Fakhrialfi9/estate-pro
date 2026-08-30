@@ -24,14 +24,21 @@ jobs:
           node-version: 22
       - name: Pin npm
         run: npm install --global npm@11.18.0
+      - name: Install locked dependencies for formatting
+        run: npm ci --ignore-scripts
       - name: Synchronize lockfile
         run: npm install --package-lock-only --ignore-scripts
-      - name: Normalize tracked TypeScript formatting
-        run: npx prettier --write "src/**/*.ts" "src/modules/users/credentials" "test/**/*.ts" --no-error-on-unmatched-pattern
+      - name: Normalize every tracked TypeScript file
+        shell: bash
+        run: |
+          mapfile -d '' files < <(git ls-files -z -- '*.ts')
+          if [ "${#files[@]}" -gt 0 ]; then
+            npx prettier --write "${files[@]}"
+          fi
       - name: Commit synchronized repository state to main
         run: |
-          if git diff --quiet -- package-lock.json && git diff --quiet -- '*.ts'; then
-            echo 'Lockfile and tracked TypeScript formatting are already synchronized.'
+          if git diff --quiet -- package-lock.json && git diff --quiet -- src test; then
+            echo 'Lockfile and tracked formatting are already synchronized.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
