@@ -55,8 +55,7 @@ jobs:
           new = """  const response = await http()\n    .post(`${endpoint}/login`)\n    .set('X-Forwarded-For', testClientIp)\n    .send({ identifier: user.email, password: PASSWORD })\n    .expect(201);\n"""
           if old not in text:
               raise SystemExit('expected login helper block not found')
-          text = text.replace(old, new, 1)
-          path.write_text(text)
+          path.write_text(text.replace(old, new, 1))
           PY
 
       - name: Install dependencies
@@ -67,6 +66,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run prisma:generate
+
+      - name: Deploy Prisma migrations
+        run: npm run prisma:deploy
 
       - name: Prisma migration status
         run: npm run prisma:status
