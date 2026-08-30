@@ -35,12 +35,7 @@ APP_HOST="127.0.0.1" \
 APP_PORT="$PORT" \
 API_PREFIX="api" \
 API_VERSION="v1" \
-DATABASE_URL="mysql://test:test@127.0.0.1:3306/estate_pro_test" \
-DATABASE_HOST="127.0.0.1" \
-DATABASE_PORT="3306" \
-DATABASE_NAME="estate_pro_test" \
-DATABASE_USER="test" \
-DATABASE_PASSWORD="test-password" \
+DATABASE_URL="mysql://test:test-password@127.0.0.1:3306/estate_pro_test" \
 JWT_SECRET="test-only-secret-that-is-at-least-32-chars" \
 SECURITY_CORS_ORIGINS="http://localhost:3000" \
 OTEL_TRACING_ENABLED="false" \
@@ -49,9 +44,14 @@ LOG_LEVEL="silent" \
 node dist/src/main.js >"$LOG_FILE" 2>&1 &
 PID=$!
 
+base_url="http://127.0.0.1:${PORT}/api/v1/health"
+
 for _ in $(seq 1 30); do
-  if curl --silent --show-error --fail "http://127.0.0.1:${PORT}/api/v1/health/live" >/dev/null; then
-    printf 'Compiled runtime check passed on http://127.0.0.1:%s\n' "$PORT"
+  live_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/live" || true)"
+  ready_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/ready" || true)"
+
+  if [ "$live_status" = "200" ] && [ "$ready_status" = "200" ]; then
+    printf 'Compiled runtime liveness/readiness checks passed on http://127.0.0.1:%s\n' "$PORT"
     exit 0
   fi
 
@@ -64,6 +64,8 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 
-printf 'Compiled application did not become ready within 30 seconds.\n' >&2
+printf 'Compiled application did not pass liveness/readiness within 30 seconds.\n' >&2
+printf 'Liveness HTTP status: %s\n' "$live_status" >&2
+printf 'Readiness HTTP status: %s\n' "$ready_status" >&2
 cat "$LOG_FILE" >&2
 exit 1
