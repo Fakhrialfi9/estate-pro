@@ -1,0 +1,18 @@
+.git
+.github
+node_modules
+dist
+coverage
+.tmp
+tmp
+*.log
+.env
+.env.*
+!.env.example
+!.env.production.example
+test
+
+# Editor / OS artifacts
+.DS_Store
+.idea
+.vscode
