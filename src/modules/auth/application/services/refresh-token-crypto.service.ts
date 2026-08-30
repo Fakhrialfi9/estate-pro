@@ -3,13 +3,16 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const TOKEN_BYTES = 32;
 
+export const digestRefreshToken = (token: string): string =>
+  createHash('sha256').update(token, 'utf8').digest('hex');
+
 @Injectable()
 export class RefreshTokenCryptoService {
   generate(): string {
     return randomBytes(TOKEN_BYTES).toString('base64url');
   }
   digest(token: string): string {
-    return createHash('sha256').update(token, 'utf8').digest('hex');
+    return digestRefreshToken(token);
   }
   equalsDigest(left: string, right: string): boolean {
     const a = Buffer.from(left, 'hex');
