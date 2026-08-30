@@ -27,7 +27,7 @@ export type RefreshTokenRevokeReason =
   | 'ACCOUNT_DELETED'
   | 'ACCOUNT_LOCKED';
 
-export interface RefreshTokenEntityProps extends RefreshTokenSnapshot {}
+export type RefreshTokenEntityProps = RefreshTokenSnapshot;
 
 export class RefreshTokenEntity {
   private constructor(private readonly props: RefreshTokenEntityProps) {}
