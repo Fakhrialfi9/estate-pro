@@ -90,6 +90,18 @@ function createLoginHarness(passwordValid: boolean) {
       return Promise.resolve();
     }),
   };
+  const refreshTokens = {
+    getSessionExpiresAt: vi
+      .fn()
+      .mockReturnValue(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+    issueForSession: vi.fn().mockResolvedValue({
+      accessToken: 'signed.jwt',
+      refreshToken: 'opaque.refresh.token',
+      tokenType: 'Bearer',
+      expiresIn: 60,
+      refreshTokenExpiresIn: 30 * 24 * 60 * 60,
+    }),
+  };
   const twoFactor = { isEnabled: vi.fn().mockResolvedValue(false) };
   const config = {
     getOrThrow: vi.fn(
@@ -111,6 +123,7 @@ function createLoginHarness(passwordValid: boolean) {
     hasher as never,
     jwt as never,
     sessions as never,
+    refreshTokens as never,
     config as never,
     twoFactor as never,
   );
@@ -121,6 +134,7 @@ function createLoginHarness(passwordValid: boolean) {
     audit,
     hasher,
     sessions,
+    refreshTokens,
     getCreatedSessionId: () => createdSessionId,
   };
 }
