@@ -1,14 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type {
-  AuthenticationSessionRepository,
-  SessionAuditContext,
-  SessionListQuery,
-} from '../../domain/repositories/authentication-session.repository.js';
+import type { AuthenticationSessionRepository, SessionAuditContext, SessionListQuery } from '../../domain/repositories/authentication-session.repository.js';
 import { AUTHENTICATION_SESSION_REPOSITORY } from '../../domain/repositories/authentication-session.repository.js';
 import { SessionEntity } from '../../domain/entities/session.entity.js';
 import type { SessionSecurityPort } from '../../../../common/security/session-security.port.js';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
+import { REFRESH_TOKEN_SECURITY_PORT, type RefreshTokenSecurityPort, type RefreshTokenRevokeReason } from '../../../../common/security/refresh-token-security.port.js';
 import { createHash, randomBytes } from 'node:crypto';
 
 export const SESSION_AUDIT_ACTIONS = {
@@ -23,168 +20,74 @@ export const SESSION_AUDIT_ACTIONS = {
 const MAX_PAGE_SIZE = 100;
 const MAX_USER_AGENT_LENGTH = 1024;
 const SESSION_SECRET_BYTES = 32;
-export interface CreateSessionInput extends SessionAuditContext {
-  sessionId: string;
-  ipAddress?: string | undefined;
-  userAgent?: string | undefined;
-  expiresAt: Date;
-}
+export interface CreateSessionInput extends SessionAuditContext { sessionId: string; ipAddress?: string | undefined; userAgent?: string | undefined; expiresAt: Date; }
 
 @Injectable()
 export class SessionService implements SessionSecurityPort {
   constructor(
-    @Inject(AUTHENTICATION_SESSION_REPOSITORY)
-    private readonly sessions: AuthenticationSessionRepository,
-    @Inject(SECURITY_AUDIT_REPOSITORY)
-    private readonly audit: SecurityAuditRepository,
+    @Inject(AUTHENTICATION_SESSION_REPOSITORY) private readonly sessions: AuthenticationSessionRepository,
+    @Inject(SECURITY_AUDIT_REPOSITORY) private readonly audit: SecurityAuditRepository,
+    @Inject(REFRESH_TOKEN_SECURITY_PORT) private readonly refreshTokens: RefreshTokenSecurityPort,
   ) {}
-  static generateSecret(): string {
-    return randomBytes(SESSION_SECRET_BYTES).toString('base64url');
-  }
-  static digestSecret(secret: string): string {
-    return createHash('sha256').update(secret, 'utf8').digest('hex');
-  }
-  async create(
-    userUuid: string,
-    input: CreateSessionInput,
-  ): Promise<SessionEntity> {
+
+  static generateSecret(): string { return randomBytes(SESSION_SECRET_BYTES).toString('base64url'); }
+  static digestSecret(secret: string): string { return createHash('sha256').update(secret, 'utf8').digest('hex'); }
+
+  async create(userUuid: string, input: CreateSessionInput): Promise<SessionEntity> {
     const now = new Date();
-    if (input.expiresAt.getTime() <= now.getTime()) {
-      throw new Error('Session expiry must be in the future');
-    }
-    const snapshot = await this.sessions.create(userUuid, {
-      sessionId: input.sessionId,
-      ipAddress: input.ipAddress,
-      userAgent: this.normalizeUserAgent(input.userAgent),
-      expiresAt: input.expiresAt,
-    });
+    if (input.expiresAt.getTime() <= now.getTime()) throw new Error('Session expiry must be in the future');
+    const snapshot = await this.sessions.create(userUuid, { sessionId: input.sessionId, ipAddress: input.ipAddress, userAgent: this.normalizeUserAgent(input.userAgent), expiresAt: input.expiresAt });
     const entity = SessionEntity.create(snapshot);
-    await this.audit.record({
-      action: SESSION_AUDIT_ACTIONS.CREATED,
-      actorUuid: userUuid,
-      subjectUuid: userUuid,
-      entityType: 'session',
-      result: 'SUCCESS',
-      ipAddress: input.ipAddress,
-      userAgent: input.userAgent,
-      requestId: input.requestId,
-    });
+    await this.audit.record({ action: SESSION_AUDIT_ACTIONS.CREATED, actorUuid: userUuid, subjectUuid: userUuid, entityType: 'session', result: 'SUCCESS', ipAddress: input.ipAddress, userAgent: input.userAgent, requestId: input.requestId });
     return entity;
   }
-  isActive(
-    userUuid: string,
-    sessionId: string,
-    now = new Date(),
-  ): Promise<boolean> {
-    return this.sessions.isActive(userUuid, sessionId, now);
+
+  async isActive(userUuid: string, sessionId: string, now = new Date()): Promise<boolean> {
+    const publicSession = await this.sessions.findById(userUuid, sessionId);
+    if (publicSession) return SessionEntity.create(publicSession).isActiveAt(now);
+    const legacySession = await this.sessions.findBySecret(userUuid, sessionId);
+    return legacySession ? SessionEntity.create(legacySession).isActiveAt(now) : false;
   }
-  async listOwn(
-    userUuid: string,
-    query: Partial<SessionListQuery> = {},
-    now = new Date(),
-  ): Promise<ReturnType<SessionEntity['toSafeView']>[]> {
-    const normalized: SessionListQuery = {
-      limit: Math.min(Math.max(query.limit ?? 20, 1), MAX_PAGE_SIZE),
-      offset: Math.max(query.offset ?? 0, 0),
-      includeInactive: query.includeInactive ?? false,
-    };
+
+  async listOwn(userUuid: string, query: Partial<SessionListQuery> = {}, now = new Date()): Promise<ReturnType<SessionEntity['toSafeView']>[]> {
+    const normalized: SessionListQuery = { limit: Math.min(Math.max(query.limit ?? 20, 1), MAX_PAGE_SIZE), offset: Math.max(query.offset ?? 0, 0), includeInactive: query.includeInactive ?? false };
     const snapshots = await this.sessions.list(userUuid, normalized);
-    return snapshots.map((snapshot) =>
-      SessionEntity.create(snapshot).toSafeView(now),
-    );
+    return snapshots.map((snapshot) => SessionEntity.create(snapshot).toSafeView(now));
   }
-  async logoutCurrent(
-    userUuid: string,
-    sessionId: string,
-    context: SessionAuditContext = {},
-  ): Promise<void> {
-    await this.sessions.revokeBySecret(userUuid, sessionId, new Date());
-    await this.audit.record({
-      action: SESSION_AUDIT_ACTIONS.LOGOUT,
-      actorUuid: context.actorUserUuid ?? userUuid,
-      subjectUuid: userUuid,
-      entityType: 'session',
-      result: 'SUCCESS',
-      ipAddress: context.ipAddress,
-      userAgent: context.userAgent,
-      requestId: context.requestId,
-    });
+
+  async logoutCurrent(userUuid: string, sessionId: string, context: SessionAuditContext = {}): Promise<void> {
+    const revoked = await this.sessions.revokeById(userUuid, sessionId, new Date());
+    if (!revoked) await this.sessions.revokeBySecret(userUuid, sessionId, new Date());
+    await this.refreshTokens.revokeForSession(userUuid, sessionId, 'LOGOUT', context);
+    await this.audit.record({ action: SESSION_AUDIT_ACTIONS.LOGOUT, actorUuid: context.actorUserUuid ?? userUuid, subjectUuid: userUuid, entityType: 'session', result: 'SUCCESS', ipAddress: context.ipAddress, userAgent: context.userAgent, requestId: context.requestId });
   }
-  async revokeOwnSession(
-    userUuid: string,
-    publicSessionId: string,
-    context: SessionAuditContext = {},
-  ): Promise<void> {
+
+  async revokeOwnSession(userUuid: string, publicSessionId: string, context: SessionAuditContext = {}): Promise<void> {
     await this.sessions.revokeById(userUuid, publicSessionId, new Date());
-    await this.audit.record({
-      action: SESSION_AUDIT_ACTIONS.REVOKED,
-      actorUuid: context.actorUserUuid ?? userUuid,
-      subjectUuid: userUuid,
-      entityType: 'session',
-      result: 'SUCCESS',
-      ipAddress: context.ipAddress,
-      userAgent: context.userAgent,
-      requestId: context.requestId,
-    });
+    await this.refreshTokens.revokeForSession(userUuid, publicSessionId, 'SESSION_REVOKED', context);
+    await this.audit.record({ action: SESSION_AUDIT_ACTIONS.REVOKED, actorUuid: context.actorUserUuid ?? userUuid, subjectUuid: userUuid, entityType: 'session', result: 'SUCCESS', ipAddress: context.ipAddress, userAgent: context.userAgent, requestId: context.requestId });
   }
-  async logoutAll(
-    userUuid: string,
-    context: SessionAuditContext = {},
-  ): Promise<number> {
+
+  async logoutAll(userUuid: string, context: SessionAuditContext = {}): Promise<number> {
     const count = await this.sessions.revokeAll(userUuid, new Date());
-    await this.audit.record({
-      action: SESSION_AUDIT_ACTIONS.LOGOUT_ALL,
-      actorUuid: context.actorUserUuid ?? userUuid,
-      subjectUuid: userUuid,
-      entityType: 'session',
-      result: 'SUCCESS',
-      ipAddress: context.ipAddress,
-      userAgent: context.userAgent,
-      requestId: context.requestId,
-    });
+    await this.refreshTokens.revokeAllForUser(userUuid, 'LOGOUT', context);
+    await this.audit.record({ action: SESSION_AUDIT_ACTIONS.LOGOUT_ALL, actorUuid: context.actorUserUuid ?? userUuid, subjectUuid: userUuid, entityType: 'session', result: 'SUCCESS', ipAddress: context.ipAddress, userAgent: context.userAgent, requestId: context.requestId });
     return count;
   }
-  async adminRevoke(
-    actorUserUuid: string,
-    targetUserUuid: string,
-    publicSessionId: string,
-    context: SessionAuditContext = {},
-  ): Promise<void> {
+
+  async adminRevoke(actorUserUuid: string, targetUserUuid: string, publicSessionId: string, context: SessionAuditContext = {}): Promise<void> {
     await this.sessions.revokeById(targetUserUuid, publicSessionId, new Date());
-    await this.audit.record({
-      action: SESSION_AUDIT_ACTIONS.ADMIN_REVOKED,
-      actorUuid: actorUserUuid,
-      subjectUuid: targetUserUuid,
-      entityType: 'session',
-      result: 'SUCCESS',
-      ipAddress: context.ipAddress,
-      userAgent: context.userAgent,
-      requestId: context.requestId,
-    });
+    await this.refreshTokens.revokeForSession(targetUserUuid, publicSessionId, 'ADMIN_REVOKED', context);
+    await this.audit.record({ action: SESSION_AUDIT_ACTIONS.ADMIN_REVOKED, actorUuid: actorUserUuid, subjectUuid: targetUserUuid, entityType: 'session', result: 'SUCCESS', ipAddress: context.ipAddress, userAgent: context.userAgent, requestId: context.requestId });
   }
-  async revokeAllForSecurityEvent(
-    userUuid: string,
-    event: Parameters<SessionSecurityPort['revokeAllForSecurityEvent']>[1],
-    context: SessionAuditContext = {},
-  ): Promise<number> {
+
+  async revokeAllForSecurityEvent(userUuid: string, event: Parameters<SessionSecurityPort['revokeAllForSecurityEvent']>[1], context: SessionAuditContext = {}): Promise<number> {
     const count = await this.sessions.revokeAll(userUuid, new Date());
-    await this.audit.record({
-      action:
-        event === 'PASSWORD_CHANGE'
-          ? SESSION_AUDIT_ACTIONS.PASSWORD_CHANGE_REVOKED
-          : SESSION_AUDIT_ACTIONS.SECURITY_EVENT_REVOKED,
-      actorUuid: context.actorUserUuid ?? userUuid,
-      subjectUuid: userUuid,
-      entityType: 'session',
-      result: 'SUCCESS',
-      ipAddress: context.ipAddress,
-      userAgent: context.userAgent,
-      requestId: context.requestId,
-    });
+    const reason: RefreshTokenRevokeReason = event === 'PASSWORD_CHANGE' ? 'PASSWORD_CHANGED' : event === 'PASSWORD_RESET' ? 'PASSWORD_RESET' : event === 'ACCOUNT_DISABLED' ? 'ACCOUNT_DISABLED' : event === 'ACCOUNT_LOCKED' ? 'ACCOUNT_LOCKED' : event === 'ACCOUNT_COMPROMISE' ? 'SECURITY_EVENT' : event === 'ADMIN_FORCED_LOGOUT' ? 'ADMIN_REVOKED' : 'SECURITY_EVENT';
+    await this.refreshTokens.revokeAllForUser(userUuid, reason, context);
+    await this.audit.record({ action: event === 'PASSWORD_CHANGE' ? SESSION_AUDIT_ACTIONS.PASSWORD_CHANGE_REVOKED : SESSION_AUDIT_ACTIONS.SECURITY_EVENT_REVOKED, actorUuid: context.actorUserUuid ?? userUuid, subjectUuid: userUuid, entityType: 'session', result: 'SUCCESS', ipAddress: context.ipAddress, userAgent: context.userAgent, requestId: context.requestId });
     return count;
   }
-  private normalizeUserAgent(userAgent?: string): string | undefined {
-    if (!userAgent) return undefined;
-    return userAgent.slice(0, MAX_USER_AGENT_LENGTH);
-  }
+
+  private normalizeUserAgent(userAgent?: string): string | undefined { return userAgent ? userAgent.slice(0, MAX_USER_AGENT_LENGTH) : undefined; }
 }

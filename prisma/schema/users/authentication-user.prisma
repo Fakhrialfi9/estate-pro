@@ -17,6 +17,7 @@ model AuthenticationUser {
   profile                AuthenticationUserProfile?
   security               AuthenticationUserSecurity?
   sessions               AuthenticationUserSession[]
+  refreshTokenFamilies   AuthenticationRefreshTokenFamily[]
   twoFactorChallenges    AuthenticationUserTwoFactorChallenge[]
   twoFactorRecoveryCodes AuthenticationUserTwoFactorRecoveryCode[]
   twoFactor              AuthenticationUserTwoFactor?
