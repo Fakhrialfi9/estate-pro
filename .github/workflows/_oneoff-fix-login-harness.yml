@@ -7,6 +7,9 @@ on:
 permissions:
   contents: write
 
+env:
+  DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test
+
 jobs:
   fix-and-validate:
     if: github.actor != 'github-actions[bot]'
@@ -75,8 +78,6 @@ jobs:
         run: npm run build
 
       - name: Commit fix and remove one-off workflow
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
