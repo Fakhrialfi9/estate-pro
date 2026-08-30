@@ -11,6 +11,7 @@ const ALLOWED_CROSS_MODULE_DEPENDENCIES = new Set([
   'src/modules/property/presentation/property-extras.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
   'src/modules/property/presentation/property-lifecycle.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
   'src/modules/property/presentation/property-types.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/property/presentation/property-master.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
   'src/modules/property/presentation/controllers/property.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
   'src/modules/property/presentation/controllers/property-category.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
   'src/modules/property/presentation/controllers/property-subcategory.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
