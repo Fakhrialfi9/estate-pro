@@ -91,6 +91,7 @@ async function login(): Promise<AuthResponse> {
   });
   const response = await http()
     .post(`${endpoint}/login`)
+    .set('X-Forwarded-For', testClientIp)
     .send({ identifier: user.email, password: PASSWORD })
     .expect(201);
   return body<AuthResponse>(response);
