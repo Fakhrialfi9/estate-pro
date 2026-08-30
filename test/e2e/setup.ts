@@ -22,7 +22,7 @@ setDefault(
   'TWO_FACTOR_ENCRYPTION_KEY',
   'test-only-two-factor-encryption-key-at-least-32-chars',
 );
-setDefault('AUTH_LOGIN_RATE_LIMIT', '100');
+setDefault('AUTH_LOGIN_RATE_LIMIT', '5');
 setDefault('AUTH_LOGIN_RATE_LIMIT_TTL_MS', '60000');
 setDefault('AUTH_REFRESH_RATE_LIMIT', '10');
 setDefault('AUTH_REFRESH_RATE_LIMIT_TTL_MS', '60000');
