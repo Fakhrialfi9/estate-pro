@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -26,7 +27,7 @@ export class JwtTokenService {
 
   async issueAccessToken(userUuid: string, sessionId: string): Promise<string> {
     return this.jwt.signAsync(
-      { sub: userUuid, sid: sessionId },
+      { sub: userUuid, sid: sessionId, jti: randomUUID() },
       this.getSignOptions(),
     );
   }
