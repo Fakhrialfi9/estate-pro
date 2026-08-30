@@ -173,13 +173,9 @@ export function prepareTestDatabase(): void {
   // E2E/integration suites reuse the same local test database between runs.
   // Reset only the explicitly validated local test database so a prior schema
   // cannot trigger Prisma P3005 when the migration history is deployed.
-  execFileSync(
-    PRISMA_COMMAND,
-    ['migrate', 'reset', '--force', '--skip-seed'],
-    {
-      cwd: process.cwd(),
-      env: process.env,
-      stdio: 'inherit',
-    },
-  );
+  execFileSync(PRISMA_COMMAND, ['migrate', 'reset', '--force', '--skip-seed'], {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: 'inherit',
+  });
 }
