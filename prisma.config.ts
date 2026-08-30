@@ -7,7 +7,7 @@ export default defineConfig({
 
   migrations: {
     path: 'prisma/migrations',
-    seed: 'npx --yes tsx@4.23.12 prisma/seed.ts',
+    seed: 'node --experimental-strip-types prisma/seed.ts',
   },
 
   datasource: {
