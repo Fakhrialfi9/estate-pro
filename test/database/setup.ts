@@ -170,10 +170,9 @@ export function prepareTestDatabase(): void {
   const databaseUrl = resolveTestDatabaseUrl();
   synchronizeDatabaseEnvironment(databaseUrl);
 
-  // E2E/integration suites reuse the same local test database between runs.
-  // Reset only the explicitly validated local test database so a prior schema
-  // cannot trigger Prisma P3005 when the migration history is deployed.
-  execFileSync(PRISMA_COMMAND, ['migrate', 'reset', '--force', '--skip-seed'], {
+  // Prisma ORM 7 does not support --skip-seed on migrate reset. Seed execution
+  // is handled explicitly by the test workflow after the schema reset.
+  execFileSync(PRISMA_COMMAND, ['migrate', 'reset', '--force'], {
     cwd: process.cwd(),
     env: process.env,
     stdio: 'inherit',
