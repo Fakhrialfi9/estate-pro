@@ -104,6 +104,8 @@ async function cleanup() {
   await prisma.authorizationRolePermission.deleteMany();
   await prisma.authorizationRole.deleteMany();
   await prisma.authorizationPermission.deleteMany();
+  await prisma.authenticationRefreshToken.deleteMany();
+  await prisma.authenticationRefreshTokenFamily.deleteMany();
   await prisma.authenticationUserSession.deleteMany();
   await prisma.authenticationUser.deleteMany();
 }
@@ -182,7 +184,6 @@ describe('Property category/facility/core HTTP API', () => {
         categoryUuid: categoryB.uuid,
         title: 'Invalid hierarchy',
       })
-      // .expect(400);
       .expect((response) => {
         console.log('=== HIERARCHY FAILURE ===');
         console.log('STATUS:', response.status);
@@ -236,7 +237,6 @@ describe('Property category/facility/core HTTP API', () => {
       .patch(`/api/v1/property/properties/${uuid}`)
       .set('Authorization', `Bearer ${actor.token}`)
       .send({ status: 'SOLD', version: 1 })
-      // .expect(400);
       .expect((response) => {
         console.log('=== SOLD TRANSITION FAILURE ===');
         console.log('STATUS:', response.status);
