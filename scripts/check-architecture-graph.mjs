@@ -52,7 +52,11 @@ async function resolveRelativeImport(fromFile, specifier) {
   let target = path.resolve(path.dirname(fromFile), specifier);
   if (target.endsWith('.js')) target = target.slice(0, -3) + '.ts';
   for (const candidate of [target, `${target}.ts`, path.join(target, 'index.ts')]) {
-    try { if ((await stat(candidate)).isFile()) return path.normalize(candidate); } catch {}
+    try {
+      if ((await stat(candidate)).isFile()) return path.normalize(candidate);
+    } catch {
+      continue;
+    }
   }
   return null;
 }

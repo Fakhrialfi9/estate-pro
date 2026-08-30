@@ -29,15 +29,10 @@ const shouldSkipThrottling = (context: ExecutionContext): boolean =>
 const validateEnvironment = (
   env: Record<string, unknown>,
 ): Record<string, unknown> => {
-  const schemaKeys = configurationValidationSchema.describe().keys;
-  const appEnvironment: Record<string, unknown> = {};
-  for (const key of Object.keys(schemaKeys)) {
-    appEnvironment[key] = env[key];
-  }
-
-  const result = configurationValidationSchema.validate(appEnvironment, {
+  const result = configurationValidationSchema.validate(env, {
     abortEarly: false,
     allowUnknown: false,
+    stripUnknown: { objects: true },
   });
   if (result.error) throw result.error;
   return result.value as Record<string, unknown>;
