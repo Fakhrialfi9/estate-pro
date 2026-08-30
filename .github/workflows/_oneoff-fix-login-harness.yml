@@ -1,4 +1,4 @@
-name: One-off login harness fix
+name: One-off refresh lifecycle harness fix
 
 on:
   push:
@@ -20,6 +20,7 @@ jobs:
   fix-and-validate:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -42,43 +43,33 @@ jobs:
           sudo mysql -e "CREATE USER IF NOT EXISTS 'test'@'127.0.0.1' IDENTIFIED BY 'test-password';"
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_test.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
 
-      - name: Patch stale LoginService test harness
+      - name: Patch refresh lifecycle login test isolation
         run: |
           python3 <<'PY'
           from pathlib import Path
 
-          path = Path('test/security/security-hardening-272-295.spec.ts')
+          path = Path('test/e2e/refresh-token-lifecycle.e2e.spec.ts')
           text = path.read_text()
 
-          if 'const refreshTokens = {' not in text:
-              old = '''  const twoFactor = { isEnabled: vi.fn().mockResolvedValue(false) };\n  const config = {\n'''
-              new = '''  const refreshTokens = {\n    getSessionExpiresAt: vi\n      .fn()\n      .mockReturnValue(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),\n    issueForSession: vi.fn().mockResolvedValue({\n      accessToken: 'signed.jwt',\n      refreshToken: 'opaque.refresh.token',\n      tokenType: 'Bearer',\n      expiresIn: 60,\n      refreshTokenExpiresIn: 30 * 24 * 60 * 60,\n    }),\n  };\n  const twoFactor = { isEnabled: vi.fn().mockResolvedValue(false) };\n  const config = {\n'''
-              if old not in text:
-                  raise SystemExit('expected stale harness block not found')
-              text = text.replace(old, new, 1)
-
-          if '    refreshTokens as never,\n' not in text:
-              old = '''    sessions as never,\n    config as never,\n    twoFactor as never,\n'''
-              new = '''    sessions as never,\n    refreshTokens as never,\n    config as never,\n    twoFactor as never,\n'''
-              if old not in text:
-                  raise SystemExit('expected constructor block not found')
-              text = text.replace(old, new, 1)
-
-          if '    refreshTokens,\n    getCreatedSessionId' not in text:
-              old = '''    sessions,\n    getCreatedSessionId: () => createdSessionId,\n'''
-              new = '''    sessions,\n    refreshTokens,\n    getCreatedSessionId: () => createdSessionId,\n'''
-              if old not in text:
-                  raise SystemExit('expected return block not found')
-              text = text.replace(old, new, 1)
-
+          old = """  const response = await http()\n    .post(`${endpoint}/login`)\n    .send({ identifier: user.email, password: PASSWORD })\n    .expect(201);\n"""
+          new = """  const response = await http()\n    .post(`${endpoint}/login`)\n    .set('X-Forwarded-For', testClientIp)\n    .send({ identifier: user.email, password: PASSWORD })\n    .expect(201);\n"""
+          if old not in text:
+              raise SystemExit('expected login helper block not found')
+          text = text.replace(old, new, 1)
           path.write_text(text)
           PY
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Prisma validate
+        run: npx prisma validate
+
       - name: Generate Prisma client
         run: npm run prisma:generate
+
+      - name: Prisma migration status
+        run: npm run prisma:status
 
       - name: Format check
         run: npm run format:check
@@ -89,29 +80,47 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Security test target
-        run: npm run test:security -- test/security/security-hardening-272-295.spec.ts
+      - name: Build
+        run: npm run build
 
       - name: Full test suite
-        run: npm test
+        run: npm run test
 
-      - name: E2E test suite
+      - name: Watch-mode test command in terminating mode
+        run: npm run test:watch -- --run
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: E2E tests
         run: npm run test:e2e
 
-      - name: Production build
-        run: npm run build
+      - name: Security tests
+        run: npm run test:security
 
       - name: Security baseline
         run: npm run test:security:baseline
+
+      - name: Coverage
+        run: npm run test:coverage
+
+      - name: E2E coverage
+        run: npm run test:coverage:e2e
+
+      - name: All test suites
+        run: npm run test:all
 
       - name: Remove one-off workflow and commit verified fix
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add test/security/security-hardening-272-295.spec.ts
+          git add test/e2e/refresh-token-lifecycle.e2e.spec.ts
           git rm .github/workflows/_oneoff-fix-login-harness.yml
-          git diff --cached --quiet && exit 0
-          git commit -m 'fix(test): align login security harness dependencies'
+          git diff --cached --check
+          git commit -m 'fix(test): isolate refresh lifecycle login throttle bucket'
           git push origin HEAD:main
 
 # Intentionally one-shot: this workflow removes itself after verification.
