@@ -57,8 +57,7 @@ type UserPersistenceDelegate = {
   findMany(args: {
     where: UserWhere;
     orderBy:
-      | Record<string, SortDirection>
-      | Array<Record<string, SortDirection>>;
+      Record<string, SortDirection> | Array<Record<string, SortDirection>>;
     skip: number;
     take: number;
   }): Promise<UserPersistenceRecord[]>;
@@ -184,9 +183,8 @@ export class PrismaUserRepository implements UserRepository {
       (
         value,
       ): value is
-        | { username: string }
-        | { email: string }
-        | { phone: string } => value !== null,
+        { username: string } | { email: string } | { phone: string } =>
+        value !== null,
     );
 
     if (identities.length === 0) return null;

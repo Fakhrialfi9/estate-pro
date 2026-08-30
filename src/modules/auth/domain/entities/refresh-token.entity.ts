@@ -42,23 +42,41 @@ export class RefreshTokenEntity {
     return new RefreshTokenEntity(snapshot);
   }
 
-  get id(): string { return this.props.id; }
-  get familyId(): string { return this.props.familyId; }
-  get userUuid(): string { return this.props.userUuid; }
-  get sessionId(): string { return this.props.sessionId; }
-  get expiresAt(): Date { return this.props.expiresAt; }
-  get consumedAt(): Date | null { return this.props.consumedAt; }
-  get revokedAt(): Date | null { return this.props.revokedAt; }
-  get revokeReason(): RefreshTokenRevokeReason | null { return this.props.revokeReason; }
+  get id(): string {
+    return this.props.id;
+  }
+  get familyId(): string {
+    return this.props.familyId;
+  }
+  get userUuid(): string {
+    return this.props.userUuid;
+  }
+  get sessionId(): string {
+    return this.props.sessionId;
+  }
+  get expiresAt(): Date {
+    return this.props.expiresAt;
+  }
+  get consumedAt(): Date | null {
+    return this.props.consumedAt;
+  }
+  get revokedAt(): Date | null {
+    return this.props.revokedAt;
+  }
+  get revokeReason(): RefreshTokenRevokeReason | null {
+    return this.props.revokeReason;
+  }
 
   state(now = new Date()): RefreshTokenState {
-    if (this.props.revokedAt !== null || this.props.consumedAt !== null) return this.props.consumedAt !== null ? 'CONSUMED' : 'REVOKED';
+    if (this.props.revokedAt !== null || this.props.consumedAt !== null)
+      return this.props.consumedAt !== null ? 'CONSUMED' : 'REVOKED';
     if (this.props.expiresAt.getTime() <= now.getTime()) return 'EXPIRED';
     return 'ACTIVE';
   }
 
   assertRefreshable(now = new Date()): void {
     const state = this.state(now);
-    if (state !== 'ACTIVE') throw new Error(`Refresh token is ${state.toLowerCase()}`);
+    if (state !== 'ACTIVE')
+      throw new Error(`Refresh token is ${state.toLowerCase()}`);
   }
 }

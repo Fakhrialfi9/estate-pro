@@ -37,16 +37,56 @@ import { PropertyMetricsInterceptor } from './observability/property-metrics.int
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule, ListingModule],
-  controllers: [PropertyTypesController, PropertyController, PropertyCategoryController, PropertySubcategoryController, PropertyLocationController, PropertyFacilityController, PropertyDetailsController, PropertyExtrasController, PropertyLifecycleController],
+  controllers: [
+    PropertyTypesController,
+    PropertyController,
+    PropertyCategoryController,
+    PropertySubcategoryController,
+    PropertyLocationController,
+    PropertyFacilityController,
+    PropertyDetailsController,
+    PropertyExtrasController,
+    PropertyLifecycleController,
+  ],
   providers: [
-    AuthorizationGuard, CreatePropertyTypeUseCase, DeletePropertyTypeUseCase, GetPropertyTypeUseCase, ListPropertyTypesUseCase, UpdatePropertyTypeUseCase,
-    { provide: PROPERTY_TYPE_REPOSITORY, useClass: PrismaPropertyTypeRepository },
-    PropertyMasterService, { provide: PROPERTY_MASTER_REPOSITORY, useClass: PrismaPropertyMasterStore },
-    PropertyDetailsService, { provide: PROPERTY_DETAILS_REPOSITORY, useClass: PrismaPropertyDetailsRepository },
-    PropertyExtrasService, { provide: PROPERTY_EXTRAS_REPOSITORY, useClass: PrismaPropertyExtrasRepository },
-    PropertyLifecycleService, { provide: PROPERTY_LIFECYCLE_REPOSITORY, useClass: PrismaPropertyLifecycleRepository },
+    AuthorizationGuard,
+    CreatePropertyTypeUseCase,
+    DeletePropertyTypeUseCase,
+    GetPropertyTypeUseCase,
+    ListPropertyTypesUseCase,
+    UpdatePropertyTypeUseCase,
+    {
+      provide: PROPERTY_TYPE_REPOSITORY,
+      useClass: PrismaPropertyTypeRepository,
+    },
+    PropertyMasterService,
+    {
+      provide: PROPERTY_MASTER_REPOSITORY,
+      useClass: PrismaPropertyMasterStore,
+    },
+    PropertyDetailsService,
+    {
+      provide: PROPERTY_DETAILS_REPOSITORY,
+      useClass: PrismaPropertyDetailsRepository,
+    },
+    PropertyExtrasService,
+    {
+      provide: PROPERTY_EXTRAS_REPOSITORY,
+      useClass: PrismaPropertyExtrasRepository,
+    },
+    PropertyLifecycleService,
+    {
+      provide: PROPERTY_LIFECYCLE_REPOSITORY,
+      useClass: PrismaPropertyLifecycleRepository,
+    },
     { provide: APP_INTERCEPTOR, useClass: PropertyMetricsInterceptor },
   ],
-  exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY, PROPERTY_DETAILS_REPOSITORY, PROPERTY_EXTRAS_REPOSITORY, PROPERTY_LIFECYCLE_REPOSITORY],
+  exports: [
+    PROPERTY_TYPE_REPOSITORY,
+    PROPERTY_MASTER_REPOSITORY,
+    PROPERTY_DETAILS_REPOSITORY,
+    PROPERTY_EXTRAS_REPOSITORY,
+    PROPERTY_LIFECYCLE_REPOSITORY,
+  ],
 })
 export class PropertyModule {}

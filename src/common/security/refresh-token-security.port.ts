@@ -33,4 +33,6 @@ export interface RefreshTokenSecurityPort {
   ): Promise<number>;
 }
 
-export const REFRESH_TOKEN_SECURITY_PORT = Symbol('REFRESH_TOKEN_SECURITY_PORT');
+export const REFRESH_TOKEN_SECURITY_PORT = Symbol(
+  'REFRESH_TOKEN_SECURITY_PORT',
+);

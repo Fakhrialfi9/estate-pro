@@ -9,7 +9,13 @@ const parseOrigins = (value: string | undefined): string[] =>
 export default registerAs('cors', () => ({
   origins: parseOrigins(process.env.SECURITY_CORS_ORIGINS),
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Request-Id'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Accept',
+    'Origin',
+    'X-Request-Id',
+  ],
   exposedHeaders: [],
   credentials: true,
   maxAge: 86400,

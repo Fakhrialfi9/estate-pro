@@ -1,9 +1,6 @@
 export type AuditResult = 'SUCCESS' | 'FAILURE';
 export type AuditActorType =
-  | 'AUTHENTICATED'
-  | 'ADMINISTRATIVE'
-  | 'SYSTEM'
-  | 'ANONYMOUS';
+  'AUTHENTICATED' | 'ADMINISTRATIVE' | 'SYSTEM' | 'ANONYMOUS';
 
 export interface SecurityAuditChange {
   field: string;

@@ -6,7 +6,10 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
-import { configuration, configurationValidationSchema } from './config/configuration.js';
+import {
+  configuration,
+  configurationValidationSchema,
+} from './config/configuration.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { LoggingModule } from './infrastructure/logging/logger.module.js';
 import { ObservabilityModule } from './infrastructure/observability/observability.module.js';
@@ -20,11 +23,17 @@ import { UsersModule } from './modules/users/users.module.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { SystemModule } from './modules/system/system.module.js';
 
-const shouldSkipThrottling = (context: ExecutionContext): boolean => context.getClass() === HealthController;
+const shouldSkipThrottling = (context: ExecutionContext): boolean =>
+  context.getClass() === HealthController;
 const validateEnvironment = (env: Record<string, unknown>) => {
   const schemaKeys = configurationValidationSchema.describe().keys;
-  const appEnvironment = Object.fromEntries(Object.keys(schemaKeys).map((key) => [key, env[key]]));
-  const result = configurationValidationSchema.validate(appEnvironment, { abortEarly: false, allowUnknown: false });
+  const appEnvironment = Object.fromEntries(
+    Object.keys(schemaKeys).map((key) => [key, env[key]]),
+  );
+  const result = configurationValidationSchema.validate(appEnvironment, {
+    abortEarly: false,
+    allowUnknown: false,
+  });
   if (result.error) throw result.error;
   return result.value;
 };
@@ -40,15 +49,35 @@ const validateEnvironment = (env: Record<string, unknown>) => {
     }),
     LoggingModule,
     ThrottlerModule.forRootAsync({
-      imports: [ConfigModule], inject: [ConfigService],
+      imports: [ConfigModule],
+      inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        throttlers: [{ name: 'default', ttl: configService.getOrThrow<number>('rateLimit.ttl'), limit: configService.getOrThrow<number>('rateLimit.limit') }],
+        throttlers: [
+          {
+            name: 'default',
+            ttl: configService.getOrThrow<number>('rateLimit.ttl'),
+            limit: configService.getOrThrow<number>('rateLimit.limit'),
+          },
+        ],
         skipIf: shouldSkipThrottling,
       }),
     }),
-    AuditModule, AuthModule, DatabaseModule, HealthModule, UsersModule, RolesModule, PermissionsModule, PropertyModule, SystemModule, ObservabilityModule,
+    AuditModule,
+    AuthModule,
+    DatabaseModule,
+    HealthModule,
+    UsersModule,
+    RolesModule,
+    PermissionsModule,
+    PropertyModule,
+    SystemModule,
+    ObservabilityModule,
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_FILTER, useClass: GlobalExceptionFilter }],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+  ],
 })
 export class AppModule {}

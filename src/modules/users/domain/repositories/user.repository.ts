@@ -12,11 +12,7 @@ export interface CreateUserData {
 }
 
 export type UserFilterField =
-  | 'username'
-  | 'email'
-  | 'phone'
-  | 'status'
-  | 'isActive';
+  'username' | 'email' | 'phone' | 'status' | 'isActive';
 export type UserSortField =
   | 'uuid'
   | 'username'

@@ -8,9 +8,7 @@ import type { ActorContext } from '../../domain/property-master.types.js';
 import type { PropertyLifecycleRepository } from '../../domain/repositories/property-lifecycle.repository.js';
 
 @Injectable()
-export class PrismaPropertyLifecycleRepository
-  implements PropertyLifecycleRepository
-{
+export class PrismaPropertyLifecycleRepository implements PropertyLifecycleRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async verify(

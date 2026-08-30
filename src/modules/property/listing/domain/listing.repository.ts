@@ -63,11 +63,7 @@ export interface PropertySearchQuery {
   readonly sortDirection?: 'asc' | 'desc' | undefined;
 }
 export type PropertySortField =
-  | 'price'
-  | 'createdAt'
-  | 'updatedAt'
-  | 'views'
-  | 'featured';
+  'price' | 'createdAt' | 'updatedAt' | 'views' | 'featured';
 export interface ListingRepository {
   create(input: CreateListingInput, actor: ListingActor): Promise<unknown>;
   findOne(uuid: string): Promise<unknown>;

@@ -1,12 +1,35 @@
-import { Body, Controller, Delete, Get, Headers, HttpCode, Param, ParseUUIDPipe, Post, Patch, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Patch,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { PropertyMasterService } from '../application/property-master.service.js';
-import { ListQuery, PropertyDto, PropertyUpdateDto } from './property-master.dto.js';
-import { actor, listResponse, response, type AuthenticatedRequest } from './property-controller.support.js';
+import {
+  ListQuery,
+  PropertyDto,
+  PropertyUpdateDto,
+} from './property-master.dto.js';
+import {
+  actor,
+  listResponse,
+  response,
+  type AuthenticatedRequest,
+} from './property-controller.support.js';
 
 @ApiTags('Properties')
 @ApiBearerAuth()
@@ -17,8 +40,15 @@ export class PropertyController {
 
   @Post('properties')
   @RequirePermissions('properties.create')
-  create(@Req() r: AuthenticatedRequest, @Body() d: PropertyDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) {
-    return this.service.createProperty({ ...d }, actor(r, ua, rid)).then(response);
+  create(
+    @Req() r: AuthenticatedRequest,
+    @Body() d: PropertyDto,
+    @Headers('user-agent') ua?: string,
+    @Headers('x-request-id') rid?: string,
+  ) {
+    return this.service
+      .createProperty({ ...d }, actor(r, ua, rid))
+      .then(response);
   }
 
   @Get('properties')
@@ -35,26 +65,51 @@ export class PropertyController {
 
   @Patch('properties/:uuid')
   @RequirePermissions('properties.update')
-  update(@Req() r: AuthenticatedRequest, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Body() d: PropertyUpdateDto, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) {
-    return this.service.updateProperty(uuid, d.version, { ...d }, actor(r, ua, rid)).then(response);
+  update(
+    @Req() r: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Body() d: PropertyUpdateDto,
+    @Headers('user-agent') ua?: string,
+    @Headers('x-request-id') rid?: string,
+  ) {
+    return this.service
+      .updateProperty(uuid, d.version, { ...d }, actor(r, ua, rid))
+      .then(response);
   }
 
   @Delete('properties/:uuid')
   @HttpCode(204)
   @RequirePermissions('properties.delete')
-  async remove(@Req() r: AuthenticatedRequest, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) {
+  async remove(
+    @Req() r: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Headers('user-agent') ua?: string,
+    @Headers('x-request-id') rid?: string,
+  ) {
     await this.service.deleteProperty(uuid, actor(r, ua, rid));
   }
 
   @Post('properties/:uuid/restore')
   @RequirePermissions('properties.update')
-  restore(@Req() r: AuthenticatedRequest, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) {
+  restore(
+    @Req() r: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Headers('user-agent') ua?: string,
+    @Headers('x-request-id') rid?: string,
+  ) {
     return this.service.restoreProperty(uuid, actor(r, ua, rid)).then(response);
   }
 
   @Post('properties/:uuid/duplicate')
   @RequirePermissions('properties.create')
-  duplicate(@Req() r: AuthenticatedRequest, @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string, @Headers('user-agent') ua?: string, @Headers('x-request-id') rid?: string) {
-    return this.service.duplicateProperty(uuid, actor(r, ua, rid)).then(response);
+  duplicate(
+    @Req() r: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Headers('user-agent') ua?: string,
+    @Headers('x-request-id') rid?: string,
+  ) {
+    return this.service
+      .duplicateProperty(uuid, actor(r, ua, rid))
+      .then(response);
   }
 }

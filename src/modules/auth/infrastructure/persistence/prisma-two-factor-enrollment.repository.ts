@@ -23,9 +23,7 @@ type PrismaShape = {
 };
 
 @Injectable()
-export class PrismaTwoFactorEnrollmentRepository
-  implements TwoFactorEnrollmentRepository
-{
+export class PrismaTwoFactorEnrollmentRepository implements TwoFactorEnrollmentRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async enableWithRecoveryCodes(input: {

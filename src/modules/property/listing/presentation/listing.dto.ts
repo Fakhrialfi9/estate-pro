@@ -40,8 +40,7 @@ export class ListingPaymentDto {
   @IsOptional() @IsString() @MaxLength(7) downPaymentPercent?: string | null;
   @IsOptional() @IsString() installmentAmount?: string | null;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(600) tenorMonths?:
-    | number
-    | null;
+    number | null;
   @IsOptional() @IsString() @MaxLength(500) notes?: string | null;
 }
 export class CreateListingDto {

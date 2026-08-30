@@ -39,8 +39,7 @@ type RoleDelegate = {
   findMany(args: {
     where: RoleWhere;
     orderBy:
-      | Record<RoleSortField, 'asc' | 'desc'>
-      | Record<string, 'asc' | 'desc'>;
+      Record<RoleSortField, 'asc' | 'desc'> | Record<string, 'asc' | 'desc'>;
     skip: number;
     take: number;
   }): Promise<RolePersistenceRecord[]>;

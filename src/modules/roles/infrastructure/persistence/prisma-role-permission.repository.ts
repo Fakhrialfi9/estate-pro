@@ -38,9 +38,7 @@ type RelationRow = {
 };
 
 @Injectable()
-export class PrismaRolePermissionRepository
-  implements RolePermissionRepository
-{
+export class PrismaRolePermissionRepository implements RolePermissionRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async exists(roleUuid: string, permissionUuid: string): Promise<boolean> {

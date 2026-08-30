@@ -50,9 +50,7 @@ const d = (v: Stringifiable | null | undefined) =>
   v == null ? null : v.toString();
 
 @Injectable()
-export class PrismaPropertyExtrasRepository
-  implements PropertyExtrasRepository
-{
+export class PrismaPropertyExtrasRepository implements PropertyExtrasRepository {
   constructor(private readonly prisma: PrismaService) {}
   private async propertyId(client: PrismaService | Tx, uuid: string) {
     const p = await client.property.findFirst({

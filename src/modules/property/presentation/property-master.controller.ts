@@ -48,11 +48,7 @@ const levelOf = (
     ['country', 'province', 'city', 'district', 'subdistrict'].includes(level)
   )
     return level as
-      | 'country'
-      | 'province'
-      | 'city'
-      | 'district'
-      | 'subdistrict';
+      'country' | 'province' | 'city' | 'district' | 'subdistrict';
   throw new BadRequestException('Invalid location level');
 };
 const sanitize = (value: unknown): unknown => {

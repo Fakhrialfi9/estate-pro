@@ -29,9 +29,15 @@ export default registerAs('auth', () => ({
   twoFactor: {
     encryptionKey: process.env.TWO_FACTOR_ENCRYPTION_KEY,
     challengeTtlMs: Number(process.env.TWO_FACTOR_CHALLENGE_TTL_MS ?? 300000),
-    challengeMaxAttempts: Number(process.env.TWO_FACTOR_CHALLENGE_MAX_ATTEMPTS ?? 5),
-    otpLockoutThreshold: Number(process.env.TWO_FACTOR_OTP_LOCKOUT_THRESHOLD ?? 5),
-    otpLockoutDurationMs: Number(process.env.TWO_FACTOR_OTP_LOCKOUT_DURATION_MS ?? 900000),
+    challengeMaxAttempts: Number(
+      process.env.TWO_FACTOR_CHALLENGE_MAX_ATTEMPTS ?? 5,
+    ),
+    otpLockoutThreshold: Number(
+      process.env.TWO_FACTOR_OTP_LOCKOUT_THRESHOLD ?? 5,
+    ),
+    otpLockoutDurationMs: Number(
+      process.env.TWO_FACTOR_OTP_LOCKOUT_DURATION_MS ?? 900000,
+    ),
     recoveryCodeCount: Number(process.env.TWO_FACTOR_RECOVERY_CODE_COUNT ?? 10),
   },
 }));

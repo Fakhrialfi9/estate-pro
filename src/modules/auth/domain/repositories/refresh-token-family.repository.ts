@@ -9,8 +9,16 @@ export interface CreateRefreshFamilyInput {
 }
 
 export interface RefreshTokenFamilyRepository {
-  createWithInitialToken(input: CreateRefreshFamilyInput): Promise<{ familyId: string; tokenId: string }>;
-  revokeFamily(familyId: string, reason: RefreshTokenRevokeReason, now: Date): Promise<number>;
+  createWithInitialToken(
+    input: CreateRefreshFamilyInput,
+  ): Promise<{ familyId: string; tokenId: string }>;
+  revokeFamily(
+    familyId: string,
+    reason: RefreshTokenRevokeReason,
+    now: Date,
+  ): Promise<number>;
 }
 
-export const REFRESH_TOKEN_FAMILY_REPOSITORY = Symbol('REFRESH_TOKEN_FAMILY_REPOSITORY');
+export const REFRESH_TOKEN_FAMILY_REPOSITORY = Symbol(
+  'REFRESH_TOKEN_FAMILY_REPOSITORY',
+);

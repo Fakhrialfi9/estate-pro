@@ -14,9 +14,7 @@ type PrismaUserRoleTargetShape = {
 };
 
 @Injectable()
-export class PrismaUserRoleTargetRepository
-  implements UserRoleTargetRepository
-{
+export class PrismaUserRoleTargetRepository implements UserRoleTargetRepository {
   private readonly users: AuthenticationUserDelegate;
 
   constructor(prisma: PrismaService) {

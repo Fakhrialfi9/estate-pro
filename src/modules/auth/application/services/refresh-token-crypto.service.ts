@@ -5,8 +5,12 @@ const TOKEN_BYTES = 32;
 
 @Injectable()
 export class RefreshTokenCryptoService {
-  generate(): string { return randomBytes(TOKEN_BYTES).toString('base64url'); }
-  digest(token: string): string { return createHash('sha256').update(token, 'utf8').digest('hex'); }
+  generate(): string {
+    return randomBytes(TOKEN_BYTES).toString('base64url');
+  }
+  digest(token: string): string {
+    return createHash('sha256').update(token, 'utf8').digest('hex');
+  }
   equalsDigest(left: string, right: string): boolean {
     const a = Buffer.from(left, 'hex');
     const b = Buffer.from(right, 'hex');

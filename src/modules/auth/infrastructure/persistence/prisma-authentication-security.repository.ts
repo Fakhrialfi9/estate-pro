@@ -24,9 +24,7 @@ type Delegate = {
 type PrismaShape = { authenticationUserSecurity: Delegate };
 
 @Injectable()
-export class PrismaAuthenticationSecurityRepository
-  implements AuthenticationSecurityRepository
-{
+export class PrismaAuthenticationSecurityRepository implements AuthenticationSecurityRepository {
   private readonly security: Delegate;
 
   constructor(prisma: PrismaService) {
