@@ -22,6 +22,7 @@ export const configuration = [
   rateLimitConfig,
   securityConfig,
 ];
+
 const environmentSecret = Joi.string()
   .trim()
   .min(32)
@@ -66,11 +67,6 @@ export const configurationValidationSchema = Joi.object({
   DATABASE_URL: Joi.string()
     .uri({ scheme: ['mysql'] })
     .required(),
-  DATABASE_HOST: Joi.string().trim().min(1).required(),
-  DATABASE_PORT: Joi.number().integer().min(1).max(65535).default(3306),
-  DATABASE_NAME: Joi.string().trim().min(1).required(),
-  DATABASE_USER: Joi.string().trim().min(1).required(),
-  DATABASE_PASSWORD: Joi.string().min(1).required(),
   DATABASE_POOL_CONNECTION_LIMIT: Joi.number()
     .integer()
     .min(1)
@@ -236,4 +232,4 @@ export const configurationValidationSchema = Joi.object({
   OTEL_METRICS_EXPORTER: metricsExporter.default('otlp'),
   OTEL_EXPORTER_OTLP_ENDPOINT: Joi.string().uri().optional(),
   OTEL_METRIC_EXPORT_INTERVAL: Joi.number().integer().min(1000).default(60000),
-});
+}).options({ allowUnknown: false });
