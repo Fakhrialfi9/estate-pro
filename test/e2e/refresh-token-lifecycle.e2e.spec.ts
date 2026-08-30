@@ -9,7 +9,7 @@ import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 import { PasswordHasherService } from '../../src/modules/auth/application/services/password-hasher.service.js';
 import { REFRESH_TOKEN_SECURITY_PORT, type RefreshTokenSecurityPort } from '../../src/common/security/refresh-token-security.port.js';
-import { digestRefreshToken } from '../../src/modules/auth/infrastructure/persistence/prisma-refresh-token.repository.js';
+import { digestRefreshToken, PrismaRefreshTokenRepository } from '../../src/modules/auth/infrastructure/persistence/prisma-refresh-token.repository.js';
 
 const PASSWORD = 'Strong-Test-Password-123!';
 const endpoint = '/api/v1/auth';
@@ -20,6 +20,7 @@ let app: NestExpressApplication;
 let prisma: PrismaService;
 let hasher: PasswordHasherService;
 let security: RefreshTokenSecurityPort;
+let repository: PrismaRefreshTokenRepository;
 let userUuid: string;
 
 const http = () => request(app.getHttpServer());
@@ -85,15 +86,18 @@ describe('Refresh-token lifecycle E2E matrix', () => {
     prisma = app.get(PrismaService);
     hasher = app.get(PasswordHasherService);
     security = app.get(REFRESH_TOKEN_SECURITY_PORT);
+    repository = new PrismaRefreshTokenRepository(prisma);
   });
 
   beforeEach(async () => {
+    await prisma.$connect().catch(() => undefined);
     await cleanup();
     await createUser();
   });
 
   afterAll(async () => {
-    await cleanup();
+    await prisma.$connect().catch(() => undefined);
+    await cleanup().catch(() => undefined);
     await app.close();
   });
 
@@ -182,7 +186,8 @@ describe('Refresh-token lifecycle E2E matrix', () => {
   it('RT-014 admin session revoke then refresh returns 401', async () => {
     const result = await login();
     const row = await tokenRow(result.refreshToken);
-    await security.revokeForSession(userUuid, row.familyId.toString(), 'ADMIN_REVOKED');
+    const family = await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({ where: { id: row.familyId } });
+    await security.revokeForSession(userUuid, family.sessionId.toString(), 'ADMIN_REVOKED');
     await refresh(result.refreshToken).expect(401);
   });
 
@@ -238,9 +243,10 @@ describe('Refresh-token lifecycle E2E matrix', () => {
     expect(responses.filter((response) => response.status === 401)).toHaveLength(1);
   });
 
-  it('RT-021 refresh remains valid after access-token expiry window is simulated', async () => {
+  it('RT-021 refresh remains valid when the access-token lifetime is no longer relevant', async () => {
     const result = await login();
-    await refresh(result.refreshToken).expect(201);
+    const response = await refresh(result.refreshToken).expect(201);
+    expect(body<AuthResponse>(response).accessToken).toEqual(expect.any(String));
   });
 
   it('RT-022 a currently active session can refresh successfully', async () => {
@@ -278,44 +284,49 @@ describe('Refresh-token lifecycle E2E matrix', () => {
   it('RT-027 token remains bound to its session/family security state', async () => {
     const result = await login();
     const row = await tokenRow(result.refreshToken);
-    await security.revokeForSession(userUuid, row.familyId.toString(), 'SESSION_REVOKED');
+    const family = await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({ where: { id: row.familyId } });
+    await security.revokeForSession(userUuid, family.sessionId.toString(), 'SESSION_REVOKED');
     await refresh(result.refreshToken).expect(401);
   });
 
-  it('RT-028 a token from user A cannot be revived by user B state', async () => {
+  it('RT-028 another user cannot revoke or revive user A token state', async () => {
     const resultA = await login();
     const userA = userUuid;
     await createUser();
     const userB = userUuid;
-    await security.revokeAllForUser(userB, 'ACCOUNT_DISABLED');
-    await refresh(resultA.refreshToken).expect(401);
     expect(userA).not.toBe(userB);
+    await security.revokeAllForUser(userB, 'ACCOUNT_DISABLED');
+    await refresh(resultA.refreshToken).expect(201);
+    expect(await tokenRow(resultA.refreshToken)).toBeDefined();
   });
 
-  it('RT-029 rotation failure rolls back instead of leaving a consumed token without a replacement', async () => {
+  it('RT-029 transaction rollback leaves the original active token untouched when replacement persistence fails', async () => {
     const result = await login();
-    const row = await tokenRow(result.refreshToken);
+    const original = await tokenRow(result.refreshToken);
+    const now = new Date();
     await expect(
-      prisma.authenticationRefreshToken.create({
-        data: {
-          familyId: row.familyId,
-          tokenHash: 'x'.repeat(1000),
-          issuedAt: new Date(),
-          expiresAt: new Date(Date.now() + 86400000),
-        },
-      }),
+      repository.rotate(
+        digestRefreshToken(result.refreshToken),
+        () => ({ token: 'x', tokenHash: 'x'.repeat(1000), expiresAt: new Date(now.getTime() + 86400000) }),
+        now,
+      ),
     ).rejects.toThrow();
-    const unchanged = await prisma.authenticationRefreshToken.findUniqueOrThrow({ where: { id: row.id } });
+    const unchanged = await prisma.authenticationRefreshToken.findUniqueOrThrow({ where: { id: original.id } });
     expect(unchanged.consumedAt).toBeNull();
+    expect(unchanged.revokedAt).toBeNull();
     await refresh(result.refreshToken).expect(201);
   });
 
   it('RT-030 database failure returns a safe failure without exposing database details', async () => {
     const result = await login();
     await prisma.$disconnect();
-    const response = await refresh(result.refreshToken);
-    expect([401, 500, 503]).toContain(response.status);
-    const text = JSON.stringify(response.body);
-    expect(text).not.toMatch(/mysql|mariadb|prisma|ECONN|DATABASE_URL/i);
+    try {
+      const response = await refresh(result.refreshToken);
+      expect([401, 500, 503]).toContain(response.status);
+      const text = JSON.stringify(response.body);
+      expect(text).not.toMatch(/mysql|mariadb|prisma|ECONN|DATABASE_URL/i);
+    } finally {
+      await prisma.$connect();
+    }
   });
 });
