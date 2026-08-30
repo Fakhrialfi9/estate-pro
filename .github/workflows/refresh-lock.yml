@@ -1,4 +1,4 @@
-name: Refresh npm lockfile
+name: Repository maintenance
 
 on:
   push:
@@ -8,10 +8,10 @@ permissions:
   contents: write
 
 jobs:
-  refresh-lockfile:
+  maintain:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,13 +23,15 @@ jobs:
         run: npm install --global npm@11.18.0
       - name: Refresh lockfile
         run: npm install --package-lock-only --ignore-scripts
-      - name: Commit lockfile
+      - name: Format source and tests
+        run: npx prettier --write "src/**/*.ts" "src/modules/users/credentials" "test/**/*.ts" --no-error-on-unmatched-pattern
+      - name: Commit maintenance changes
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          if git diff --quiet -- package-lock.json; then
+          if git diff --quiet; then
             exit 0
           fi
-          git add package-lock.json
-          git commit -m 'chore(deps): refresh npm lockfile'
+          git add package-lock.json src test
+          git commit -m 'chore: normalize generated lockfile and formatting'
           git push origin HEAD:main
