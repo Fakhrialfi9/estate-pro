@@ -5,15 +5,22 @@ import type { SeedTransaction } from '../database.ts';
 import { ARGON2_CONFIG } from '../config.ts';
 import { ADMIN_USER, SEED_USERS, type UserSeed } from './data.ts';
 
+export type PreparedUserSeed = UserSeed & { passwordHash: string };
+
+export async function prepareUserSeed(seed: UserSeed): Promise<PreparedUserSeed> {
+  return {
+    ...seed,
+    passwordHash: await argon2.hash(seed.password, {
+      type: argon2.argon2id,
+      ...ARGON2_CONFIG,
+    }),
+  };
+}
+
 async function upsertSeedUser(
   client: SeedTransaction,
-  seed: UserSeed,
+  seed: PreparedUserSeed,
 ): Promise<bigint> {
-  const passwordHash = await argon2.hash(seed.password, {
-    type: argon2.argon2id,
-    ...ARGON2_CONFIG,
-  });
-
   const [userByEmail, userByUsername] = await Promise.all([
     client.authenticationUser.findUnique({
       where: { email: seed.email },
@@ -62,12 +69,12 @@ async function upsertSeedUser(
   await client.authenticationUserCredential.upsert({
     where: { userId: user.id },
     update: {
-      passwordHash,
+      passwordHash: seed.passwordHash,
       passwordChangedAt: now,
     },
     create: {
       userId: user.id,
-      passwordHash,
+      passwordHash: seed.passwordHash,
       passwordChangedAt: now,
     },
   });
@@ -89,44 +96,22 @@ async function upsertSeedUser(
 
 export async function seedAdminUser(
   client: SeedTransaction,
+  seed: PreparedUserSeed,
 ): Promise<bigint> {
-  return upsertSeedUser(client, ADMIN_USER);
+  return upsertSeedUser(client, seed);
 }
 
 export async function seedDevelopmentUsers(
   client: SeedTransaction,
+  seeds: readonly PreparedUserSeed[],
 ): Promise<readonly bigint[]> {
   const userIds: bigint[] = [];
 
-  for (const user of SEED_USERS) {
+  for (const user of seeds) {
     userIds.push(await upsertSeedUser(client, user));
   }
 
   return userIds;
 }
 
-export async function assignAdminRole(
-  client: SeedTransaction,
-  userId: bigint,
-  roleId: bigint,
-): Promise<void> {
-  await client.authorizationUserRole.upsert({
-    where: {
-      userId_roleId: {
-        userId,
-        roleId,
-      },
-    },
-    update: {
-      isActive: true,
-      revokedAt: null,
-    },
-    create: {
-      userId,
-      roleId,
-      isActive: true,
-      assignedBy: userId,
-      assignedAt: new Date(),
-    },
-  });
-}
+export { ADMIN_USER, SEED_USERS };
