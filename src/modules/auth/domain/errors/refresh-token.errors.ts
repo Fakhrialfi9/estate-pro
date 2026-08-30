@@ -1,4 +1,4 @@
-import type { RefreshTokenRevokeReason } from './refresh-token.entity.js';
+import type { RefreshTokenRevokeReason } from '../entities/refresh-token.entity.js';
 
 export class RefreshTokenInvalidError extends Error {
   readonly code = 'REFRESH_TOKEN_INVALID';
