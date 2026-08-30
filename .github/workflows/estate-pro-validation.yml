@@ -50,10 +50,10 @@ jobs:
         run: npm run prisma:status
       - name: Validate seed reproducibility on isolated fresh database
         env:
-          SEED_ADMIN_PASSWORD: ci-seed-admin-password-7f4a7d2b1c9e6f30
-          SEED_DEVELOPMENT_USER_PASSWORD: ci-seed-user-password-5e8c1b4f2a7d9c60
           DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_seed_test
         run: |
+          export SEED_ADMIN_PASSWORD="$(openssl rand -hex 32)"
+          export SEED_DEVELOPMENT_USER_PASSWORD="$(openssl rand -hex 32)"
           npm run prisma:deploy
           npm run prisma:seed
           npm run prisma:seed
