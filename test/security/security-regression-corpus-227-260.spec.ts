@@ -10,7 +10,15 @@ const USER = '7e9d9c67-30a5-4d2c-a8df-70755f96ad35';
 
 function jwtVerifier(): JwtTokenService {
   const config = new ConfigService({
-    auth: { jwt: { secret: JWT_SECRET, issuer: 'estate-pro-api', audience: 'estate-pro-client', algorithm: 'HS256', expiresIn: '15m' } },
+    auth: {
+      jwt: {
+        secret: JWT_SECRET,
+        issuer: 'estate-pro-api',
+        audience: 'estate-pro-client',
+        algorithm: 'HS256',
+        expiresIn: '15m',
+      },
+    },
   });
   return new JwtTokenService(new JwtService({ secret: JWT_SECRET }), config);
 }
@@ -37,7 +45,13 @@ describe('Security regression corpus — STEPS 227–260', () => {
   it('regression: JWT verification rejects algorithm confusion', async () => {
     const confused = await new JwtService({ secret: JWT_SECRET }).signAsync(
       { sub: USER, sid: 'session' },
-      { secret: JWT_SECRET, algorithm: 'HS384', issuer: 'estate-pro-api', audience: 'estate-pro-client', expiresIn: '60s' },
+      {
+        secret: JWT_SECRET,
+        algorithm: 'HS384',
+        issuer: 'estate-pro-api',
+        audience: 'estate-pro-client',
+        expiresIn: '60s',
+      },
     );
     await expect(jwtVerifier().verifyAccessToken(confused)).rejects.toThrow();
   });
