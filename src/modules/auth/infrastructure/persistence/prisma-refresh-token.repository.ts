@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
-import type { Prisma } from '../../../../../prisma/generated/prisma/client.js';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import type { RefreshTokenRevokeReason } from '../../domain/entities/refresh-token.entity.js';
 import type {
   RefreshRotationResult,
@@ -10,7 +10,10 @@ import type {
   RefreshTokenFamilyRepository,
   CreateRefreshFamilyInput,
 } from '../../domain/repositories/refresh-token-family.repository.js';
-import type { RefreshTokenSecurityPort } from '../../../../common/security/refresh-token-security.port.js';
+import type {
+  RefreshTokenAuditContext,
+  RefreshTokenSecurityPort,
+} from '../../../../common/security/refresh-token-security.port.js';
 
 @Injectable()
 export class PrismaRefreshTokenRepository
@@ -195,7 +198,18 @@ export class PrismaRefreshTokenRepository
     userUuid: string,
     reason: RefreshTokenRevokeReason,
     now: Date,
+  ): Promise<number>;
+  async revokeAllForUser(
+    userUuid: string,
+    reason: RefreshTokenRevokeReason,
+    context?: RefreshTokenAuditContext,
+  ): Promise<number>;
+  async revokeAllForUser(
+    userUuid: string,
+    reason: RefreshTokenRevokeReason,
+    nowOrContext: Date | RefreshTokenAuditContext = new Date(),
   ): Promise<number> {
+    const now = nowOrContext instanceof Date ? nowOrContext : new Date();
     return this.prisma.$transaction(async (tx) => {
       const families = await tx.authenticationRefreshTokenFamily.updateMany({
         where: { user: { uuid: userUuid }, revokedAt: null },
@@ -218,8 +232,21 @@ export class PrismaRefreshTokenRepository
     sessionId: string,
     reason: RefreshTokenRevokeReason,
     now: Date,
+  ): Promise<number>;
+  async revokeForSession(
+    userUuid: string,
+    sessionId: string,
+    reason: RefreshTokenRevokeReason,
+    context?: RefreshTokenAuditContext,
+  ): Promise<number>;
+  async revokeForSession(
+    userUuid: string,
+    sessionId: string,
+    reason: RefreshTokenRevokeReason,
+    nowOrContext: Date | RefreshTokenAuditContext = new Date(),
   ): Promise<number> {
     const id = BigInt(sessionId);
+    const now = nowOrContext instanceof Date ? nowOrContext : new Date();
     return this.prisma.$transaction(async (tx) => {
       const families = await tx.authenticationRefreshTokenFamily.updateMany({
         where: { sessionId: id, user: { uuid: userUuid }, revokedAt: null },
