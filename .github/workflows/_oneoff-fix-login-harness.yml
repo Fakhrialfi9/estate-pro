@@ -71,8 +71,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npm run test:unit -- --run test/security/security-hardening-272-295.spec.ts
+      - name: Security test target
+        run: npm run test:security -- test/security/security-hardening-272-295.spec.ts
 
       - name: Production build
         run: npm run build
