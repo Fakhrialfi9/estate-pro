@@ -6,6 +6,57 @@ import type { SecurityAuditEvent } from '../../../src/common/audit/security-audi
 import type { PrismaService } from '../../../src/infrastructure/database/prisma/prisma.service.js';
 
 describe('PrismaSecurityAuditRepository', () => {
+  it('accepts authentication refresh-token audit actions and persists the event', async () => {
+    const actorUuid = randomUUID();
+    const auditLogCreate = vi.fn().mockResolvedValue({ id: 1n });
+
+    const tx = {
+      authenticationUser: {
+        findFirst: vi.fn().mockResolvedValue({ id: 7n, uuid: actorUuid }),
+      },
+      authorizationRole: { findFirst: vi.fn() },
+      authorizationPermission: { findFirst: vi.fn() },
+      auditLog: {
+        create: auditLogCreate,
+        findMany: vi.fn(),
+        count: vi.fn(),
+      },
+      auditLogChange: { createMany: vi.fn() },
+      $transaction: vi.fn(),
+    };
+
+    const transaction = vi.fn(async (callback) => callback(tx));
+    const prisma = {
+      $transaction: transaction,
+    } as unknown as PrismaService;
+    const config = {
+      get: vi.fn().mockReturnValue(1024),
+    } as unknown as ConfigService;
+
+    const repository = new PrismaSecurityAuditRepository(prisma, config);
+    const event: SecurityAuditEvent = {
+      action: 'REFRESH_TOKEN_ISSUED',
+      actorUuid,
+      subjectUuid: actorUuid,
+      entityType: 'authentication_refresh_token',
+      result: 'SUCCESS',
+      requestId: 'refresh-issue-request',
+    };
+
+    await repository.record(event);
+
+    expect(transaction).toHaveBeenCalledOnce();
+    expect(auditLogCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: 'REFRESH_TOKEN_ISSUED',
+        entityType: 'authentication_refresh_token',
+        resourceId: null,
+        result: 'SUCCESS',
+        requestId: 'refresh-issue-request',
+      }),
+    });
+  });
+
   it('accepts property utilities audit events and persists sanitized changes', async () => {
     const actorUuid = randomUUID();
     const auditLogCreate = vi.fn().mockResolvedValue({ id: 1n });
