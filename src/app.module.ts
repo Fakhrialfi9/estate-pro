@@ -52,6 +52,7 @@ const validateEnvironment = (
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
+        skipIf: shouldSkipThrottling,
         throttlers: [
           {
             name: 'default',
@@ -83,19 +84,6 @@ const validateEnvironment = (
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
-    },
-    {
-      provide: APP_GUARD,
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) =>
-        new (class extends ThrottlerGuard {
-          protected override shouldSkip(
-            context: ExecutionContext,
-          ): Promise<boolean> {
-            if (shouldSkipThrottling(context)) return Promise.resolve(true);
-            return Promise.resolve(false);
-          }
-        })(configService),
     },
   ],
 })
