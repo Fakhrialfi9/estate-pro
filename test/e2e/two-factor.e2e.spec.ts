@@ -10,6 +10,7 @@ import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.s
 import { PasswordHasherService } from '../../src/modules/auth/application/services/password-hasher.service.js';
 import { TotpService } from '../../src/modules/auth/application/services/totp.service.js';
 import { JwtService } from '@nestjs/jwt';
+import { AUDIT_ACTIONS } from '../../src/common/audit/audit-events.js';
 
 const PASSWORD = 'Strong-Test-Password-123!';
 
@@ -183,12 +184,18 @@ describe('Two-factor and recovery E2E', () => {
     ).toBe(2);
     expect(
       await prisma.auditLog.count({
-        where: { action: '2FA_ENABLED', userId: loginUser.id },
+        where: {
+          action: AUDIT_ACTIONS.TWO_FACTOR_ENABLED,
+          userId: loginUser.id,
+        },
       }),
     ).toBe(1);
     expect(
       await prisma.auditLog.count({
-        where: { action: '2FA_RECOVERY_CODE_USED', userId: loginUser.id },
+        where: {
+          action: AUDIT_ACTIONS.RECOVERY_CODE_USED,
+          userId: loginUser.id,
+        },
       }),
     ).toBe(1);
   });
