@@ -9,6 +9,10 @@ permissions:
 
 env:
   DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test
+  DATABASE_POOL_CONNECTION_LIMIT: 2
+  DATABASE_CONNECT_TIMEOUT_MS: 5000
+  DATABASE_ACQUIRE_TIMEOUT_MS: 10000
+  DATABASE_POOL_IDLE_TIMEOUT_SEC: 30
 
 jobs:
   fix-and-validate:
@@ -26,6 +30,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Install MariaDB
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-server
+          sudo systemctl start mariadb
+          sudo mysql -e "DROP DATABASE IF EXISTS estate_pro_test; CREATE DATABASE estate_pro_test;"
+          sudo mysql -e "CREATE USER IF NOT EXISTS 'test'@'127.0.0.1' IDENTIFIED BY 'test-password';"
+          sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_test.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
 
       - name: Patch stale LoginService test harness
         run: |
