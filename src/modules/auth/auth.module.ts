@@ -12,6 +12,7 @@ import { SessionService } from './application/services/session.service.js';
 import { JwtTokenService } from './application/services/jwt-token.service.js';
 import { RefreshTokenService } from './application/services/refresh-token.service.js';
 import { RefreshTokenCryptoService } from './application/services/refresh-token-crypto.service.js';
+import { RefreshTokenObservabilityService } from './application/services/refresh-token-observability.service.js';
 import { TotpService } from './application/services/totp.service.js';
 import { TwoFactorCryptoService } from './application/services/two-factor-crypto.service.js';
 import { TwoFactorService } from './application/services/two-factor.service.js';
@@ -88,6 +89,7 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
     JwtTokenService,
     RefreshTokenService,
     RefreshTokenCryptoService,
+    RefreshTokenObservabilityService,
     TotpService,
     TwoFactorCryptoService,
     TwoFactorService,
