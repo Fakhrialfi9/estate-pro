@@ -20,6 +20,7 @@ export class PrismaRefreshTokenRepository
     RefreshTokenSecurityPort
 {
   constructor(private readonly prisma: PrismaService) {}
+
   async createWithInitialToken(
     input: CreateRefreshFamilyInput,
   ): Promise<{ familyId: string; tokenId: string }> {
@@ -72,6 +73,7 @@ export class PrismaRefreshTokenRepository
         include: { family: { include: { session: true, user: true } } },
       });
       if (!current) return { kind: 'INVALID' };
+
       if (current.consumedAt !== null || current.revokedAt !== null) {
         if (current.family.revokedAt === null) {
           await this.revokeFamilyAndSession(
@@ -89,8 +91,9 @@ export class PrismaRefreshTokenRepository
         }
         return { kind: 'REVOKED', snapshot: this.snapshot(current) };
       }
-      if (current.expiresAt.getTime() <= now.getTime())
+      if (current.expiresAt.getTime() <= now.getTime()) {
         return { kind: 'EXPIRED', snapshot: this.snapshot(current) };
+      }
       if (
         current.family.revokedAt !== null ||
         current.family.session.revokedAt !== null ||
@@ -98,8 +101,10 @@ export class PrismaRefreshTokenRepository
         current.family.user.deletedAt !== null ||
         !current.family.user.isActive ||
         current.family.user.status !== 'active'
-      )
+      ) {
         return { kind: 'REVOKED', snapshot: this.snapshot(current) };
+      }
+
       const consumed = await tx.authenticationRefreshToken.updateMany({
         where: {
           id: current.id,
@@ -108,13 +113,23 @@ export class PrismaRefreshTokenRepository
           revokedAt: null,
           expiresAt: { gt: now },
         },
-        data: { consumedAt: now, revokedAt: now, revokeReason: 'ROTATED' },
+        data: {
+          consumedAt: now,
+          revokedAt: now,
+          revokeReason: 'ROTATED',
+        },
       });
+
       if (consumed.count !== 1) {
-        const afterRace = await tx.authenticationRefreshToken.findUnique({
-          where: { id: current.id },
-        });
-        if (afterRace?.consumedAt !== null || afterRace?.revokedAt !== null) {
+        const [afterRace] = await tx.$queryRaw<
+          Array<{ consumed_at: Date | null; revoked_at: Date | null }>
+        >(Prisma.sql`
+          SELECT consumed_at, revoked_at
+          FROM authentication_refresh_tokens
+          WHERE id = ${current.id}
+          FOR UPDATE
+        `);
+        if (afterRace?.consumed_at !== null || afterRace?.revoked_at !== null) {
           await this.revokeFamilyAndSession(
             tx,
             current.familyId,
@@ -130,6 +145,7 @@ export class PrismaRefreshTokenRepository
         }
         return { kind: 'INVALID' };
       }
+
       const replacement = createReplacement({
         familyId: current.familyId,
         sessionId: current.family.sessionId.toString(),
@@ -174,6 +190,7 @@ export class PrismaRefreshTokenRepository
       return family.count;
     });
   }
+
   async revokeAllForUser(
     userUuid: string,
     reason: RefreshTokenRevokeReason,
@@ -195,6 +212,7 @@ export class PrismaRefreshTokenRepository
       return families.count;
     });
   }
+
   async revokeForSession(
     userUuid: string,
     sessionId: string,
@@ -218,6 +236,7 @@ export class PrismaRefreshTokenRepository
       return families.count;
     });
   }
+
   private async revokeFamilyAndSession(
     tx: Prisma.TransactionClient,
     familyId: string,
@@ -226,7 +245,11 @@ export class PrismaRefreshTokenRepository
   ): Promise<void> {
     await tx.authenticationRefreshTokenFamily.updateMany({
       where: { id: familyId, revokedAt: null },
-      data: { revokedAt: now, revokeReason: 'REUSE_DETECTED', updatedAt: now },
+      data: {
+        revokedAt: now,
+        revokeReason: 'REUSE_DETECTED',
+        updatedAt: now,
+      },
     });
     await tx.authenticationRefreshToken.updateMany({
       where: { familyId, consumedAt: null, revokedAt: null },
@@ -237,6 +260,7 @@ export class PrismaRefreshTokenRepository
       data: { revokedAt: now },
     });
   }
+
   private snapshot(row: {
     id: bigint;
     familyId: string;
