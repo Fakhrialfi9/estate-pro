@@ -6,6 +6,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'node:crypto';
+import {
+  AUDIT_ACTIONS,
+} from '../../../../common/audit/audit-events.js';
 import type {
   CredentialRepository,
   UserRepository,
@@ -35,11 +38,12 @@ export interface TwoFactorAuditContext {
   requestId?: string | undefined;
 }
 export const TWO_FACTOR_AUDIT_ACTIONS = {
-  ENROLLMENT: '2FA_ENROLLMENT',
-  ENABLED: '2FA_ENABLED',
-  DISABLED: '2FA_DISABLED',
-  RECOVERY_CODE_USED: '2FA_RECOVERY_CODE_USED',
-  RECOVERY_CODES_REGENERATED: '2FA_RECOVERY_CODES_REGENERATED',
+  ENROLLMENT: AUDIT_ACTIONS.TWO_FACTOR_ENROLLMENT,
+  ENABLED: AUDIT_ACTIONS.TWO_FACTOR_ENABLED,
+  DISABLED: AUDIT_ACTIONS.TWO_FACTOR_DISABLED,
+  RECOVERY_CODE_USED: AUDIT_ACTIONS.RECOVERY_CODE_USED,
+  RECOVERY_CODES_REGENERATED:
+    AUDIT_ACTIONS.TWO_FACTOR_RECOVERY_CODES_REGENERATED,
 } as const;
 
 @Injectable()
