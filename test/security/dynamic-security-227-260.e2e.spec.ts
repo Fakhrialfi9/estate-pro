@@ -94,7 +94,7 @@ describe('Dynamic HTTP security baseline — STEPS 227–260', () => {
       .expect(400);
   });
 
-  it('performs real refresh rotation, replay detection, and logout invalidation over HTTP', async () => {
+  it('performs real refresh rotation, logout invalidation, and replay detection over HTTP', async () => {
     const user = await createUser();
     const login = await http()
       .post(`${AUTH}/login`)
@@ -108,10 +108,7 @@ describe('Dynamic HTTP security baseline — STEPS 227–260', () => {
     const second = rotated.body as AuthResponse;
     expect(second.refreshToken).not.toBe(first.refreshToken);
     expect(second.accessToken).not.toBe(first.accessToken);
-    await http()
-      .post(`${AUTH}/refresh`)
-      .send({ refreshToken: first.refreshToken })
-      .expect(401);
+
     await http()
       .post(`${AUTH}/logout`)
       .set('Authorization', `Bearer ${second.accessToken}`)
@@ -123,6 +120,11 @@ describe('Dynamic HTTP security baseline — STEPS 227–260', () => {
     await http()
       .post(`${AUTH}/refresh`)
       .send({ refreshToken: second.refreshToken })
+      .expect(401);
+
+    await http()
+      .post(`${AUTH}/refresh`)
+      .send({ refreshToken: first.refreshToken })
       .expect(401);
   });
 
