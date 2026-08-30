@@ -63,9 +63,19 @@ function getSafeTestDatabaseUrl(
   }
 
   const databaseName = getDatabaseName(url);
-  return TEST_DATABASE_NAME_PATTERN.test(databaseName)
-    ? databaseUrl
-    : undefined;
+  if (!databaseName) {
+    return undefined;
+  }
+
+  if (TEST_DATABASE_NAME_PATTERN.test(databaseName)) {
+    return databaseUrl;
+  }
+
+  const testDatabaseUrl = new URL(url.toString());
+  testDatabaseUrl.pathname = `/${encodeURIComponent(
+    `${databaseName}_test`,
+  )}`;
+  return testDatabaseUrl.toString();
 }
 
 function buildDatabaseUrl(environment: Environment): string | undefined {
@@ -127,7 +137,7 @@ function resolveTestDatabaseUrl(): string {
   const unsafeDatabaseUrl = processDatabaseUrl ?? projectDatabaseUrl;
   if (unsafeDatabaseUrl) {
     throw new Error(
-      `Refusing to provision database from DATABASE_URL. Expected a local MySQL/MariaDB test database, received "${unsafeDatabaseUrl}".`,
+      `Refusing to provision database from DATABASE_URL. Expected a local MySQL/MariaDB database target, received "${unsafeDatabaseUrl}".`,
     );
   }
 
