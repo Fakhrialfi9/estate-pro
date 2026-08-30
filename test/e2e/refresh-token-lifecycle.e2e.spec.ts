@@ -84,7 +84,7 @@ async function login(): Promise<AuthResponse> {
   return body<AuthResponse>(response);
 }
 
-async function refresh(token: string): Promise<Response> {
+function refresh(token: string) {
   return http().post(`${endpoint}/refresh`).send({ refreshToken: token });
 }
 
