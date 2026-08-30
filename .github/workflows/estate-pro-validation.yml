@@ -11,14 +11,9 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test
-      DATABASE_HOST: 127.0.0.1
-      DATABASE_PORT: 3306
-      DATABASE_NAME: estate_pro_test
-      DATABASE_USER: test
-      DATABASE_PASSWORD: test-password
       DATABASE_POOL_CONNECTION_LIMIT: 2
       DATABASE_CONNECT_TIMEOUT_MS: 5000
       DATABASE_ACQUIRE_TIMEOUT_MS: 10000
@@ -38,21 +33,34 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mariadb-server
           sudo systemctl start mariadb
-          sudo mysql -e "CREATE DATABASE IF NOT EXISTS estate_pro_test;"
+          sudo mysql -e "DROP DATABASE IF EXISTS estate_pro_test; CREATE DATABASE estate_pro_test;"
+          sudo mysql -e "DROP DATABASE IF EXISTS estate_pro_seed_test; CREATE DATABASE estate_pro_seed_test;"
           sudo mysql -e "CREATE USER IF NOT EXISTS 'test'@'127.0.0.1' IDENTIFIED BY 'test-password';"
-          sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_test.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
+          sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_test.* TO 'test'@'127.0.0.1';"
+          sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_seed_test.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
       - name: Install dependencies
         run: npm ci
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
       - name: Generate Prisma client
         run: npm run prisma:generate
-      - name: Deploy Prisma migrations
+      - name: Deploy Prisma migrations to fresh database
         run: npm run prisma:deploy
       - name: Migration status
         run: npm run prisma:status
+      - name: Validate seed reproducibility on isolated fresh database
+        env:
+          SEED_ADMIN_PASSWORD: ci-seed-admin-password-7f4a7d2b1c9e6f30
+          SEED_DEVELOPMENT_USER_PASSWORD: ci-seed-user-password-5e8c1b4f2a7d9c60
+          DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_seed_test
+        run: |
+          npm run prisma:deploy
+          npm run prisma:seed
+          npm run prisma:seed
       - name: Security baseline
         run: npm run test:security:baseline
+      - name: Secret scan
+        run: bash scripts/check-secrets.sh
       - name: Format check
         run: npm run format:check
       - name: Lint
@@ -75,8 +83,11 @@ jobs:
         run: npm run build
       - name: Compiled runtime validation
         run: npm run check:runtime
+      - name: Docker image validation
+        run: docker build --tag estate-pro:ci .
       - name: Repository cleanliness
         run: |
           test "$(git branch --show-current)" = "main"
+          test -z "$(git status --porcelain)"
           test -z "$(find . -type f -name '*.py' -not -path './.git/*' -not -path './node_modules/*' -print)"
           git diff --check
