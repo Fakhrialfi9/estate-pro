@@ -11,16 +11,15 @@ export class RefreshTokenCryptoService {
   generate(): string {
     return randomBytes(TOKEN_BYTES).toString('base64url');
   }
+
   digest(token: string): string {
     return digestRefreshToken(token);
   }
-  equalsDigest(token: string, expectedDigest: string): boolean {
-    const actualDigest = Buffer.from(this.digest(token), 'hex');
-    const expected = Buffer.from(expectedDigest, 'hex');
-    return (
-      actualDigest.length === expected.length &&
-      timingSafeEqual(actualDigest, expected)
-    );
+
+  equalsDigest(leftDigest: string, rightDigest: string): boolean {
+    const left = Buffer.from(leftDigest, 'hex');
+    const right = Buffer.from(rightDigest, 'hex');
+    return left.length === right.length && timingSafeEqual(left, right);
   }
 }
 
