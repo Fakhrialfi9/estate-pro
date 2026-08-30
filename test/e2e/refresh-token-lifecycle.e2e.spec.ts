@@ -12,10 +12,8 @@ import {
   REFRESH_TOKEN_SECURITY_PORT,
   type RefreshTokenSecurityPort,
 } from '../../src/common/security/refresh-token-security.port.js';
-import {
-  digestRefreshToken,
-  PrismaRefreshTokenRepository,
-} from '../../src/modules/auth/infrastructure/persistence/prisma-refresh-token.repository.js';
+import { digestRefreshToken } from '../../src/modules/auth/application/services/refresh-token-crypto.service.js';
+import { PrismaRefreshTokenRepository } from '../../src/modules/auth/infrastructure/persistence/prisma-refresh-token.repository.js';
 
 const PASSWORD = 'Strong-Test-Password-123!';
 const endpoint = '/api/v1/auth';
@@ -34,6 +32,7 @@ let hasher: PasswordHasherService;
 let security: RefreshTokenSecurityPort;
 let repository: PrismaRefreshTokenRepository;
 let userUuid: string;
+let testClientIp: string;
 
 const http = () => request(app.getHttpServer());
 const body = <T>(response: Response): T => response.body as T;
@@ -85,7 +84,10 @@ async function login(): Promise<AuthResponse> {
 }
 
 function refresh(token: string) {
-  return http().post(`${endpoint}/refresh`).send({ refreshToken: token });
+  return http()
+    .post(`${endpoint}/refresh`)
+    .set('X-Forwarded-For', testClientIp)
+    .send({ refreshToken: token });
 }
 
 async function tokenRow(token: string) {
@@ -111,6 +113,9 @@ describe('Refresh-token lifecycle E2E matrix', () => {
   beforeEach(async () => {
     await prisma.$connect().catch(() => undefined);
     await cleanup();
+    testClientIp = `10.254.${Math.floor(Math.random() * 250) + 1}.${
+      Math.floor(Math.random() * 250) + 1
+    }`;
     await createUser();
   });
 
@@ -141,7 +146,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
 
   it('RT-004 valid refresh returns new access and refresh tokens', async () => {
     const result = await login();
-    const response = await refresh(result.refreshToken).expect(201);
+    const response = await refresh(result.refreshToken).expect(200);
     const next = body<AuthResponse>(response);
     expect(next.accessToken).not.toBe(result.accessToken);
     expect(next.refreshToken).not.toBe(result.refreshToken);
@@ -149,7 +154,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
 
   it('RT-005 old token after rotation returns 401', async () => {
     const result = await login();
-    await refresh(result.refreshToken).expect(201);
+    await refresh(result.refreshToken).expect(200);
     await refresh(result.refreshToken).expect(401);
   });
 
@@ -243,14 +248,14 @@ describe('Refresh-token lifecycle E2E matrix', () => {
 
   it('RT-016 reusing the old rotated token returns 401', async () => {
     const result = await login();
-    await refresh(result.refreshToken).expect(201);
+    await refresh(result.refreshToken).expect(200);
     await refresh(result.refreshToken).expect(401);
   });
 
   it('RT-017 reuse detection revokes the family', async () => {
     const result = await login();
     const original = await tokenRow(result.refreshToken);
-    await refresh(result.refreshToken).expect(201);
+    await refresh(result.refreshToken).expect(200);
     await refresh(result.refreshToken).expect(401);
     const family =
       await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({
@@ -263,7 +268,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
   it('RT-018 reuse detection revokes the session', async () => {
     const result = await login();
     const original = await tokenRow(result.refreshToken);
-    await refresh(result.refreshToken).expect(201);
+    await refresh(result.refreshToken).expect(200);
     await refresh(result.refreshToken).expect(401);
     const family =
       await prisma.authenticationRefreshTokenFamily.findUniqueOrThrow({
@@ -282,7 +287,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
       refresh(result.refreshToken),
     ]);
     const statuses = responses.map((response) => response.status).sort();
-    expect(statuses).toEqual([201, 401]);
+    expect(statuses).toEqual([200, 401]);
   });
 
   it('RT-020 second concurrent request is handled as invalid/reuse', async () => {
@@ -298,7 +303,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
 
   it('RT-021 refresh remains valid when the access-token lifetime is no longer relevant', async () => {
     const result = await login();
-    const response = await refresh(result.refreshToken).expect(201);
+    const response = await refresh(result.refreshToken).expect(200);
     expect(body<AuthResponse>(response).accessToken).toEqual(
       expect.any(String),
     );
@@ -306,7 +311,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
 
   it('RT-022 a currently active session can refresh successfully', async () => {
     const result = await login();
-    const response = await refresh(result.refreshToken).expect(201);
+    const response = await refresh(result.refreshToken).expect(200);
     expect(body<AuthResponse>(response).accessToken).toEqual(
       expect.any(String),
     );
@@ -314,7 +319,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
 
   it('RT-023 plaintext refresh token never appears in audit records', async () => {
     const result = await login();
-    await refresh(result.refreshToken).expect(201);
+    await refresh(result.refreshToken).expect(200);
     const logs = await prisma.auditLog.findMany({
       where: { user: { uuid: userUuid } },
       select: { metadata: true },
@@ -324,7 +329,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
 
   it('RT-024 plaintext refresh token is absent from audit changes', async () => {
     const result = await login();
-    await refresh(result.refreshToken).expect(201);
+    await refresh(result.refreshToken).expect(200);
     const changes = await prisma.auditLogChange.findMany({
       select: { oldValue: true, newValue: true },
     });
@@ -341,7 +346,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
 
   it('RT-026 refresh response sends Cache-Control no-store', async () => {
     const result = await login();
-    const response = await refresh(result.refreshToken).expect(201);
+    const response = await refresh(result.refreshToken).expect(200);
     expect(response.headers['cache-control']).toContain('no-store');
   });
 
@@ -367,7 +372,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
     const userB = userUuid;
     expect(userA).not.toBe(userB);
     await security.revokeAllForUser(userB, 'ACCOUNT_DISABLED');
-    await refresh(resultA.refreshToken).expect(201);
+    await refresh(resultA.refreshToken).expect(200);
     expect(await tokenRow(resultA.refreshToken)).toBeDefined();
   });
 
@@ -391,7 +396,7 @@ describe('Refresh-token lifecycle E2E matrix', () => {
     );
     expect(unchanged.consumedAt).toBeNull();
     expect(unchanged.revokedAt).toBeNull();
-    await refresh(result.refreshToken).expect(201);
+    await refresh(result.refreshToken).expect(200);
   });
 
   it('RT-030 database failure returns a safe failure without exposing database details', async () => {
