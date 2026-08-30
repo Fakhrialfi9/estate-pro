@@ -6,9 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'node:crypto';
-import {
-  AUDIT_ACTIONS,
-} from '../../../../common/audit/audit-events.js';
+import { AUDIT_ACTIONS } from '../../../../common/audit/audit-events.js';
 import type {
   CredentialRepository,
   UserRepository,
