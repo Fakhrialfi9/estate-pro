@@ -87,10 +87,16 @@ jobs:
       - name: Security test target
         run: npm run test:security -- test/security/security-hardening-272-295.spec.ts
 
+      - name: Full test suite
+        run: npm test
+
       - name: Production build
         run: npm run build
 
-      - name: Commit fix and remove one-off workflow
+      - name: Security baseline
+        run: npm run test:security:baseline
+
+      - name: Remove one-off workflow and commit verified fix
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -99,3 +105,5 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m 'fix(test): align login security harness dependencies'
           git push origin HEAD:main
+
+# Intentionally one-shot: this workflow removes itself after verification.
