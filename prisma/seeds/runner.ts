@@ -2,7 +2,10 @@ import { PERMISSIONS } from './permissions/data.ts';
 import { seedPermissions } from './permissions/seed.ts';
 import { seedRoles, seedRolePermissions } from './roles/seed.ts';
 import {
+  ADMIN_USER,
+  SEED_USERS,
   assignAdminRole,
+  prepareUserSeed,
   seedAdminUser,
   seedDevelopmentUsers,
 } from './users/seed.ts';
@@ -10,6 +13,10 @@ import { createDatabaseClient } from './database.ts';
 
 export async function seedDatabase(): Promise<void> {
   const prisma = createDatabaseClient();
+  const [preparedAdmin, ...preparedUsers] = await Promise.all([
+    prepareUserSeed(ADMIN_USER),
+    ...SEED_USERS.map(prepareUserSeed),
+  ]);
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -23,14 +30,14 @@ export async function seedDatabase(): Promise<void> {
         PERMISSIONS.map(({ code }) => code),
       );
 
-      const adminUserId = await seedAdminUser(tx);
+      const adminUserId = await seedAdminUser(tx, preparedAdmin);
       const adminRoleId = roleIds.get('ADMIN');
       if (adminRoleId === undefined) {
         throw new Error('Missing seeded ADMIN role');
       }
 
       await assignAdminRole(tx, adminUserId, adminRoleId);
-      await seedDevelopmentUsers(tx);
+      await seedDevelopmentUsers(tx, preparedUsers);
     });
   } finally {
     await prisma.$disconnect();
