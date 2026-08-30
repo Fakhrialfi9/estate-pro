@@ -169,7 +169,7 @@ export class RefreshTokenService {
         });
         await this.audit.record({
           action: 'SESSION_REFRESH_REVOKED',
-          entityType: 'authentication_session',
+          entityType: 'session',
           entityUuid: result.sessionId,
           result: 'SUCCESS',
           reason: 'REUSE_DETECTED',
