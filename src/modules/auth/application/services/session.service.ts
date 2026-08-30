@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type {
+import {
   AuthenticationSessionRepository,
   SessionAuditContext,
   SessionListQuery,
@@ -49,17 +49,16 @@ export class SessionService implements SessionSecurityPort {
   static generateSecret(): string {
     return randomBytes(SESSION_SECRET_BYTES).toString('base64url');
   }
+
   static digestSecret(secret: string): string {
     return createHash('sha256').update(secret, 'utf8').digest('hex');
   }
 
-  async create(
-    userUuid: string,
-    input: CreateSessionInput,
-  ): Promise<SessionEntity> {
+  async create(userUuid: string, input: CreateSessionInput): Promise<SessionEntity> {
     const now = new Date();
-    if (input.expiresAt.getTime() <= now.getTime())
+    if (input.expiresAt.getTime() <= now.getTime()) {
       throw new Error('Session expiry must be in the future');
+    }
     const snapshot = await this.sessions.create(userUuid, {
       sessionId: input.sessionId,
       ipAddress: input.ipAddress,
@@ -87,14 +86,9 @@ export class SessionService implements SessionSecurityPort {
     sessionIdentifier: string,
     now = new Date(),
   ): Promise<boolean> {
-    if (/^\d+$/.test(sessionIdentifier)) {
-      const session = await this.sessions.findById(userUuid, sessionIdentifier);
-      return session ? SessionEntity.create(session).isActiveAt(now) : false;
-    }
-    const session = await this.sessions.findBySecret(
-      userUuid,
-      sessionIdentifier,
-    );
+    const session = /^\d+$/.test(sessionIdentifier)
+      ? await this.sessions.findById(userUuid, sessionIdentifier)
+      : await this.sessions.findBySecret(userUuid, sessionIdentifier);
     return session ? SessionEntity.create(session).isActiveAt(now) : false;
   }
 
@@ -120,15 +114,25 @@ export class SessionService implements SessionSecurityPort {
     context: SessionAuditContext = {},
   ): Promise<void> {
     const now = new Date();
-    if (/^\d+$/.test(sessionIdentifier))
+    let publicSessionId: string | undefined;
+    if (/^\d+$/.test(sessionIdentifier)) {
+      publicSessionId = sessionIdentifier;
       await this.sessions.revokeById(userUuid, sessionIdentifier, now);
-    else await this.sessions.revokeBySecret(userUuid, sessionIdentifier, now);
-    await this.refreshTokens.revokeForSession(
-      userUuid,
-      sessionIdentifier,
-      'LOGOUT',
-      context,
-    );
+    } else {
+      const session = await this.sessions.findBySecret(userUuid, sessionIdentifier);
+      if (session) {
+        publicSessionId = session.id;
+        await this.sessions.revokeById(userUuid, session.id, now);
+      }
+    }
+    if (publicSessionId !== undefined) {
+      await this.refreshTokens.revokeForSession(
+        userUuid,
+        publicSessionId,
+        'LOGOUT',
+        context,
+      );
+    }
     await this.audit.record({
       action: SESSION_AUDIT_ACTIONS.LOGOUT,
       actorUuid: context.actorUserUuid ?? userUuid,
