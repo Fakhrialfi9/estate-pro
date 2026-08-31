@@ -3,7 +3,7 @@ import type { OpenAPIObject } from '@nestjs/swagger';
 type Schema = Record<string, unknown>;
 type ResponseObject = Record<string, unknown>;
 type Operation = Record<string, unknown> & {
-  responses?: Record<string, ResponseObject>;
+  responses?: Record<string, ResponseObject | { $ref: string } | undefined>;
 };
 type MutableDocument = OpenAPIObject & {
   components?: OpenAPIObject['components'] & {
