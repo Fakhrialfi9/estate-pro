@@ -46,7 +46,7 @@ jobs:
   validate:
     needs: sync-main
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test
       DATABASE_POOL_CONNECTION_LIMIT: 2
@@ -57,10 +57,14 @@ jobs:
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
-        with: { ref: main }
+        with:
+          ref: main
+          fetch-depth: 0
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with:
+          node-version: 22
+          cache: npm
       - name: Pin npm
         run: npm install --global npm@11.18.0
       - name: Install MariaDB
@@ -75,6 +79,8 @@ jobs:
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_seed_test.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
       - name: Install dependencies
         run: npm ci
+      - name: Prisma schema validation
+        run: npx prisma validate
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
       - name: Generate Prisma client
@@ -104,22 +110,32 @@ jobs:
         run: npm run typecheck
       - name: Architecture validation
         run: npm run check:architecture
+      - name: Complete test suite
+        run: npm run test
       - name: Unit tests
         run: npm run test:unit
       - name: Integration tests
         run: npm run test:integration
       - name: E2E tests
         run: npm run test:e2e
-      - name: OpenAPI contract gate
+      - name: OpenAPI contract tests
         run: npm run test:openapi
+      - name: OpenAPI specification validation
+        run: npm run openapi:validate
       - name: Security tests
         run: npm run test:security
       - name: Coverage
         run: npm run test:coverage
+      - name: E2E coverage
+        run: npm run test:coverage:e2e
+      - name: Aggregate test suite
+        run: npm run test:all
       - name: Production build
         run: npm run build
       - name: Compiled runtime validation
         run: npm run check:runtime
+      - name: Fresh installation validation
+        run: npm run check:fresh
       - name: Docker image validation
         run: docker build --tag estate-pro:ci .
       - name: Repository cleanliness
