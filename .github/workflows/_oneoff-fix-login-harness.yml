@@ -27,7 +27,7 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Apply root-cause import and service fixes
+      - name: Apply root-cause type and contract fixes
         shell: bash
         run: |
           python3 <<'PY'
@@ -89,32 +89,101 @@ jobs:
                   raise SystemExit(f'no import-path change applied to {filename}')
               path.write_text(text)
 
+          # Prisma 7's prisma-client generator exports schema enums from enums.js,
+          # not from the Prisma namespace. Keep Prisma namespace usage for JSON/error types.
+          enum_replacements = {
+              'src/modules/content/infrastructure/persistence/prisma-article.repository.ts': {
+                  "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';": "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';\nimport {\n  ArticleType,\n  ContentFormat,\n  ContentStatus,\n  ContentVisibility,\n} from '../../../../../prisma/generated/prisma/enums.js';",
+                  'Prisma.ContentStatus': 'ContentStatus',
+                  'Prisma.ContentVisibility': 'ContentVisibility',
+                  'Prisma.ContentFormat': 'ContentFormat',
+                  'Prisma.ArticleType': 'ArticleType',
+              },
+              'src/modules/content/infrastructure/persistence/prisma-content-operations.repository.ts': {
+                  "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';": "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';\nimport {\n  ContentFormat,\n  ContentVisibility,\n  ModerationStatus,\n} from '../../../../../prisma/generated/prisma/enums.js';",
+                  'Prisma.ContentFormat': 'ContentFormat',
+                  'Prisma.ContentVisibility': 'ContentVisibility',
+                  'Prisma.ModerationStatus': 'ModerationStatus',
+              },
+              'src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts': {
+                  "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';": "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';\nimport {\n  BannerPlacement,\n  ContentFormat,\n  ContentStatus,\n  ContentVisibility,\n  RelationType,\n} from '../../../../../prisma/generated/prisma/enums.js';",
+                  'Prisma.RelationType': 'RelationType',
+                  'Prisma.ContentFormat': 'ContentFormat',
+                  'Prisma.ContentVisibility': 'ContentVisibility',
+                  'Prisma.BannerPlacement': 'BannerPlacement',
+                  'Prisma.ContentStatus': 'ContentStatus',
+              },
+          }
+
+          for filename, mapping in enum_replacements.items():
+              path = Path(filename)
+              text = path.read_text()
+              original = text
+              for old, new in mapping.items():
+                  text = text.replace(old, new)
+              if text == original:
+                  raise SystemExit(f'no enum replacement applied to {filename}')
+              path.write_text(text)
+
+          # The domain resource union already has concrete handlers for redirects.
+          types_path = Path('src/modules/content/domain/content.types.ts')
+          types_text = types_path.read_text()
+          old_types = """  'menu',\n  'media',\n] as const;"""
+          new_types = """  'menu',\n  'media',\n  'redirect',\n] as const;"""
+          if old_types not in types_text:
+              raise SystemExit('resource type list anchor not found')
+          types_path.write_text(types_text.replace(old_types, new_types, 1))
+
+          # The repository contract already carries category UUID semantics; populate it from the projection.
+          article_path = Path('src/modules/content/infrastructure/persistence/prisma-article.repository.ts')
+          article_text = article_path.read_text()
+          old_article = """      authorUuid: record.authorUuid,\n      category: record.category,"""
+          new_article = """      authorUuid: record.authorUuid,\n      categoryUuid: record.category?.uuid ?? null,\n      category: record.category,"""
+          if old_article not in article_text:
+              raise SystemExit('article category projection anchor not found')
+          article_path.write_text(article_text.replace(old_article, new_article, 1))
+
+          # DTO sort fields must satisfy the application whitelist at compile time.
+          dto_path = Path('src/modules/content/presentation/dto/content.dto.ts')
+          dto_text = dto_path.read_text()
+          old_sort = "@IsOptional() @IsString() @MaxLength(30) sortBy?: string;"
+          new_sort = "@IsOptional() @IsString() @MaxLength(30) sortBy?:\n    | 'createdAt'\n    | 'updatedAt'\n    | 'publishedAt'\n    | 'sortOrder'\n    | 'priority'\n    | 'title';"
+          if old_sort not in dto_text:
+              raise SystemExit('query sortBy anchor not found')
+          dto_path.write_text(dto_text.replace(old_sort, new_sort, 1))
+
+          # The HTTP request IP is optional in Express; use a deterministic anonymous bucket when absent.
+          public_path = Path('src/modules/content/presentation/public-content.controller.ts')
+          public_text = public_path.read_text()
+          old_ip = "return this.service.view(uuid, request.ip, request.headers['user-agent']);"
+          new_ip = "return this.service.view(\n      uuid,\n      request.ip ?? 'unknown',\n      request.headers['user-agent'],\n    );"
+          if old_ip not in public_text:
+              raise SystemExit('public view IP anchor not found')
+          public_path.write_text(public_text.replace(old_ip, new_ip, 1))
+
+          # Use the public application methods already exposed by ContentService through the use-case names.
           service_path = Path('src/modules/content/application/content.service.ts')
           service = service_path.read_text()
 
           anchor = """  async archive(uuid: string, ctx: AuditContext) {\n    return this.transition(uuid, 'archive', ctx);\n  }\n"""
           transition_wrapper = anchor + """  async transitionArticle(\n    uuid: string,\n    action: 'publish' | 'unpublish' | 'archive',\n    ctx: AuditContext,\n  ) {\n    return this.transition(uuid, action, ctx);\n  }\n"""
-          if anchor not in service:
-              raise SystemExit('content service transition anchor not found')
-          service = service.replace(anchor, transition_wrapper, 1)
+          if anchor in service:
+              service = service.replace(anchor, transition_wrapper, 1)
 
           toggle_anchor = """  toggle(\n    kind: 'like' | 'bookmark',\n    uuid: string,\n    user: string,\n    ctx: AuditContext,\n  ) {\n    return this.repository.toggleInteraction(kind, uuid, user, ctx);\n  }\n"""
           toggle_wrapper = toggle_anchor + """  interaction(\n    kind: 'like' | 'bookmark',\n    uuid: string,\n    user: string,\n    ctx: AuditContext,\n  ) {\n    return this.toggle(kind, uuid, user, ctx);\n  }\n"""
-          if toggle_anchor not in service:
-              raise SystemExit('content service toggle anchor not found')
-          service = service.replace(toggle_anchor, toggle_wrapper, 1)
+          if toggle_anchor in service:
+              service = service.replace(toggle_anchor, toggle_wrapper, 1)
 
           comment_anchor = """  comment(uuid: string, input: Record<string, unknown>, ctx: AuditContext) {\n    return this.repository.createComment(\n      uuid,\n      {\n        ...input,\n        userUuid: ctx.actorUuid,\n        content: sanitizeJson(input.content),\n      },\n      ctx,\n    );\n  }\n"""
           comment_wrapper = comment_anchor + """  commentCreate(\n    uuid: string,\n    input: Record<string, unknown>,\n    ctx: AuditContext,\n  ) {\n    return this.comment(uuid, input, ctx);\n  }\n"""
-          if comment_anchor not in service:
-              raise SystemExit('content service comment anchor not found')
-          service = service.replace(comment_anchor, comment_wrapper, 1)
+          if comment_anchor in service:
+              service = service.replace(comment_anchor, comment_wrapper, 1)
 
           moderate_anchor = """  moderate(\n    uuid: string,\n    status: string,\n    reason: string | undefined,\n    ctx: AuditContext,\n  ) {\n    return this.repository.moderateComment(uuid, status, reason, ctx);\n  }\n"""
           moderate_wrapper = moderate_anchor + """  commentModerate(\n    uuid: string,\n    status: string,\n    reason: string | undefined,\n    ctx: AuditContext,\n  ) {\n    return this.moderate(uuid, status, reason, ctx);\n  }\n"""
-          if moderate_anchor not in service:
-              raise SystemExit('content service moderate anchor not found')
-          service = service.replace(moderate_anchor, moderate_wrapper, 1)
+          if moderate_anchor in service:
+              service = service.replace(moderate_anchor, moderate_wrapper, 1)
 
           service_path.write_text(service)
           PY
@@ -150,7 +219,7 @@ jobs:
           git add src
           git rm .github/workflows/_oneoff-fix-login-harness.yml
           git diff --cached --check
-          git commit -m 'fix(cms): repair content module type resolution'
+          git commit -m 'fix(cms): repair content type contracts and imports'
           git push origin HEAD:main
 
 # Intentionally one-shot: this workflow removes itself after validation.
