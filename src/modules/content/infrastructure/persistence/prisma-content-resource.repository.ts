@@ -1,16 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../prisma/generated/prisma/client.js';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
+import {
+  BannerPlacement,
+  ContentFormat,
+  ContentStatus,
+  ContentVisibility,
+  RelationType,
+} from '../../../../../prisma/generated/prisma/enums.js';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import {
   ContentConflictError,
   ContentNotFoundError,
-} from '../application/content.errors.js';
+} from '.../../application/content.errors.js';
 import type {
   AuditContext,
   ContentResourceType,
   PaginationQuery,
   PagedResult,
-} from '../domain/content.types.js';
+} from '../../domain/content.types.js';
 
 function jsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -243,7 +250,7 @@ export class PrismaContentResourceRepository {
         originalName: String(input.originalName),
         storageKey: String(input.storageKey),
         publicUrl: typeof input.publicUrl === 'string' ? input.publicUrl : null,
-        provider: String(input.provider ?? 'local'),
+        provider: typeof input.provider === 'string' ? input.provider : 'local',
         mimeType: String(input.mimeType),
         sizeBytes: BigInt(String(input.sizeBytes)),
         width: typeof input.width === 'number' ? input.width : null,
@@ -307,7 +314,7 @@ export class PrismaContentResourceRepository {
       where: {
         sourceUuid,
         ...(relationType
-          ? { relationType: relationType as Prisma.RelationType }
+          ? { relationType: relationType as RelationType }
           : {}),
       },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
@@ -326,7 +333,7 @@ export class PrismaContentResourceRepository {
         targetType: String(input.targetType),
         relationType: String(
           input.relationType ?? 'RELATED',
-        ) as Prisma.RelationType,
+        ) as RelationType,
         sortOrder: Number(input.sortOrder ?? 0),
         createdBy: ctx.actorUuid,
       },
@@ -410,12 +417,12 @@ export class PrismaContentResourceRepository {
         content: jsonValue(input.content),
         contentFormat: String(
           input.contentFormat ?? 'RICH_TEXT',
-        ) as Prisma.ContentFormat,
+        ) as ContentFormat,
         status: 'DRAFT',
         visibility: String(
           input.visibility ?? 'PUBLIC',
-        ) as Prisma.ContentVisibility,
-        language: String(input.language ?? 'id'),
+        ) as ContentVisibility,
+        language: typeof input.language === 'string' ? input.language : 'id',
         createdBy: ctx.actorUuid,
         version: 1,
       };
@@ -445,7 +452,7 @@ export class PrismaContentResourceRepository {
         category: typeof input.category === 'string' ? input.category : null,
         sortOrder: Number(input.sortOrder ?? 0),
         status: 'DRAFT',
-        language: String(input.language ?? 'id'),
+        language: typeof input.language === 'string' ? input.language : 'id',
         featured: Boolean(input.featured),
         createdBy: ctx.actorUuid,
         version: 1,
@@ -461,7 +468,7 @@ export class PrismaContentResourceRepository {
         sortOrder: Number(input.sortOrder ?? 0),
         featured: Boolean(input.featured),
         status: 'DRAFT',
-        language: String(input.language ?? 'id'),
+        language: typeof input.language === 'string' ? input.language : 'id',
         createdBy: ctx.actorUuid,
         version: 1,
       };
@@ -473,12 +480,12 @@ export class PrismaContentResourceRepository {
         linkUrl: typeof input.linkUrl === 'string' ? input.linkUrl : null,
         placement: String(
           input.placement ?? 'HOME_HERO',
-        ) as Prisma.BannerPlacement,
+        ) as BannerPlacement,
         priority: Number(input.priority ?? 0),
         startAt: input.startAt ? new Date(String(input.startAt)) : null,
         endAt: input.endAt ? new Date(String(input.endAt)) : null,
         status: 'DRAFT',
-        language: String(input.language ?? 'id'),
+        language: typeof input.language === 'string' ? input.language : 'id',
         createdBy: ctx.actorUuid,
         version: 1,
       };
@@ -488,7 +495,7 @@ export class PrismaContentResourceRepository {
         slug: String(input.slug),
         location: String(input.location),
         status: 'DRAFT',
-        language: String(input.language ?? 'id'),
+        language: typeof input.language === 'string' ? input.language : 'id',
         createdBy: ctx.actorUuid,
         version: 1,
       };
@@ -536,13 +543,13 @@ export class PrismaContentResourceRepository {
     for (const key of ['featured', 'isActive'])
       if (input[key] !== undefined) data[key] = Boolean(input[key]);
     if (input.status !== undefined)
-      data.status = String(input.status) as Prisma.ContentStatus;
+      data.status = String(input.status) as ContentStatus;
     if (input.visibility !== undefined)
-      data.visibility = String(input.visibility) as Prisma.ContentVisibility;
+      data.visibility = String(input.visibility) as ContentVisibility;
     if (input.contentFormat !== undefined)
-      data.contentFormat = String(input.contentFormat) as Prisma.ContentFormat;
+      data.contentFormat = String(input.contentFormat) as ContentFormat;
     if (input.placement !== undefined)
-      data.placement = String(input.placement) as Prisma.BannerPlacement;
+      data.placement = String(input.placement) as BannerPlacement;
     if (input.startAt !== undefined)
       data.startAt = input.startAt ? new Date(String(input.startAt)) : null;
     if (input.endAt !== undefined)
