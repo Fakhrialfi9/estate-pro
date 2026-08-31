@@ -160,6 +160,7 @@ model CrmLeadCampaign {
   source CrmLeadSource @relation(fields: [sourceId], references: [id])
   leads CrmLead[]
   @@index([sourceId])
+  @@index([deletedAt])
   @@map("crm_lead_campaigns")
 }
 
@@ -229,7 +230,7 @@ model CrmLead {
   campaign CrmLeadCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   type CrmLeadType @relation(fields: [typeId], references: [id])
   status CrmLeadStatus @relation(fields: [statusId], references: [id])
-  tags CrmLeadTag[]
+  tagLinks CrmLeadTagLink[]
   notes CrmLeadNote[]
   assignments CrmLeadAssignment[]
   history CrmLeadHistory[]
