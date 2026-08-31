@@ -117,6 +117,8 @@ jobs:
         run: npm run test:integration
       - name: E2E tests
         run: npm run test:e2e
+      - name: OpenAPI contract gate
+        run: npm run test:openapi
       - name: Security tests
         run: npm run test:security
       - name: Coverage
