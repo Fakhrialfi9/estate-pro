@@ -43,7 +43,11 @@ export class CreateListingDto {
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ListingPaymentDto)
-  @ApiProperty({ required: false, type: () => ListingPaymentDto, isArray: true })
+  @ApiProperty({
+    required: false,
+    type: () => ListingPaymentDto,
+    isArray: true,
+  })
   payments?: ListingPaymentDto[];
 }
 
@@ -65,7 +69,11 @@ export class UpdateListingDto {
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ListingPaymentDto)
-  @ApiProperty({ required: false, type: () => ListingPaymentDto, isArray: true })
+  @ApiProperty({
+    required: false,
+    type: () => ListingPaymentDto,
+    isArray: true,
+  })
   payments?: ListingPaymentDto[];
 }
 
