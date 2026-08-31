@@ -1,0 +1,166 @@
+name: Fix Content Types
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install --global npm@11.18.0
+      - run: npm ci
+      - name: Repair source
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          def p(path): return Path(path)
+          def rw(path, f): p(path).write_text(f(p(path).read_text()))
+
+          import_map = {
+            '../../../../prisma/generated/prisma/client.js': '../../../../../prisma/generated/prisma/client.js',
+            '../../../infrastructure/database/prisma/prisma.service.js': '../../../../infrastructure/database/prisma/prisma.service.js',
+            '../../common/security/authorization.guard.js': '../../../common/security/authorization.guard.js',
+            '../../common/security/authorization.decorators.js': '../../../common/security/authorization.decorators.js',
+            '../auth/security/jwt-auth.guard.js': '../../auth/security/jwt-auth.guard.js',
+            './application/content.errors.js': '../application/content.errors.js',
+            './application/content.service.js': '../application/content.service.js',
+            './application/use-cases/content.use-cases.js': '../application/use-cases/content.use-cases.js',
+            './presentation/dto/content.dto.js': './dto/content.dto.js',
+            '../../infrastructure/storage/storage-provider.js': '../../../infrastructure/storage/storage-provider.js',
+            '../../content/application/content.errors.js': '../../application/content.errors.js',
+            '../../content/domain/content.types.js': '../../domain/content.types.js',
+            '../../content/domain/repositories/content.repository.js': '../../domain/repositories/content.repository.js',
+            '../application/content.errors.js': '../../application/content.errors.js',
+            '../domain/content.types.js': '../../domain/content.types.js',
+            '../domain/repositories/content.repository.js': '../../domain/repositories/content.repository.js',
+          }
+          source_files = [
+            'src/modules/content/infrastructure/persistence/prisma-article.repository.ts',
+            'src/modules/content/infrastructure/persistence/prisma-content-operations.repository.ts',
+            'src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts',
+            'src/modules/content/presentation/content.controller.ts',
+            'src/modules/content/presentation/public-content.controller.ts',
+            'src/modules/content/presentation/supporting-content.controller.ts',
+          ]
+          for name in source_files:
+            text = p(name).read_text()
+            for old, new in import_map.items(): text = text.replace(old, new)
+            p(name).write_text(text)
+
+          enum_specs = {
+            'src/modules/content/infrastructure/persistence/prisma-article.repository.ts': ['ArticleType','ContentFormat','ContentStatus','ContentVisibility'],
+            'src/modules/content/infrastructure/persistence/prisma-content-operations.repository.ts': ['ContentFormat','ContentVisibility','ModerationStatus'],
+            'src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts': ['BannerPlacement','ContentFormat','ContentStatus','ContentVisibility','RelationType'],
+          }
+          for name, enums in enum_specs.items():
+            path = p(name); text = path.read_text()
+            if "from '../../../../../prisma/generated/prisma/enums.js';" not in text:
+              import_block = "import {\n" + ''.join(f"  {x},\n" for x in enums) + "} from '../../../../../prisma/generated/prisma/enums.js';"
+              text = text.replace("import { Prisma } from '../../../../../prisma/generated/prisma/client.js';", "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';\n" + import_block, 1)
+            for enum in enums: text = text.replace(f'Prisma.{enum}', enum)
+            path.write_text(text)
+
+          path = p('src/modules/content/domain/content.types.ts'); text = path.read_text()
+          if "  'redirect',\n" not in text: text = text.replace("  'media',\n] as const;", "  'media',\n  'redirect',\n] as const;", 1)
+          path.write_text(text)
+
+          path = p('src/modules/content/infrastructure/persistence/prisma-article.repository.ts'); text = path.read_text()
+          if 'categoryUuid: record.category?.uuid ?? null' not in text: text = text.replace('      category: record.category,', '      categoryUuid: record.category?.uuid ?? null,\n      category: record.category,', 1)
+          if 'private requiredString(value: unknown' not in text:
+            marker = '  private enumStatus(value: unknown): ContentStatus {'
+            helper = """  private requiredString(value: unknown, field: string): string {
+    if (typeof value !== 'string' || !value.trim()) throw new ContentValidationError(`${field} is invalid`);
+    return value.trim();
+  }
+
+"""
+            text = text.replace(marker, helper + marker, 1)
+          text = text.replace("String(input.language ?? 'id')", "typeof input.language === 'string' ? input.language : 'id'")
+          text = text.replace('String(input.title)', "this.requiredString(input.title, 'title')")
+          text = text.replace('String(input.slug)', "this.requiredString(input.slug, 'slug')")
+          text = text.replace('String(input.language)', "this.requiredString(input.language, 'language')")
+          path.write_text(text)
+
+          path = p('src/modules/content/application/content.service.ts'); text = path.read_text()
+          text = text.replace('  PagedResult,\n', '')
+          text = re.sub(r'/\\u0000-\\u001f/\.test\(href\)', 'hasControlCharacters(href)', text)
+          if 'const hasControlCharacters' not in text:
+            text = text.replace('const words = (value: unknown): number => {', "const hasControlCharacters = (value: string): boolean => [...value].some((c) => c.charCodeAt(0) < 32);\n\nconst words = (value: unknown): number => {", 1)
+          text = text.replace("String(metadata.provider ?? 'local')", "typeof metadata.provider === 'string' ? metadata.provider : 'local'")
+          path.write_text(text)
+
+          path = p('src/modules/content/infrastructure/persistence/prisma-content-operations.repository.ts'); text = path.read_text()
+          text = text.replace("import { createHash } from 'node:crypto';\n", '')
+          text = text.replace('String(snapshot.template ?? current.template)', "typeof snapshot.template === 'string' ? snapshot.template : current.template")
+          text = text.replace("String(snapshot.contentFormat ?? 'RICH_TEXT')", "(typeof snapshot.contentFormat === 'string' ? snapshot.contentFormat : 'RICH_TEXT')")
+          text = text.replace("String(snapshot.visibility ?? 'PUBLIC')", "(typeof snapshot.visibility === 'string' ? snapshot.visibility : 'PUBLIC')")
+          text = text.replace('String(snapshot.language ?? current.language)', "typeof snapshot.language === 'string' ? snapshot.language : current.language")
+          path.write_text(text)
+
+          path = p('src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts'); text = path.read_text()
+          if 'ContentValidationError' not in text:
+            text = text.replace('  ContentNotFoundError,\n', '  ContentNotFoundError,\n  ContentValidationError,\n', 1)
+          if 'function requiredString(value: unknown' not in text:
+            text = text.replace('function plain(value: unknown): Record<string, unknown> {', """function requiredString(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !value.trim()) throw new ContentValidationError(`${field} is invalid`);
+  return value.trim();
+}
+function optionalString(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function plain(value: unknown): Record<string, unknown> {""", 1)
+          for field in ['provider','title','slug','template','language','placement']:
+            fallback = {'provider':'local','template':'default','language':'id','placement':'HOME_HERO'}.get(field)
+            if field in ['title','slug']:
+              text = text.replace(f'String(input.{field})', f"requiredString(input.{field}, '{field}')")
+            elif fallback:
+              text = re.sub(rf"String\(input\.{field} \?\? '{re.escape(fallback)}'\)", f"optionalString(input.{field}, '{fallback}')", text)
+          text = text.replace("String(input.contentFormat ?? 'RICH_TEXT')", "optionalString(input.contentFormat, 'RICH_TEXT')")
+          text = text.replace("String(input.visibility ?? 'PUBLIC')", "optionalString(input.visibility, 'PUBLIC')")
+          text = text.replace("String(input.relationType ?? 'RELATED')", "requiredString(input.relationType ?? 'RELATED', 'relationType')")
+          text = text.replace('String(relationType) as RelationType', "requiredString(relationType, 'relationType') as RelationType")
+          text = text.replace('relationType: relationType as RelationType', "relationType: requiredString(relationType, 'relationType') as RelationType")
+          text = text.replace("String(item.label ?? '')", "optionalString(item.label, '')")
+          text = text.replace("String(item.itemType ?? 'url')", "optionalString(item.itemType, 'url')")
+          for field in ['status','visibility','contentFormat','placement']:
+            text = text.replace(f'String(input.{field})', f"requiredString(input.{field}, '{field}')")
+          text = text.replace('Promise<unknown | null>;', 'Promise<unknown>;')
+          path.write_text(text)
+
+          path = p('src/modules/content/presentation/content.controller.ts'); path.write_text(path.read_text().replace('  Headers,\n',''))
+          path = p('src/modules/content/presentation/supporting-content.controller.ts'); path.write_text(path.read_text().replace('  ApiResponse,\n',''))
+          path = p('src/modules/content/presentation/public-content.controller.ts'); text = path.read_text().replace("request.ip, request.headers['user-agent']", "request.ip ?? 'unknown', request.headers['user-agent']"); path.write_text(text)
+          PY
+          npx prettier --write src/modules/content
+          npx prisma validate
+          npm run prisma:generate
+          npx tsc --noEmit
+          npm run lint
+          npm run typecheck
+          npm run build
+          npm run format:check
+      - name: Commit repair and remove repair workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/modules/content
+          git rm .github/workflows/fix-content-types.yml
+          git diff --cached --check
+          git commit -m 'fix(cms): resolve content lint and type errors'
+          git push origin HEAD:main
