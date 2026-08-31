@@ -13,6 +13,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   LISTING_PRICE_TYPES,
   LISTING_STATUSES,
@@ -55,10 +56,12 @@ export class CreateListingDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => ListingPriceDto)
+  @ApiPropertyOptional({ type: () => ListingPriceDto })
   price?: ListingPriceDto;
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ListingPaymentDto)
+  @ApiPropertyOptional({ type: () => ListingPaymentDto, isArray: true })
   payments?: ListingPaymentDto[];
 }
 export class UpdateListingDto {
@@ -74,10 +77,12 @@ export class UpdateListingDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => ListingPriceDto)
+  @ApiPropertyOptional({ type: () => ListingPriceDto })
   price?: ListingPriceDto;
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ListingPaymentDto)
+  @ApiPropertyOptional({ type: () => ListingPaymentDto, isArray: true })
   payments?: ListingPaymentDto[];
 }
 export class ListingWorkflowDto {
