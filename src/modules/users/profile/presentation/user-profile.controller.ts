@@ -19,6 +19,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import type { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface.js';
 import type { AuthenticatedRequest } from '../security/profile-authentication.guard.js';
 import { ProfileAuthenticationGuard } from '../security/profile-authentication.guard.js';
 import { CreateUserProfileDto } from '../application/dto/create-user-profile.dto.js';
@@ -33,7 +34,7 @@ import {
 } from '../domain/errors/user-profile.errors.js';
 import { UserNotFoundError } from '../../domain/errors/user.errors.js';
 
-const userProfileResponseSchema = {
+const userProfileResponseSchema: SchemaObject = {
   type: 'object',
   properties: {
     userUuid: { type: 'string', format: 'uuid' },
@@ -57,7 +58,7 @@ const userProfileResponseSchema = {
     'createdAt',
     'updatedAt',
   ],
-} as const;
+};
 
 @ApiTags('Profile')
 @ApiBearerAuth()
