@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   apply:
-    if: github.sha == 'faa3916c829e029ef8ba0fda6d2d5ba95dc1db08'
+    if: github.event.before == 'cd007fef8169c7ede0628de0229a274a801235ad'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
