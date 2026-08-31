@@ -21,6 +21,8 @@ const ALLOWED_CROSS_MODULE_DEPENDENCIES = new Set([
   'src/modules/roles/application/services/role-permission.service.ts->src/modules/permissions/application/policies/permission-authorization.policy.ts',
   'src/modules/roles/application/services/role-permission.service.ts->src/modules/permissions/domain/errors/permission.errors.ts',
   'src/modules/roles/presentation/roles.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/content/presentation/content.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/content/presentation/supporting-content.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
 ]);
 
 async function collectTypeScriptFiles(directory) {
