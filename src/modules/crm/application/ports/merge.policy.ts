@@ -1,3 +1,6 @@
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
 export class LeadMergePolicy {
   assertAllowed(sourceUuid:string,targetUuid:string,hasPermission:boolean):void{
     if(!hasPermission)throw new Error('Lead merge permission is required');
