@@ -1,6 +1,17 @@
-import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { PAYMENT_OPTION_TYPES, type PaymentOptionType } from '../domain/listing.types.js';
+import {
+  PAYMENT_OPTION_TYPES,
+  type PaymentOptionType,
+} from '../domain/listing.types.js';
 
 export class ListingPaymentDto {
   @IsEnum(PAYMENT_OPTION_TYPES) optionType!: PaymentOptionType;

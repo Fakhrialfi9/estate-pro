@@ -1,5 +1,14 @@
-import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { LISTING_PRICE_TYPES, type ListingPriceType } from '../domain/listing.types.js';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import {
+  LISTING_PRICE_TYPES,
+  type ListingPriceType,
+} from '../domain/listing.types.js';
 
 export class ListingPriceDto {
   @IsEnum(LISTING_PRICE_TYPES) priceType!: ListingPriceType;
