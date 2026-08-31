@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
+import { Prisma } from '../../../../../../prisma/generated/prisma/client.js';
 import {
   BannerPlacement,
   ContentFormat,
@@ -7,17 +7,17 @@ import {
   ContentVisibility,
   RelationType,
 } from '../../../../../prisma/generated/prisma/enums.js';
-import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
+import { PrismaService } from '../../../../../infrastructure/database/prisma/prisma.service.js';
 import {
   ContentConflictError,
   ContentNotFoundError,
-} from '.../../application/content.errors.js';
+} from '.../.../../application/content.errors.js';
 import type {
   AuditContext,
   ContentResourceType,
   PaginationQuery,
   PagedResult,
-} from '../../domain/content.types.js';
+} from '../../../domain/content.types.js';
 
 function jsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
