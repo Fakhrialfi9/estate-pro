@@ -156,22 +156,43 @@ export const configurationValidationSchema = Joi.object({
     .integer()
     .min(1024)
     .default(1048576),
-  SECURITY_CSP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
-  SECURITY_HSTS_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
+  SECURITY_CSP_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(true),
+  SECURITY_HSTS_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(true),
   LOG_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
   LOG_LEVEL: Joi.string()
     .trim()
     .valid('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent')
     .default('info'),
-  OTEL_SERVICE_NAME: Joi.string().trim().min(1).max(200).default('estate-pro-api'),
-  OTEL_TRACING_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
+  OTEL_SERVICE_NAME: Joi.string()
+    .trim()
+    .min(1)
+    .max(200)
+    .default('estate-pro-api'),
+  OTEL_TRACING_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(false),
   OTEL_TRACES_EXPORTER: traceExporter.default('none'),
   OTEL_TRACES_SAMPLER: Joi.string()
     .trim()
-    .valid('always_on', 'always_off', 'traceidratio', 'parentbased_traceidratio')
+    .valid(
+      'always_on',
+      'always_off',
+      'traceidratio',
+      'parentbased_traceidratio',
+    )
     .default('parentbased_traceidratio'),
   OTEL_TRACES_SAMPLER_ARG: Joi.number().min(0).max(1).default(0.1),
-  OTEL_METRICS_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
+  OTEL_METRICS_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(false),
   OTEL_METRICS_EXPORTER: metricsExporter.default('none'),
   OTEL_METRIC_EXPORT_INTERVAL: Joi.number().integer().min(1000).default(60000),
 });
