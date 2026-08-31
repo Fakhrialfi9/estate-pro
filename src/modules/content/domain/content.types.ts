@@ -15,7 +15,13 @@ export type ContentVisibility = (typeof VISIBILITIES)[number];
 export const CONTENT_FORMATS = ['RICH_TEXT', 'MARKDOWN', 'BLOCKS'] as const;
 export type ContentFormat = (typeof CONTENT_FORMATS)[number];
 
-export const ARTICLE_TYPES = ['ARTICLE', 'NEWS', 'PRESS_RELEASE', 'GUIDE', 'CASE_STUDY'] as const;
+export const ARTICLE_TYPES = [
+  'ARTICLE',
+  'NEWS',
+  'PRESS_RELEASE',
+  'GUIDE',
+  'CASE_STUDY',
+] as const;
 export type ArticleType = (typeof ARTICLE_TYPES)[number];
 
 export const RESOURCE_TYPES = [
@@ -44,7 +50,13 @@ export type PaginationQuery = {
   search?: string;
   status?: ContentStatus;
   language?: string;
-  sortBy?: 'createdAt' | 'updatedAt' | 'publishedAt' | 'sortOrder' | 'priority' | 'title';
+  sortBy?:
+    | 'createdAt'
+    | 'updatedAt'
+    | 'publishedAt'
+    | 'sortOrder'
+    | 'priority'
+    | 'title';
   sortDirection?: 'asc' | 'desc';
 };
 

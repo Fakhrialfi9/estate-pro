@@ -1,21 +1,223 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CONTENT_REPOSITORY, type ContentRepository } from '../../domain/repositories/content.repository.js';
-import type { AuditContext, ContentResourceType, PaginationQuery } from '../../domain/content.types.js';
+import {
+  CONTENT_REPOSITORY,
+  type ContentRepository,
+} from '../../domain/repositories/content.repository.js';
+import type {
+  AuditContext,
+  ContentResourceType,
+  PaginationQuery,
+} from '../../domain/content.types.js';
 import { ContentService } from '../content.service.js';
 
-@Injectable() export class CreateArticleUseCase { constructor(private readonly service: ContentService) {} execute(input: Record<string, unknown>, ctx: AuditContext) { return this.service.createArticle(input, ctx); } }
-@Injectable() export class GetArticleUseCase { constructor(private readonly service: ContentService) {} execute(uuid: string, includeDeleted = false, permissions: readonly string[] = []) { return this.service.getArticle(uuid, includeDeleted, permissions); } }
-@Injectable() export class ListArticlesUseCase { constructor(private readonly service: ContentService) {} execute(query: PaginationQuery & { categoryUuid?: string; tagUuid?: string; featured?: boolean }) { return this.service.listArticles(query); } }
-@Injectable() export class UpdateArticleUseCase { constructor(private readonly service: ContentService) {} execute(uuid: string, input: Record<string, unknown>, ctx: AuditContext) { return this.service.updateArticle(uuid, input, ctx); } }
-@Injectable() export class DeleteArticleUseCase { constructor(private readonly service: ContentService) {} execute(uuid: string, ctx: AuditContext) { return this.service.deleteArticle(uuid, ctx); } }
-@Injectable() export class RestoreArticleUseCase { constructor(private readonly service: ContentService) {} execute(uuid: string, ctx: AuditContext) { return this.service.restoreArticle(uuid, ctx); } }
-@Injectable() export class DuplicateArticleUseCase { constructor(private readonly service: ContentService) {} execute(uuid: string, ctx: AuditContext) { return this.service.duplicateArticle(uuid, ctx); } }
-@Injectable() export class PublishArticleUseCase { constructor(private readonly service: ContentService) {} execute(uuid: string, ctx: AuditContext) { return this.service.transitionArticle(uuid, 'publish', ctx); } }
-@Injectable() export class UnpublishArticleUseCase { constructor(private readonly service: ContentService) {} execute(uuid: string, ctx: AuditContext) { return this.service.transitionArticle(uuid, 'unpublish', ctx); } }
-@Injectable() export class ArchiveArticleUseCase { constructor(private readonly service: ContentService) {} execute(uuid: string, ctx: AuditContext) { return this.service.transitionArticle(uuid, 'archive', ctx); } }
-@Injectable() export class ListRevisionsUseCase { constructor(private readonly service: ContentService) {} execute(type: ContentResourceType, uuid: string) { return this.service.revisions(type, uuid); } }
-@Injectable() export class RestoreRevisionUseCase { constructor(private readonly service: ContentService) {} execute(type: ContentResourceType, uuid: string, revision: string, ctx: AuditContext) { return this.service.restoreRevision(type, uuid, revision, ctx); } }
-@Injectable() export class ContentResourceUseCase { constructor(private readonly service: ContentService) {} list(resource: Exclude<ContentResourceType,'article'>, query: PaginationQuery) { return this.service.listResource(resource, query); } get(resource: Exclude<ContentResourceType,'article'>, uuid: string, includeDeleted = false) { return this.service.getResource(resource, uuid, includeDeleted); } create(resource: Exclude<ContentResourceType,'article'>, input: Record<string, unknown>, ctx: AuditContext) { return this.service.createResource(resource, input, ctx); } update(resource: Exclude<ContentResourceType,'article'>, uuid: string, input: Record<string, unknown>, ctx: AuditContext) { return this.service.updateResource(resource, uuid, input, ctx); } delete(resource: Exclude<ContentResourceType,'article'>, uuid: string, ctx: AuditContext) { return this.service.deleteResource(resource, uuid, ctx); } restore(resource: Exclude<ContentResourceType,'article'>, uuid: string, ctx: AuditContext) { return this.service.restoreResource(resource, uuid, ctx); } }
-@Injectable() export class ContentRelationUseCase { constructor(@Inject(CONTENT_REPOSITORY) private readonly repository: ContentRepository) {} add(input: Record<string, unknown>, ctx: AuditContext) { return this.repository.addRelation(input, ctx); } list(sourceUuid: string, relationType?: string) { return this.repository.listRelations(sourceUuid, relationType); } remove(uuid: string, ctx: AuditContext) { return this.repository.removeRelation(uuid, ctx); } }
-@Injectable() export class MediaUseCase { constructor(private readonly service: ContentService) {} create(file: { originalname: string; mimetype: string; size: number; buffer: Buffer }, metadata: Record<string, unknown>, ctx: AuditContext, key: string, url: string | null) { return this.service.createMedia(file, metadata, ctx, key, url); } remove(uuid: string, ctx: AuditContext) { return this.service.removeMedia(uuid, ctx); } }
-@Injectable() export class EngagementUseCase { constructor(private readonly service: ContentService) {} toggle(kind: 'like' | 'bookmark', articleUuid: string, userUuid: string, ctx: AuditContext) { return this.service.interaction(kind, articleUuid, userUuid, ctx); } view(articleUuid: string, ip: string, ua?: string) { return this.service.view(articleUuid, ip, ua); } comment(articleUuid: string, input: Record<string, unknown>, ctx: AuditContext) { return this.service.commentCreate(articleUuid, input, ctx); } moderate(uuid: string, status: string, reason: string | undefined, ctx: AuditContext) { return this.service.commentModerate(uuid, status, reason, ctx); } }
+@Injectable()
+export class CreateArticleUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(input: Record<string, unknown>, ctx: AuditContext) {
+    return this.service.createArticle(input, ctx);
+  }
+}
+@Injectable()
+export class GetArticleUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(
+    uuid: string,
+    includeDeleted = false,
+    permissions: readonly string[] = [],
+  ) {
+    return this.service.getArticle(uuid, includeDeleted, permissions);
+  }
+}
+@Injectable()
+export class ListArticlesUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(
+    query: PaginationQuery & {
+      categoryUuid?: string;
+      tagUuid?: string;
+      featured?: boolean;
+    },
+  ) {
+    return this.service.listArticles(query);
+  }
+}
+@Injectable()
+export class UpdateArticleUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(uuid: string, input: Record<string, unknown>, ctx: AuditContext) {
+    return this.service.updateArticle(uuid, input, ctx);
+  }
+}
+@Injectable()
+export class DeleteArticleUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(uuid: string, ctx: AuditContext) {
+    return this.service.deleteArticle(uuid, ctx);
+  }
+}
+@Injectable()
+export class RestoreArticleUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(uuid: string, ctx: AuditContext) {
+    return this.service.restoreArticle(uuid, ctx);
+  }
+}
+@Injectable()
+export class DuplicateArticleUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(uuid: string, ctx: AuditContext) {
+    return this.service.duplicateArticle(uuid, ctx);
+  }
+}
+@Injectable()
+export class PublishArticleUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(uuid: string, ctx: AuditContext) {
+    return this.service.transitionArticle(uuid, 'publish', ctx);
+  }
+}
+@Injectable()
+export class UnpublishArticleUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(uuid: string, ctx: AuditContext) {
+    return this.service.transitionArticle(uuid, 'unpublish', ctx);
+  }
+}
+@Injectable()
+export class ArchiveArticleUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(uuid: string, ctx: AuditContext) {
+    return this.service.transitionArticle(uuid, 'archive', ctx);
+  }
+}
+@Injectable()
+export class ListRevisionsUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(type: ContentResourceType, uuid: string) {
+    return this.service.revisions(type, uuid);
+  }
+}
+@Injectable()
+export class RestoreRevisionUseCase {
+  constructor(private readonly service: ContentService) {}
+  execute(
+    type: ContentResourceType,
+    uuid: string,
+    revision: string,
+    ctx: AuditContext,
+  ) {
+    return this.service.restoreRevision(type, uuid, revision, ctx);
+  }
+}
+@Injectable()
+export class ContentResourceUseCase {
+  constructor(private readonly service: ContentService) {}
+  list(
+    resource: Exclude<ContentResourceType, 'article'>,
+    query: PaginationQuery,
+  ) {
+    return this.service.listResource(resource, query);
+  }
+  get(
+    resource: Exclude<ContentResourceType, 'article'>,
+    uuid: string,
+    includeDeleted = false,
+  ) {
+    return this.service.getResource(resource, uuid, includeDeleted);
+  }
+  create(
+    resource: Exclude<ContentResourceType, 'article'>,
+    input: Record<string, unknown>,
+    ctx: AuditContext,
+  ) {
+    return this.service.createResource(resource, input, ctx);
+  }
+  update(
+    resource: Exclude<ContentResourceType, 'article'>,
+    uuid: string,
+    input: Record<string, unknown>,
+    ctx: AuditContext,
+  ) {
+    return this.service.updateResource(resource, uuid, input, ctx);
+  }
+  delete(
+    resource: Exclude<ContentResourceType, 'article'>,
+    uuid: string,
+    ctx: AuditContext,
+  ) {
+    return this.service.deleteResource(resource, uuid, ctx);
+  }
+  restore(
+    resource: Exclude<ContentResourceType, 'article'>,
+    uuid: string,
+    ctx: AuditContext,
+  ) {
+    return this.service.restoreResource(resource, uuid, ctx);
+  }
+}
+@Injectable()
+export class ContentRelationUseCase {
+  constructor(
+    @Inject(CONTENT_REPOSITORY) private readonly repository: ContentRepository,
+  ) {}
+  add(input: Record<string, unknown>, ctx: AuditContext) {
+    return this.repository.addRelation(input, ctx);
+  }
+  list(sourceUuid: string, relationType?: string) {
+    return this.repository.listRelations(sourceUuid, relationType);
+  }
+  remove(uuid: string, ctx: AuditContext) {
+    return this.repository.removeRelation(uuid, ctx);
+  }
+}
+@Injectable()
+export class MediaUseCase {
+  constructor(private readonly service: ContentService) {}
+  create(
+    file: {
+      originalname: string;
+      mimetype: string;
+      size: number;
+      buffer: Buffer;
+    },
+    metadata: Record<string, unknown>,
+    ctx: AuditContext,
+    key: string,
+    url: string | null,
+  ) {
+    return this.service.createMedia(file, metadata, ctx, key, url);
+  }
+  remove(uuid: string, ctx: AuditContext) {
+    return this.service.removeMedia(uuid, ctx);
+  }
+}
+@Injectable()
+export class EngagementUseCase {
+  constructor(private readonly service: ContentService) {}
+  toggle(
+    kind: 'like' | 'bookmark',
+    articleUuid: string,
+    userUuid: string,
+    ctx: AuditContext,
+  ) {
+    return this.service.interaction(kind, articleUuid, userUuid, ctx);
+  }
+  view(articleUuid: string, ip: string, ua?: string) {
+    return this.service.view(articleUuid, ip, ua);
+  }
+  comment(
+    articleUuid: string,
+    input: Record<string, unknown>,
+    ctx: AuditContext,
+  ) {
+    return this.service.commentCreate(articleUuid, input, ctx);
+  }
+  moderate(
+    uuid: string,
+    status: string,
+    reason: string | undefined,
+    ctx: AuditContext,
+  ) {
+    return this.service.commentModerate(uuid, status, reason, ctx);
+  }
+}

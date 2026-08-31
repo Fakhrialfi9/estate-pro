@@ -2,35 +2,618 @@ import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../common/audit/security-audit.port.js';
 import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';
-import type { AuditContext, ContentResourceType, PaginationQuery, ArticleResponse, PagedResult } from '../domain/content.types.js';
+import type {
+  AuditContext,
+  ContentResourceType,
+  PaginationQuery,
+  ArticleResponse,
+  PagedResult,
+} from '../domain/content.types.js';
 import { ArticleEntity } from '../domain/entities/content.entities.js';
 import { CONTENT_REPOSITORY } from '../domain/repositories/content.repository.js';
-import type { ContentRepository, ArticleRecord } from '../domain/repositories/content.repository.js';
-import { ContentConflictError, ContentNotFoundError, ContentValidationError } from './content.errors.js';
+import type {
+  ContentRepository,
+  ArticleRecord,
+} from '../domain/repositories/content.repository.js';
+import {
+  ContentConflictError,
+  ContentNotFoundError,
+  ContentValidationError,
+} from './content.errors.js';
 
-const ALLOWED_TAGS = new Set(['p','br','strong','em','u','ul','ol','li','h2','h3','blockquote','a']);
-export function normalizeSlug(value: string): string { const slug = value.trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,240); if (!slug) throw new ContentValidationError('Slug must contain alphanumeric characters'); return slug; }
-export function sanitizeHtml(value: string): string { let output = value.replace(/<!--[\s\S]*?-->/g,''); output = output.replace(/<\/?([a-zA-Z0-9-]+)(?:\s[^>]*)?>/g,(full, tag: string) => { const lower = tag.toLowerCase(); if (!ALLOWED_TAGS.has(lower)) return ''; if (lower !== 'a') return `<${full.startsWith('</') ? '/' : ''}${lower}>`; const href = full.match(/href\s*=\s*["']([^"']*)["']/i)?.[1]?.trim(); if (!href || !/^(https?:\/\/|mailto:)/i.test(href) || /[\u0000-\u001f]/.test(href)) return '<a>'; return `<a href="${href.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}">`; }); output = output.replace(/\b(?:on[a-z]+)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,''); output = output.replace(/javascript\s*:/gi,''); output = output.replace(/data\s*:\s*(?:text\/html|application\/javascript)/gi,''); return output; }
-export function sanitizeJson(value: unknown, depth = 0): unknown { if (depth > 10) throw new ContentValidationError('Content nesting is too deep'); if (typeof value === 'string') return sanitizeHtml(value); if (Array.isArray(value)) { if (value.length > 500) throw new ContentValidationError('Content array is too large'); return value.map((v) => sanitizeJson(v, depth+1)); } if (value !== null && typeof value === 'object') { const entries = Object.entries(value); if (entries.length > 200) throw new ContentValidationError('Content object is too large'); return Object.fromEntries(entries.map(([key,v]) => [key.slice(0,100), sanitizeJson(v, depth+1)])); } return value; }
-const words = (value: unknown): number => { const text = typeof value === 'string' ? value.replace(/<[^>]+>/g,' ') : JSON.stringify(value ?? ''); return text.trim() ? text.trim().split(/\s+/u).length : 0; };
+const ALLOWED_TAGS = new Set([
+  'p',
+  'br',
+  'strong',
+  'em',
+  'u',
+  'ul',
+  'ol',
+  'li',
+  'h2',
+  'h3',
+  'blockquote',
+  'a',
+]);
+export function normalizeSlug(value: string): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 240);
+  if (!slug)
+    throw new ContentValidationError(
+      'Slug must contain alphanumeric characters',
+    );
+  return slug;
+}
+export function sanitizeHtml(value: string): string {
+  let output = value.replace(/<!--[\s\S]*?-->/g, '');
+  output = output.replace(
+    /<\/?([a-zA-Z0-9-]+)(?:\s[^>]*)?>/g,
+    (full, tag: string) => {
+      const lower = tag.toLowerCase();
+      if (!ALLOWED_TAGS.has(lower)) return '';
+      if (lower !== 'a') return `<${full.startsWith('</') ? '/' : ''}${lower}>`;
+      const href = full.match(/href\s*=\s*["']([^"']*)["']/i)?.[1]?.trim();
+      if (
+        !href ||
+        !/^(https?:\/\/|mailto:)/i.test(href) ||
+        /[\u0000-\u001f]/.test(href)
+      )
+        return '<a>';
+      return `<a href="${href.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}">`;
+    },
+  );
+  output = output.replace(
+    /\b(?:on[a-z]+)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,
+    '',
+  );
+  output = output.replace(/javascript\s*:/gi, '');
+  output = output.replace(
+    /data\s*:\s*(?:text\/html|application\/javascript)/gi,
+    '',
+  );
+  return output;
+}
+export function sanitizeJson(value: unknown, depth = 0): unknown {
+  if (depth > 10)
+    throw new ContentValidationError('Content nesting is too deep');
+  if (typeof value === 'string') return sanitizeHtml(value);
+  if (Array.isArray(value)) {
+    if (value.length > 500)
+      throw new ContentValidationError('Content array is too large');
+    return value.map((v) => sanitizeJson(v, depth + 1));
+  }
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value);
+    if (entries.length > 200)
+      throw new ContentValidationError('Content object is too large');
+    return Object.fromEntries(
+      entries.map(([key, v]) => [
+        key.slice(0, 100),
+        sanitizeJson(v, depth + 1),
+      ]),
+    );
+  }
+  return value;
+}
+const words = (value: unknown): number => {
+  const text =
+    typeof value === 'string'
+      ? value.replace(/<[^>]+>/g, ' ')
+      : JSON.stringify(value ?? '');
+  return text.trim() ? text.trim().split(/\s+/u).length : 0;
+};
 
 @Injectable()
 export class ContentService {
-  constructor(@Inject(CONTENT_REPOSITORY) private readonly repository: ContentRepository, @Inject(SECURITY_AUDIT_REPOSITORY) private readonly audit: SecurityAuditRepository) {}
-  async createArticle(input: Record<string,unknown>, ctx: AuditContext): Promise<ArticleRecord> { const title = this.s(input.title,'title',220); const slug = normalizeSlug(this.s(input.slug ?? title,'slug',240)); const content = sanitizeJson(input.content); const entity = new ArticleEntity('00000000-0000-4000-8000-000000000000',title,slug,content); void entity; const result = await this.repository.createArticle({ ...input, title, slug, content, contentFormat: this.format(input.contentFormat), type: this.articleType(input.type), status:'DRAFT', visibility:this.visibility(input.visibility), language:this.language(input.language), featured:this.bool(input.featured,false), allowComments:this.bool(input.allowComments,true), wordCount:words(content), readingTimeMin:Math.max(1,Math.ceil(words(content)/200)), categoryUuid:this.optionalUuid(input.categoryUuid), coverMediaUuid:this.optionalUuid(input.coverMediaUuid), authorUuid:this.optionalUuid(input.authorUuid), tags:this.uuidArray(input.tagUuids), seo:input.seo, changeSummary:this.optionalString(input.changeSummary,500) },ctx); await this.audit.record({action:'content.article.created',actorUuid:ctx.actorUuid,userUuid:ctx.actorUuid,actorType:'AUTHENTICATED',entityType:'article',entityUuid:result.uuid,ipAddress:ctx.ipAddress,userAgent:ctx.userAgent,requestId:ctx.requestId,result:'SUCCESS'}); return result; }
-  async getArticle(uuid:string, includeDeleted=false, permissions:readonly string[]=[]): Promise<ArticleResponse> { const row = await this.repository.getArticle(uuid,includeDeleted); if (!row) throw new ContentNotFoundError('Article not found'); return { ...row, contentFormat:row.contentFormat as ArticleResponse['contentFormat'], type:row.type as ArticleResponse['type'], status:row.status as ArticleResponse['status'], visibility:row.visibility as ArticleResponse['visibility'], seo:null, permissions:{canView:permissions.includes('content.articles.read'),canEdit:permissions.includes('content.articles.update'),canDelete:permissions.includes('content.articles.delete'),canPublish:permissions.includes('content.articles.publish'),canArchive:permissions.includes('content.articles.archive'),canRestore:permissions.includes('content.articles.restore')} }; }
-  listArticles(query: PaginationQuery & {categoryUuid?:string;tagUuid?:string;featured?:boolean}) { return this.repository.listArticles(query); }
-  async updateArticle(uuid:string,input:Record<string,unknown>,ctx:AuditContext):Promise<ArticleRecord>{ const before=await this.repository.getArticle(uuid,false); if(!before) throw new ContentNotFoundError('Article not found'); const safe={...input,...(input.slug!==undefined?{slug:normalizeSlug(this.s(input.slug,'slug',240))}:{}),...(input.title!==undefined?{title:this.s(input.title,'title',220)}:{}),...(input.content!==undefined?{content:sanitizeJson(input.content),wordCount:words(input.content),readingTimeMin:Math.max(1,Math.ceil(words(input.content)/200))}:{}),...(input.tagUuids!==undefined?{tags:this.uuidArray(input.tagUuids)}:{})}; const result=await this.repository.updateArticle(uuid,safe,this.version(input.version),ctx); if(before.slug!==result.slug) await this.repository.ensureSlugRedirect('article',before.slug,result.slug,ctx); await this.audit.record({action:'content.article.updated',actorUuid:ctx.actorUuid,userUuid:ctx.actorUuid,actorType:'AUTHENTICATED',entityType:'article',entityUuid:uuid,result:'SUCCESS'}); return result; }
-  async deleteArticle(uuid:string,ctx:AuditContext){ await this.repository.softDeleteArticle(uuid,ctx); await this.audit.record({action:'content.article.deleted',actorUuid:ctx.actorUuid,userUuid:ctx.actorUuid,actorType:'AUTHENTICATED',entityType:'article',entityUuid:uuid,result:'SUCCESS'}); }
-  async restoreArticle(uuid:string,ctx:AuditContext){ const result=await this.repository.restoreArticle(uuid,ctx); await this.audit.record({action:'content.article.restored',actorUuid:ctx.actorUuid,userUuid:ctx.actorUuid,actorType:'AUTHENTICATED',entityType:'article',entityUuid:uuid,result:'SUCCESS'}); return result; }
-  async duplicateArticle(uuid:string,ctx:AuditContext){ const source=await this.repository.getArticle(uuid,false); if(!source) throw new ContentNotFoundError('Article not found'); const copy=await this.repository.createArticle({title:`${source.title} (Copy)`,slug:normalizeSlug(`${source.slug}-copy-${Date.now()}`),subtitle:source.subtitle,excerpt:source.excerpt,content:source.content,contentFormat:source.contentFormat,type:source.type,status:'DRAFT',visibility:'PRIVATE',language:source.language,featured:false,allowComments:source.allowComments,wordCount:source.wordCount,readingTimeMin:source.readingTimeMin,categoryUuid:source.categoryUuid,coverMediaUuid:source.coverMedia?.uuid,authorUuid:source.authorUuid,tags:source.tags.map((t)=>t.uuid)},ctx); await this.audit.record({action:'content.article.duplicated',actorUuid:ctx.actorUuid,userUuid:ctx.actorUuid,actorType:'AUTHENTICATED',entityType:'article',entityUuid:copy.uuid,result:'SUCCESS'}); return copy; }
-  async publish(uuid:string,ctx:AuditContext){return this.transition(uuid,'publish',ctx);} async unpublish(uuid:string,ctx:AuditContext){return this.transition(uuid,'unpublish',ctx);} async archive(uuid:string,ctx:AuditContext){return this.transition(uuid,'archive',ctx);}
-  private async transition(uuid:string,action:'publish'|'unpublish'|'archive',ctx:AuditContext){const row=await this.repository.getArticle(uuid,false); if(!row) throw new ContentNotFoundError('Article not found'); if(action==='publish'&&!['APPROVED','SCHEDULED','DRAFT'].includes(row.status)) throw new ContentConflictError(`Cannot publish from ${row.status}`); if(action==='unpublish'&&row.status!=='PUBLISHED') throw new ContentConflictError(`Cannot unpublish from ${row.status}`); if(action==='archive'&&!['PUBLISHED','APPROVED'].includes(row.status)) throw new ContentConflictError(`Cannot archive from ${row.status}`); const status=action==='publish'?'PUBLISHED':action==='unpublish'?'DRAFT':'ARCHIVED'; const result=await this.repository.transitionArticle(uuid,status,ctx); await this.audit.record({action:`content.article.${action}ed`,actorUuid:ctx.actorUuid,userUuid:ctx.actorUuid,actorType:'AUTHENTICATED',entityType:'article',entityUuid:uuid,result:'SUCCESS'}); return result; }
-  async createResource(resource:Exclude<ContentResourceType,'article'>,input:Record<string,unknown>,ctx:AuditContext){return this.repository.createResource(resource,this.cleanResource(resource,input),ctx);} async updateResource(resource:Exclude<ContentResourceType,'article'>,uuid:string,input:Record<string,unknown>,ctx:AuditContext){return this.repository.updateResource(resource,uuid,this.cleanResource(resource,input),ctx);} async deleteResource(resource:Exclude<ContentResourceType,'article'>,uuid:string,ctx:AuditContext){return this.repository.softDeleteResource(resource,uuid,ctx);} async restoreResource(resource:Exclude<ContentResourceType,'article'>,uuid:string,ctx:AuditContext){return this.repository.restoreResource(resource,uuid,ctx);} async getResource(resource:Exclude<ContentResourceType,'article'>,uuid:string,includeDeleted=false){const row=await this.repository.getResource(resource,uuid,includeDeleted);if(!row) throw new ContentNotFoundError(`${resource} not found`);return row;} listResource(resource:Exclude<ContentResourceType,'article'>,query:PaginationQuery){return this.repository.listResource(resource,query);}
-  async revise(type:ContentResourceType,uuid:string,summary:string|undefined,ctx:AuditContext){const row=type==='article'?await this.repository.getArticle(uuid,false):await this.repository.getResource(type,uuid,false);if(!row) throw new ContentNotFoundError(`${type} not found`);await this.repository.createRevision(type,uuid,typeof row.version==='number'?row.version:1,row,summary,ctx);} revisions(type:ContentResourceType,uuid:string){return this.repository.listRevisions(type,uuid);} restoreRevision(type:ContentResourceType,uuid:string,revision:string,ctx:AuditContext){return this.repository.restoreRevision(type,uuid,revision,ctx);}
-  async addRelation(input:Record<string,unknown>,ctx:AuditContext){if(input.sourceUuid===input.targetUuid)throw new ContentValidationError('Self relation is not allowed');return this.repository.addRelation(input,ctx);} listRelations(uuid:string,type?:string){return this.repository.listRelations(uuid,type);} removeRelation(uuid:string,ctx:AuditContext){return this.repository.removeRelation(uuid,ctx);} reorderMenu(uuid:string,itemUuids:string[],ctx:AuditContext){return this.repository.reorderMenu(uuid,itemUuids,ctx);}
-  createMedia(file:{originalname:string;mimetype:string;size:number;buffer:Buffer},metadata:Record<string,unknown>,ctx:AuditContext,key:string,url:string|null){if(!/^(image\/(jpeg|png|webp|gif|avif)|application\/pdf)$/i.test(file.mimetype))throw new ContentValidationError('Unsupported MIME type');if(file.size>10*1024*1024)throw new ContentValidationError('Media exceeds 10 MB');return this.repository.createMediaObject({...metadata,originalName:file.originalname.slice(0,255),storageKey:key,publicUrl:url,provider:String(metadata.provider??'local'),mimeType:file.mimetype,sizeBytes:file.size,uploaderUuid:ctx.actorUuid},ctx);}
-  removeMedia(uuid:string,ctx:AuditContext){return this.repository.deleteMediaObject(uuid,ctx);} toggle(kind:'like'|'bookmark',uuid:string,user:string,ctx:AuditContext){return this.repository.toggleInteraction(kind,uuid,user,ctx);} comment(uuid:string,input:Record<string,unknown>,ctx:AuditContext){return this.repository.createComment(uuid,{...input,userUuid:ctx.actorUuid,content:sanitizeJson(input.content)},ctx);} moderate(uuid:string,status:string,reason:string|undefined,ctx:AuditContext){return this.repository.moderateComment(uuid,status,reason,ctx);} view(uuid:string,ip:string,ua?:string){return this.repository.trackView(uuid,createHash('sha256').update(`${ip}|${ua??''}|estate-pro-content-view-v1`).digest('hex'));} public(resource:'article'|'page',slug:string,language='id'){return this.repository.getPublic(resource,normalizeSlug(slug),language);}
-  private cleanResource(resource:Exclude<ContentResourceType,'article'>,input:Record<string,unknown>){const out={...input};if(resource==='page'&&out.content!==undefined)out.content=sanitizeJson(out.content);if(['faq','testimonial'].includes(resource)&&out.answer!==undefined)out.answer=sanitizeJson(out.answer);if(resource==='testimonial'&&out.quote!==undefined)out.quote=sanitizeJson(out.quote);if(out.slug!==undefined)out.slug=normalizeSlug(this.s(out.slug,'slug',240));if(out.status!==undefined)out.status=this.s(out.status,'status',30);return out;}
-  private s(value:unknown,name:string,max:number){if(typeof value!=='string'||!value.trim()||value.length>max)throw new ContentValidationError(`${name} is invalid`);return value.trim();} private optionalString(value:unknown,max:number){return value===undefined?undefined:this.s(value,'value',max);} private bool(value:unknown,fallback:boolean){if(value===undefined)return fallback;if(typeof value!=='boolean')throw new ContentValidationError('Boolean value is invalid');return value;} private version(value:unknown){if(value===undefined)return undefined;if(typeof value!=='number'||!Number.isInteger(value)||value<1)throw new ContentValidationError('Version is invalid');return value;} private visibility(value:unknown){return value==='PRIVATE'?'PRIVATE' as const:'PUBLIC' as const;} private format(value:unknown){return value==='MARKDOWN'?'MARKDOWN' as const:value==='BLOCKS'?'BLOCKS' as const:'RICH_TEXT' as const;} private articleType(value:unknown){return value==='NEWS'?'NEWS' as const:value==='PRESS_RELEASE'?'PRESS_RELEASE' as const:value==='GUIDE'?'GUIDE' as const:value==='CASE_STUDY'?'CASE_STUDY' as const:'ARTICLE' as const;} private language(value:unknown){return value===undefined?'id':this.s(value,'language',12).toLowerCase();} private optionalUuid(value:unknown){return value===undefined||value===null||value===''?undefined:this.uuid(value);} private uuid(value:unknown){const result=this.s(value,'uuid',36);if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(result))throw new ContentValidationError('UUID must be v4');return result;} private uuidArray(value:unknown){if(value===undefined)return [];if(!Array.isArray(value))throw new ContentValidationError('tagUuids must be an array');return [...new Set(value.map((v)=>this.uuid(v)))];}
+  constructor(
+    @Inject(CONTENT_REPOSITORY) private readonly repository: ContentRepository,
+    @Inject(SECURITY_AUDIT_REPOSITORY)
+    private readonly audit: SecurityAuditRepository,
+  ) {}
+  async createArticle(
+    input: Record<string, unknown>,
+    ctx: AuditContext,
+  ): Promise<ArticleRecord> {
+    const title = this.s(input.title, 'title', 220);
+    const slug = normalizeSlug(this.s(input.slug ?? title, 'slug', 240));
+    const content = sanitizeJson(input.content);
+    const entity = new ArticleEntity(
+      '00000000-0000-4000-8000-000000000000',
+      title,
+      slug,
+      content,
+    );
+    void entity;
+    const result = await this.repository.createArticle(
+      {
+        ...input,
+        title,
+        slug,
+        content,
+        contentFormat: this.format(input.contentFormat),
+        type: this.articleType(input.type),
+        status: 'DRAFT',
+        visibility: this.visibility(input.visibility),
+        language: this.language(input.language),
+        featured: this.bool(input.featured, false),
+        allowComments: this.bool(input.allowComments, true),
+        wordCount: words(content),
+        readingTimeMin: Math.max(1, Math.ceil(words(content) / 200)),
+        categoryUuid: this.optionalUuid(input.categoryUuid),
+        coverMediaUuid: this.optionalUuid(input.coverMediaUuid),
+        authorUuid: this.optionalUuid(input.authorUuid),
+        tags: this.uuidArray(input.tagUuids),
+        seo: input.seo,
+        changeSummary: this.optionalString(input.changeSummary, 500),
+      },
+      ctx,
+    );
+    await this.audit.record({
+      action: 'content.article.created',
+      actorUuid: ctx.actorUuid,
+      userUuid: ctx.actorUuid,
+      actorType: 'AUTHENTICATED',
+      entityType: 'article',
+      entityUuid: result.uuid,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+      requestId: ctx.requestId,
+      result: 'SUCCESS',
+    });
+    return result;
+  }
+  async getArticle(
+    uuid: string,
+    includeDeleted = false,
+    permissions: readonly string[] = [],
+  ): Promise<ArticleResponse> {
+    const row = await this.repository.getArticle(uuid, includeDeleted);
+    if (!row) throw new ContentNotFoundError('Article not found');
+    return {
+      ...row,
+      contentFormat: row.contentFormat as ArticleResponse['contentFormat'],
+      type: row.type as ArticleResponse['type'],
+      status: row.status as ArticleResponse['status'],
+      visibility: row.visibility as ArticleResponse['visibility'],
+      seo: null,
+      permissions: {
+        canView: permissions.includes('content.articles.read'),
+        canEdit: permissions.includes('content.articles.update'),
+        canDelete: permissions.includes('content.articles.delete'),
+        canPublish: permissions.includes('content.articles.publish'),
+        canArchive: permissions.includes('content.articles.archive'),
+        canRestore: permissions.includes('content.articles.restore'),
+      },
+    };
+  }
+  listArticles(
+    query: PaginationQuery & {
+      categoryUuid?: string;
+      tagUuid?: string;
+      featured?: boolean;
+    },
+  ) {
+    return this.repository.listArticles(query);
+  }
+  async updateArticle(
+    uuid: string,
+    input: Record<string, unknown>,
+    ctx: AuditContext,
+  ): Promise<ArticleRecord> {
+    const before = await this.repository.getArticle(uuid, false);
+    if (!before) throw new ContentNotFoundError('Article not found');
+    const safe = {
+      ...input,
+      ...(input.slug !== undefined
+        ? { slug: normalizeSlug(this.s(input.slug, 'slug', 240)) }
+        : {}),
+      ...(input.title !== undefined
+        ? { title: this.s(input.title, 'title', 220) }
+        : {}),
+      ...(input.content !== undefined
+        ? {
+            content: sanitizeJson(input.content),
+            wordCount: words(input.content),
+            readingTimeMin: Math.max(1, Math.ceil(words(input.content) / 200)),
+          }
+        : {}),
+      ...(input.tagUuids !== undefined
+        ? { tags: this.uuidArray(input.tagUuids) }
+        : {}),
+    };
+    const result = await this.repository.updateArticle(
+      uuid,
+      safe,
+      this.version(input.version),
+      ctx,
+    );
+    if (before.slug !== result.slug)
+      await this.repository.ensureSlugRedirect(
+        'article',
+        before.slug,
+        result.slug,
+        ctx,
+      );
+    await this.audit.record({
+      action: 'content.article.updated',
+      actorUuid: ctx.actorUuid,
+      userUuid: ctx.actorUuid,
+      actorType: 'AUTHENTICATED',
+      entityType: 'article',
+      entityUuid: uuid,
+      result: 'SUCCESS',
+    });
+    return result;
+  }
+  async deleteArticle(uuid: string, ctx: AuditContext) {
+    await this.repository.softDeleteArticle(uuid, ctx);
+    await this.audit.record({
+      action: 'content.article.deleted',
+      actorUuid: ctx.actorUuid,
+      userUuid: ctx.actorUuid,
+      actorType: 'AUTHENTICATED',
+      entityType: 'article',
+      entityUuid: uuid,
+      result: 'SUCCESS',
+    });
+  }
+  async restoreArticle(uuid: string, ctx: AuditContext) {
+    const result = await this.repository.restoreArticle(uuid, ctx);
+    await this.audit.record({
+      action: 'content.article.restored',
+      actorUuid: ctx.actorUuid,
+      userUuid: ctx.actorUuid,
+      actorType: 'AUTHENTICATED',
+      entityType: 'article',
+      entityUuid: uuid,
+      result: 'SUCCESS',
+    });
+    return result;
+  }
+  async duplicateArticle(uuid: string, ctx: AuditContext) {
+    const source = await this.repository.getArticle(uuid, false);
+    if (!source) throw new ContentNotFoundError('Article not found');
+    const copy = await this.repository.createArticle(
+      {
+        title: `${source.title} (Copy)`,
+        slug: normalizeSlug(`${source.slug}-copy-${Date.now()}`),
+        subtitle: source.subtitle,
+        excerpt: source.excerpt,
+        content: source.content,
+        contentFormat: source.contentFormat,
+        type: source.type,
+        status: 'DRAFT',
+        visibility: 'PRIVATE',
+        language: source.language,
+        featured: false,
+        allowComments: source.allowComments,
+        wordCount: source.wordCount,
+        readingTimeMin: source.readingTimeMin,
+        categoryUuid: source.categoryUuid,
+        coverMediaUuid: source.coverMedia?.uuid,
+        authorUuid: source.authorUuid,
+        tags: source.tags.map((t) => t.uuid),
+      },
+      ctx,
+    );
+    await this.audit.record({
+      action: 'content.article.duplicated',
+      actorUuid: ctx.actorUuid,
+      userUuid: ctx.actorUuid,
+      actorType: 'AUTHENTICATED',
+      entityType: 'article',
+      entityUuid: copy.uuid,
+      result: 'SUCCESS',
+    });
+    return copy;
+  }
+  async publish(uuid: string, ctx: AuditContext) {
+    return this.transition(uuid, 'publish', ctx);
+  }
+  async unpublish(uuid: string, ctx: AuditContext) {
+    return this.transition(uuid, 'unpublish', ctx);
+  }
+  async archive(uuid: string, ctx: AuditContext) {
+    return this.transition(uuid, 'archive', ctx);
+  }
+  private async transition(
+    uuid: string,
+    action: 'publish' | 'unpublish' | 'archive',
+    ctx: AuditContext,
+  ) {
+    const row = await this.repository.getArticle(uuid, false);
+    if (!row) throw new ContentNotFoundError('Article not found');
+    if (
+      action === 'publish' &&
+      !['APPROVED', 'SCHEDULED', 'DRAFT'].includes(row.status)
+    )
+      throw new ContentConflictError(`Cannot publish from ${row.status}`);
+    if (action === 'unpublish' && row.status !== 'PUBLISHED')
+      throw new ContentConflictError(`Cannot unpublish from ${row.status}`);
+    if (action === 'archive' && !['PUBLISHED', 'APPROVED'].includes(row.status))
+      throw new ContentConflictError(`Cannot archive from ${row.status}`);
+    const status =
+      action === 'publish'
+        ? 'PUBLISHED'
+        : action === 'unpublish'
+          ? 'DRAFT'
+          : 'ARCHIVED';
+    const result = await this.repository.transitionArticle(uuid, status, ctx);
+    await this.audit.record({
+      action: `content.article.${action}ed`,
+      actorUuid: ctx.actorUuid,
+      userUuid: ctx.actorUuid,
+      actorType: 'AUTHENTICATED',
+      entityType: 'article',
+      entityUuid: uuid,
+      result: 'SUCCESS',
+    });
+    return result;
+  }
+  async createResource(
+    resource: Exclude<ContentResourceType, 'article'>,
+    input: Record<string, unknown>,
+    ctx: AuditContext,
+  ) {
+    return this.repository.createResource(
+      resource,
+      this.cleanResource(resource, input),
+      ctx,
+    );
+  }
+  async updateResource(
+    resource: Exclude<ContentResourceType, 'article'>,
+    uuid: string,
+    input: Record<string, unknown>,
+    ctx: AuditContext,
+  ) {
+    return this.repository.updateResource(
+      resource,
+      uuid,
+      this.cleanResource(resource, input),
+      ctx,
+    );
+  }
+  async deleteResource(
+    resource: Exclude<ContentResourceType, 'article'>,
+    uuid: string,
+    ctx: AuditContext,
+  ) {
+    return this.repository.softDeleteResource(resource, uuid, ctx);
+  }
+  async restoreResource(
+    resource: Exclude<ContentResourceType, 'article'>,
+    uuid: string,
+    ctx: AuditContext,
+  ) {
+    return this.repository.restoreResource(resource, uuid, ctx);
+  }
+  async getResource(
+    resource: Exclude<ContentResourceType, 'article'>,
+    uuid: string,
+    includeDeleted = false,
+  ) {
+    const row = await this.repository.getResource(
+      resource,
+      uuid,
+      includeDeleted,
+    );
+    if (!row) throw new ContentNotFoundError(`${resource} not found`);
+    return row;
+  }
+  listResource(
+    resource: Exclude<ContentResourceType, 'article'>,
+    query: PaginationQuery,
+  ) {
+    return this.repository.listResource(resource, query);
+  }
+  async revise(
+    type: ContentResourceType,
+    uuid: string,
+    summary: string | undefined,
+    ctx: AuditContext,
+  ) {
+    const row =
+      type === 'article'
+        ? await this.repository.getArticle(uuid, false)
+        : await this.repository.getResource(type, uuid, false);
+    if (!row) throw new ContentNotFoundError(`${type} not found`);
+    await this.repository.createRevision(
+      type,
+      uuid,
+      typeof row.version === 'number' ? row.version : 1,
+      row,
+      summary,
+      ctx,
+    );
+  }
+  revisions(type: ContentResourceType, uuid: string) {
+    return this.repository.listRevisions(type, uuid);
+  }
+  restoreRevision(
+    type: ContentResourceType,
+    uuid: string,
+    revision: string,
+    ctx: AuditContext,
+  ) {
+    return this.repository.restoreRevision(type, uuid, revision, ctx);
+  }
+  async addRelation(input: Record<string, unknown>, ctx: AuditContext) {
+    if (input.sourceUuid === input.targetUuid)
+      throw new ContentValidationError('Self relation is not allowed');
+    return this.repository.addRelation(input, ctx);
+  }
+  listRelations(uuid: string, type?: string) {
+    return this.repository.listRelations(uuid, type);
+  }
+  removeRelation(uuid: string, ctx: AuditContext) {
+    return this.repository.removeRelation(uuid, ctx);
+  }
+  reorderMenu(uuid: string, itemUuids: string[], ctx: AuditContext) {
+    return this.repository.reorderMenu(uuid, itemUuids, ctx);
+  }
+  createMedia(
+    file: {
+      originalname: string;
+      mimetype: string;
+      size: number;
+      buffer: Buffer;
+    },
+    metadata: Record<string, unknown>,
+    ctx: AuditContext,
+    key: string,
+    url: string | null,
+  ) {
+    if (
+      !/^(image\/(jpeg|png|webp|gif|avif)|application\/pdf)$/i.test(
+        file.mimetype,
+      )
+    )
+      throw new ContentValidationError('Unsupported MIME type');
+    if (file.size > 10 * 1024 * 1024)
+      throw new ContentValidationError('Media exceeds 10 MB');
+    return this.repository.createMediaObject(
+      {
+        ...metadata,
+        originalName: file.originalname.slice(0, 255),
+        storageKey: key,
+        publicUrl: url,
+        provider: String(metadata.provider ?? 'local'),
+        mimeType: file.mimetype,
+        sizeBytes: file.size,
+        uploaderUuid: ctx.actorUuid,
+      },
+      ctx,
+    );
+  }
+  removeMedia(uuid: string, ctx: AuditContext) {
+    return this.repository.deleteMediaObject(uuid, ctx);
+  }
+  toggle(
+    kind: 'like' | 'bookmark',
+    uuid: string,
+    user: string,
+    ctx: AuditContext,
+  ) {
+    return this.repository.toggleInteraction(kind, uuid, user, ctx);
+  }
+  comment(uuid: string, input: Record<string, unknown>, ctx: AuditContext) {
+    return this.repository.createComment(
+      uuid,
+      {
+        ...input,
+        userUuid: ctx.actorUuid,
+        content: sanitizeJson(input.content),
+      },
+      ctx,
+    );
+  }
+  moderate(
+    uuid: string,
+    status: string,
+    reason: string | undefined,
+    ctx: AuditContext,
+  ) {
+    return this.repository.moderateComment(uuid, status, reason, ctx);
+  }
+  view(uuid: string, ip: string, ua?: string) {
+    return this.repository.trackView(
+      uuid,
+      createHash('sha256')
+        .update(`${ip}|${ua ?? ''}|estate-pro-content-view-v1`)
+        .digest('hex'),
+    );
+  }
+  public(resource: 'article' | 'page', slug: string, language = 'id') {
+    return this.repository.getPublic(resource, normalizeSlug(slug), language);
+  }
+  private cleanResource(
+    resource: Exclude<ContentResourceType, 'article'>,
+    input: Record<string, unknown>,
+  ) {
+    const out = { ...input };
+    if (resource === 'page' && out.content !== undefined)
+      out.content = sanitizeJson(out.content);
+    if (['faq', 'testimonial'].includes(resource) && out.answer !== undefined)
+      out.answer = sanitizeJson(out.answer);
+    if (resource === 'testimonial' && out.quote !== undefined)
+      out.quote = sanitizeJson(out.quote);
+    if (out.slug !== undefined)
+      out.slug = normalizeSlug(this.s(out.slug, 'slug', 240));
+    if (out.status !== undefined) out.status = this.s(out.status, 'status', 30);
+    return out;
+  }
+  private s(value: unknown, name: string, max: number) {
+    if (typeof value !== 'string' || !value.trim() || value.length > max)
+      throw new ContentValidationError(`${name} is invalid`);
+    return value.trim();
+  }
+  private optionalString(value: unknown, max: number) {
+    return value === undefined ? undefined : this.s(value, 'value', max);
+  }
+  private bool(value: unknown, fallback: boolean) {
+    if (value === undefined) return fallback;
+    if (typeof value !== 'boolean')
+      throw new ContentValidationError('Boolean value is invalid');
+    return value;
+  }
+  private version(value: unknown) {
+    if (value === undefined) return undefined;
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 1)
+      throw new ContentValidationError('Version is invalid');
+    return value;
+  }
+  private visibility(value: unknown) {
+    return value === 'PRIVATE' ? ('PRIVATE' as const) : ('PUBLIC' as const);
+  }
+  private format(value: unknown) {
+    return value === 'MARKDOWN'
+      ? ('MARKDOWN' as const)
+      : value === 'BLOCKS'
+        ? ('BLOCKS' as const)
+        : ('RICH_TEXT' as const);
+  }
+  private articleType(value: unknown) {
+    return value === 'NEWS'
+      ? ('NEWS' as const)
+      : value === 'PRESS_RELEASE'
+        ? ('PRESS_RELEASE' as const)
+        : value === 'GUIDE'
+          ? ('GUIDE' as const)
+          : value === 'CASE_STUDY'
+            ? ('CASE_STUDY' as const)
+            : ('ARTICLE' as const);
+  }
+  private language(value: unknown) {
+    return value === undefined
+      ? 'id'
+      : this.s(value, 'language', 12).toLowerCase();
+  }
+  private optionalUuid(value: unknown) {
+    return value === undefined || value === null || value === ''
+      ? undefined
+      : this.uuid(value);
+  }
+  private uuid(value: unknown) {
+    const result = this.s(value, 'uuid', 36);
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        result,
+      )
+    )
+      throw new ContentValidationError('UUID must be v4');
+    return result;
+  }
+  private uuidArray(value: unknown) {
+    if (value === undefined) return [];
+    if (!Array.isArray(value))
+      throw new ContentValidationError('tagUuids must be an array');
+    return [...new Set(value.map((v) => this.uuid(v)))];
+  }
 }

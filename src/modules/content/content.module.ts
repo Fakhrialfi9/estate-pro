@@ -7,7 +7,24 @@ import { PrismaContentOperationsRepository } from './infrastructure/persistence/
 import { PrismaContentRepository } from './infrastructure/prisma-content.repository.js';
 import { CONTENT_REPOSITORY } from './domain/repositories/content.repository.js';
 import { ContentService } from './application/content.service.js';
-import { CreateArticleUseCase, GetArticleUseCase, ListArticlesUseCase, UpdateArticleUseCase, DeleteArticleUseCase, RestoreArticleUseCase, DuplicateArticleUseCase, PublishArticleUseCase, UnpublishArticleUseCase, ArchiveArticleUseCase, ContentResourceUseCase, MediaUseCase, ContentRelationUseCase, ListRevisionsUseCase, RestoreRevisionUseCase, EngagementUseCase } from './application/use-cases/content.use-cases.js';
+import {
+  CreateArticleUseCase,
+  GetArticleUseCase,
+  ListArticlesUseCase,
+  UpdateArticleUseCase,
+  DeleteArticleUseCase,
+  RestoreArticleUseCase,
+  DuplicateArticleUseCase,
+  PublishArticleUseCase,
+  UnpublishArticleUseCase,
+  ArchiveArticleUseCase,
+  ContentResourceUseCase,
+  MediaUseCase,
+  ContentRelationUseCase,
+  ListRevisionsUseCase,
+  RestoreRevisionUseCase,
+  EngagementUseCase,
+} from './application/use-cases/content.use-cases.js';
 import { ContentController } from './presentation/content.controller.js';
 import { PublicContentController } from './presentation/public-content.controller.js';
 import { STORAGE_PROVIDER } from '../../infrastructure/storage/storage-provider.js';

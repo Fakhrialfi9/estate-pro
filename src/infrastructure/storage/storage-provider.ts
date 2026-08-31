@@ -4,7 +4,11 @@ export interface StorageObject {
 }
 
 export interface StorageProvider {
-  put(input: { key: string; content: Buffer; contentType: string }): Promise<StorageObject>;
+  put(input: {
+    key: string;
+    content: Buffer;
+    contentType: string;
+  }): Promise<StorageObject>;
   delete(key: string): Promise<void>;
 }
 
