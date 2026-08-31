@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import compression from 'compression';
 import type { NextFunction, Request, Response } from 'express';
 import type { HelmetOptions } from 'helmet';
@@ -9,6 +10,7 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 
 import { SecureValidationPipe } from './common/pipes/secure-validation.pipe.js';
+import { applyOpenApiContract } from './common/swagger/openapi-contract.js';
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,100}$/;
 
@@ -80,6 +82,51 @@ export const configureApplication = (app: NestExpressApplication): void => {
       ),
     }),
   );
+};
+
+export const configureSwagger = (app: NestExpressApplication): void => {
+  const configService = app.get(ConfigService);
+  const swaggerEnabled =
+    configService.get<boolean>('api.swaggerEnabled') ?? false;
+
+  if (!swaggerEnabled) {
+    return;
+  }
+
+  const apiVersion = configService.getOrThrow<string>('api.version');
+  const apiPrefix = configService.getOrThrow<string>('api.prefix');
+  const appVersion = configService.getOrThrow<string>('app.version');
+  const appName = configService.getOrThrow<string>('app.name');
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle(`${appName} API`)
+    .setDescription(
+      `Estate Pro HTTP API (${apiPrefix}/${apiVersion}). OpenAPI describes the public API contract; runtime validation, serialization, authentication, authorization, and error behavior remain authoritative.`,
+    )
+    .setVersion(appVersion)
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Access token returned by POST /api/v1/auth/login.',
+      },
+      'bearer',
+    )
+    .build();
+
+  const document = applyOpenApiContract(
+    SwaggerModule.createDocument(app, swaggerConfig),
+    configService,
+  );
+
+  SwaggerModule.setup('docs', app, document, {
+    jsonDocumentUrl: 'docs-json',
+    yamlDocumentUrl: 'docs-yaml',
+    swaggerOptions: {
+      persistAuthorization: false,
+    },
+  });
 };
 
 export const getApplicationAddress = (
