@@ -216,7 +216,8 @@ export class PrismaArticleRepository {
             featured: input.featured === true,
             allowComments: input.allowComments !== false,
             wordCount:
-              typeof input.wordCount === 'number' && Number.isFinite(input.wordCount)
+              typeof input.wordCount === 'number' &&
+              Number.isFinite(input.wordCount)
                 ? input.wordCount
                 : 0,
             readingTimeMin:
@@ -291,8 +292,7 @@ export class PrismaArticleRepository {
     if (query.language) where.language = query.language;
     if (query.featured !== undefined) where.featured = query.featured;
     if (query.categoryUuid) where.category = { uuid: query.categoryUuid };
-    if (query.tagUuid)
-      where.tags = { some: { tag: { uuid: query.tagUuid } } };
+    if (query.tagUuid) where.tags = { some: { tag: { uuid: query.tagUuid } } };
     if (query.search?.trim()) {
       const search = query.search.trim().slice(0, 120);
       where.OR = [

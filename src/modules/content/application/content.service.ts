@@ -62,7 +62,11 @@ export function sanitizeHtml(value: string): string {
       if (!ALLOWED_TAGS.has(lower)) return '';
       if (lower !== 'a') return `<${full.startsWith('</') ? '/' : ''}${lower}>`;
       const href = full.match(/href\s*=\s*["']([^"']*)["']/i)?.[1]?.trim();
-      if (!href || !/^(https?:\/\/|mailto:)/i.test(href) || hasControlCharacters(href))
+      if (
+        !href ||
+        !/^(https?:\/\/|mailto:)/i.test(href) ||
+        hasControlCharacters(href)
+      )
         return '<a>';
       return `<a href="${href.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}">`;
     },

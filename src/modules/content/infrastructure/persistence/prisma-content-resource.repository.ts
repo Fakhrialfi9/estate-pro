@@ -28,7 +28,10 @@ type ModelArgs = {
   include?: unknown;
 };
 type CreateArgs = { data: Record<string, unknown> };
-type UpdateArgs = { where: Record<string, unknown>; data: Record<string, unknown> };
+type UpdateArgs = {
+  where: Record<string, unknown>;
+  data: Record<string, unknown>;
+};
 type ResourceModel = {
   findMany(args: ModelArgs): Promise<unknown[]>;
   findFirst(args: ModelArgs): Promise<unknown | null>;
@@ -170,7 +173,9 @@ export class PrismaContentResourceRepository {
   ): Promise<Record<string, unknown>> {
     try {
       const model = this.model(resource);
-      const item = await model.create({ data: this.createData(resource, input, ctx) });
+      const item = await model.create({
+        data: this.createData(resource, input, ctx),
+      });
       if (resource === 'menu' && Array.isArray(input.items))
         await this.replaceMenuItems(item.id, input.items);
       const fresh = await this.get(resource, item.uuid, true);
@@ -190,7 +195,10 @@ export class PrismaContentResourceRepository {
   ): Promise<Record<string, unknown>> {
     try {
       const model = this.model(resource);
-      await model.update({ where: { uuid }, data: this.updateData(resource, input, ctx) });
+      await model.update({
+        where: { uuid },
+        data: this.updateData(resource, input, ctx),
+      });
       if (resource === 'menu' && Array.isArray(input.items)) {
         const current = await model.findUnique({ where: { uuid } });
         const id = this.objectBigInt(current, 'id');
@@ -269,7 +277,9 @@ export class PrismaContentResourceRepository {
     return null;
   }
 
-  async createMedia(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+  async createMedia(
+    input: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
     const folder =
       typeof input.folderUuid === 'string'
         ? await this.prisma.contentMediaFolder.findFirst({
@@ -413,13 +423,24 @@ export class PrismaContentResourceRepository {
   }
 
   private versioned(resource: string): boolean {
-    return ['page', 'category', 'tag', 'faq', 'testimonial', 'banner', 'menu'].includes(
-      resource,
-    );
+    return [
+      'page',
+      'category',
+      'tag',
+      'faq',
+      'testimonial',
+      'banner',
+      'menu',
+    ].includes(resource);
   }
 
-  private model(resource: Exclude<ContentResourceType, 'article'>): ResourceModel {
-    const delegates: Record<Exclude<ContentResourceType, 'article'>, unknown> = {
+  private model(
+    resource: Exclude<ContentResourceType, 'article'>,
+  ): ResourceModel {
+    const delegates: Record<
+      Exclude<ContentResourceType, 'article'>,
+      unknown
+    > = {
       page: this.prisma.contentPage,
       category: this.prisma.contentArticleCategory,
       tag: this.prisma.contentTag,
@@ -445,9 +466,15 @@ export class PrismaContentResourceRepository {
         slug: requiredString(input.slug, 'slug'),
         template: stringOrDefault(input.template, 'default'),
         content: jsonValue(input.content),
-        contentFormat: stringOrDefault(input.contentFormat, 'RICH_TEXT') as ContentFormat,
+        contentFormat: stringOrDefault(
+          input.contentFormat,
+          'RICH_TEXT',
+        ) as ContentFormat,
         status: 'DRAFT',
-        visibility: stringOrDefault(input.visibility, 'PUBLIC') as ContentVisibility,
+        visibility: stringOrDefault(
+          input.visibility,
+          'PUBLIC',
+        ) as ContentVisibility,
         language: stringOrDefault(input.language, 'id'),
         createdBy: ctx.actorUuid,
         version: 1,
@@ -456,7 +483,8 @@ export class PrismaContentResourceRepository {
       return {
         name: requiredString(input.name, 'name'),
         slug: requiredString(input.slug, 'slug'),
-        description: typeof input.description === 'string' ? input.description : null,
+        description:
+          typeof input.description === 'string' ? input.description : null,
         status: 'DRAFT',
         createdBy: ctx.actorUuid,
         version: 1,
@@ -465,7 +493,8 @@ export class PrismaContentResourceRepository {
       return {
         name: requiredString(input.name, 'name'),
         slug: requiredString(input.slug, 'slug'),
-        description: typeof input.description === 'string' ? input.description : null,
+        description:
+          typeof input.description === 'string' ? input.description : null,
         createdBy: ctx.actorUuid,
         version: 1,
       };
@@ -502,7 +531,10 @@ export class PrismaContentResourceRepository {
         title: typeof input.title === 'string' ? input.title : null,
         subtitle: typeof input.subtitle === 'string' ? input.subtitle : null,
         linkUrl: typeof input.linkUrl === 'string' ? input.linkUrl : null,
-        placement: stringOrDefault(input.placement, 'HOME_HERO') as BannerPlacement,
+        placement: stringOrDefault(
+          input.placement,
+          'HOME_HERO',
+        ) as BannerPlacement,
         priority: typeof input.priority === 'number' ? input.priority : 0,
         startAt: optionalDate(input.startAt, 'startAt'),
         endAt: optionalDate(input.endAt, 'endAt'),
@@ -581,11 +613,20 @@ export class PrismaContentResourceRepository {
     if (input.status !== undefined)
       data.status = requiredString(input.status, 'status') as ContentStatus;
     if (input.visibility !== undefined)
-      data.visibility = requiredString(input.visibility, 'visibility') as ContentVisibility;
+      data.visibility = requiredString(
+        input.visibility,
+        'visibility',
+      ) as ContentVisibility;
     if (input.contentFormat !== undefined)
-      data.contentFormat = requiredString(input.contentFormat, 'contentFormat') as ContentFormat;
+      data.contentFormat = requiredString(
+        input.contentFormat,
+        'contentFormat',
+      ) as ContentFormat;
     if (input.placement !== undefined)
-      data.placement = requiredString(input.placement, 'placement') as BannerPlacement;
+      data.placement = requiredString(
+        input.placement,
+        'placement',
+      ) as BannerPlacement;
     if (input.startAt !== undefined)
       data.startAt = optionalDate(input.startAt, 'startAt');
     if (input.endAt !== undefined)
@@ -594,7 +635,10 @@ export class PrismaContentResourceRepository {
     return data;
   }
 
-  private async replaceMenuItems(menuId: bigint, values: unknown[]): Promise<void> {
+  private async replaceMenuItems(
+    menuId: bigint,
+    values: unknown[],
+  ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       await tx.contentMenuItem.deleteMany({ where: { menuId } });
       const seen = new Set<string>();
@@ -632,14 +676,20 @@ export class PrismaContentResourceRepository {
   }
 
   private mapError(error: unknown): never {
-    if (error instanceof ContentConflictError || error instanceof ContentNotFoundError)
+    if (
+      error instanceof ContentConflictError ||
+      error instanceof ContentNotFoundError
+    )
       throw error;
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002')
         throw new ContentConflictError('A unique content value already exists');
       if (error.code === 'P2003')
-        throw new ContentConflictError('Content is referenced by another record');
-      if (error.code === 'P2025') throw new ContentNotFoundError('Content not found');
+        throw new ContentConflictError(
+          'Content is referenced by another record',
+        );
+      if (error.code === 'P2025')
+        throw new ContentNotFoundError('Content not found');
     }
     throw error;
   }
