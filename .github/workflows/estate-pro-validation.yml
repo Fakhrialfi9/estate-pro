@@ -32,15 +32,10 @@ jobs:
         shell: bash
         run: |
           mapfile -d '' files < <(git ls-files -z -- '*.ts')
-          if [ "${#files[@]}" -gt 0 ]; then
-            npx prettier --write "${files[@]}"
-          fi
+          if [ "${#files[@]}" -gt 0 ]; then npx prettier --write "${files[@]}"; fi
       - name: Commit synchronized repository state to main
         run: |
-          if git diff --quiet -- package-lock.json && git diff --quiet -- src test; then
-            echo 'Lockfile and tracked formatting are already synchronized.'
-            exit 0
-          fi
+          if git diff --quiet -- package-lock.json && git diff --quiet -- src test; then echo 'Lockfile and tracked formatting are already synchronized.'; exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add package-lock.json src test
@@ -58,16 +53,14 @@ jobs:
       DATABASE_CONNECT_TIMEOUT_MS: 5000
       DATABASE_ACQUIRE_TIMEOUT_MS: 10000
       DATABASE_POOL_IDLE_TIMEOUT_SEC: 30
+      SECURITY_CORS_ORIGINS: http://localhost:3000
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
-        with:
-          ref: main
+        with: { ref: main }
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+        with: { node-version: 22, cache: npm }
       - name: Pin npm
         run: npm install --global npm@11.18.0
       - name: Install MariaDB
