@@ -29,16 +29,16 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
-import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
-import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
+import { JwtAuthGuard } from '../../../auth/security/jwt-auth.guard.js';
+import { AuthorizationGuard } from '../../../../common/security/authorization.guard.js';
+import { RequirePermissions } from '../../../../common/security/authorization.decorators.js';
 import {
   ContentConflictError,
   ContentConcurrencyError,
   ContentNotFoundError,
   ContentValidationError,
-} from '../application/content.errors.js';
-import { ContentService } from '../application/content.service.js';
+} from '.../../application/content.errors.js';
+import { ContentService } from '.../application/content.service.js';
 import {
   CreateArticleUseCase,
   GetArticleUseCase,
@@ -56,7 +56,7 @@ import {
   ListRevisionsUseCase,
   RestoreRevisionUseCase,
   EngagementUseCase,
-} from '../application/use-cases/content.use-cases.js';
+} from '.../application/use-cases/content.use-cases.js';
 import {
   ArticleCreateDto,
   ArticleUpdateDto,
@@ -66,8 +66,8 @@ import {
   RelationDto,
   ResourceDto,
 } from './dto/content.dto.js';
-import { STORAGE_PROVIDER } from '../../../infrastructure/storage/storage-provider.js';
-import type { StorageProvider } from '../../../infrastructure/storage/storage-provider.js';
+import { STORAGE_PROVIDER } from '../../../../infrastructure/storage/storage-provider.js';
+import type { StorageProvider } from '../../../../infrastructure/storage/storage-provider.js';
 
 type AuthRequest = Request & {
   user?: { sub?: string; permissions?: string[] };
