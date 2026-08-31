@@ -19,3 +19,20 @@ Permissions are evaluated by the existing `AuthorizationGuard`/`AuthorizationSer
 | Engagement | `content.articles.interact` | — | — | — | — | — |
 
 Public read endpoints are explicitly marked `@Public()` and never grant access to management mutations.
+
+## CRM Permission Matrix
+
+CRM reuses the same authorization stack. Private CRM controllers require JWT authentication and one explicit CRM permission. There is no second CRM-specific authorization framework.
+
+| Resource | Read | Create | Update | Delete/Archive | Special |
+|---|---|---|---|---|---|
+| Contacts | `crm.contacts.read` | `crm.contacts.create` | `crm.contacts.update` | `crm.contacts.archive` | `crm.contacts.consent` |
+| Leads | `crm.leads.read` | `crm.leads.create` | `crm.leads.update` | `crm.leads.archive` | `crm.leads.assign`, `crm.leads.merge` |
+| CRM config | `crm.config.read` | `crm.config.manage` | `crm.config.manage` | `crm.config.manage` | source/campaign/type/status/tag |
+| Scoring | `crm.scoring.read` | `crm.scoring.manage` | `crm.scoring.manage` | `crm.scoring.manage` | score recalculation uses `crm.leads.update` |
+| Duplicate review | `crm.duplicates.read` | — | `crm.duplicates.manage` | — | merge requires `crm.leads.merge` |
+| Inquiries | `crm.inquiries.read` | `crm.inquiries.create` | `crm.inquiries.update` | — | conversion requires `crm.inquiries.convert` |
+| Activities | `crm.activities.read` | `crm.activities.create` | `crm.activities.update` | — | lifecycle transitions are explicit operations |
+| Communications | `crm.communications.read` | `crm.communications.create` | `crm.communications.update` | — | templates use `crm.communications.manage` |
+
+Assignment, merge, consent, conversion, lifecycle transitions, and score recalculation are explicit application operations; clients cannot simulate them by arbitrary PATCH fields. Public inquiry intake is isolated in `CrmPublicInquiryController` and does not inherit management permissions.
