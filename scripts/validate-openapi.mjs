@@ -66,14 +66,10 @@ const validateSchemaQuality = (document, schema, location, seen = new Set()) => 
     for (const required of schema.required ?? []) {
       assert(typeof required === 'string' && required in properties, `Required property ${String(required)} is missing from properties at ${location}`);
     }
-    for (const [propertyName, propertySchema] of Object.entries(properties)) {
-      validateSchemaQuality(document, propertySchema, `${location}.${propertyName}`, seen);
-    }
+    for (const [propertyName, propertySchema] of Object.entries(properties)) validateSchemaQuality(document, propertySchema, `${location}.${propertyName}`, seen);
   }
   if (schema.items !== undefined) validateSchemaQuality(document, schema.items, `${location}[]`, seen);
-  for (const branch of [...(Array.isArray(schema.oneOf) ? schema.oneOf : []), ...(Array.isArray(schema.anyOf) ? schema.anyOf : []), ...(Array.isArray(schema.allOf) ? schema.allOf : [])]) {
-    validateSchemaQuality(document, branch, location, seen);
-  }
+  for (const branch of [...(Array.isArray(schema.oneOf) ? schema.oneOf : []), ...(Array.isArray(schema.anyOf) ? schema.anyOf : []), ...(Array.isArray(schema.allOf) ? schema.allOf : [])]) validateSchemaQuality(document, branch, location, seen);
   if ('default' in schema) assert(typeMatches(schema, schema.default), `Default value violates schema type at ${location}`);
 };
 
@@ -90,9 +86,7 @@ const operationSchemasReferencedByResponses = (document) => {
   };
   for (const item of Object.values(document.paths ?? {})) {
     if (!isObject(item)) continue;
-    for (const [method, operation] of Object.entries(item)) {
-      if (METHODS.has(method) && isObject(operation)) collect(operation.responses);
-    }
+    for (const [method, operation] of Object.entries(item)) if (METHODS.has(method) && isObject(operation)) collect(operation.responses);
   }
   return refs;
 };
@@ -120,8 +114,8 @@ export const validateOpenApiDocument = (document) => {
   for (const [path, item] of Object.entries(document.paths)) {
     assert(path.startsWith('/api/v1/'), `Unversioned API path detected: ${path}`);
     assert(isObject(item), `Path item is invalid: ${path}`);
-
     const templates = [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]).filter(Boolean);
+
     for (const [method, operation] of Object.entries(item)) {
       if (!METHODS.has(method)) continue;
       assert(isObject(operation), `Operation is invalid: ${method.toUpperCase()} ${path}`);
@@ -130,18 +124,16 @@ export const validateOpenApiDocument = (document) => {
       assert(!operationIds.has(operation.operationId), `Duplicate operationId: ${operation.operationId}`);
       operationIds.add(operation.operationId);
       assert(isObject(operation.responses) && Object.keys(operation.responses).length > 0, `Missing responses: ${method.toUpperCase()} ${path}`);
-
       const successStatuses = Object.keys(operation.responses).filter((status) => /^2\d\d$/.test(status));
       assert(successStatuses.length > 0, `Missing success response: ${method.toUpperCase()} ${path}`);
-      if (successStatuses.every((status) => status !== '204')) {
-        assert(successStatuses.some((status) => {
-          const response = operation.responses[status];
-          return isObject(response) && isObject(response.content) && Object.keys(response.content).length > 0;
-        }), `Success response has no response content: ${method.toUpperCase()} ${path}`);
-      }
-      assert(isObject(operation.security), '');
-      if (PUBLIC_PATHS.has(path)) assert(Array.isArray(operation.security) && operation.security.length === 0, `Public endpoint has a security requirement: ${method.toUpperCase()} ${path}`);
-      else assert(Array.isArray(operation.security) && operation.security.some((requirement) => isObject(requirement) && 'bearer' in requirement), `Protected endpoint is missing bearer security: ${method.toUpperCase()} ${path}`);
+      if (successStatuses.every((status) => status !== '204')) assert(successStatuses.some((status) => {
+        const response = operation.responses[status];
+        return isObject(response) && isObject(response.content) && Object.keys(response.content).length > 0;
+      }), `Success response has no response content: ${method.toUpperCase()} ${path}`);
+
+      assert(Array.isArray(operation.security), `Missing security metadata: ${method.toUpperCase()} ${path}`);
+      if (PUBLIC_PATHS.has(path)) assert(operation.security.length === 0, `Public endpoint has a security requirement: ${method.toUpperCase()} ${path}`);
+      else assert(operation.security.some((requirement) => isObject(requirement) && 'bearer' in requirement), `Protected endpoint is missing bearer security: ${method.toUpperCase()} ${path}`);
 
       if (operation.requestBody) {
         requestBodies.add(`${method.toUpperCase()} ${path}`);
@@ -157,23 +149,20 @@ export const validateOpenApiDocument = (document) => {
         assert(parameter.required === true, `Path parameter must be required: ${template} in ${method.toUpperCase()} ${path}`);
       }
 
-      const statusCodes = Object.keys(operation.responses);
-      for (const status of statusCodes) {
+      for (const status of Object.keys(operation.responses)) {
         assert(/^(?:2\d\d|3\d\d|4\d\d|5\d\d|default)$/.test(status), `Invalid response status ${status}: ${method.toUpperCase()} ${path}`);
         const response = operation.responses[status];
         assert(isObject(response), `Invalid response object ${status}: ${method.toUpperCase()} ${path}`);
         if (status === '204') assert(!response.content, `204 response must not define a response body: ${method.toUpperCase()} ${path}`);
         if (response.content) {
           assert(isObject(response.content), `Invalid response content: ${method.toUpperCase()} ${path}`);
-          if (response.content['application/json']) {
-            assert(isObject(response.content['application/json'].schema), `JSON response is missing schema: ${method.toUpperCase()} ${path} ${status}`);
-          }
+          if (response.content['application/json']) assert(isObject(response.content['application/json'].schema), `JSON response is missing schema: ${method.toUpperCase()} ${path} ${status}`);
         }
       }
     }
   }
 
-  for (const [name, schema] of Object.entries(document.components.schemas)) validateSchemaQuality(document, schema, `components.schemas.${name}`);
+  for (const [name, componentSchema] of Object.entries(document.components.schemas)) validateSchemaQuality(document, componentSchema, `components.schemas.${name}`);
   for (const reference of responseRefs) {
     if (!reference.startsWith('#/components/schemas/')) continue;
     const schemaName = reference.slice('#/components/schemas/'.length);
@@ -184,15 +173,11 @@ export const validateOpenApiDocument = (document) => {
   for (const reference of responseRefs) {
     if (!reference.startsWith('#/components/schemas/')) continue;
     const name = reference.slice('#/components/schemas/'.length);
-    const schema = document.components.schemas[name];
-    if (!isObject(schema) || !isObject(schema.properties)) continue;
-    for (const propertyName of Object.keys(schema.properties)) {
-      if (SENSITIVE_NAMES.has(propertyName)) sensitiveResponseSchemaNames.add(name);
-    }
+    const componentSchema = document.components.schemas[name];
+    if (!isObject(componentSchema) || !isObject(componentSchema.properties)) continue;
+    if (Object.keys(componentSchema.properties).some((propertyName) => SENSITIVE_NAMES.has(propertyName))) sensitiveResponseSchemaNames.add(name);
   }
-  for (const name of sensitiveResponseSchemaNames) {
-    assert(RESPONSE_ALLOWLIST.has(name), `Sensitive field appears in response schema ${name} without an explicit response allowlist entry`);
-  }
+  for (const name of sensitiveResponseSchemaNames) assert(RESPONSE_ALLOWLIST.has(name), `Sensitive field appears in response schema ${name} without an explicit response allowlist entry`);
 
   return { operationCount, schemaCount: Object.keys(document.components.schemas).length, requestBodyCount: requestBodies.size };
 };
