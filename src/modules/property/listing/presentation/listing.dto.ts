@@ -26,6 +26,7 @@ import {
   type ListingVisibility,
   type PropertyOwnerType,
 } from '../domain/listing.types.js';
+
 export class CreateListingDto {
   @IsUUID('4') propertyUuid!: string;
   @IsString() @MinLength(3) @MaxLength(80) listingCode!: string;
@@ -37,14 +38,15 @@ export class CreateListingDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => ListingPriceDto)
-  @ApiPropertyOptional({ type: () => ListingPriceDto })
+  @ApiPropertyOptional({ type: ListingPriceDto })
   price?: ListingPriceDto;
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ListingPaymentDto)
-  @ApiPropertyOptional({ type: () => ListingPaymentDto, isArray: true })
+  @ApiPropertyOptional({ type: ListingPaymentDto, isArray: true })
   payments?: ListingPaymentDto[];
 }
+
 export class UpdateListingDto {
   @Type(() => Number) @IsInt() @Min(1) version!: number;
   @IsOptional() @IsString() @MinLength(3) @MaxLength(80) listingCode?: string;
@@ -58,30 +60,35 @@ export class UpdateListingDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => ListingPriceDto)
-  @ApiPropertyOptional({ type: () => ListingPriceDto })
+  @ApiPropertyOptional({ type: ListingPriceDto })
   price?: ListingPriceDto;
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ListingPaymentDto)
-  @ApiPropertyOptional({ type: () => ListingPaymentDto, isArray: true })
+  @ApiPropertyOptional({ type: ListingPaymentDto, isArray: true })
   payments?: ListingPaymentDto[];
 }
+
 export class ListingWorkflowDto {
   @Type(() => Number) @IsInt() @Min(1) version!: number;
   @IsOptional() @IsString() @MaxLength(100) reason?: string;
 }
+
 export class AgentAssignmentDto {
   @IsUUID('4') agentUserUuid!: string;
   @IsString() @MinLength(1) @MaxLength(160) agentDisplayName!: string;
   @IsOptional() @IsBoolean() primary?: boolean;
 }
+
 export class ChangeAgentDto extends AgentAssignmentDto {
   @IsUUID('4') assignmentUuid!: string;
 }
+
 export class OwnerAssignmentDto {
   @IsEnum(PROPERTY_OWNER_TYPES) ownerType!: PropertyOwnerType;
   @IsString() @MinLength(2) @MaxLength(160) ownerDisplayName!: string;
 }
+
 const csv = (value: unknown): unknown =>
   typeof value === 'string'
     ? value
@@ -89,8 +96,10 @@ const csv = (value: unknown): unknown =>
         .map((item) => item.trim())
         .filter(Boolean)
     : value;
+
 const bool = (value: unknown): unknown =>
   typeof value === 'string' ? value === 'true' : value;
+
 export class PropertySearchDto {
   @Type(() => Number) @IsInt() @Min(1) page = 1;
   @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;
