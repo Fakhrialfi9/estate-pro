@@ -14,37 +14,18 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ListingPaymentDto } from './listing-payment.dto.js';
+import { ListingPriceDto } from './listing-price.dto.js';
 import {
-  LISTING_PRICE_TYPES,
   LISTING_STATUSES,
   LISTING_TRANSACTION_TYPES,
   LISTING_VISIBILITIES,
-  PAYMENT_OPTION_TYPES,
   PROPERTY_OWNER_TYPES,
-  type ListingPriceType,
   type ListingStatus,
   type ListingTransactionType,
   type ListingVisibility,
-  type PaymentOptionType,
   type PropertyOwnerType,
 } from '../domain/listing.types.js';
-export class ListingPriceDto {
-  @IsEnum(LISTING_PRICE_TYPES) priceType!: ListingPriceType;
-  @IsString() @MinLength(3) @MaxLength(3) currency!: string;
-  @IsOptional() @IsString() minPrice?: string | null;
-  @IsOptional() @IsString() maxPrice?: string | null;
-  @IsOptional() @IsString() pricePerSqm?: string | null;
-}
-export class ListingPaymentDto {
-  @IsEnum(PAYMENT_OPTION_TYPES) optionType!: PaymentOptionType;
-  @IsOptional() @IsString() downPaymentAmount?: string | null;
-  @IsOptional() @IsString() @MaxLength(7) downPaymentPercent?: string | null;
-  @IsOptional() @IsString() installmentAmount?: string | null;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(600) tenorMonths?:
-    | number
-    | null;
-  @IsOptional() @IsString() @MaxLength(500) notes?: string | null;
-}
 export class CreateListingDto {
   @IsUUID('4') propertyUuid!: string;
   @IsString() @MinLength(3) @MaxLength(80) listingCode!: string;
