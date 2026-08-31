@@ -1,12 +1,18 @@
-# CRM Domain
+# CRM bounded context
 
-`src/modules/crm` is a bounded-context boundary for customer/relationship workflows. The current repository does not claim a completed CRM application surface.
+CRM owns relationship workflows: Contacts, Leads, Inquiries, Activities, Communications, scoring, duplicate review/merge, assignment and lifecycle orchestration. Identity, user/role/permission ownership remains in Users/Roles/Permissions. Property remains Property's owner; CRM stores only public `propertyUuid` references and must validate them through the public contract when that contract is available.
 
-## Responsibility
-CRM will own customer/contact records, relationship lifecycle, activities, and future lead/customer coordination with sales. It should consume identity and authorization outcomes through defined application interfaces.
+## Architecture
+Presentation -> Application -> Domain -> Repository Port <- Infrastructure. Prisma is infrastructure-only. Controllers map HTTP/DTOs; application services orchestrate use cases, authorization preconditions and audit; domain utilities contain normalization, lifecycle/scoring rules; Prisma repository owns persistence mapping.
 
-## Workflow boundary
-Authentication identifies the acting user. Authorization decides whether that user may access a CRM resource. CRM business rules should remain inside the CRM context rather than being embedded in controllers or authentication code.
+## Identifiers
+CRM records use public UUIDs. Internal BigInt IDs never appear in responses. Cross-context user/property references are UUID strings without CRM-owned foreign keys.
 
-## Current implementation truth
-The module is scaffolded; therefore this document records the architectural responsibility and boundary only. No unimplemented CRM workflow is presented as available API behavior.
+## Lifecycle
+Lead statuses are configurable records, but status changes require an explicit transition row. Assignment, merge, conversion and closure are business operations rather than arbitrary PATCH fields. Activity and communication states are explicit state machines.
+
+## Security
+All private CRM endpoints require JWT + existing AuthorizationGuard permissions. Ownership-sensitive operations are checked at the application/repository boundary. PII is serialized explicitly and tokens/secrets are never accepted or persisted by CRM. Public intake is expected to remain behind the existing global rate limiter; the honeypot field is rejected when populated and message/template content is plain-text only.
+
+## Audit
+CRM mutation actions use `CRM_*` audit events with resource types such as `contact`, `lead`, `inquiry`, `activity`, `communication`, `duplicate`, and `score_rule`. Audit payloads must not contain credentials or provider secrets.

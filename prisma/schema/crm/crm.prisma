@@ -1,0 +1,469 @@
+model CrmContact {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  firstName String @db.VarChar(100)
+  lastName String? @db.VarChar(100)
+  displayName String @db.VarChar(220)
+  companyName String? @db.VarChar(180)
+  jobTitle String? @db.VarChar(120)
+  status String @default("ACTIVE") @db.VarChar(30)
+  ownerUserUuid String? @db.Char(36)
+  source String? @db.VarChar(80)
+  archivedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  addresses CrmContactAddress[]
+  phones CrmContactPhone[]
+  emails CrmContactEmail[]
+  preferences CrmContactPreference?
+  consents CrmContactConsent[]
+  relationshipsFrom CrmContactRelationship[] @relation("ContactRelationshipFrom")
+  relationshipsTo CrmContactRelationship[] @relation("ContactRelationshipTo")
+  leads CrmLead[]
+  inquiries CrmInquiry[]
+  activities CrmActivity[]
+  communications CrmCommunication[]
+  @@index([status])
+  @@index([ownerUserUuid])
+  @@index([displayName])
+  @@map("crm_contacts")
+}
+
+model CrmContactAddress {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  contactId BigInt @db.UnsignedBigInt
+  type String @db.VarChar(30)
+  line1 String @db.VarChar(200)
+  line2 String? @db.VarChar(200)
+  city String @db.VarChar(100)
+  region String? @db.VarChar(100)
+  postalCode String? @db.VarChar(30)
+  countryCode String @db.Char(2)
+  isPrimary Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contact CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  @@index([contactId, type])
+  @@map("crm_contact_addresses")
+}
+
+model CrmContactPhone {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  contactId BigInt @db.UnsignedBigInt
+  type String @db.VarChar(30)
+  value String @db.VarChar(40)
+  normalizedValue String @unique @db.VarChar(40)
+  isPrimary Boolean @default(false)
+  isVerified Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contact CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  @@index([contactId, type])
+  @@map("crm_contact_phones")
+}
+
+model CrmContactEmail {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  contactId BigInt @db.UnsignedBigInt
+  type String @db.VarChar(30)
+  value String @db.VarChar(254)
+  normalizedValue String @unique @db.VarChar(254)
+  isPrimary Boolean @default(false)
+  isVerified Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contact CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  @@index([contactId, type])
+  @@map("crm_contact_emails")
+}
+
+model CrmContactPreference {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  contactId BigInt @unique @db.UnsignedBigInt
+  preferredChannel String @default("EMAIL") @db.VarChar(30)
+  preferredLanguage String? @db.VarChar(10)
+  marketingEmail Boolean @default(false)
+  marketingSms Boolean @default(false)
+  marketingWhatsapp Boolean @default(false)
+  quietHoursStart String? @db.VarChar(5)
+  quietHoursEnd String? @db.VarChar(5)
+  timezone String @default("UTC") @db.VarChar(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contact CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  @@map("crm_contact_preferences")
+}
+
+model CrmContactConsent {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  contactId BigInt @db.UnsignedBigInt
+  consentType String @db.VarChar(50)
+  status String @db.VarChar(20)
+  source String @db.VarChar(80)
+  grantedAt DateTime?
+  revokedAt DateTime?
+  actorUserUuid String? @db.Char(36)
+  createdAt DateTime @default(now())
+  contact CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  @@index([contactId, consentType, createdAt])
+  @@map("crm_contact_consents")
+}
+
+model CrmContactRelationship {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  fromContactId BigInt @db.UnsignedBigInt
+  toContactId BigInt @db.UnsignedBigInt
+  relationshipType String @db.VarChar(50)
+  isReciprocal Boolean @default(false)
+  createdAt DateTime @default(now())
+  fromContact CrmContact @relation("ContactRelationshipFrom", fields: [fromContactId], references: [id], onDelete: Cascade)
+  toContact CrmContact @relation("ContactRelationshipTo", fields: [toContactId], references: [id], onDelete: Cascade)
+  @@unique([fromContactId, toContactId, relationshipType])
+  @@index([toContactId])
+  @@map("crm_contact_relationships")
+}
+
+model CrmLeadSource {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  code String @unique @db.VarChar(60)
+  name String @db.VarChar(120)
+  description String? @db.VarChar(500)
+  isActive Boolean @default(true)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  campaigns CrmLeadCampaign[]
+  leads CrmLead[]
+  @@index([isActive, deletedAt])
+  @@map("crm_lead_sources")
+}
+
+model CrmLeadCampaign {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  sourceId BigInt @db.UnsignedBigInt
+  code String @unique @db.VarChar(80)
+  name String @db.VarChar(150)
+  startsAt DateTime?
+  endsAt DateTime?
+  isActive Boolean @default(true)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  source CrmLeadSource @relation(fields: [sourceId], references: [id])
+  leads CrmLead[]
+  @@index([sourceId])
+  @@map("crm_lead_campaigns")
+}
+
+model CrmLeadType {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  code String @unique @db.VarChar(60)
+  name String @db.VarChar(120)
+  isActive Boolean @default(true)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  leads CrmLead[]
+  @@map("crm_lead_types")
+}
+
+model CrmLeadStatus {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  code String @unique @db.VarChar(60)
+  name String @db.VarChar(120)
+  sortOrder Int @default(0)
+  isClosed Boolean @default(false)
+  isActive Boolean @default(true)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  leads CrmLead[]
+  fromTransitions CrmLeadStatusTransition[] @relation("LeadStatusFrom")
+  toTransitions CrmLeadStatusTransition[] @relation("LeadStatusTo")
+  @@index([sortOrder, isActive])
+  @@map("crm_lead_statuses")
+}
+
+model CrmLeadStatusTransition {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  fromStatusId BigInt @db.UnsignedBigInt
+  toStatusId BigInt @db.UnsignedBigInt
+  createdAt DateTime @default(now())
+  fromStatus CrmLeadStatus @relation("LeadStatusFrom", fields: [fromStatusId], references: [id], onDelete: Cascade)
+  toStatus CrmLeadStatus @relation("LeadStatusTo", fields: [toStatusId], references: [id], onDelete: Cascade)
+  @@unique([fromStatusId, toStatusId])
+  @@map("crm_lead_status_transitions")
+}
+
+model CrmLead {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  code String @unique @db.VarChar(60)
+  contactId BigInt @db.UnsignedBigInt
+  sourceId BigInt @db.UnsignedBigInt
+  campaignId BigInt? @db.UnsignedBigInt
+  typeId BigInt @db.UnsignedBigInt
+  statusId BigInt @db.UnsignedBigInt
+  ownerUserUuid String? @db.Char(36)
+  score Int @default(0)
+  scoreVersion Int @default(1)
+  qualifiedAt DateTime?
+  closedAt DateTime?
+  closureReason String? @db.VarChar(255)
+  archivedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contact CrmContact @relation(fields: [contactId], references: [id])
+  source CrmLeadSource @relation(fields: [sourceId], references: [id])
+  campaign CrmLeadCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  type CrmLeadType @relation(fields: [typeId], references: [id])
+  status CrmLeadStatus @relation(fields: [statusId], references: [id])
+  tags CrmLeadTag[]
+  notes CrmLeadNote[]
+  assignments CrmLeadAssignment[]
+  history CrmLeadHistory[]
+  duplicates CrmLeadDuplicate[] @relation("LeadDuplicateSource")
+  duplicateOf CrmLeadDuplicate[] @relation("LeadDuplicateCandidate")
+  scoreEntries CrmLeadScore[]
+  activities CrmActivity[]
+  communications CrmCommunication[]
+  inquiries CrmInquiry[]
+  @@index([contactId])
+  @@index([statusId, score])
+  @@index([ownerUserUuid, statusId])
+  @@map("crm_leads")
+}
+
+model CrmLeadTag {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  code String @unique @db.VarChar(60)
+  name String @db.VarChar(100)
+  color String? @db.VarChar(20)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  leadLinks CrmLeadTagLink[]
+  @@map("crm_lead_tags")
+}
+
+model CrmLeadTagLink {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  leadId BigInt @db.UnsignedBigInt
+  tagId BigInt @db.UnsignedBigInt
+  createdAt DateTime @default(now())
+  lead CrmLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  tag CrmLeadTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@unique([leadId, tagId])
+  @@index([tagId])
+  @@map("crm_lead_tag_links")
+}
+
+model CrmLeadNote {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  leadId BigInt @db.UnsignedBigInt
+  authorUserUuid String @db.Char(36)
+  body String @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lead CrmLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  @@index([leadId, createdAt])
+  @@map("crm_lead_notes")
+}
+
+model CrmLeadAssignment {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  leadId BigInt @db.UnsignedBigInt
+  assigneeUserUuid String @db.Char(36)
+  assignedByUserUuid String? @db.Char(36)
+  assignedAt DateTime @default(now())
+  unassignedAt DateTime?
+  lead CrmLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  @@index([leadId, assignedAt])
+  @@index([assigneeUserUuid, unassignedAt])
+  @@map("crm_lead_assignments")
+}
+
+model CrmLeadScoreRule {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  code String @unique @db.VarChar(80)
+  field String @db.VarChar(50)
+  operator String @db.VarChar(20)
+  value String @db.VarChar(200)
+  points Int
+  priority Int @default(0)
+  version Int @default(1)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([isActive, priority])
+  @@map("crm_lead_score_rules")
+}
+
+model CrmLeadScore {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  leadId BigInt @db.UnsignedBigInt
+  ruleCode String @db.VarChar(80)
+  points Int
+  explanation String @db.VarChar(255)
+  calculatedAt DateTime @default(now())
+  lead CrmLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  @@index([leadId, calculatedAt])
+  @@map("crm_lead_scores")
+}
+
+model CrmLeadDuplicate {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  leadId BigInt @db.UnsignedBigInt
+  candidateLeadId BigInt @db.UnsignedBigInt
+  pairKey String @unique @db.VarChar(80)
+  confidence Int
+  signals String @db.VarChar(500)
+  status String @default("CANDIDATE") @db.VarChar(20)
+  reviewedByUserUuid String? @db.Char(36)
+  reviewedAt DateTime?
+  createdAt DateTime @default(now())
+  lead CrmLead @relation("LeadDuplicateSource", fields: [leadId], references: [id], onDelete: Cascade)
+  candidateLead CrmLead @relation("LeadDuplicateCandidate", fields: [candidateLeadId], references: [id], onDelete: Cascade)
+  @@index([leadId, status])
+  @@index([candidateLeadId, status])
+  @@map("crm_lead_duplicates")
+}
+
+model CrmLeadHistory {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  leadId BigInt @db.UnsignedBigInt
+  eventType String @db.VarChar(50)
+  fromValue String? @db.VarChar(120)
+  toValue String? @db.VarChar(120)
+  summary String? @db.VarChar(500)
+  actorUserUuid String? @db.Char(36)
+  createdAt DateTime @default(now())
+  lead CrmLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  @@index([leadId, createdAt])
+  @@map("crm_lead_history")
+}
+
+model CrmInquiry {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  intent String @db.VarChar(40)
+  status String @default("NEW") @db.VarChar(30)
+  contactId BigInt? @db.UnsignedBigInt
+  leadId BigInt? @db.UnsignedBigInt
+  propertyUuid String? @db.Char(36)
+  requesterName String? @db.VarChar(160)
+  requesterEmail String? @db.VarChar(254)
+  requesterPhone String? @db.VarChar(40)
+  message String? @db.Text
+  preferredChannel String? @db.VarChar(30)
+  preferredAt DateTime?
+  timezone String? @db.VarChar(50)
+  deliveryPreference String? @db.VarChar(30)
+  serviceContext String? @db.VarChar(255)
+  spamScore Int @default(0)
+  convertedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contact CrmContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  lead CrmLead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  @@index([intent, status, createdAt])
+  @@index([propertyUuid, createdAt])
+  @@index([contactId, createdAt])
+  @@map("crm_inquiries")
+}
+
+model CrmActivity {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  type String @db.VarChar(30)
+  status String @default("CREATED") @db.VarChar(30)
+  priority String @default("NORMAL") @db.VarChar(20)
+  subject String @db.VarChar(180)
+  description String? @db.Text
+  contactId BigInt? @db.UnsignedBigInt
+  leadId BigInt? @db.UnsignedBigInt
+  assigneeUserUuid String? @db.Char(36)
+  dueAt DateTime?
+  startedAt DateTime?
+  completedAt DateTime?
+  callOutcome String? @db.VarChar(80)
+  durationSeconds Int?
+  meetingStartAt DateTime?
+  meetingEndAt DateTime?
+  location String? @db.VarChar(255)
+  reminderAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contact CrmContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  lead CrmLead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  communications CrmCommunication[]
+  @@index([leadId, dueAt, status])
+  @@index([contactId, dueAt, status])
+  @@index([assigneeUserUuid, status, dueAt])
+  @@map("crm_activities")
+}
+
+model CrmCommunicationTemplate {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  code String @unique @db.VarChar(80)
+  name String @db.VarChar(150)
+  channel String @db.VarChar(20)
+  subject String? @db.VarChar(255)
+  body String @db.Text
+  version Int @default(1)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  communications CrmCommunication[]
+  @@map("crm_communication_templates")
+}
+
+model CrmCommunication {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @default(uuid()) @db.Char(36)
+  channel String @db.VarChar(20)
+  direction String @db.VarChar(20)
+  status String @default("QUEUED") @db.VarChar(30)
+  contactId BigInt? @db.UnsignedBigInt
+  leadId BigInt? @db.UnsignedBigInt
+  activityId BigInt? @db.UnsignedBigInt
+  templateId BigInt? @db.UnsignedBigInt
+  providerName String? @db.VarChar(60)
+  providerMessageId String? @db.VarChar(160)
+  providerError String? @db.VarChar(500)
+  destination String @db.VarChar(254)
+  subject String? @db.VarChar(255)
+  body String @db.Text
+  queuedAt DateTime @default(now())
+  sentAt DateTime?
+  deliveredAt DateTime?
+  failedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contact CrmContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  lead CrmLead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  activity CrmActivity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  template CrmCommunicationTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  @@index([contactId, createdAt])
+  @@index([leadId, createdAt])
+  @@index([status, queuedAt])
+  @@map("crm_communications")
+}
