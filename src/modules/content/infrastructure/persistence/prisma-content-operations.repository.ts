@@ -1,21 +1,21 @@
 import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
+import { Prisma } from '../../../../../../prisma/generated/prisma/client.js';
 import {
   ContentFormat,
   ContentVisibility,
   ModerationStatus,
 } from '../../../../../prisma/generated/prisma/enums.js';
-import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
+import { PrismaService } from '../../../../../infrastructure/database/prisma/prisma.service.js';
 import {
   ContentConflictError,
   ContentNotFoundError,
-} from '../../../application/content.errors.js';
+} from '../../.../../application/content.errors.js';
 import type {
   AuditContext,
   ContentResourceType,
-} from '../../../domain/content.types.js';
-import type { ArticleRecord } from '../../../domain/repositories/content.repository.js';
+} from '../../../../domain/content.types.js';
+import type { ArticleRecord } from '../../../../domain/repositories/content.repository.js';
 import { PrismaArticleRepository } from './prisma-article.repository.js';
 
 const jsonValue = (value: unknown): Prisma.InputJsonValue =>
