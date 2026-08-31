@@ -254,8 +254,7 @@ export const installPropertyContracts = (document: Document): void => {
       if (
         /^\/api\/v1\/property\/(categories|subcategories|facilities)$/.test(
           path,
-        ) &&
-        method === 'get'
+        )
       ) {
         addQueryParam(
           operation,
@@ -281,6 +280,32 @@ export const installPropertyContracts = (document: Document): void => {
           schema('boolean'),
           'Filter by active state.',
         );
+        if (method === 'get') {
+          setResponse(
+            operation,
+            200,
+            objectSchema(
+              {
+                data: arrayOf(ref('PropertyCatalogResponse')),
+                meta: ref('PaginationMeta'),
+              },
+              ['data', 'meta'],
+            ),
+            'Catalog resources returned.',
+          );
+          setErrors(operation, [400, 401, 403, 500]);
+          continue;
+        }
+        if (method === 'post') {
+          setResponse(
+            operation,
+            201,
+            wrapped(ref('PropertyCatalogResponse')),
+            'Catalog resource created.',
+          );
+          setErrors(operation, [400, 401, 403, 409, 500]);
+          continue;
+        }
       }
 
       if (/^\/api\/v1\/property\/properties\/[^/]+$/.test(path)) {
@@ -433,7 +458,6 @@ export const installPropertyContracts = (document: Document): void => {
             wrapped(ref('PropertyLocationResponse')),
             'Location updated.',
           );
-          setErrors(operation, [400, 401, 403, 404, 409, 500]);
         }
         if (method === 'delete') {
           operation.responses ??= {};
