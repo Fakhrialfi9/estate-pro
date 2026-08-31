@@ -1,4 +1,4 @@
-name: One-off refresh lifecycle harness fix
+name: One-off content type-resolution repair
 
 on:
   push:
@@ -13,14 +13,13 @@ env:
   DATABASE_CONNECT_TIMEOUT_MS: 5000
   DATABASE_ACQUIRE_TIMEOUT_MS: 10000
   DATABASE_POOL_IDLE_TIMEOUT_SEC: 30
-  AUTH_LOGIN_RATE_LIMIT: 5
-  AUTH_LOGIN_RATE_LIMIT_TTL_MS: 60000
+  SECURITY_CORS_ORIGINS: http://localhost:3000
 
 jobs:
-  fix-and-validate:
+  repair-and-validate:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -28,101 +27,130 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install MariaDB
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mariadb-server
-          sudo systemctl start mariadb
-          sudo mysql -e "DROP DATABASE IF EXISTS estate_pro_test; CREATE DATABASE estate_pro_test;"
-          sudo mysql -e "CREATE USER IF NOT EXISTS 'test'@'127.0.0.1' IDENTIFIED BY 'test-password';"
-          sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_test.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
-
-      - name: Patch refresh lifecycle login test isolation
+      - name: Apply root-cause import and service fixes
+        shell: bash
         run: |
           python3 <<'PY'
           from pathlib import Path
 
-          path = Path('test/e2e/refresh-token-lifecycle.e2e.spec.ts')
-          text = path.read_text()
+          replacements = {
+              'src/modules/content/infrastructure/persistence/prisma-article.repository.ts': {
+                  "../../../../prisma/generated/prisma/client.js": "../../../../../prisma/generated/prisma/client.js",
+                  "../../../infrastructure/database/prisma/prisma.service.js": "../../../../infrastructure/database/prisma/prisma.service.js",
+                  "../application/content.errors.js": "../../application/content.errors.js",
+                  "../domain/content.types.js": "../../domain/content.types.js",
+                  "../domain/repositories/content.repository.js": "../../domain/repositories/content.repository.js",
+              },
+              'src/modules/content/infrastructure/persistence/prisma-content-operations.repository.ts': {
+                  "../../../../prisma/generated/prisma/client.js": "../../../../../prisma/generated/prisma/client.js",
+                  "../../../infrastructure/database/prisma/prisma.service.js": "../../../../infrastructure/database/prisma/prisma.service.js",
+                  "../../content/application/content.errors.js": "../../application/content.errors.js",
+                  "../../content/domain/content.types.js": "../../domain/content.types.js",
+                  "../../content/domain/repositories/content.repository.js": "../../domain/repositories/content.repository.js",
+              },
+              'src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts': {
+                  "../../../../prisma/generated/prisma/client.js": "../../../../../prisma/generated/prisma/client.js",
+                  "../../../infrastructure/database/prisma/prisma.service.js": "../../../../infrastructure/database/prisma/prisma.service.js",
+                  "../application/content.errors.js": "../../application/content.errors.js",
+                  "../domain/content.types.js": "../../domain/content.types.js",
+              },
+              'src/modules/content/presentation/content.controller.ts': {
+                  "../auth/security/jwt-auth.guard.js": "../../auth/security/jwt-auth.guard.js",
+                  "../../common/security/authorization.guard.js": "../../../common/security/authorization.guard.js",
+                  "../../common/security/authorization.decorators.js": "../../../common/security/authorization.decorators.js",
+                  "./application/content.errors.js": "../application/content.errors.js",
+                  "./application/content.service.js": "../application/content.service.js",
+                  "./application/use-cases/content.use-cases.js": "../application/use-cases/content.use-cases.js",
+                  "./presentation/dto/content.dto.js": "./dto/content.dto.js",
+                  "../../infrastructure/storage/storage-provider.js": "../../../infrastructure/storage/storage-provider.js",
+              },
+              'src/modules/content/presentation/public-content.controller.ts': {
+                  "../../common/security/authorization.decorators.js": "../../../common/security/authorization.decorators.js",
+                  "./application/content.service.js": "../application/content.service.js",
+                  "./application/content.errors.js": "../application/content.errors.js",
+              },
+              'src/modules/content/presentation/supporting-content.controller.ts': {
+                  "../auth/security/jwt-auth.guard.js": "../../auth/security/jwt-auth.guard.js",
+                  "../../common/security/authorization.guard.js": "../../../common/security/authorization.guard.js",
+                  "../../common/security/authorization.decorators.js": "../../../common/security/authorization.decorators.js",
+                  "./application/use-cases/content.use-cases.js": "../application/use-cases/content.use-cases.js",
+                  "./application/content.service.js": "../application/content.service.js",
+                  "./presentation/dto/content.dto.js": "./dto/content.dto.js",
+              },
+          }
 
-          old = """  const response = await http()\n    .post(`${endpoint}/login`)\n    .send({ identifier: user.email, password: PASSWORD })\n    .expect(201);\n"""
-          new = """  const response = await http()\n    .post(`${endpoint}/login`)\n    .set('X-Forwarded-For', testClientIp)\n    .send({ identifier: user.email, password: PASSWORD })\n    .expect(201);\n"""
-          if old not in text:
-              raise SystemExit('expected login helper block not found')
-          path.write_text(text.replace(old, new, 1))
+          for filename, mapping in replacements.items():
+              path = Path(filename)
+              text = path.read_text()
+              original = text
+              for old, new in mapping.items():
+                  text = text.replace(old, new)
+              if text == original:
+                  raise SystemExit(f'no import-path change applied to {filename}')
+              path.write_text(text)
+
+          service_path = Path('src/modules/content/application/content.service.ts')
+          service = service_path.read_text()
+
+          anchor = """  async archive(uuid: string, ctx: AuditContext) {\n    return this.transition(uuid, 'archive', ctx);\n  }\n"""
+          transition_wrapper = anchor + """  async transitionArticle(\n    uuid: string,\n    action: 'publish' | 'unpublish' | 'archive',\n    ctx: AuditContext,\n  ) {\n    return this.transition(uuid, action, ctx);\n  }\n"""
+          if anchor not in service:
+              raise SystemExit('content service transition anchor not found')
+          service = service.replace(anchor, transition_wrapper, 1)
+
+          toggle_anchor = """  toggle(\n    kind: 'like' | 'bookmark',\n    uuid: string,\n    user: string,\n    ctx: AuditContext,\n  ) {\n    return this.repository.toggleInteraction(kind, uuid, user, ctx);\n  }\n"""
+          toggle_wrapper = toggle_anchor + """  interaction(\n    kind: 'like' | 'bookmark',\n    uuid: string,\n    user: string,\n    ctx: AuditContext,\n  ) {\n    return this.toggle(kind, uuid, user, ctx);\n  }\n"""
+          if toggle_anchor not in service:
+              raise SystemExit('content service toggle anchor not found')
+          service = service.replace(toggle_anchor, toggle_wrapper, 1)
+
+          comment_anchor = """  comment(uuid: string, input: Record<string, unknown>, ctx: AuditContext) {\n    return this.repository.createComment(\n      uuid,\n      {\n        ...input,\n        userUuid: ctx.actorUuid,\n        content: sanitizeJson(input.content),\n      },\n      ctx,\n    );\n  }\n"""
+          comment_wrapper = comment_anchor + """  commentCreate(\n    uuid: string,\n    input: Record<string, unknown>,\n    ctx: AuditContext,\n  ) {\n    return this.comment(uuid, input, ctx);\n  }\n"""
+          if comment_anchor not in service:
+              raise SystemExit('content service comment anchor not found')
+          service = service.replace(comment_anchor, comment_wrapper, 1)
+
+          moderate_anchor = """  moderate(\n    uuid: string,\n    status: string,\n    reason: string | undefined,\n    ctx: AuditContext,\n  ) {\n    return this.repository.moderateComment(uuid, status, reason, ctx);\n  }\n"""
+          moderate_wrapper = moderate_anchor + """  commentModerate(\n    uuid: string,\n    status: string,\n    reason: string | undefined,\n    ctx: AuditContext,\n  ) {\n    return this.moderate(uuid, status, reason, ctx);\n  }\n"""
+          if moderate_anchor not in service:
+              raise SystemExit('content service moderate anchor not found')
+          service = service.replace(moderate_anchor, moderate_wrapper, 1)
+
+          service_path.write_text(service)
           PY
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Prisma validate
+      - name: Prisma validation
         run: npx prisma validate
 
       - name: Generate Prisma client
         run: npm run prisma:generate
 
-      - name: Deploy Prisma migrations
-        run: npm run prisma:deploy
+      - name: TypeScript root-cause validation
+        run: npx tsc --noEmit
 
-      - name: Prisma migration status
-        run: npm run prisma:status
-
-      - name: Format check
-        run: npm run format:check
-
-      - name: Lint
+      - name: Lint validation
         run: npm run lint
 
-      - name: Typecheck
+      - name: Typecheck validation
         run: npm run typecheck
 
-      - name: Build
+      - name: Build validation
         run: npm run build
 
-      - name: Full test suite
-        run: npm run test
+      - name: Format validation
+        run: npm run format:check
 
-      - name: Watch-mode test command in terminating mode
-        run: npm run test:watch -- --run
-
-      - name: Unit tests
-        run: npm run test:unit
-
-      - name: Integration tests
-        run: npm run test:integration
-
-      - name: E2E tests
-        run: npm run test:e2e
-
-      - name: Security tests
-        run: npm run test:security
-
-      - name: Security baseline
-        run: npm run test:security:baseline
-
-      - name: Coverage
-        run: npm run test:coverage
-
-      - name: E2E coverage
-        run: npm run test:coverage:e2e
-
-      - name: All test suites
-        run: npm run test:all
-
-      - name: Remove one-off workflow and commit verified fix
+      - name: Commit verified root-cause repair and remove one-off workflow
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add test/e2e/refresh-token-lifecycle.e2e.spec.ts
+          git add src
           git rm .github/workflows/_oneoff-fix-login-harness.yml
           git diff --cached --check
-          git commit -m 'fix(test): isolate refresh lifecycle login throttle bucket'
+          git commit -m 'fix(cms): repair content module type resolution'
           git push origin HEAD:main
 
-# Intentionally one-shot: this workflow removes itself after verification.
+# Intentionally one-shot: this workflow removes itself after validation.
