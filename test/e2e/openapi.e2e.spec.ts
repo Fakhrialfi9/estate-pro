@@ -1,0 +1,54 @@
+import { Test } from '@nestjs/testing';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import type { Application } from 'express';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { AppModule } from '../../src/app.module.js';
+import { configureApplication } from '../../src/bootstrap.js';
+import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
+import { validateOpenApiDocument } from '../../scripts/validate-openapi.mjs';
+
+describe('OpenAPI contract (e2e)', () => {
+  let app: NestExpressApplication | undefined;
+  let httpApplication: Application | undefined;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(PrismaService)
+      .useValue({
+        $queryRaw: async () => [{ 1: 1 }],
+        $connect: async () => undefined,
+        $disconnect: async () => undefined,
+      })
+      .compile();
+
+    app = moduleRef.createNestApplication<NestExpressApplication>({
+      bodyParser: false,
+      bufferLogs: true,
+    });
+
+    configureApplication(app);
+    await app.init();
+    httpApplication = app.getHttpAdapter().getInstance() as Application;
+  });
+
+  afterAll(async () => {
+    if (app) await app.close();
+  });
+
+  it('serves the Swagger UI and machine-readable documents', async () => {
+    expect((await request(httpApplication!).get('/docs')).status).toBe(200);
+    expect((await request(httpApplication!).get('/docs-json')).status).toBe(200);
+    expect((await request(httpApplication!).get('/docs-yaml')).status).toBe(200);
+  });
+
+  it('validates the runtime-generated OpenAPI contract', async () => {
+    const response = await request(httpApplication!).get('/docs-json');
+    expect(response.status).toBe(200);
+
+    const result = validateOpenApiDocument(response.body);
+    expect(result.operationCount).toBeGreaterThan(0);
+    expect(result.schemaCount).toBeGreaterThan(0);
+  });
+});
