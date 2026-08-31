@@ -1,0 +1,496 @@
+enum ContentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+  REJECTED
+}
+
+enum ContentVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum ContentFormat {
+  RICH_TEXT
+  MARKDOWN
+  BLOCKS
+}
+
+enum ArticleType {
+  ARTICLE
+  NEWS
+  PRESS_RELEASE
+  GUIDE
+  CASE_STUDY
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SPAM
+  DELETED
+}
+
+enum BannerPlacement {
+  HOME_HERO
+  HOME_FEATURED
+  SITE_HEADER
+  SITE_FOOTER
+  SIDEBAR
+}
+
+enum RedirectType {
+  MOVED_PERMANENTLY
+  FOUND
+}
+
+enum RelationType {
+  RELATED
+  FEATURED
+  RECOMMENDED
+}
+
+model ContentArticleCategory {
+  id          BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String           @unique @default(uuid()) @db.Char(36)
+  name        String           @db.VarChar(160)
+  slug        String           @unique @db.VarChar(220)
+  description String?          @db.Text
+  status      ContentStatus    @default(DRAFT)
+  parentId    BigInt?          @map("parent_id") @db.UnsignedBigInt
+  version     Int              @default(1)
+  createdBy   String?          @map("created_by") @db.Char(36)
+  updatedBy   String?          @map("updated_by") @db.Char(36)
+  deletedAt   DateTime?        @map("deleted_at")
+  deletedBy   String?          @map("deleted_by") @db.Char(36)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  articles    ContentArticle[]
+
+  @@index([status, deletedAt])
+  @@index([parentId, deletedAt])
+  @@map("content_article_categories")
+}
+
+model ContentTag {
+  id          BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String         @unique @default(uuid()) @db.Char(36)
+  name        String         @db.VarChar(120)
+  slug        String         @unique @db.VarChar(180)
+  description String?        @db.Text
+  version     Int            @default(1)
+  createdBy   String?        @map("created_by") @db.Char(36)
+  updatedBy   String?        @map("updated_by") @db.Char(36)
+  deletedAt   DateTime?      @map("deleted_at")
+  deletedBy   String?        @map("deleted_by") @db.Char(36)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  articleTags ContentArticleTag[]
+
+  @@index([deletedAt])
+  @@map("content_tags")
+}
+
+model ContentMediaFolder {
+  id        BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid      String       @unique @default(uuid()) @db.Char(36)
+  name      String       @db.VarChar(120)
+  slug      String       @db.VarChar(160)
+  parentId  BigInt?      @map("parent_id") @db.UnsignedBigInt
+  createdBy String?      @map("created_by") @db.Char(36)
+  updatedBy String?      @map("updated_by") @db.Char(36)
+  deletedAt DateTime?    @map("deleted_at")
+  deletedBy String?      @map("deleted_by") @db.Char(36)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  media     ContentMedia[]
+
+  @@unique([slug, parentId])
+  @@index([parentId, deletedAt])
+  @@map("content_media_folders")
+}
+
+model ContentMedia {
+  id           BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid         String             @unique @default(uuid()) @db.Char(36)
+  originalName String             @map("original_name") @db.VarChar(255)
+  storageKey   String             @unique @map("storage_key") @db.VarChar(500)
+  publicUrl    String?            @map("public_url") @db.VarChar(1000)
+  provider     String              @db.VarChar(50)
+  mimeType     String             @map("mime_type") @db.VarChar(120)
+  sizeBytes    BigInt             @map("size_bytes") @db.UnsignedBigInt
+  width        Int?
+  height       Int?
+  alt          String?            @db.VarChar(255)
+  caption      String?            @db.Text
+  folderId     BigInt?            @map("folder_id") @db.UnsignedBigInt
+  uploaderUuid String?            @map("uploader_uuid") @db.Char(36)
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  deletedAt    DateTime?          @map("deleted_at")
+  deletedBy    String?            @map("deleted_by") @db.Char(36)
+  folder       ContentMediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  coverOf      ContentArticle[]   @relation("ArticleCoverMedia")
+  mobileCoverOf ContentBanner[]   @relation("BannerMobileMedia")
+  desktopBannerOf ContentBanner[] @relation("BannerDesktopMedia")
+
+  @@index([folderId, deletedAt])
+  @@index([mimeType, deletedAt])
+  @@index([uploaderUuid, deletedAt])
+  @@map("content_media")
+}
+
+model ContentArticle {
+  id              BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid            String            @unique @default(uuid()) @db.Char(36)
+  title           String            @db.VarChar(220)
+  slug            String            @unique @db.VarChar(240)
+  subtitle        String?           @db.VarChar(300)
+  excerpt         String?           @db.Text
+  content         Json
+  contentFormat   ContentFormat     @default(RICH_TEXT) @map("content_format")
+  type            ArticleType       @default(ARTICLE)
+  status          ContentStatus     @default(DRAFT)
+  visibility      ContentVisibility @default(PUBLIC)
+  language        String            @default("id") @db.VarChar(12)
+  featured        Boolean           @default(false)
+  allowComments   Boolean           @default(true) @map("allow_comments")
+  wordCount       Int               @default(0) @map("word_count")
+  readingTimeMin  Int               @default(1) @map("reading_time_min")
+  categoryId      BigInt?           @map("category_id") @db.UnsignedBigInt
+  coverMediaId    BigInt?           @map("cover_media_id") @db.UnsignedBigInt
+  authorUuid      String?           @map("author_uuid") @db.Char(36)
+  version         Int               @default(1)
+  scheduledAt     DateTime?         @map("scheduled_at")
+  publishedAt     DateTime?         @map("published_at")
+  publishedBy     String?           @map("published_by") @db.Char(36)
+  createdBy       String?           @map("created_by") @db.Char(36)
+  updatedBy       String?           @map("updated_by") @db.Char(36)
+  deletedAt       DateTime?         @map("deleted_at")
+  deletedBy       String?           @map("deleted_by") @db.Char(36)
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  category        ContentArticleCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  coverMedia      ContentMedia?     @relation("ArticleCoverMedia", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  tags            ContentArticleTag[]
+  comments        ContentComment[]
+  likes           ContentArticleLike[]
+  bookmarks       ContentArticleBookmark[]
+  statistics      ContentArticleStatistics?
+
+  @@index([status, visibility, publishedAt, id])
+  @@index([categoryId, status, deletedAt])
+  @@index([authorUuid, status, deletedAt])
+  @@index([language, status, deletedAt])
+  @@index([featured, status, publishedAt])
+  @@index([scheduledAt, status])
+  @@map("content_articles")
+}
+
+model ContentArticleTag {
+  articleId BigInt        @map("article_id") @db.UnsignedBigInt
+  tagId     BigInt        @map("tag_id") @db.UnsignedBigInt
+  createdAt DateTime      @default(now()) @map("created_at")
+  article   ContentArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       ContentTag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([tagId, articleId])
+  @@map("content_article_tags")
+}
+
+model ContentRevision {
+  id            BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid          String   @unique @default(uuid()) @db.Char(36)
+  entityType    String   @map("entity_type") @db.VarChar(50)
+  entityUuid    String   @map("entity_uuid") @db.Char(36)
+  version       Int
+  snapshot      Json
+  changeSummary String?  @map("change_summary") @db.VarChar(500)
+  createdBy     String?  @map("created_by") @db.Char(36)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([entityType, entityUuid, version])
+  @@index([entityType, entityUuid, createdAt])
+  @@map("content_revisions")
+}
+
+model ContentPage {
+  id             BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid           String            @unique @default(uuid()) @db.Char(36)
+  title          String            @db.VarChar(220)
+  slug           String            @unique @db.VarChar(240)
+  template       String            @db.VarChar(80)
+  content        Json
+  contentFormat  ContentFormat     @default(RICH_TEXT) @map("content_format")
+  status         ContentStatus     @default(DRAFT)
+  visibility     ContentVisibility @default(PUBLIC)
+  language       String            @default("id") @db.VarChar(12)
+  version        Int               @default(1)
+  scheduledAt    DateTime?         @map("scheduled_at")
+  publishedAt    DateTime?         @map("published_at")
+  publishedBy    String?           @map("published_by") @db.Char(36)
+  createdBy      String?           @map("created_by") @db.Char(36)
+  updatedBy      String?           @map("updated_by") @db.Char(36)
+  deletedAt      DateTime?         @map("deleted_at")
+  deletedBy      String?           @map("deleted_by") @db.Char(36)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  @@index([status, visibility, publishedAt, id])
+  @@index([language, status, deletedAt])
+  @@index([scheduledAt, status])
+  @@map("content_pages")
+}
+
+model ContentSeo {
+  id            BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid          String   @unique @default(uuid()) @db.Char(36)
+  entityType    String   @map("entity_type") @db.VarChar(40)
+  entityUuid    String   @map("entity_uuid") @db.Char(36)
+  metaTitle     String?  @map("meta_title") @db.VarChar(180)
+  metaDescription String? @map("meta_description") @db.VarChar(320)
+  keywords      String?  @db.Text
+  canonicalUrl  String?  @map("canonical_url") @db.VarChar(1000)
+  robots        String?  @db.VarChar(100)
+  ogTitle       String?  @map("og_title") @db.VarChar(180)
+  ogDescription String?  @map("og_description") @db.VarChar(320)
+  ogImageUrl    String?  @map("og_image_url") @db.VarChar(1000)
+  twitterTitle  String?  @map("twitter_title") @db.VarChar(180)
+  twitterDescription String? @map("twitter_description") @db.VarChar(320)
+  twitterImageUrl String? @map("twitter_image_url") @db.VarChar(1000)
+  structuredData Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([entityType, entityUuid])
+  @@index([entityType, entityUuid])
+  @@map("content_seo")
+}
+
+model ContentFaq {
+  id          BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String        @unique @default(uuid()) @db.Char(36)
+  question    String        @db.VarChar(500)
+  answer      Json
+  category    String?       @db.VarChar(120)
+  sortOrder   Int           @default(0) @map("sort_order")
+  status      ContentStatus @default(DRAFT)
+  language    String        @default("id") @db.VarChar(12)
+  featured    Boolean       @default(false)
+  version     Int           @default(1)
+  createdBy   String?       @map("created_by") @db.Char(36)
+  updatedBy   String?       @map("updated_by") @db.Char(36)
+  deletedAt   DateTime?     @map("deleted_at")
+  deletedBy   String?       @map("deleted_by") @db.Char(36)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@index([status, language, sortOrder, id])
+  @@map("content_faqs")
+}
+
+model ContentTestimonial {
+  id          BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String        @unique @default(uuid()) @db.Char(36)
+  quote       Json
+  name        String        @db.VarChar(180)
+  role        String?       @db.VarChar(120)
+  company     String?       @db.VarChar(180)
+  avatarUrl   String?       @map("avatar_url") @db.VarChar(1000)
+  rating      Int?
+  sortOrder   Int           @default(0) @map("sort_order")
+  featured    Boolean       @default(false)
+  status      ContentStatus @default(DRAFT)
+  language    String        @default("id") @db.VarChar(12)
+  version     Int           @default(1)
+  createdBy   String?       @map("created_by") @db.Char(36)
+  updatedBy   String?       @map("updated_by") @db.Char(36)
+  deletedAt   DateTime?     @map("deleted_at")
+  deletedBy   String?       @map("deleted_by") @db.Char(36)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@index([status, language, sortOrder, id])
+  @@map("content_testimonials")
+}
+
+model ContentBanner {
+  id              BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid            String          @unique @default(uuid()) @db.Char(36)
+  name            String          @db.VarChar(180)
+  title           String?         @db.VarChar(220)
+  subtitle        String?         @db.VarChar(300)
+  desktopMediaId  BigInt?         @map("desktop_media_id") @db.UnsignedBigInt
+  mobileMediaId   BigInt?         @map("mobile_media_id") @db.UnsignedBigInt
+  linkUrl         String?         @map("link_url") @db.VarChar(1000)
+  placement       BannerPlacement
+  priority        Int             @default(0)
+  startAt         DateTime?       @map("start_at")
+  endAt           DateTime?       @map("end_at")
+  status          ContentStatus   @default(DRAFT)
+  language        String          @default("id") @db.VarChar(12)
+  version         Int             @default(1)
+  createdBy       String?         @map("created_by") @db.Char(36)
+  updatedBy       String?         @map("updated_by") @db.Char(36)
+  deletedAt       DateTime?       @map("deleted_at")
+  deletedBy       String?         @map("deleted_by") @db.Char(36)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  desktopMedia    ContentMedia?   @relation("BannerDesktopMedia", fields: [desktopMediaId], references: [id], onDelete: SetNull)
+  mobileMedia     ContentMedia?   @relation("BannerMobileMedia", fields: [mobileMediaId], references: [id], onDelete: SetNull)
+
+  @@index([placement, status, startAt, endAt, priority])
+  @@index([language, status, priority])
+  @@map("content_banners")
+}
+
+model ContentMenu {
+  id        BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid      String         @unique @default(uuid()) @db.Char(36)
+  name      String         @db.VarChar(120)
+  slug      String         @unique @db.VarChar(160)
+  location  String         @db.VarChar(80)
+  status    ContentStatus  @default(DRAFT)
+  language  String         @default("id") @db.VarChar(12)
+  version   Int            @default(1)
+  createdBy String?        @map("created_by") @db.Char(36)
+  updatedBy String?        @map("updated_by") @db.Char(36)
+  deletedAt DateTime?      @map("deleted_at")
+  deletedBy String?        @map("deleted_by") @db.Char(36)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+  items     ContentMenuItem[]
+
+  @@index([location, status, language])
+  @@map("content_menus")
+}
+
+model ContentMenuItem {
+  id          BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String       @unique @default(uuid()) @db.Char(36)
+  menuId      BigInt       @map("menu_id") @db.UnsignedBigInt
+  parentId    BigInt?      @map("parent_id") @db.UnsignedBigInt
+  label       String       @db.VarChar(180)
+  itemType    String       @map("item_type") @db.VarChar(40)
+  resourceUuid String?     @map("resource_uuid") @db.Char(36)
+  url         String?      @db.VarChar(1000)
+  target      String?      @db.VarChar(20)
+  icon        String?      @db.VarChar(120)
+  sortOrder   Int          @default(0) @map("sort_order")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  menu        ContentMenu  @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@index([menuId, parentId, sortOrder, id])
+  @@map("content_menu_items")
+}
+
+model ContentRedirect {
+  id          BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String       @unique @default(uuid()) @db.Char(36)
+  sourcePath  String       @unique @map("source_path") @db.VarChar(1000)
+  destination String       @db.VarChar(1000)
+  type        RedirectType @default(MOVED_PERMANENTLY)
+  isActive    Boolean      @default(true) @map("is_active")
+  createdBy   String?      @map("created_by") @db.Char(36)
+  updatedBy   String?      @map("updated_by") @db.Char(36)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@index([isActive, sourcePath])
+  @@map("content_redirects")
+}
+
+model ContentRelation {
+  id           BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid         String       @unique @default(uuid()) @db.Char(36)
+  sourceUuid   String       @map("source_uuid") @db.Char(36)
+  targetUuid   String       @map("target_uuid") @db.Char(36)
+  sourceType   String       @map("source_type") @db.VarChar(40)
+  targetType   String       @map("target_type") @db.VarChar(40)
+  relationType RelationType @map("relation_type")
+  sortOrder    Int          @default(0) @map("sort_order")
+  createdBy    String?      @map("created_by") @db.Char(36)
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  @@unique([sourceUuid, targetUuid, relationType])
+  @@index([sourceUuid, relationType, sortOrder])
+  @@index([targetUuid, relationType])
+  @@map("content_relations")
+}
+
+model ContentArticleStatistics {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  articleId  BigInt   @unique @map("article_id") @db.UnsignedBigInt
+  views      BigInt   @default(0) @db.UnsignedBigInt
+  likes      BigInt   @default(0) @db.UnsignedBigInt
+  bookmarks  BigInt   @default(0) @db.UnsignedBigInt
+  comments   BigInt   @default(0) @db.UnsignedBigInt
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  article    ContentArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("content_article_statistics")
+}
+
+model ContentArticleView {
+  id            BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  articleId     BigInt   @map("article_id") @db.UnsignedBigInt
+  fingerprint   String   @db.Char(64)
+  viewedDate    DateTime @map("viewed_date") @db.Date
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([articleId, fingerprint, viewedDate])
+  @@index([articleId, viewedDate])
+  @@map("content_article_views")
+}
+
+model ContentComment {
+  id          BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String           @unique @default(uuid()) @db.Char(36)
+  articleId   BigInt           @map("article_id") @db.UnsignedBigInt
+  parentUuid  String?          @map("parent_uuid") @db.Char(36)
+  userUuid    String?          @map("user_uuid") @db.Char(36)
+  authorName  String?          @map("author_name") @db.VarChar(180)
+  authorEmail String?          @map("author_email") @db.VarChar(320)
+  content     Json
+  status      ModerationStatus @default(PENDING)
+  moderationReason String?     @map("moderation_reason") @db.VarChar(500)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  deletedAt   DateTime?        @map("deleted_at")
+  deletedBy   String?          @map("deleted_by") @db.Char(36)
+  article     ContentArticle   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([articleId, status, createdAt])
+  @@index([userUuid, createdAt])
+  @@map("content_comments")
+}
+
+model ContentArticleLike {
+  id         BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  articleId  BigInt        @map("article_id") @db.UnsignedBigInt
+  userUuid   String        @map("user_uuid") @db.Char(36)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  article    ContentArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, userUuid])
+  @@index([userUuid, articleId])
+  @@map("content_article_likes")
+}
+
+model ContentArticleBookmark {
+  id         BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  articleId  BigInt        @map("article_id") @db.UnsignedBigInt
+  userUuid   String        @map("user_uuid") @db.Char(36)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  article    ContentArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, userUuid])
+  @@index([userUuid, articleId])
+  @@map("content_article_bookmarks")
+}
