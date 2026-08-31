@@ -7,7 +7,6 @@ import type {
   ContentResourceType,
   PaginationQuery,
   ArticleResponse,
-  PagedResult,
 } from '../domain/content.types.js';
 import { ArticleEntity } from '../domain/entities/content.entities.js';
 import { CONTENT_REPOSITORY } from '../domain/repositories/content.repository.js';
@@ -35,6 +34,10 @@ const ALLOWED_TAGS = new Set([
   'blockquote',
   'a',
 ]);
+
+const hasControlCharacters = (value: string): boolean =>
+  [...value].some((character) => character.charCodeAt(0) < 32);
+
 export function normalizeSlug(value: string): string {
   const slug = value
     .trim()
@@ -59,11 +62,7 @@ export function sanitizeHtml(value: string): string {
       if (!ALLOWED_TAGS.has(lower)) return '';
       if (lower !== 'a') return `<${full.startsWith('</') ? '/' : ''}${lower}>`;
       const href = full.match(/href\s*=\s*["']([^"']*)["']/i)?.[1]?.trim();
-      if (
-        !href ||
-        !/^(https?:\/\/|mailto:)/i.test(href) ||
-        /[\u0000-\u001f]/.test(href)
-      )
+      if (!href || !/^(https?:\/\/|mailto:)/i.test(href) || hasControlCharacters(href))
         return '<a>';
       return `<a href="${href.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}">`;
     },
@@ -295,7 +294,7 @@ export class ContentService {
         allowComments: source.allowComments,
         wordCount: source.wordCount,
         readingTimeMin: source.readingTimeMin,
-        categoryUuid: source.categoryUuid,
+        categoryUuid: undefined,
         coverMediaUuid: source.coverMedia?.uuid,
         authorUuid: source.authorUuid,
         tags: source.tags.map((t) => t.uuid),
@@ -484,7 +483,8 @@ export class ContentService {
         originalName: file.originalname.slice(0, 255),
         storageKey: key,
         publicUrl: url,
-        provider: String(metadata.provider ?? 'local'),
+        provider:
+          typeof metadata.provider === 'string' ? metadata.provider : 'local',
         mimeType: file.mimetype,
         sizeBytes: file.size,
         uploaderUuid: ctx.actorUuid,
