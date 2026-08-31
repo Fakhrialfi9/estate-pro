@@ -1,0 +1,42 @@
+name: Apply Exact CMS Prettier Output
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.sha == 'faa3916c829e029ef8ba0fda6d2d5ba95dc1db08'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Download exact Prettier output
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: Fakhrialfi9/estate-pro
+          run-id: 33429627345
+          artifact-ids: 9772105275
+          path: /tmp/prettier-cms
+      - name: Apply formatted CMS files
+        run: |
+          test -f /tmp/prettier-cms/content.service.ts
+          test -f /tmp/prettier-cms/prisma-article.repository.ts
+          test -f /tmp/prettier-cms/prisma-content-resource.repository.ts
+          cp /tmp/prettier-cms/content.service.ts src/modules/content/application/content.service.ts
+          cp /tmp/prettier-cms/prisma-article.repository.ts src/modules/content/infrastructure/persistence/prisma-article.repository.ts
+          cp /tmp/prettier-cms/prisma-content-resource.repository.ts src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts
+          git add src/modules/content/application/content.service.ts src/modules/content/infrastructure/persistence/prisma-article.repository.ts src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts
+          git diff --cached --check
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'style(cms): apply exact Prettier formatting'
+          git push origin HEAD:main
