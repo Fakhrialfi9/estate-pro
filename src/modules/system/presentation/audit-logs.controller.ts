@@ -7,7 +7,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/auth.module.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -21,6 +26,63 @@ import { AuditLogQueryDto } from './audit-log-query.dto.js';
 
 const AUDIT_READ_PERMISSION = 'audit:read';
 type AuditRequest = Request & { user?: { sub?: string } };
+
+const auditLogResponseSchema = {
+  type: 'object',
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    actorUuid: { type: 'string', format: 'uuid', nullable: true },
+    actorType: { type: 'string' },
+    subjectUuid: { type: 'string', format: 'uuid', nullable: true },
+    action: { type: 'string' },
+    resourceType: { type: 'string', nullable: true },
+    resourceId: { type: 'string', nullable: true },
+    result: { type: 'string' },
+    reason: { type: 'string', nullable: true },
+    ipAddress: { type: 'string', nullable: true },
+    userAgent: { type: 'string', nullable: true },
+    requestId: { type: 'string', nullable: true },
+    createdAt: { type: 'string', format: 'date-time' },
+    changes: {
+      type: 'array',
+      items: { type: 'object', additionalProperties: true },
+    },
+  },
+  required: [
+    'uuid',
+    'actorUuid',
+    'actorType',
+    'subjectUuid',
+    'action',
+    'resourceType',
+    'resourceId',
+    'result',
+    'reason',
+    'ipAddress',
+    'userAgent',
+    'requestId',
+    'createdAt',
+    'changes',
+  ],
+};
+
+const auditLogListResponseSchema = {
+  type: 'object',
+  properties: {
+    items: { type: 'array', items: auditLogResponseSchema },
+    meta: {
+      type: 'object',
+      properties: {
+        page: { type: 'integer', minimum: 1 },
+        limit: { type: 'integer', minimum: 1 },
+        total: { type: 'integer', minimum: 0 },
+        totalPages: { type: 'integer', minimum: 0 },
+      },
+      required: ['page', 'limit', 'total', 'totalPages'],
+    },
+  },
+  required: ['items', 'meta'],
+};
 
 @ApiTags('Audit')
 @ApiBearerAuth()
@@ -39,6 +101,11 @@ export class AuditLogsController {
   @ApiOperation({
     summary: 'Query audit logs',
     description: `Requires ${AUDIT_READ_PERMISSION}. Records are immutable; this endpoint only reads paginated, filtered audit data and records the audit access itself.`,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Audit logs returned.',
+    schema: auditLogListResponseSchema,
   })
   async list(
     @Req() request: AuditRequest,
