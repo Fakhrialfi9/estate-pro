@@ -10,6 +10,7 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 
 import { SecureValidationPipe } from './common/pipes/secure-validation.pipe.js';
+import { applyContentOpenApiContract } from './common/swagger/content-openapi-contract.js';
 import { applyOpenApiContract } from './common/swagger/openapi-contract.js';
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,100}$/;
@@ -115,9 +116,11 @@ export const configureSwagger = (app: NestExpressApplication): void => {
     )
     .build();
 
-  const document = applyOpenApiContract(
-    SwaggerModule.createDocument(app, swaggerConfig),
-    configService,
+  const document = applyContentOpenApiContract(
+    applyOpenApiContract(
+      SwaggerModule.createDocument(app, swaggerConfig),
+      configService,
+    ),
   );
 
   SwaggerModule.setup('docs', app, document, {
