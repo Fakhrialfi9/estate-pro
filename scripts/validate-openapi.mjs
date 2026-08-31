@@ -93,7 +93,10 @@ const operationSchemasReferencedByResponses = (document) => {
 
 export const validateOpenApiDocument = (document) => {
   assert(isObject(document), 'OpenAPI document must be an object');
-  assert(document.openapi === '3.0.3' || document.openapi === '3.1.0', `Unsupported OpenAPI version: ${String(document.openapi)}`);
+  assert(
+    (typeof document.openapi === 'string' && /^3\.0\.\d+$/.test(document.openapi)) || document.openapi === '3.1.0',
+    `Unsupported OpenAPI version: ${String(document.openapi)}`,
+  );
   assert(isObject(document.info), 'OpenAPI info is missing');
   assert(typeof document.info.title === 'string' && document.info.title.length > 0, 'OpenAPI title is missing');
   assert(typeof document.info.version === 'string' && document.info.version.length > 0, 'API contract version is missing');
