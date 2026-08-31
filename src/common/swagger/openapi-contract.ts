@@ -1,581 +1,394 @@
-import type { ConfigService } from '@nestjs/config';
-
-type JsonSchema = Record<string, unknown>;
+type Schema = Record<string, unknown>;
 type ResponseObject = Record<string, unknown>;
 type Operation = Record<string, unknown> & {
+  operationId?: string;
   responses?: Record<string, ResponseObject>;
   parameters?: ResponseObject[];
   requestBody?: ResponseObject;
   security?: ResponseObject[];
 };
-type PathItem = Record<string, unknown>;
-type OpenApiDocument = {
+type Document = {
   openapi?: string;
   info?: Record<string, unknown>;
-  tags?: ResponseObject[];
   components?: {
-    schemas?: Record<string, JsonSchema>;
+    schemas?: Record<string, Schema>;
     responses?: Record<string, ResponseObject>;
   };
-  paths?: Record<string, PathItem>;
+  paths?: Record<string, Record<string, unknown>>;
 };
 
-const METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'] as const;
-type HttpMethod = (typeof METHODS)[number];
+type Method = 'get' | 'post' | 'patch' | 'delete' | 'put';
+const METHODS: Method[] = ['get', 'post', 'patch', 'delete', 'put'];
 
-const ref = (name: string): JsonSchema => ({ $ref: `#/components/schemas/${name}` });
-
-const property = (type: string, extra: JsonSchema = {}): JsonSchema => ({ type, ...extra });
-
-const response = (
-  description: string,
-  schema?: JsonSchema,
-  headers?: Record<string, JsonSchema>,
-): ResponseObject => ({
-  description,
-  ...(schema ? { content: { 'application/json': { schema } } } : {}),
-  ...(headers ? { headers } : {}),
-});
-
-const objectSchema = (
-  properties: Record<string, JsonSchema>,
-  required: string[] = [],
-  extra: JsonSchema = {},
-): JsonSchema => ({
+const ref = (name: string): Schema => ({ $ref: `#/components/schemas/${name}` });
+const schema = (type: string, extra: Schema = {}): Schema => ({ type, ...extra });
+const objectSchema = (properties: Record<string, Schema>, required: string[] = []): Schema => ({
   type: 'object',
   properties,
-  ...(required.length ? { required } : {}),
-  ...extra,
+  ...(required.length > 0 ? { required } : {}),
 });
-
-const arraySchema = (items: JsonSchema): JsonSchema => ({
-  type: 'array',
-  items,
+const arrayOf = (items: Schema): Schema => ({ type: 'array', items });
+const apiResponse = (description: string, body?: Schema): ResponseObject => ({
+  description,
+  ...(body ? { content: { 'application/json': { schema: body } } } : {}),
 });
+const wrapped = (data: Schema): Schema => objectSchema({ data }, ['data']);
 
-const successSchema = objectSchema({
-  success: property('boolean', { example: true }),
-}, ['success']);
+const errorResponse = objectSchema({
+  statusCode: schema('integer', { example: 400 }),
+  code: schema('string', { example: 'BAD_REQUEST' }),
+  message: {
+    oneOf: [schema('string'), arrayOf(schema('string'))],
+    description: 'Public error message or validation messages.',
+  },
+  path: schema('string', { example: '/api/v1/users' }),
+  timestamp: schema('string', { format: 'date-time' }),
+}, ['statusCode', 'code', 'message', 'path', 'timestamp']);
 
 const paginationMeta = objectSchema({
-  page: property('integer', { minimum: 1, example: 1 }),
-  limit: property('integer', { minimum: 1, maximum: 100, example: 20 }),
-  total: property('integer', { minimum: 0, example: 42 }),
-  totalPages: property('integer', { minimum: 0, example: 3 }),
+  page: schema('integer', { minimum: 1, example: 1 }),
+  limit: schema('integer', { minimum: 1, maximum: 100, example: 20 }),
+  total: schema('integer', { minimum: 0, example: 42 }),
+  totalPages: schema('integer', { minimum: 0, example: 3 }),
 }, ['page', 'limit', 'total', 'totalPages']);
 
-const apiError = objectSchema({
-  statusCode: property('integer', { example: 400 }),
-  code: property('string', { example: 'BAD_REQUEST' }),
-  message: property('array', {
-    items: property('string'),
-    description: 'Error message or validation messages.',
-  }),
-  path: property('string', { example: '/api/v1/users' }),
-  timestamp: property('string', { format: 'date-time', example: '2026-01-01T00:00:00.000Z' }),
-}, ['statusCode', 'code', 'message', 'path', 'timestamp']);
-
-const validationError = objectSchema({
-  statusCode: property('integer', { example: 400 }),
-  code: property('string', { example: 'BAD_REQUEST' }),
-  message: property('array', { items: property('string'), example: ['property must be a string'] }),
-  path: property('string', { example: '/api/v1/users' }),
-  timestamp: property('string', { format: 'date-time', example: '2026-01-01T00:00:00.000Z' }),
-}, ['statusCode', 'code', 'message', 'path', 'timestamp']);
-
 const userResponse = objectSchema({
-  uuid: property('string', { format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000' }),
-  username: property('string', { nullable: true, example: 'estate.admin' }),
-  email: property('string', { nullable: true, format: 'email', example: 'admin@example.com' }),
-  phone: property('string', { nullable: true, example: '+628123456789' }),
-  status: property('string', { example: 'active' }),
-  isActive: property('boolean', { example: true }),
-  isVerified: property('boolean', { example: true }),
-  createdAt: property('string', { format: 'date-time' }),
-  updatedAt: property('string', { format: 'date-time' }),
+  uuid: schema('string', { format: 'uuid' }),
+  username: schema('string', { nullable: true }),
+  email: schema('string', { nullable: true, format: 'email' }),
+  phone: schema('string', { nullable: true }),
+  status: schema('string'),
+  isActive: schema('boolean'),
+  isVerified: schema('boolean'),
+  createdAt: schema('string', { format: 'date-time' }),
+  updatedAt: schema('string', { format: 'date-time' }),
 }, ['uuid', 'username', 'email', 'phone', 'status', 'isActive', 'isVerified', 'createdAt', 'updatedAt']);
 
-const userListResponse = objectSchema({
-  items: arraySchema(ref('UserResponse')),
-  meta: ref('PaginationMeta'),
-}, ['items', 'meta']);
-
 const authTokenResponse = objectSchema({
-  accessToken: property('string', { description: 'Short-lived access token. Sensitive.', example: 'eyJhbGciOi...redacted' }),
-  tokenType: property('string', { enum: ['Bearer'], example: 'Bearer' }),
-  expiresIn: property('integer', { minimum: 1, example: 900 }),
-  refreshToken: property('string', { description: 'Rotating opaque refresh token. Sensitive.', example: 'refresh-token-placeholder' }),
-  refreshTokenExpiresIn: property('integer', { minimum: 1, example: 2592000 }),
+  accessToken: schema('string', { description: 'Short-lived access token. Sensitive.', example: 'access-token-placeholder' }),
+  tokenType: schema('string', { enum: ['Bearer'] }),
+  expiresIn: schema('integer', { minimum: 1 }),
+  refreshToken: schema('string', { description: 'Opaque rotating refresh token. Sensitive.', example: 'refresh-token-placeholder' }),
+  refreshTokenExpiresIn: schema('integer', { minimum: 1 }),
 }, ['accessToken', 'tokenType', 'expiresIn', 'refreshToken', 'refreshTokenExpiresIn']);
 
 const mfaChallengeResponse = objectSchema({
-  mfaRequired: property('boolean', { enum: [true], example: true }),
-  challengeToken: property('string', { description: 'Short-lived MFA challenge token. Sensitive.', example: 'mfa-challenge-placeholder' }),
-  expiresIn: property('integer', { minimum: 1, example: 300 }),
+  mfaRequired: schema('boolean', { enum: [true] }),
+  challengeToken: schema('string', { description: 'Short-lived MFA challenge token. Sensitive.', example: 'mfa-challenge-placeholder' }),
+  expiresIn: schema('integer', { minimum: 1 }),
 }, ['mfaRequired', 'challengeToken', 'expiresIn']);
 
 const sessionResponse = objectSchema({
-  id: property('string', { pattern: '^\\d+$', example: '123' }),
-  status: property('string', { enum: ['active', 'expired', 'revoked'], example: 'active' }),
-  ipAddress: property('string', { nullable: true, example: '203.0.113.10' }),
-  userAgent: property('string', { nullable: true, example: 'Mozilla/5.0' }),
-  createdAt: property('string', { format: 'date-time' }),
-  lastActivityAt: property('string', { nullable: true, format: 'date-time' }),
-  expiresAt: property('string', { format: 'date-time' }),
-  revokedAt: property('string', { nullable: true, format: 'date-time' }),
+  id: schema('string', { pattern: '^\\d+$' }),
+  status: schema('string', { enum: ['active', 'expired', 'revoked'] }),
+  ipAddress: schema('string', { nullable: true }),
+  userAgent: schema('string', { nullable: true }),
+  createdAt: schema('string', { format: 'date-time' }),
+  lastActivityAt: schema('string', { nullable: true, format: 'date-time' }),
+  expiresAt: schema('string', { format: 'date-time' }),
+  revokedAt: schema('string', { nullable: true, format: 'date-time' }),
 }, ['id', 'status', 'ipAddress', 'userAgent', 'createdAt', 'lastActivityAt', 'expiresAt', 'revokedAt']);
 
-const sessionListResponse = objectSchema({
-  data: arraySchema(ref('SessionResponse')),
-}, ['data']);
-
-const logoutAllResponse = objectSchema({
-  success: property('boolean', { example: true }),
-  revokedCount: property('integer', { minimum: 0, example: 2 }),
-}, ['success', 'revokedCount']);
-
-const twoFactorStatus = objectSchema({ enabled: property('boolean', { example: true }) }, ['enabled']);
-const enrollmentResponse = objectSchema({
-  method: property('string', { enum: ['totp'], example: 'totp' }),
-  provisioningUri: property('string', { description: 'TOTP provisioning URI. Sensitive provisioning material.', example: 'otpauth://totp/...' }),
-  verificationRequired: property('boolean', { enum: [true], example: true }),
-}, ['method', 'provisioningUri', 'verificationRequired']);
-const enabledRecoveryResponse = objectSchema({
-  enabled: property('boolean', { enum: [true], example: true }),
-  recoveryCodes: arraySchema(property('string', { description: 'Single-use recovery code. Sensitive.' })),
-}, ['enabled', 'recoveryCodes']);
-const recoveryCodesResponse = objectSchema({
-  recoveryCodes: arraySchema(property('string', { description: 'Single-use recovery code. Sensitive.' })),
-}, ['recoveryCodes']);
-
-const propertyTypeResponse = objectSchema({
-  uuid: property('string', { format: 'uuid' }),
-  code: property('string', { example: 'HOUSE' }),
-  name: property('string', { example: 'House' }),
-  slug: property('string', { example: 'house' }),
-  description: property('string', { nullable: true }),
-  icon: property('string', { nullable: true }),
-  isActive: property('boolean'),
-  sortOrder: property('integer'),
-  createdAt: property('string', { format: 'date-time' }),
-  updatedAt: property('string', { format: 'date-time' }),
+const catalogResponse = objectSchema({
+  uuid: schema('string', { format: 'uuid' }),
+  code: schema('string'),
+  name: schema('string'),
+  slug: schema('string'),
+  description: schema('string', { nullable: true }),
+  icon: schema('string', { nullable: true }),
+  isActive: schema('boolean'),
+  sortOrder: schema('integer'),
+  createdAt: schema('string', { format: 'date-time' }),
+  updatedAt: schema('string', { format: 'date-time' }),
 }, ['uuid', 'code', 'name', 'slug', 'description', 'icon', 'isActive', 'sortOrder', 'createdAt', 'updatedAt']);
-const propertyTypeListResponse = objectSchema({
-  items: arraySchema(ref('PropertyTypeResponse')),
-  meta: ref('PaginationMeta'),
-}, ['items', 'meta']);
 
-const propertyCatalogResponse = objectSchema({
-  uuid: property('string', { format: 'uuid' }),
-  code: property('string'),
-  name: property('string'),
-  slug: property('string'),
-  description: property('string', { nullable: true }),
-  icon: property('string', { nullable: true }),
-  isActive: property('boolean'),
-  sortOrder: property('integer'),
-  createdAt: property('string', { format: 'date-time' }),
-  updatedAt: property('string', { format: 'date-time' }),
-}, ['uuid', 'code', 'name', 'slug', 'description', 'icon', 'isActive', 'sortOrder', 'createdAt', 'updatedAt']);
-const propertyCatalogListResponse = objectSchema({
-  data: arraySchema(ref('PropertyCatalogResponse')),
-  meta: ref('PaginationMeta'),
-}, ['data', 'meta']);
+const locationResponse = objectSchema({
+  uuid: schema('string', { format: 'uuid' }),
+  code: schema('string'),
+  name: schema('string'),
+  slug: schema('string'),
+  isActive: schema('boolean'),
+  sortOrder: schema('integer'),
+  createdAt: schema('string', { format: 'date-time' }),
+  updatedAt: schema('string', { format: 'date-time' }),
+}, ['uuid', 'code', 'name', 'slug', 'isActive', 'sortOrder', 'createdAt', 'updatedAt']);
 
 const propertyResponse = objectSchema({
-  uuid: property('string', { format: 'uuid' }),
-  businessCode: property('string', { maxLength: 40 }),
-  referenceNumber: property('string', { maxLength: 80 }),
-  title: property('string', { minLength: 3, maxLength: 200 }),
-  slug: property('string', { maxLength: 220 }),
-  shortDescription: property('string', { nullable: true }),
-  description: property('string', { nullable: true }),
-  status: property('string', { enum: ['DRAFT', 'IN_REVIEW', 'ACTIVE', 'ARCHIVED', 'SOLD', 'RENTED'] }),
-  availabilityStatus: property('string', { enum: ['AVAILABLE', 'UNAVAILABLE'] }),
-  availableFrom: property('string', { nullable: true, format: 'date-time' }),
-  availableTo: property('string', { nullable: true, format: 'date-time' }),
-  version: property('integer', { minimum: 1 }),
-  publishedAt: property('string', { nullable: true, format: 'date-time' }),
-  verifiedAt: property('string', { nullable: true, format: 'date-time' }),
-  createdAt: property('string', { format: 'date-time' }),
-  updatedAt: property('string', { format: 'date-time' }),
+  uuid: schema('string', { format: 'uuid' }),
+  businessCode: schema('string', { maxLength: 40 }),
+  referenceNumber: schema('string', { maxLength: 80 }),
+  title: schema('string', { minLength: 3, maxLength: 200 }),
+  slug: schema('string', { maxLength: 220 }),
+  shortDescription: schema('string', { nullable: true }),
+  description: schema('string', { nullable: true }),
+  status: schema('string', { enum: ['DRAFT', 'IN_REVIEW', 'ACTIVE', 'ARCHIVED', 'SOLD', 'RENTED'] }),
+  availabilityStatus: schema('string', { enum: ['AVAILABLE', 'UNAVAILABLE'] }),
+  availableFrom: schema('string', { nullable: true, format: 'date-time' }),
+  availableTo: schema('string', { nullable: true, format: 'date-time' }),
+  version: schema('integer', { minimum: 1 }),
+  publishedAt: schema('string', { nullable: true, format: 'date-time' }),
+  verifiedAt: schema('string', { nullable: true, format: 'date-time' }),
+  createdAt: schema('string', { format: 'date-time' }),
+  updatedAt: schema('string', { format: 'date-time' }),
 }, ['uuid', 'businessCode', 'referenceNumber', 'title', 'slug', 'shortDescription', 'description', 'status', 'availabilityStatus', 'availableFrom', 'availableTo', 'version', 'publishedAt', 'verifiedAt', 'createdAt', 'updatedAt']);
-const propertyWrappedResponse = objectSchema({ data: ref('PropertyResponse') }, ['data']);
-const propertyListResponse = objectSchema({ data: arraySchema(ref('PropertyResponse')), meta: ref('PaginationMeta') }, ['data', 'meta']);
-const propertyNestedResponse = objectSchema({
-  data: property('object', {
-    description: 'Public serialized property subresource. Fields are owned by the corresponding property detail/extras endpoint.',
+
+const nestedResponse = objectSchema({
+  data: schema('object', {
+    additionalProperties: true,
+    description: 'Serialized public property detail/extra resource. Exact fields are owned by the corresponding runtime serializer.',
   }),
 }, ['data']);
 
-const addSchemas = (document: OpenApiDocument): void => {
-  const schemas = document.components?.schemas ?? (document.components = { schemas: {} }).schemas!;
-  Object.assign(schemas, {
-    ApiErrorResponse: apiError,
-    ValidationErrorResponse: validationError,
-    PaginationMeta: paginationMeta,
-    SuccessResponse: successSchema,
-    UserResponse: userResponse,
-    UserListResponse: userListResponse,
-    AuthTokenResponse: authTokenResponse,
-    MfaChallengeResponse: mfaChallengeResponse,
-    SessionResponse: sessionResponse,
-    SessionListResponse: sessionListResponse,
-    LogoutAllResponse: logoutAllResponse,
-    TwoFactorStatusResponse: twoFactorStatus,
-    TwoFactorEnrollmentResponse: enrollmentResponse,
-    TwoFactorEnabledRecoveryResponse: enabledRecoveryResponse,
-    RecoveryCodesResponse: recoveryCodesResponse,
-    PropertyTypeResponse: propertyTypeResponse,
-    PropertyTypeListResponse: propertyTypeListResponse,
-    PropertyCatalogResponse: propertyCatalogResponse,
-    PropertyCatalogListResponse: propertyCatalogListResponse,
-    PropertyResponse: propertyResponse,
-    PropertyWrappedResponse: propertyWrappedResponse,
-    PropertyListResponse: propertyListResponse,
-    PropertyNestedResponse: propertyNestedResponse,
-  });
+const successResponse = objectSchema({ success: schema('boolean', { example: true }) }, ['success']);
+const logoutAllResponse = objectSchema({
+  success: schema('boolean', { example: true }),
+  revokedCount: schema('integer', { minimum: 0 }),
+}, ['success', 'revokedCount']);
+const twoFactorStatus = objectSchema({ enabled: schema('boolean') }, ['enabled']);
+const enrollmentResponse = objectSchema({
+  method: schema('string', { enum: ['totp'] }),
+  provisioningUri: schema('string', { description: 'TOTP provisioning URI. Sensitive provisioning material.' }),
+  verificationRequired: schema('boolean', { enum: [true] }),
+}, ['method', 'provisioningUri', 'verificationRequired']);
+const recoveryResponse = objectSchema({ recoveryCodes: arrayOf(schema('string', { description: 'Single-use recovery code. Sensitive.' })) }, ['recoveryCodes']);
+const enabledRecoveryResponse = objectSchema({ enabled: schema('boolean', { enum: [true] }), recoveryCodes: arrayOf(schema('string', { description: 'Single-use recovery code. Sensitive.' })) }, ['enabled', 'recoveryCodes']);
+
+const addSchema = (document: Document, name: string, value: Schema): void => {
+  document.components ??= {};
+  document.components.schemas ??= {};
+  document.components.schemas[name] = value;
 };
 
-const addResponses = (document: OpenApiDocument): void => {
-  const responses = document.components?.responses ?? (document.components = { ...(document.components ?? {}), responses: {} }).responses!;
-  const reusable = (status: number, description: string): ResponseObject => response(description, ref('ApiErrorResponse'));
-  Object.assign(responses, {
-    BadRequest: reusable(400, 'Request validation or business input is invalid.'),
-    Unauthorized: reusable(401, 'Authentication is required or failed.'),
-    Forbidden: reusable(403, 'Authenticated principal is not authorized.'),
-    NotFound: reusable(404, 'Requested resource was not found.'),
-    Conflict: reusable(409, 'Request conflicts with current resource state.'),
-    TooManyRequests: reusable(429, 'Rate limit exceeded.'),
-    InternalServerError: reusable(500, 'Unexpected server error.'),
-    ServiceUnavailable: reusable(503, 'Required infrastructure service is unavailable.'),
-  });
-};
-
-const operationEntries = (document: OpenApiDocument): Array<[string, HttpMethod, Operation]> => {
-  const output: Array<[string, HttpMethod, Operation]> = [];
-  for (const [path, pathItem] of Object.entries(document.paths ?? {})) {
-    for (const method of METHODS) {
-      const candidate = pathItem[method];
-      if (candidate && typeof candidate === 'object') output.push([path, method, candidate as Operation]);
-    }
-  }
-  return output;
-};
-
-const setSuccess = (operation: Operation, status: number, schema: JsonSchema, description: string): void => {
-  const responses = operation.responses ?? (operation.responses = {});
-  responses[String(status)] = response(description, schema);
+const setResponse = (operation: Operation, status: number, body: Schema | undefined, description: string): void => {
+  operation.responses ??= {};
+  operation.responses[String(status)] = apiResponse(description, body);
 };
 
 const setNoContent = (operation: Operation, description: string): void => {
-  const responses = operation.responses ?? (operation.responses = {});
-  responses['204'] = response(description);
+  operation.responses ??= {};
+  operation.responses['204'] = apiResponse(description);
 };
 
-const addErrorRefs = (operation: Operation, statuses: number[]): void => {
-  const responses = operation.responses ?? (operation.responses = {});
+const setErrors = (operation: Operation, statuses: number[]): void => {
+  operation.responses ??= {};
+  const names: Record<number, string> = {
+    400: 'BadRequest',
+    401: 'Unauthorized',
+    403: 'Forbidden',
+    404: 'NotFound',
+    409: 'Conflict',
+    429: 'TooManyRequests',
+    500: 'InternalServerError',
+    503: 'ServiceUnavailable',
+  };
   for (const status of statuses) {
-    const name =
-      status === 400 ? 'BadRequest' :
-      status === 401 ? 'Unauthorized' :
-      status === 403 ? 'Forbidden' :
-      status === 404 ? 'NotFound' :
-      status === 409 ? 'Conflict' :
-      status === 429 ? 'TooManyRequests' :
-      status === 500 ? 'InternalServerError' :
-      status === 503 ? 'ServiceUnavailable' : undefined;
-    if (!name) continue;
-    responses[String(status)] = { $ref: `#/components/responses/${name}` };
+    const name = names[status];
+    if (name) operation.responses[String(status)] = { $ref: `#/components/responses/${name}` };
   }
 };
 
-const setSecurity = (operation: Operation, protectedEndpoint: boolean): void => {
-  operation.security = protectedEndpoint ? [{ bearer: [] }] : [];
-};
-
-const parameter = (
-  name: string,
-  location: 'path' | 'query',
-  schema: JsonSchema,
-  description: string,
-  required: boolean,
-): ResponseObject => ({
-  name,
-  in: location,
-  required,
-  description,
-  schema,
-});
-
-const ensureParameter = (operation: Operation, value: ResponseObject): void => {
-  const parameters = operation.parameters ?? (operation.parameters = []);
-  const name = typeof value.name === 'string' ? value.name : '';
-  const location = typeof value.in === 'string' ? value.in : '';
-  if (!parameters.some((item) => item.name === name && item.in === location)) parameters.push(value);
-};
-
-const setPathParameter = (operation: Operation, name: string, schema: JsonSchema, description: string): void => {
-  ensureParameter(operation, parameter(name, 'path', schema, description, true));
-};
-
-const setQueryParameter = (operation: Operation, name: string, schema: JsonSchema, description: string, required = false): void => {
-  ensureParameter(operation, parameter(name, 'query', schema, description, required));
-};
-
-const hasBody = (operation: Operation): boolean => Boolean(operation.requestBody);
-
-const setOperationId = (operation: Operation, path: string, method: HttpMethod): void => {
-  if (typeof operation.operationId !== 'string' || operation.operationId.trim() === '') {
-    operation.operationId = `${method}_${path.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')}`;
+const addPathParam = (operation: Operation, name: string, value: Schema, description: string): void => {
+  operation.parameters ??= [];
+  if (!operation.parameters.some((item) => item.name === name && item.in === 'path')) {
+    operation.parameters.push({ name, in: 'path', required: true, description, schema: value });
   }
 };
 
-const addQueryContract = (operation: Operation, queryType: 'users' | 'properties' | 'propertyTypes' | 'catalog'): void => {
-  if (queryType === 'users') {
-    setQueryParameter(operation, 'page', property('integer', { minimum: 1, maximum: 100, default: 1 }), 'Page number.', false);
-    setQueryParameter(operation, 'limit', property('integer', { minimum: 1, maximum: 100, default: 20 }), 'Maximum number of records.', false);
-    setQueryParameter(operation, 'filterField', property('string', { enum: ['username', 'email', 'phone', 'status', 'isActive'] }), 'Filter field. Must be paired with filterValue.', false);
-    setQueryParameter(operation, 'filterValue', property('string', { maxLength: 100 }), 'Filter value. Required when filterField is present; for isActive use true or false.', false);
-    setQueryParameter(operation, 'sortBy', property('string', { enum: ['uuid', 'username', 'email', 'phone', 'status', 'createdAt', 'updatedAt'], default: 'createdAt' }), 'Allowed user sort field.', false);
-    setQueryParameter(operation, 'sortDirection', property('string', { enum: ['asc', 'desc'], default: 'desc' }), 'Sort direction.', false);
-    setQueryParameter(operation, 'search', property('string', { maxLength: 100 }), 'Searches supported user identity fields.', false);
+const addQueryParam = (operation: Operation, name: string, value: Schema, description: string): void => {
+  operation.parameters ??= [];
+  if (!operation.parameters.some((item) => item.name === name && item.in === 'query')) {
+    operation.parameters.push({ name, in: 'query', required: false, description, schema: value });
   }
-  if (queryType === 'properties') {
-    setQueryParameter(operation, 'page', property('integer', { minimum: 1, maximum: 100 }), 'Page number.', false);
-    setQueryParameter(operation, 'limit', property('integer', { minimum: 1, maximum: 100 }), 'Maximum number of records.', false);
-    setQueryParameter(operation, 'search', property('string', { maxLength: 100 }), 'Search term.', false);
-    setQueryParameter(operation, 'sortBy', property('string', { maxLength: 50 }), 'Property sorting field accepted by runtime.', false);
-    setQueryParameter(operation, 'sortDirection', property('string', { enum: ['asc', 'desc'] }), 'Sort direction.', false);
-    setQueryParameter(operation, 'isActive', property('boolean'), 'Filter by active state.', false);
-    for (const name of ['parentUuid', 'typeUuid', 'categoryUuid', 'subcategoryUuid']) {
-      setQueryParameter(operation, name, property('string', { format: 'uuid' }), 'UUID filter.', false);
+};
+
+const addListQuery = (operation: Operation): void => {
+  addQueryParam(operation, 'page', schema('integer', { minimum: 1, maximum: 100 }), 'Page number.');
+  addQueryParam(operation, 'limit', schema('integer', { minimum: 1, maximum: 100 }), 'Maximum number of records.');
+  addQueryParam(operation, 'search', schema('string', { maxLength: 100 }), 'Search term.');
+};
+
+const addOperationIds = (document: Document): void => {
+  const used = new Set<string>();
+  for (const [path, item] of Object.entries(document.paths ?? {})) {
+    for (const method of METHODS) {
+      const candidate = item[method];
+      if (!candidate || typeof candidate !== 'object') continue;
+      const operation = candidate as Operation;
+      let id = typeof operation.operationId === 'string' && operation.operationId ? operation.operationId : `${method}_${path.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')}`;
+      let index = 2;
+      while (used.has(id)) id = `${id}_${index++}`;
+      operation.operationId = id;
+      used.add(id);
     }
-    setQueryParameter(operation, 'status', property('string', { enum: ['DRAFT', 'IN_REVIEW', 'ACTIVE', 'ARCHIVED', 'SOLD', 'RENTED'] }), 'Property lifecycle status.', false);
-    setQueryParameter(operation, 'category', property('string', { enum: ['OUTDOOR', 'SECURITY', 'TECHNOLOGY', 'PARKING', 'CLIMATE', 'UTILITY', 'ACCESSIBILITY', 'RECREATION', 'OTHER'] }), 'Facility category filter.', false);
-  }
-  if (queryType === 'propertyTypes') {
-    setQueryParameter(operation, 'page', property('integer', { minimum: 1, default: 1 }), 'Page number.', false);
-    setQueryParameter(operation, 'limit', property('integer', { minimum: 1, maximum: 100, default: 20 }), 'Maximum number of records.', false);
-    setQueryParameter(operation, 'filterField', property('string', { enum: ['code', 'name', 'slug', 'isActive'] }), 'Filter field. Must be paired with filterValue.', false);
-    setQueryParameter(operation, 'filterValue', property('string', { minLength: 1, maxLength: 100 }), 'Filter value. Required when filterField is present.', false);
-    setQueryParameter(operation, 'sortBy', property('string', { enum: ['code', 'name', 'slug', 'isActive', 'sortOrder', 'createdAt', 'updatedAt'], default: 'createdAt' }), 'Allowed property type sort field.', false);
-    setQueryParameter(operation, 'sortDirection', property('string', { enum: ['asc', 'desc'], default: 'desc' }), 'Sort direction.', false);
-    setQueryParameter(operation, 'search', property('string', { minLength: 1, maxLength: 100 }), 'Search term.', false);
-  }
-  if (queryType === 'catalog') {
-    setQueryParameter(operation, 'page', property('integer', { minimum: 1 }), 'Page number.', false);
-    setQueryParameter(operation, 'limit', property('integer', { minimum: 1, maximum: 100 }), 'Maximum number of records.', false);
-    setQueryParameter(operation, 'search', property('string', { maxLength: 100 }), 'Search term.', false);
-    setQueryParameter(operation, 'isActive', property('boolean'), 'Filter by active state.', false);
-    setQueryParameter(operation, 'typeUuid', property('string', { format: 'uuid' }), 'Property type UUID filter.', false);
   }
 };
 
-const classifyPropertySubresource = (path: string): boolean =>
-  /\\/api\\/v1\\/property\\/properties\\/[^/]+\\//.test(path) ||
-  /\\/api\\/v1\\/property\\/properties$/.test(path) === false && path.includes('/property/properties/');
-
-export const applyOpenApiContract = (
-  document: OpenApiDocument,
-  configService?: ConfigService,
-): OpenApiDocument => {
-  addSchemas(document);
-  addResponses(document);
-
-  if (configService && document.info) {
-    const configuredVersion = configService.get<string>('app.version');
-    if (configuredVersion) document.info.version = configuredVersion;
-    const appName = configService.get<string>('app.name');
-    if (appName) document.info.title = `${appName} API`;
+const addReusableResponses = (document: Document): void => {
+  document.components ??= {};
+  document.components.responses ??= {};
+  for (const [status, description] of Object.entries({
+    BadRequest: 'Request validation or business input is invalid.',
+    Unauthorized: 'Authentication is required or failed.',
+    Forbidden: 'Authenticated principal is not authorized.',
+    NotFound: 'Requested resource was not found.',
+    Conflict: 'Request conflicts with current resource state.',
+    TooManyRequests: 'Rate limit exceeded.',
+    InternalServerError: 'Unexpected server error.',
+    ServiceUnavailable: 'Required infrastructure service is unavailable.',
+  })) {
+    document.components.responses[status] = apiResponse(description, ref('ApiErrorResponse'));
   }
+};
+
+export const applyOpenApiContract = (document: Document, configService?: { get<T>(key: string): T | undefined }): Document => {
+  addSchema(document, 'ApiErrorResponse', errorResponse);
+  addSchema(document, 'ValidationErrorResponse', errorResponse);
+  addSchema(document, 'PaginationMeta', paginationMeta);
+  addSchema(document, 'UserResponse', userResponse);
+  addSchema(document, 'UserListResponse', objectSchema({ items: arrayOf(ref('UserResponse')), meta: ref('PaginationMeta') }, ['items', 'meta']));
+  addSchema(document, 'AuthTokenResponse', authTokenResponse);
+  addSchema(document, 'MfaChallengeResponse', mfaChallengeResponse);
+  addSchema(document, 'SessionResponse', sessionResponse);
+  addSchema(document, 'SessionListResponse', objectSchema({ data: arrayOf(ref('SessionResponse')) }, ['data']));
+  addSchema(document, 'LogoutAllResponse', logoutAllResponse);
+  addSchema(document, 'TwoFactorStatusResponse', twoFactorStatus);
+  addSchema(document, 'TwoFactorEnrollmentResponse', enrollmentResponse);
+  addSchema(document, 'TwoFactorEnabledRecoveryResponse', enabledRecoveryResponse);
+  addSchema(document, 'RecoveryCodesResponse', recoveryResponse);
+  addSchema(document, 'PropertyCatalogResponse', catalogResponse);
+  addSchema(document, 'PropertyLocationResponse', locationResponse);
+  addSchema(document, 'PropertyTypeResponse', catalogResponse);
+  addSchema(document, 'PropertyTypeListResponse', objectSchema({ items: arrayOf(ref('PropertyTypeResponse')), meta: ref('PaginationMeta') }, ['items', 'meta']));
+  addSchema(document, 'PropertyResponse', propertyResponse);
+  addSchema(document, 'PropertyWrappedResponse', wrapped(ref('PropertyResponse')));
+  addSchema(document, 'PropertyListResponse', objectSchema({ data: arrayOf(ref('PropertyResponse')), meta: ref('PaginationMeta') }, ['data', 'meta']));
+  addSchema(document, 'PropertyNestedResponse', nestedResponse);
+  addSchema(document, 'SuccessResponse', successResponse);
+  addReusableResponses(document);
+
   if (document.info) {
-    document.info.description = 'Estate Pro HTTP API. OpenAPI documents describe the public v1 API contract and reflect runtime validation, serialization, authentication, authorization, and error behavior.';
+    const appName = configService?.get<string>('app.name');
+    const appVersion = configService?.get<string>('app.version');
+    if (appName) document.info.title = `${appName} API`;
+    if (appVersion) document.info.version = appVersion;
+    document.info.description = 'Estate Pro public HTTP API. The generated OpenAPI contract follows runtime validation, serialization, authentication, authorization, and public error behavior.';
   }
 
-  for (const [path, method, operation] of operationEntries(document)) {
-    setOperationId(operation, path, method);
-    const normalized = path.replace(/^\\/api\\/v1\\//, '/');
-    const isPublic =
-      normalized === '/auth/login' ||
-      normalized === '/auth/refresh' ||
-      normalized === '/auth/2fa/verify' ||
-      normalized === '/health/live' ||
-      normalized === '/health/ready';
-    setSecurity(operation, !isPublic);
+  for (const [path, item] of Object.entries(document.paths ?? {})) {
+    const normalized = path.startsWith('/api/v1/') ? path.slice('/api/v1'.length) : path;
+    for (const method of METHODS) {
+      const candidate = item[method];
+      if (!candidate || typeof candidate !== 'object') continue;
+      const operation = candidate as Operation;
+      const publicEndpoint = normalized === '/auth/login' || normalized === '/auth/refresh' || normalized === '/auth/2fa/verify' || normalized === '/health/live' || normalized === '/health/ready';
+      operation.security = publicEndpoint ? [] : [{ bearer: [] }];
 
-    if (method === 'get' && normalized === '/users') addQueryContract(operation, 'users');
-    if (method === 'get' && normalized === '/property-types') addQueryContract(operation, 'propertyTypes');
-    if (method === 'get' && /^\\/property\\/(categories|subcategories|facilities)$/.test(normalized)) addQueryContract(operation, 'catalog');
-    if (method === 'get' && /^\\/property\\/locations\\//.test(normalized)) {
-      setPathParameter(operation, 'level', property('string', { enum: ['country', 'province', 'city', 'district', 'subdistrict'] }), 'Location hierarchy level.');
-      if (normalized.split('/').length > 4 && !normalized.endsWith('/children')) {
-        setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Location UUID.');
+      if (normalized === '/auth/login' && method === 'post') {
+        setResponse(operation, 201, { oneOf: [ref('AuthTokenResponse'), ref('MfaChallengeResponse')] }, 'Authentication succeeded or an MFA challenge was issued.');
+        setErrors(operation, [400, 401, 429, 500]);
+        continue;
       }
-      if (normalized.endsWith('/children')) setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Parent location UUID.');
-      addQueryContract(operation, 'catalog');
-    }
-    if (normalized === '/property/properties' && method === 'get') addQueryContract(operation, 'properties');
-
-    if (normalized.startsWith('/users/')) {
-      if (normalized.includes('/email/')) setPathParameter(operation, 'email', property('string', { format: 'email' }), 'User email address.');
-      else if (normalized.includes('/username/')) setPathParameter(operation, 'username', property('string', { maxLength: 100 }), 'Username.');
-      else setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'User UUID.');
-    }
-
-    if (normalized.startsWith('/auth/sessions/')) {
-      if (normalized.includes('/users/')) {
-        setPathParameter(operation, 'userUuid', property('string', { format: 'uuid' }), 'Target user UUID.');
-        setPathParameter(operation, 'id', property('string', { pattern: '^\\d+$' }), 'Public numeric session identifier.');
-      } else if (normalized !== '/auth/sessions/logout-all') {
-        setPathParameter(operation, 'id', property('string', { pattern: '^\\d+$' }), 'Public numeric session identifier.');
+      if (normalized === '/auth/refresh' && method === 'post') {
+        operation.responses ??= {};
+        operation.responses['200'] = {
+          ...apiResponse('Tokens rotated successfully.', ref('AuthTokenResponse')),
+          headers: { 'Cache-Control': { schema: schema('string', { example: 'no-store' }) } },
+        };
+        setErrors(operation, [400, 401, 429, 500]);
+        continue;
       }
-    }
+      if (normalized === '/auth/logout' && method === 'post') { setResponse(operation, 201, ref('SuccessResponse'), 'Current session revoked.'); setErrors(operation, [401, 500]); continue; }
+      if (normalized === '/auth/me' && method === 'get') { setResponse(operation, 200, ref('UserResponse'), 'Current user returned.'); setErrors(operation, [401, 404, 500]); continue; }
+      if (normalized === '/auth/sessions' && method === 'get') { addQueryParam(operation, 'limit', schema('integer', { minimum: 1, maximum: 100, default: 20 }), 'Maximum number of sessions.'); addQueryParam(operation, 'offset', schema('integer', { minimum: 0, default: 0 }), 'Zero-based offset.'); addQueryParam(operation, 'includeInactive', schema('boolean', { default: false }), 'Whether to include inactive sessions.'); setResponse(operation, 200, ref('SessionListResponse'), 'Own sessions returned.'); setErrors(operation, [401, 429, 500]); continue; }
+      if (normalized === '/auth/sessions/logout-all' && method === 'post') { setResponse(operation, 201, ref('LogoutAllResponse'), 'All own sessions revoked.'); setErrors(operation, [401, 429, 500]); continue; }
+      if (/^\/auth\/sessions\/\d+$/.test(normalized) && method === 'delete') { addPathParam(operation, 'id', schema('string', { pattern: '^\\d+$' }), 'Public numeric session identifier.'); setResponse(operation, 200, ref('SuccessResponse'), 'Session revoked.'); setErrors(operation, [400, 401, 404, 429, 500]); continue; }
+      if (/^\/admin\/session-management\/users\/[^/]+\/sessions\/\d+\/revoke$/.test(normalized) && method === 'post') { addPathParam(operation, 'userUuid', schema('string', { format: 'uuid' }), 'Target user UUID.'); addPathParam(operation, 'id', schema('string', { pattern: '^\\d+$' }), 'Public numeric session identifier.'); setResponse(operation, 201, ref('SuccessResponse'), 'Target session revoked.'); setErrors(operation, [400, 401, 403, 404, 429, 500]); continue; }
 
-    if (normalized.startsWith('/property')) {
-      const hasPropertyUuid = normalized.includes('/properties/');
-      if (hasPropertyUuid) setPathParameter(operation, 'propertyUuid', property('string', { format: 'uuid' }), 'Property UUID.');
-      if (normalized.includes(':uuid')) setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Resource UUID.');
-      if (normalized.includes('/categories/') || normalized.includes('/subcategories/') || normalized.includes('/facilities/')) setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Resource UUID.');
-      if (normalized.includes('/certificates/')) setPathParameter(operation, 'certificateUuid', property('string', { format: 'uuid' }), 'Certificate UUID.');
-      if (normalized.includes('/media/')) setPathParameter(operation, 'mediaUuid', property('string', { format: 'uuid' }), 'Media UUID.');
-      if (normalized.includes('/rooms/')) setPathParameter(operation, 'roomUuid', property('string', { format: 'uuid' }), 'Room UUID.');
-      if (/^\\/property\\/properties\\/[^/]+\\/(specifications|location|building|rooms|facilities|utilities|legal|certificates|financial|features|security|environment|seo|media)/.test(normalized)) {
-        setSuccess(operation, method === 'post' ? 201 : 200, ref('PropertyNestedResponse'), 'Serialized property subresource.');
+      if (normalized === '/auth/2fa' && method === 'get') { setResponse(operation, 200, ref('TwoFactorStatusResponse'), 'Two-factor status returned.'); setErrors(operation, [401, 429, 500]); continue; }
+      if (normalized === '/auth/2fa/enrollment' && method === 'post') { setResponse(operation, 201, ref('TwoFactorEnrollmentResponse'), 'Two-factor enrollment started.'); setErrors(operation, [400, 401, 429, 500]); continue; }
+      if (normalized === '/auth/2fa/enrollment/verify' && method === 'post') { setResponse(operation, 201, ref('TwoFactorEnabledRecoveryResponse'), 'Two-factor enrollment verified.'); setErrors(operation, [400, 401, 429, 500]); continue; }
+      if (normalized === '/auth/2fa/verify' && method === 'post') { operation.security = []; setResponse(operation, 201, ref('AuthTokenResponse'), 'MFA verification succeeded.'); setErrors(operation, [400, 401, 429, 500]); continue; }
+      if (normalized === '/auth/2fa/recovery-codes/regenerate' && method === 'post') { setResponse(operation, 201, ref('RecoveryCodesResponse'), 'Recovery codes regenerated.'); setErrors(operation, [400, 401, 429, 500]); continue; }
+      if (normalized === '/auth/2fa/disable' && method === 'post') { setResponse(operation, 201, ref('SuccessResponse'), 'Two-factor authentication disabled.'); setErrors(operation, [400, 401, 429, 500]); continue; }
+
+      if (normalized === '/users' && method === 'get') {
+        addListQuery(operation);
+        addQueryParam(operation, 'filterField', schema('string', { enum: ['username', 'email', 'phone', 'status', 'isActive'] }), 'Filter field. Must be paired with filterValue.');
+        addQueryParam(operation, 'filterValue', schema('string', { maxLength: 100 }), 'Filter value. For isActive use true or false.');
+        addQueryParam(operation, 'sortBy', schema('string', { enum: ['uuid', 'username', 'email', 'phone', 'status', 'createdAt', 'updatedAt'], default: 'createdAt' }), 'Allowed sort field.');
+        addQueryParam(operation, 'sortDirection', schema('string', { enum: ['asc', 'desc'], default: 'desc' }), 'Sort direction.');
+        setResponse(operation, 200, ref('UserListResponse'), 'Users returned.');
+        setErrors(operation, [400, 401, 403, 500]);
+        continue;
       }
-    }
-
-    if (normalized === '/auth/login' && method === 'post') {
-      setSuccess(operation, 201, { oneOf: [ref('AuthTokenResponse'), ref('MfaChallengeResponse')] }, 'Authentication succeeded or an MFA challenge was issued.');
-      addErrorRefs(operation, [400, 401, 429, 500]);
-    } else if (normalized === '/auth/refresh' && method === 'post') {
-      setSuccess(operation, 200, ref('AuthTokenResponse'), 'Tokens rotated successfully.');
-      const responses = operation.responses ?? (operation.responses = {});
-      responses['200'] = response('Tokens rotated successfully.', ref('AuthTokenResponse'), {
-        'Cache-Control': { schema: property('string', { example: 'no-store' }) },
-      });
-      addErrorRefs(operation, [400, 401, 429, 500]);
-    } else if (normalized === '/auth/logout' && method === 'post') {
-      setSuccess(operation, 201, ref('SuccessResponse'), 'Current session revoked.');
-      addErrorRefs(operation, [401, 500]);
-    } else if (normalized === '/auth/me' && method === 'get') {
-      setSuccess(operation, 200, ref('UserResponse'), 'Current user returned.');
-      addErrorRefs(operation, [401, 404, 500]);
-    } else if (normalized === '/auth/sessions' && method === 'get') {
-      setSuccess(operation, 200, ref('SessionListResponse'), 'Own sessions returned.');
-      addErrorRefs(operation, [401, 429, 500]);
-    } else if (normalized === '/auth/sessions/logout-all' && method === 'post') {
-      setSuccess(operation, 201, ref('LogoutAllResponse'), 'All own sessions revoked.');
-      addErrorRefs(operation, [401, 429, 500]);
-    } else if (/^\\/auth\\/sessions\\/[^/]+$/.test(normalized) && method === 'delete') {
-      setSuccess(operation, 200, ref('SuccessResponse'), 'Session revoked.');
-      addErrorRefs(operation, [400, 401, 404, 429, 500]);
-    } else if (/^\\/admin\\/session-management\\/users\\/[^/]+\\/sessions\\/[^/]+\\/revoke$/.test(normalized) && method === 'post') {
-      setSuccess(operation, 201, ref('SuccessResponse'), 'Target session revoked.');
-      addErrorRefs(operation, [400, 401, 403, 404, 429, 500]);
-    } else if (normalized === '/auth/2fa' && method === 'get') {
-      setSuccess(operation, 200, ref('TwoFactorStatusResponse'), 'Two-factor authentication status returned.');
-      addErrorRefs(operation, [401, 429, 500]);
-    } else if (normalized === '/auth/2fa/enrollment' && method === 'post') {
-      setSuccess(operation, 201, ref('TwoFactorEnrollmentResponse'), 'Two-factor enrollment started.');
-      addErrorRefs(operation, [400, 401, 429, 500]);
-    } else if (normalized === '/auth/2fa/enrollment/verify' && method === 'post') {
-      setSuccess(operation, 201, ref('TwoFactorEnabledRecoveryResponse'), 'Two-factor enrollment verified.');
-      addErrorRefs(operation, [400, 401, 429, 500]);
-    } else if (normalized === '/auth/2fa/verify' && method === 'post') {
-      setSecurity(operation, false);
-      setSuccess(operation, 201, ref('AuthTokenResponse'), 'MFA verification succeeded and a session was issued.');
-      addErrorRefs(operation, [400, 401, 429, 500]);
-    } else if (normalized === '/auth/2fa/recovery-codes/regenerate' && method === 'post') {
-      setSuccess(operation, 201, ref('RecoveryCodesResponse'), 'Recovery codes regenerated.');
-      addErrorRefs(operation, [400, 401, 429, 500]);
-    } else if (normalized === '/auth/2fa/disable' && method === 'post') {
-      setSuccess(operation, 201, ref('SuccessResponse'), 'Two-factor authentication disabled.');
-      addErrorRefs(operation, [400, 401, 429, 500]);
-    } else if (normalized === '/users' && method === 'post') {
-      setSuccess(operation, 201, ref('UserResponse'), 'User created.');
-      addErrorRefs(operation, [400, 401, 403, 409, 500]);
-    } else if (normalized === '/users' && method === 'get') {
-      setSuccess(operation, 200, ref('UserListResponse'), 'Users returned.');
-      addErrorRefs(operation, [400, 401, 403, 500]);
-    } else if (/^\\/users\\/(email|username)\\//.test(normalized) && method === 'get') {
-      setSuccess(operation, 200, ref('UserResponse'), 'User returned.');
-      addErrorRefs(operation, [400, 401, 403, 404, 500]);
-    } else if (/^\\/users\\/[^/]+$/.test(normalized) && method === 'get') {
-      setSuccess(operation, 200, ref('UserResponse'), 'User returned.');
-      addErrorRefs(operation, [400, 401, 403, 404, 500]);
-    } else if (/^\\/users\\/[^/]+$/.test(normalized) && method === 'patch') {
-      setSuccess(operation, 200, ref('UserResponse'), 'User updated.');
-      addErrorRefs(operation, [400, 401, 403, 404, 409, 500]);
-    } else if (/^\\/users\\/[^/]+$/.test(normalized) && method === 'delete') {
-      setNoContent(operation, 'User deactivated.');
-      addErrorRefs(operation, [400, 401, 403, 404, 409, 500]);
-    } else if (normalized === '/property-types' && method === 'post') {
-      setSuccess(operation, 201, ref('PropertyTypeResponse'), 'Property type created.');
-      addErrorRefs(operation, [400, 401, 403, 409, 500]);
-    } else if (normalized === '/property-types' && method === 'get') {
-      setSuccess(operation, 200, ref('PropertyTypeListResponse'), 'Property types returned.');
-      addErrorRefs(operation, [400, 401, 403, 500]);
-    } else if (/^\\/property-types\\/[^/]+$/.test(normalized) && method === 'get') {
-      setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Property type UUID.');
-      setSuccess(operation, 200, ref('PropertyTypeResponse'), 'Property type returned.');
-      addErrorRefs(operation, [400, 401, 403, 404, 500]);
-    } else if (/^\\/property-types\\/[^/]+$/.test(normalized) && method === 'patch') {
-      setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Property type UUID.');
-      setSuccess(operation, 200, ref('PropertyTypeResponse'), 'Property type updated.');
-      addErrorRefs(operation, [400, 401, 403, 404, 409, 500]);
-    } else if (/^\\/property-types\\/[^/]+$/.test(normalized) && method === 'delete') {
-      setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Property type UUID.');
-      setNoContent(operation, 'Property type deleted.');
-      addErrorRefs(operation, [400, 401, 403, 404, 409, 500]);
-    } else if (normalized === '/property/properties' && method === 'post') {
-      setSuccess(operation, 201, ref('PropertyWrappedResponse'), 'Property created.');
-      addErrorRefs(operation, [400, 401, 403, 409, 500]);
-    } else if (normalized === '/property/properties' && method === 'get') {
-      setSuccess(operation, 200, ref('PropertyListResponse'), 'Properties returned.');
-      addErrorRefs(operation, [400, 401, 403, 500]);
-    } else if (/^\\/property\\/properties\\/[^/]+$/.test(normalized) && method === 'get') {
-      setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Property UUID.');
-      setSuccess(operation, 200, ref('PropertyWrappedResponse'), 'Property returned.');
-      addErrorRefs(operation, [400, 401, 403, 404, 500]);
-    } else if (/^\\/property\\/properties\\/[^/]+$/.test(normalized) && method === 'patch') {
-      setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Property UUID.');
-      setSuccess(operation, 200, ref('PropertyWrappedResponse'), 'Property updated.');
-      addErrorRefs(operation, [400, 401, 403, 404, 409, 500]);
-    } else if (/^\\/property\\/properties\\/[^/]+$/.test(normalized) && method === 'delete') {
-      setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Property UUID.');
-      setNoContent(operation, 'Property deleted.');
-      addErrorRefs(operation, [400, 401, 403, 404, 409, 500]);
-    } else if (/^\\/property\\/properties\\/[^/]+\\/(restore|duplicate)$/.test(normalized) && method === 'post') {
-      setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Property UUID.');
-      setSuccess(operation, 201, ref('PropertyWrappedResponse'), 'Property operation completed.');
-      addErrorRefs(operation, [400, 401, 403, 404, 409, 500]);
-    } else if (/^\\/property\\/properties\\/[^/]+\\/(verify|publish)$/.test(normalized) && method === 'post') {
-      setPathParameter(operation, 'uuid', property('string', { format: 'uuid' }), 'Property UUID.');
-      setSuccess(operation, 201, ref('PropertyResponse'), 'Property lifecycle operation completed.');
-      addErrorRefs(operation, [400, 401, 403, 404, 409, 500]);
-    } else if (/^\\/health\\/live$/.test(normalized) && method === 'get') {
-      setSecurity(operation, false);
-      setSuccess(operation, 200, property('object'), 'Liveness check succeeded.');
-    } else if (/^\\/health\\/ready$/.test(normalized) && method === 'get') {
-      setSecurity(operation, false);
-      setSuccess(operation, 200, property('object'), 'Readiness check succeeded.');
-      addErrorRefs(operation, [503]);
-    } else if (classifyPropertySubresource(path)) {
-      addErrorRefs(operation, [400, 401, 403, 404, 409, 500]);
-    }
-
-    if (hasBody(operation) && operation.requestBody) {
-      const content = operation.requestBody.content;
-      if (content && typeof content === 'object') {
-        const json = (content as Record<string, unknown>)['application/json'];
-        if (json && typeof json === 'object') {
-          const media = json as Record<string, unknown>;
-          media.schema = media.schema ?? { type: 'object' };
-        }
+      if (normalized === '/users' && method === 'post') { setResponse(operation, 201, ref('UserResponse'), 'User created.'); setErrors(operation, [400, 401, 403, 409, 500]); continue; }
+      if (/^\/users\/email\/[^/]+$/.test(normalized) && method === 'get') { addPathParam(operation, 'email', schema('string', { format: 'email' }), 'User email address.'); setResponse(operation, 200, ref('UserResponse'), 'User returned.'); setErrors(operation, [400, 401, 403, 404, 500]); continue; }
+      if (/^\/users\/username\/[^/]+$/.test(normalized) && method === 'get') { addPathParam(operation, 'username', schema('string', { maxLength: 100 }), 'Username.'); setResponse(operation, 200, ref('UserResponse'), 'User returned.'); setErrors(operation, [400, 401, 403, 404, 500]); continue; }
+      if (/^\/users\/[^/]+$/.test(normalized)) {
+        addPathParam(operation, 'uuid', schema('string', { format: 'uuid' }), 'User UUID.');
+        if (method === 'get') { setResponse(operation, 200, ref('UserResponse'), 'User returned.'); setErrors(operation, [400, 401, 403, 404, 500]); }
+        if (method === 'patch') { setResponse(operation, 200, ref('UserResponse'), 'User updated.'); setErrors(operation, [400, 401, 403, 404, 409, 500]); }
+        if (method === 'delete') { setNoContent(operation, 'User deleted.'); setErrors(operation, [400, 401, 403, 404, 409, 500]); }
+        continue;
       }
+
+      const typePath = normalized === '/property-types' || /^\/property-types\/[^/]+$/.test(normalized);
+      if (typePath) {
+        const uuidMatch = normalized.match(/^\/property-types\/([^/]+)$/);
+        if (uuidMatch) addPathParam(operation, 'uuid', schema('string', { format: 'uuid' }), 'Property type UUID.');
+        if (method === 'get' && !uuidMatch) { addQueryParam(operation, 'page', schema('integer', { minimum: 1, default: 1 }), 'Page number.'); addQueryParam(operation, 'limit', schema('integer', { minimum: 1, maximum: 100, default: 20 }), 'Maximum number of records.'); addQueryParam(operation, 'filterField', schema('string', { enum: ['code', 'name', 'slug', 'isActive'] }), 'Filter field.'); addQueryParam(operation, 'filterValue', schema('string', { minLength: 1, maxLength: 100 }), 'Filter value.'); addQueryParam(operation, 'sortBy', schema('string', { enum: ['code', 'name', 'slug', 'isActive', 'sortOrder', 'createdAt', 'updatedAt'], default: 'createdAt' }), 'Allowed sort field.'); addQueryParam(operation, 'sortDirection', schema('string', { enum: ['asc', 'desc'], default: 'desc' }), 'Sort direction.'); addQueryParam(operation, 'search', schema('string', { minLength: 1, maxLength: 100 }), 'Search term.'); setResponse(operation, 200, ref('PropertyTypeListResponse'), 'Property types returned.'); setErrors(operation, [400, 401, 403, 500]); }
+        if (method === 'get' && uuidMatch) { setResponse(operation, 200, ref('PropertyTypeResponse'), 'Property type returned.'); setErrors(operation, [400, 401, 403, 404, 500]); }
+        if (method === 'post') { setResponse(operation, 201, ref('PropertyTypeResponse'), 'Property type created.'); setErrors(operation, [400, 401, 403, 409, 500]); }
+        if (method === 'patch') { setResponse(operation, 200, ref('PropertyTypeResponse'), 'Property type updated.'); setErrors(operation, [400, 401, 403, 404, 409, 500]); }
+        if (method === 'delete') { setNoContent(operation, 'Property type deleted.'); setErrors(operation, [400, 401, 403, 404, 409, 500]); }
+        continue;
+      }
+
+      const catalogMatch = normalized.match(/^\/property\/(categories|subcategories|facilities)(?:\/([^/]+))?$/);
+      if (catalogMatch) {
+        const uuid = catalogMatch[2];
+        if (uuid) addPathParam(operation, 'uuid', schema('string', { format: 'uuid' }), 'Catalog resource UUID.');
+        if (method === 'get' && !uuid) { addListQuery(operation); addQueryParam(operation, 'isActive', schema('boolean'), 'Filter by active state.'); if (catalogMatch[1] === 'categories') addQueryParam(operation, 'typeUuid', schema('string', { format: 'uuid' }), 'Property type UUID filter.'); setResponse(operation, 200, objectSchema({ data: arrayOf(ref('PropertyCatalogResponse')), meta: ref('PaginationMeta') }, ['data', 'meta']), `${catalogMatch[1]} returned.`); setErrors(operation, [400, 401, 403, 500]); }
+        if (method === 'get' && uuid) { setResponse(operation, 200, wrapped(ref('PropertyCatalogResponse')), `${catalogMatch[1]} returned.`); setErrors(operation, [400, 401, 403, 404, 500]); }
+        if (method === 'post') { setResponse(operation, 201, wrapped(ref('PropertyCatalogResponse')), `${catalogMatch[1]} created.`); setErrors(operation, [400, 401, 403, 409, 500]); }
+        if (method === 'patch') { setResponse(operation, 200, wrapped(ref('PropertyCatalogResponse')), `${catalogMatch[1]} updated.`); setErrors(operation, [400, 401, 403, 404, 409, 500]); }
+        if (method === 'delete') { setNoContent(operation, `${catalogMatch[1]} deleted.`); setErrors(operation, [400, 401, 403, 404, 409, 500]); }
+        continue;
+      }
+
+      const locationMatch = normalized.match(/^\/property\/locations\/([^/]+)(?:\/([^/]+)(?:\/children)?)?$/);
+      if (locationMatch) {
+        addPathParam(operation, 'level', schema('string', { enum: ['country', 'province', 'city', 'district', 'subdistrict'] }), 'Location hierarchy level.');
+        const uuid = locationMatch[2];
+        if (uuid) addPathParam(operation, 'uuid', schema('string', { format: 'uuid' }), 'Location UUID.');
+        if (method === 'get' && !uuid) { addListQuery(operation); addQueryParam(operation, 'isActive', schema('boolean'), 'Filter by active state.'); addQueryParam(operation, 'parentUuid', schema('string', { format: 'uuid' }), 'Parent location UUID.'); setResponse(operation, 200, objectSchema({ data: arrayOf(ref('PropertyLocationResponse')), meta: ref('PaginationMeta') }, ['data', 'meta']), 'Locations returned.'); setErrors(operation, [400, 401, 403, 404, 500]); }
+        if (method === 'get' && uuid && normalized.endsWith('/children')) { setResponse(operation, 200, wrapped(arrayOf(ref('PropertyLocationResponse'))), 'Child locations returned.'); setErrors(operation, [400, 401, 403, 404, 500]); }
+        else if (method === 'get' && uuid) { setResponse(operation, 200, wrapped(ref('PropertyLocationResponse')), 'Location returned.'); setErrors(operation, [400, 401, 403, 404, 500]); }
+        if (method === 'post') { setResponse(operation, 201, wrapped(ref('PropertyLocationResponse')), 'Location created.'); setErrors(operation, [400, 401, 403, 409, 500]); }
+        if (method === 'patch') { setResponse(operation, 200, wrapped(ref('PropertyLocationResponse')), 'Location updated.'); setErrors(operation, [400, 401, 403, 404, 409, 500]); }
+        if (method === 'delete') { setNoContent(operation, 'Location deleted.'); setErrors(operation, [400, 401, 403, 404, 409, 500]); }
+        continue;
+      }
+
+      if (normalized === '/property/properties' && method === 'get') { addListQuery(operation); addQueryParam(operation, 'sortBy', schema('string', { maxLength: 50 }), 'Property sort field accepted by runtime.'); addQueryParam(operation, 'sortDirection', schema('string', { enum: ['asc', 'desc'] }), 'Sort direction.'); addQueryParam(operation, 'isActive', schema('boolean'), 'Filter by active state.'); for (const name of ['parentUuid', 'typeUuid', 'categoryUuid', 'subcategoryUuid']) addQueryParam(operation, name, schema('string', { format: 'uuid' }), 'UUID filter.'); addQueryParam(operation, 'status', schema('string', { enum: ['DRAFT', 'IN_REVIEW', 'ACTIVE', 'ARCHIVED', 'SOLD', 'RENTED'] }), 'Property status.'); addQueryParam(operation, 'category', schema('string', { enum: ['OUTDOOR', 'SECURITY', 'TECHNOLOGY', 'PARKING', 'CLIMATE', 'UTILITY', 'ACCESSIBILITY', 'RECREATION', 'OTHER'] }), 'Facility category.'); setResponse(operation, 200, ref('PropertyListResponse'), 'Properties returned.'); setErrors(operation, [400, 401, 403, 500]); continue; }
+      if (normalized === '/property/properties' && method === 'post') { setResponse(operation, 201, ref('PropertyWrappedResponse'), 'Property created.'); setErrors(operation, [400, 401, 403, 409, 500]); continue; }
+
+      const propertyMatch = normalized.match(/^\/property\/properties\/([^/]+)(.*)$/);
+      if (propertyMatch) {
+        addPathParam(operation, 'uuid', schema('string', { format: 'uuid' }), 'Property UUID.');
+        const suffix = propertyMatch[2];
+        if (suffix === '' && method === 'get') { setResponse(operation, 200, ref('PropertyWrappedResponse'), 'Property returned.'); setErrors(operation, [400, 401, 403, 404, 500]); continue; }
+        if (suffix === '' && method === 'patch') { setResponse(operation, 200, ref('PropertyWrappedResponse'), 'Property updated.'); setErrors(operation, [400, 401, 403, 404, 409, 500]); continue; }
+        if (suffix === '' && method === 'delete') { setNoContent(operation, 'Property deleted.'); setErrors(operation, [400, 401, 403, 404, 409, 500]); continue; }
+        if (/^\/(restore|duplicate)$/.test(suffix) && method === 'post') { setResponse(operation, 201, ref('PropertyWrappedResponse'), 'Property operation completed.'); setErrors(operation, [400, 401, 403, 404, 409, 500]); continue; }
+        if (/^\/(verify|publish)$/.test(suffix) && method === 'post') { setResponse(operation, 201, ref('PropertyResponse'), 'Property lifecycle operation completed.'); setErrors(operation, [400, 401, 403, 404, 409, 500]); continue; }
+        if (suffix !== '') { setResponse(operation, method === 'post' ? 201 : 200, ref('PropertyNestedResponse'), 'Serialized property subresource.'); setErrors(operation, [400, 401, 403, 404, 409, 500]); continue; }
+      }
+
+      if (/^\/health\/live$/.test(normalized) && method === 'get') { operation.security = []; setResponse(operation, 200, schema('object'), 'Liveness check succeeded.'); continue; }
+      if (/^\/health\/ready$/.test(normalized) && method === 'get') { operation.security = []; setResponse(operation, 200, schema('object'), 'Readiness check succeeded.'); setErrors(operation, [503]); continue; }
     }
   }
-
+  addOperationIds(document);
   return document;
 };
