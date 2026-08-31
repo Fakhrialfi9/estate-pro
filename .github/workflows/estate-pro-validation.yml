@@ -70,7 +70,30 @@ jobs:
       - name: Secret scan
         run: bash scripts/check-secrets.sh
       - name: Format check
+        id: format_check
+        continue-on-error: true
         run: npm run format:check
+      - name: Generate exact Prettier output for CMS files
+        if: steps.format_check.outcome == 'failure'
+        run: |
+          npx prettier --write \
+            src/modules/content/application/content.service.ts \
+            src/modules/content/infrastructure/persistence/prisma-article.repository.ts \
+            src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts
+          mkdir -p /tmp/prettier-cms
+          cp src/modules/content/application/content.service.ts /tmp/prettier-cms/
+          cp src/modules/content/infrastructure/persistence/prisma-article.repository.ts /tmp/prettier-cms/
+          cp src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts /tmp/prettier-cms/
+          git --no-pager diff -- src/modules/content/application/content.service.ts src/modules/content/infrastructure/persistence/prisma-article.repository.ts src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts || true
+      - name: Upload formatted CMS files
+        if: steps.format_check.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: prettier-cms-output
+          path: /tmp/prettier-cms/
+      - name: Stop after formatting diagnostic
+        if: steps.format_check.outcome == 'failure'
+        run: exit 1
       - name: Lint
         run: npm run lint
       - name: Typecheck
