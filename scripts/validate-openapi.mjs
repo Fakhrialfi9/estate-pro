@@ -115,7 +115,7 @@ export const validateOpenApiDocument = (document) => {
   const responseRefs = operationSchemasReferencedByResponses(document);
 
   for (const [path, item] of Object.entries(document.paths)) {
-    assert(path.startsWith('/api/v1/'), `Unversioned API path detected: ${path}`);
+    assert(path === '/api/v1' || path.startsWith('/api/v1/'), `Unversioned API path detected: ${path}`);
     assert(isObject(item), `Path item is invalid: ${path}`);
     const templates = [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]).filter(Boolean);
 
