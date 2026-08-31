@@ -1,3 +1,4 @@
+# Full repository validation for main; source changes must pass every configured gate.
 name: Estate Pro Validation
 
 on:
