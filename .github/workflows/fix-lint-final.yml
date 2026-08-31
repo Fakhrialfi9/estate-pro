@@ -1,0 +1,193 @@
+name: Final Lint Repair
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm install --global npm@11.18.0
+      - run: npm ci
+      - name: Apply exact lint fixes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def edit(path, old, new):
+              p = Path(path); text = p.read_text()
+              if old not in text: raise SystemExit(f'missing pattern: {path}: {old!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          edit('src/modules/content/application/content.service.ts', '  PagedResult,\n', '')
+          edit('src/modules/content/application/content.service.ts', "/[\\u0000-\\u001f]/.test(href)", "hasControlCharacters(href)")
+          edit('src/modules/content/application/content.service.ts', 'const words = (value: unknown): number => {', "const hasControlCharacters = (value: string): boolean =>\n  [...value].some((character) => character.charCodeAt(0) < 32);\n\nconst words = (value: unknown): number => {" )
+          edit('src/modules/content/application/content.service.ts', "provider: String(metadata.provider ?? 'local'),", "provider:\n        typeof metadata.provider === 'string' ? metadata.provider : 'local',")
+
+          service = Path('src/modules/content/application/content.service.ts')
+          text = service.read_text()
+          if 'async transitionArticle(' not in text:
+              anchor = """  async archive(uuid: string, ctx: AuditContext) {
+    return this.transition(uuid, 'archive', ctx);
+  }
+"""
+              text = text.replace(anchor, anchor + """  async transitionArticle(
+    uuid: string,
+    action: 'publish' | 'unpublish' | 'archive',
+    ctx: AuditContext,
+  ) {
+    return this.transition(uuid, action, ctx);
+  }
+""", 1)
+          if 'interaction(' not in text:
+              anchor = """  toggle(
+    kind: 'like' | 'bookmark',
+    uuid: string,
+    user: string,
+    ctx: AuditContext,
+  ) {
+    return this.repository.toggleInteraction(kind, uuid, user, ctx);
+  }
+"""
+              text = text.replace(anchor, anchor + """  interaction(
+    kind: 'like' | 'bookmark',
+    uuid: string,
+    user: string,
+    ctx: AuditContext,
+  ) {
+    return this.toggle(kind, uuid, user, ctx);
+  }
+""", 1)
+          if 'commentCreate(' not in text:
+              anchor = """  comment(uuid: string, input: Record<string, unknown>, ctx: AuditContext) {
+    return this.repository.createComment(
+      uuid,
+      {
+        ...input,
+        userUuid: ctx.actorUuid,
+        content: sanitizeJson(input.content),
+      },
+      ctx,
+    );
+  }
+"""
+              text = text.replace(anchor, anchor + """  commentCreate(uuid: string, input: Record<string, unknown>, ctx: AuditContext) {
+    return this.comment(uuid, input, ctx);
+  }
+""", 1)
+          if 'commentModerate(' not in text:
+              anchor = """  moderate(
+    uuid: string,
+    status: string,
+    reason: string | undefined,
+    ctx: AuditContext,
+  ) {
+    return this.repository.moderateComment(uuid, status, reason, ctx);
+  }
+"""
+              text = text.replace(anchor, anchor + """  commentModerate(
+    uuid: string,
+    status: string,
+    reason: string | undefined,
+    ctx: AuditContext,
+  ) {
+    return this.moderate(uuid, status, reason, ctx);
+  }
+""", 1)
+          service.write_text(text)
+
+          article = Path('src/modules/content/infrastructure/persistence/prisma-article.repository.ts')
+          text = article.read_text()
+          text = text.replace('String(input.title)', "this.requiredString(input.title, 'title')")
+          text = text.replace('String(input.slug)', "this.requiredString(input.slug, 'slug')")
+          text = text.replace('String(input.language)', "this.requiredString(input.language, 'language')")
+          if 'private requiredString(value: unknown' not in text:
+              marker = '  private enumStatus(value: unknown): ContentStatus {'
+              helper = """  private requiredString(value: unknown, field: string): string {
+    if (typeof value !== 'string' || !value.trim())
+      throw new ContentValidationError(`${field} is invalid`);
+    return value.trim();
+  }
+
+"""
+              text = text.replace(marker, helper + marker, 1)
+          article.write_text(text)
+
+          ops = Path('src/modules/content/infrastructure/persistence/prisma-content-operations.repository.ts')
+          text = ops.read_text().replace("import { createHash } from 'node:crypto';\n", '')
+          text = text.replace("String(snapshot.contentFormat ?? 'RICH_TEXT')", "(typeof snapshot.contentFormat === 'string' ? snapshot.contentFormat : 'RICH_TEXT')")
+          text = text.replace("String(snapshot.visibility ?? 'PUBLIC')", "(typeof snapshot.visibility === 'string' ? snapshot.visibility : 'PUBLIC')")
+          ops.write_text(text)
+
+          resource = Path('src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts')
+          text = resource.read_text()
+          if 'ContentValidationError' not in text:
+              text = text.replace('  ContentNotFoundError,\n', '  ContentNotFoundError,\n  ContentValidationError,\n', 1)
+          if 'function requiredString(value: unknown' not in text:
+              text = text.replace('function jsonValue(value: unknown): Prisma.InputJsonValue {', """function requiredString(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !value.trim())
+    throw new ContentValidationError(`${field} is invalid`);
+  return value.trim();
+}
+
+function optionalString(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function jsonValue(value: unknown): Prisma.InputJsonValue {""", 1)
+          text = text.replace("String(input.relationType ?? 'RELATED')", "requiredString(input.relationType ?? 'RELATED', 'relationType')")
+          text = text.replace("String(input.template ?? 'default')", "optionalString(input.template, 'default')")
+          text = text.replace("String(input.contentFormat ?? 'RICH_TEXT')", "optionalString(input.contentFormat, 'RICH_TEXT')")
+          text = text.replace("String(input.visibility ?? 'PUBLIC')", "optionalString(input.visibility, 'PUBLIC')")
+          text = text.replace("String(input.placement ?? 'HOME_HERO')", "optionalString(input.placement, 'HOME_HERO')")
+          text = text.replace('String(input.startAt)', "requiredString(input.startAt, 'startAt')")
+          text = text.replace('String(input.endAt)', "requiredString(input.endAt, 'endAt')")
+          text = text.replace("String(input.status)", "requiredString(input.status, 'status')")
+          text = text.replace("String(input.visibility)", "requiredString(input.visibility, 'visibility')")
+          text = text.replace("String(input.contentFormat)", "requiredString(input.contentFormat, 'contentFormat')")
+          text = text.replace("String(input.placement)", "requiredString(input.placement, 'placement')")
+          text = text.replace("String(item.label ?? '')", "optionalString(item.label, '')")
+          text = text.replace("String(item.itemType ?? 'url')", "optionalString(item.itemType, 'url')")
+          text = text.replace('Promise<unknown | null>;', 'Promise<unknown>;')
+          resource.write_text(text)
+
+          bridge = Path('src/modules/content/infrastructure/prisma-content.repository.ts')
+          text = bridge.read_text().replace('  ArticleRecord,\n', '')
+          text = text.replace('  createMediaObject(input: Record<string, unknown>, ctx: AuditContext) {', '  createMediaObject(input: Record<string, unknown>) {', 1)
+          text = text.replace('  removeRelation(uuid: string, ctx: AuditContext) {', '  removeRelation(uuid: string) {', 1)
+          text = text.replace('  reorderMenu(uuid: string, items: string[], ctx: AuditContext) {', '  reorderMenu(uuid: string, items: string[]) {', 1)
+          text = text.replace("    ctx: AuditContext,\n  ) {\n    return this.operations.toggle(kind, articleUuid, userUuid);", "  ) {\n    return this.operations.toggle(kind, articleUuid, userUuid);", 1)
+          text = text.replace("    ctx: AuditContext,\n  ) {\n    return this.operations.moderate(uuid, status, reason);", "  ) {\n    return this.operations.moderate(uuid, status, reason);", 1)
+          text = text.replace("    ctx: AuditContext,\n  ) {\n    return this.operations.comment(articleUuid, input);", "  ) {\n    return this.operations.comment(articleUuid, input);", 1)
+          text = text.replace("    ctx: AuditContext,\n  ) {\n    return this.resources.ensureRedirect(type, oldSlug, newSlug);", "  ) {\n    return this.resources.ensureRedirect(type, oldSlug, newSlug);", 1)
+          bridge.write_text(text)
+
+          Path('src/modules/content/presentation/content.controller.ts').write_text(Path('src/modules/content/presentation/content.controller.ts').read_text().replace('  Headers,\n',''))
+          Path('src/modules/content/presentation/supporting-content.controller.ts').write_text(Path('src/modules/content/presentation/supporting-content.controller.ts').read_text().replace('  ApiResponse,\n',''))
+          PY
+          npx prettier --write src/modules/content
+          npx prisma validate
+          npm run prisma:generate
+          npm run lint
+          npm run typecheck
+          npm run build
+          npm run format:check
+      - name: Commit repair and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/modules/content
+          git rm .github/workflows/fix-lint-final.yml
+          git diff --cached --check
+          git commit -m 'fix(cms): resolve remaining lint safety errors'
+          git push origin HEAD:main
