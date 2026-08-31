@@ -13,7 +13,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { ListingPaymentDto } from './listing-payment.dto.js';
 import { ListingPriceDto } from './listing-price.dto.js';
 import {
@@ -38,12 +38,12 @@ export class CreateListingDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => ListingPriceDto)
-  @ApiPropertyOptional({ type: ListingPriceDto })
+  @ApiProperty({ required: false, type: ListingPriceDto })
   price?: ListingPriceDto;
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ListingPaymentDto)
-  @ApiPropertyOptional({ type: ListingPaymentDto, isArray: true })
+  @ApiProperty({ required: false, type: ListingPaymentDto, isArray: true })
   payments?: ListingPaymentDto[];
 }
 
@@ -60,12 +60,12 @@ export class UpdateListingDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => ListingPriceDto)
-  @ApiPropertyOptional({ type: ListingPriceDto })
+  @ApiProperty({ required: false, type: ListingPriceDto })
   price?: ListingPriceDto;
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ListingPaymentDto)
-  @ApiPropertyOptional({ type: ListingPaymentDto, isArray: true })
+  @ApiProperty({ required: false, type: ListingPaymentDto, isArray: true })
   payments?: ListingPaymentDto[];
 }
 
