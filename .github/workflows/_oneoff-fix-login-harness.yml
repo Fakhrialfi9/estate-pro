@@ -1,4 +1,4 @@
-name: One-off content type-resolution repair
+name: One-off content lint/type repair
 
 on:
   push:
@@ -27,199 +27,233 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Apply root-cause type and contract fixes
+      - name: Apply root-cause lint/type fixes
         shell: bash
         run: |
           python3 <<'PY'
           from pathlib import Path
 
-          replacements = {
-              'src/modules/content/infrastructure/persistence/prisma-article.repository.ts': {
-                  "../../../../prisma/generated/prisma/client.js": "../../../../../prisma/generated/prisma/client.js",
-                  "../../../infrastructure/database/prisma/prisma.service.js": "../../../../infrastructure/database/prisma/prisma.service.js",
-                  "../application/content.errors.js": "../../application/content.errors.js",
-                  "../domain/content.types.js": "../../domain/content.types.js",
-                  "../domain/repositories/content.repository.js": "../../domain/repositories/content.repository.js",
-              },
-              'src/modules/content/infrastructure/persistence/prisma-content-operations.repository.ts': {
-                  "../../../../prisma/generated/prisma/client.js": "../../../../../prisma/generated/prisma/client.js",
-                  "../../../infrastructure/database/prisma/prisma.service.js": "../../../../infrastructure/database/prisma/prisma.service.js",
-                  "../../content/application/content.errors.js": "../../application/content.errors.js",
-                  "../../content/domain/content.types.js": "../../domain/content.types.js",
-                  "../../content/domain/repositories/content.repository.js": "../../domain/repositories/content.repository.js",
-              },
-              'src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts': {
-                  "../../../../prisma/generated/prisma/client.js": "../../../../../prisma/generated/prisma/client.js",
-                  "../../../infrastructure/database/prisma/prisma.service.js": "../../../../infrastructure/database/prisma/prisma.service.js",
-                  "../application/content.errors.js": "../../application/content.errors.js",
-                  "../domain/content.types.js": "../../domain/content.types.js",
-              },
-              'src/modules/content/presentation/content.controller.ts': {
-                  "../auth/security/jwt-auth.guard.js": "../../auth/security/jwt-auth.guard.js",
-                  "../../common/security/authorization.guard.js": "../../../common/security/authorization.guard.js",
-                  "../../common/security/authorization.decorators.js": "../../../common/security/authorization.decorators.js",
-                  "./application/content.errors.js": "../application/content.errors.js",
-                  "./application/content.service.js": "../application/content.service.js",
-                  "./application/use-cases/content.use-cases.js": "../application/use-cases/content.use-cases.js",
-                  "./presentation/dto/content.dto.js": "./dto/content.dto.js",
-                  "../../infrastructure/storage/storage-provider.js": "../../../infrastructure/storage/storage-provider.js",
-              },
-              'src/modules/content/presentation/public-content.controller.ts': {
-                  "../../common/security/authorization.decorators.js": "../../../common/security/authorization.decorators.js",
-                  "./application/content.service.js": "../application/content.service.js",
-                  "./application/content.errors.js": "../application/content.errors.js",
-              },
-              'src/modules/content/presentation/supporting-content.controller.ts': {
-                  "../auth/security/jwt-auth.guard.js": "../../auth/security/jwt-auth.guard.js",
-                  "../../common/security/authorization.guard.js": "../../../common/security/authorization.guard.js",
-                  "../../common/security/authorization.decorators.js": "../../../common/security/authorization.decorators.js",
-                  "./application/use-cases/content.use-cases.js": "../application/use-cases/content.use-cases.js",
-                  "./application/content.service.js": "../application/content.service.js",
-                  "./presentation/dto/content.dto.js": "./dto/content.dto.js",
-              },
-          }
-
-          for filename, mapping in replacements.items():
-              path = Path(filename)
+          def replace_once(path: Path, old: str, new: str, required: bool = True) -> None:
               text = path.read_text()
-              original = text
-              for old, new in mapping.items():
-                  text = text.replace(old, new)
-              if text == original:
-                  raise SystemExit(f'no import-path change applied to {filename}')
-              path.write_text(text)
+              if old not in text:
+                  if required:
+                      raise SystemExit(f'expected text not found in {path}: {old!r}')
+                  return
+              path.write_text(text.replace(old, new, 1))
 
-          # Prisma 7's prisma-client generator exports schema enums from enums.js,
-          # not from the Prisma namespace. Keep Prisma namespace usage for JSON/error types.
-          enum_replacements = {
-              'src/modules/content/infrastructure/persistence/prisma-article.repository.ts': {
-                  "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';": "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';\nimport {\n  ArticleType,\n  ContentFormat,\n  ContentStatus,\n  ContentVisibility,\n} from '../../../../../prisma/generated/prisma/enums.js';",
-                  'Prisma.ContentStatus': 'ContentStatus',
-                  'Prisma.ContentVisibility': 'ContentVisibility',
-                  'Prisma.ContentFormat': 'ContentFormat',
-                  'Prisma.ArticleType': 'ArticleType',
-              },
-              'src/modules/content/infrastructure/persistence/prisma-content-operations.repository.ts': {
-                  "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';": "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';\nimport {\n  ContentFormat,\n  ContentVisibility,\n  ModerationStatus,\n} from '../../../../../prisma/generated/prisma/enums.js';",
-                  'Prisma.ContentFormat': 'ContentFormat',
-                  'Prisma.ContentVisibility': 'ContentVisibility',
-                  'Prisma.ModerationStatus': 'ModerationStatus',
-              },
-              'src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts': {
-                  "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';": "import { Prisma } from '../../../../../prisma/generated/prisma/client.js';\nimport {\n  BannerPlacement,\n  ContentFormat,\n  ContentStatus,\n  ContentVisibility,\n  RelationType,\n} from '../../../../../prisma/generated/prisma/enums.js';",
-                  'Prisma.RelationType': 'RelationType',
-                  'Prisma.ContentFormat': 'ContentFormat',
-                  'Prisma.ContentVisibility': 'ContentVisibility',
-                  'Prisma.BannerPlacement': 'BannerPlacement',
-                  'Prisma.ContentStatus': 'ContentStatus',
-              },
-          }
+          service = Path('src/modules/content/application/content.service.ts')
+          replace_once(service,
+              '  PagedResult,\n',
+              '')
+          replace_once(service,
+              "        /[\\u0000-\\u001f]/.test(href)\n",
+              "        hasControlCharacters(href)\n")
+          replace_once(service,
+              "const words = (value: unknown): number => {\n",
+              "const hasControlCharacters = (value: string): boolean =>\n  [...value].some((character) => character.charCodeAt(0) < 32);\n\nconst words = (value: unknown): number => {\n")
+          replace_once(service,
+              "provider: String(metadata.provider ?? 'local'),",
+              "provider:\n        typeof metadata.provider === 'string' ? metadata.provider : 'local',")
 
-          for filename, mapping in enum_replacements.items():
-              path = Path(filename)
-              text = path.read_text()
-              original = text
-              for old, new in mapping.items():
-                  text = text.replace(old, new)
-              if text == original:
-                  raise SystemExit(f'no enum replacement applied to {filename}')
-              path.write_text(text)
+          article = Path('src/modules/content/infrastructure/persistence/prisma-article.repository.ts')
+          replace_once(article,
+              '            status: Prisma.ContentStatus.DRAFT,\n',
+              '            status: ContentStatus.DRAFT,\n')
+          replace_once(article,
+              "            language: String(input.language ?? 'id'),\n",
+              "            language:\n              typeof input.language === 'string' ? input.language : 'id',\n")
+          replace_once(article,
+              '        if (input.title !== undefined) data.title = String(input.title);\n',
+              "        if (input.title !== undefined) data.title = this.requiredString(input.title, 'title');\n")
+          replace_once(article,
+              '        if (input.slug !== undefined) data.slug = String(input.slug);\n',
+              "        if (input.slug !== undefined) data.slug = this.requiredString(input.slug, 'slug');\n")
+          replace_once(article,
+              '        if (input.language !== undefined)\n          data.language = String(input.language);\n',
+              "        if (input.language !== undefined)\n          data.language = this.requiredString(input.language, 'language');\n")
+          marker = "  private enumStatus(value: unknown): ContentStatus {\n"
+          helper = """  private requiredString(value: unknown, field: string): string {\n    if (typeof value !== 'string' || !value.trim())\n      throw new ContentValidationError(`${field} is invalid`);\n    return value.trim();\n  }\n\n"""
+          replace_once(article, marker, helper + marker)
 
-          # The domain resource union already has concrete handlers for redirects.
-          types_path = Path('src/modules/content/domain/content.types.ts')
-          types_text = types_path.read_text()
-          old_types = """  'menu',\n  'media',\n] as const;"""
-          new_types = """  'menu',\n  'media',\n  'redirect',\n] as const;"""
-          if old_types not in types_text:
-              raise SystemExit('resource type list anchor not found')
-          types_path.write_text(types_text.replace(old_types, new_types, 1))
+          operations = Path('src/modules/content/infrastructure/persistence/prisma-content-operations.repository.ts')
+          replace_once(operations,
+              "import { createHash } from 'node:crypto';\n",
+              '')
+          replace_once(operations,
+              "            template: String(snapshot.template ?? current.template),\n",
+              "            template:\n              typeof snapshot.template === 'string'\n                ? snapshot.template\n                : current.template,\n")
+          replace_once(operations,
+              "            contentFormat: String(\n              snapshot.contentFormat ?? 'RICH_TEXT',\n            ) as ContentFormat,\n",
+              "            contentFormat:\n              typeof snapshot.contentFormat === 'string'\n                ? (snapshot.contentFormat as ContentFormat)\n                : ContentFormat.RICH_TEXT,\n")
+          replace_once(operations,
+              "            visibility: String(\n              snapshot.visibility ?? 'PUBLIC',\n            ) as ContentVisibility,\n",
+              "            visibility:\n              typeof snapshot.visibility === 'string'\n                ? (snapshot.visibility as ContentVisibility)\n                : ContentVisibility.PUBLIC,\n")
+          replace_once(operations,
+              "            language: String(snapshot.language ?? current.language),\n",
+              "            language:\n              typeof snapshot.language === 'string'\n                ? snapshot.language\n                : current.language,\n")
 
-          # The repository contract already carries category UUID semantics; populate it from the projection.
-          article_path = Path('src/modules/content/infrastructure/persistence/prisma-article.repository.ts')
-          article_text = article_path.read_text()
-          old_article = """      authorUuid: record.authorUuid,\n      category: record.category,"""
-          new_article = """      authorUuid: record.authorUuid,\n      categoryUuid: record.category?.uuid ?? null,\n      category: record.category,"""
-          if old_article not in article_text:
-              raise SystemExit('article category projection anchor not found')
-          article_path.write_text(article_text.replace(old_article, new_article, 1))
+          resource = Path('src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts')
+          resource_text = resource.read_text()
+          marker = "function plain(value: unknown): Record<string, unknown> {\n"
+          helper = """function requiredString(value: unknown, field: string): string {\n  if (typeof value !== 'string' || !value.trim())\n    throw new ContentValidationError(`${field} is invalid`);\n  return value.trim();\n}\n\nfunction optionalString(value: unknown, fallback: string): string {\n  return typeof value === 'string' ? value : fallback;\n}\n\n"""
+          resource_text = resource_text.replace(marker, helper + marker, 1)
+          resource_text = resource_text.replace(
+              "  ContentConflictError,\n  ContentNotFoundError,\n",
+              "  ContentConflictError,\n  ContentNotFoundError,\n  ContentValidationError,\n",
+              1,
+          )
+          resource_text = resource_text.replace(
+              "        provider: String(input.provider ?? 'local'),",
+              "        provider: optionalString(input.provider, 'local'),",
+          )
+          resource_text = resource_text.replace(
+              "          relationType: relationType as RelationType",
+              "          relationType: requiredString(relationType, 'relationType') as RelationType",
+          )
+          resource_text = resource_text.replace(
+              "        relationType: String(\n          input.relationType ?? 'RELATED',\n        ) as RelationType,",
+              "        relationType: requiredString(\n          input.relationType ?? 'RELATED',\n          'relationType',\n        ) as RelationType,",
+          )
+          resource_text = resource_text.replace(
+              "        title: String(input.title),\n        slug: String(input.slug),\n        template: String(input.template ?? 'default'),",
+              "        title: requiredString(input.title, 'title'),\n        slug: requiredString(input.slug, 'slug'),\n        template: optionalString(input.template, 'default'),",
+          )
+          resource_text = resource_text.replace(
+              "        contentFormat: String(\n          input.contentFormat ?? 'RICH_TEXT',\n        ) as ContentFormat,",
+              "        contentFormat: optionalString(\n          input.contentFormat,\n          'RICH_TEXT',\n        ) as ContentFormat,",
+          )
+          resource_text = resource_text.replace(
+              "        visibility: String(\n          input.visibility ?? 'PUBLIC',\n        ) as ContentVisibility,",
+              "        visibility: optionalString(input.visibility, 'PUBLIC') as ContentVisibility,",
+          )
+          resource_text = resource_text.replace(
+              "        language: String(input.language ?? 'id'),",
+              "        language: optionalString(input.language, 'id'),",
+          )
+          resource_text = resource_text.replace(
+              "        language: String(input.language ?? 'id'),",
+              "        language: optionalString(input.language, 'id'),",
+          )
+          resource_text = resource_text.replace(
+              "        placement: String(\n          input.placement ?? 'HOME_HERO',\n        ) as BannerPlacement,",
+              "        placement: optionalString(input.placement, 'HOME_HERO') as BannerPlacement,",
+          )
+          resource_text = resource_text.replace(
+              "        startAt: input.startAt ? new Date(String(input.startAt)) : null,",
+              "        startAt:\n          input.startAt === undefined\n            ? null\n            : new Date(requiredString(input.startAt, 'startAt')),",
+          )
+          resource_text = resource_text.replace(
+              "        endAt: input.endAt ? new Date(String(input.endAt)) : null,",
+              "        endAt:\n          input.endAt === undefined\n            ? null\n            : new Date(requiredString(input.endAt, 'endAt')),",
+          )
+          resource_text = resource_text.replace(
+              "    if (input.status !== undefined)\n      data.status = String(input.status) as ContentStatus;",
+              "    if (input.status !== undefined)\n      data.status = requiredString(input.status, 'status') as ContentStatus;",
+          )
+          resource_text = resource_text.replace(
+              "    if (input.visibility !== undefined)\n      data.visibility = String(input.visibility) as ContentVisibility;",
+              "    if (input.visibility !== undefined)\n      data.visibility = requiredString(input.visibility, 'visibility') as ContentVisibility;",
+          )
+          resource_text = resource_text.replace(
+              "    if (input.contentFormat !== undefined)\n      data.contentFormat = String(input.contentFormat) as ContentFormat;",
+              "    if (input.contentFormat !== undefined)\n      data.contentFormat = requiredString(input.contentFormat, 'contentFormat') as ContentFormat;",
+          )
+          resource_text = resource_text.replace(
+              "    if (input.placement !== undefined)\n      data.placement = String(input.placement) as BannerPlacement;",
+              "    if (input.placement !== undefined)\n      data.placement = requiredString(input.placement, 'placement') as BannerPlacement;",
+          )
+          resource_text = resource_text.replace(
+              "    if (input.startAt !== undefined)\n      data.startAt = input.startAt ? new Date(String(input.startAt)) : null;",
+              "    if (input.startAt !== undefined)\n      data.startAt = new Date(requiredString(input.startAt, 'startAt'));",
+          )
+          resource_text = resource_text.replace(
+              "    if (input.endAt !== undefined)\n      data.endAt = input.endAt ? new Date(String(input.endAt)) : null;",
+              "    if (input.endAt !== undefined)\n      data.endAt = new Date(requiredString(input.endAt, 'endAt'));",
+          )
+          resource_text = resource_text.replace(
+              "        const label = String(item.label ?? '').trim();",
+              "        const label = optionalString(item.label, '').trim();",
+          )
+          resource_text = resource_text.replace(
+              "            itemType: String(item.itemType ?? 'url'),",
+              "            itemType: optionalString(item.itemType, 'url'),",
+          )
+          resource_text = resource_text.replace(
+              "    findFirst(args: Record<string, unknown>): Promise<unknown | null>;\n    findUnique?(args: Record<string, unknown>): Promise<unknown | null>;",
+              "    findFirst(args: Record<string, unknown>): Promise<unknown>;\n    findUnique?(args: Record<string, unknown>): Promise<unknown>;",
+          )
+          resource.write_text(resource_text)
 
-          # DTO sort fields must satisfy the application whitelist at compile time.
-          dto_path = Path('src/modules/content/presentation/dto/content.dto.ts')
-          dto_text = dto_path.read_text()
-          old_sort = "@IsOptional() @IsString() @MaxLength(30) sortBy?: string;"
-          new_sort = "@IsOptional() @IsString() @MaxLength(30) sortBy?:\n    | 'createdAt'\n    | 'updatedAt'\n    | 'publishedAt'\n    | 'sortOrder'\n    | 'priority'\n    | 'title';"
-          if old_sort not in dto_text:
-              raise SystemExit('query sortBy anchor not found')
-          dto_path.write_text(dto_text.replace(old_sort, new_sort, 1))
+          bridge = Path('src/modules/content/infrastructure/prisma-content.repository.ts')
+          bridge_text = bridge.read_text()
+          bridge_text = bridge_text.replace(
+              "  ArticleRecord,\n  ContentRepository,\n",
+              "  ContentRepository,\n",
+              1,
+          )
+          # Remove unused context parameters from pass-through methods; the concrete interface permits fewer parameters.
+          bridge_text = bridge_text.replace(
+              '  createMediaObject(input: Record<string, unknown>, ctx: AuditContext) {\n    return this.resources.createMedia(input);\n  }',
+              '  createMediaObject(input: Record<string, unknown>) {\n    return this.resources.createMedia(input);\n  }',
+          )
+          bridge_text = bridge_text.replace(
+              '    ctx: AuditContext,\n  ) {\n    return this.operations.toggle(kind, articleUuid, userUuid);\n  }',
+              '    _ctx: AuditContext,\n  ) {\n    return this.operations.toggle(kind, articleUuid, userUuid);\n  }',
+              1,
+          )
+          # The remaining unused context parameters are required by the interface; consume them explicitly without changing behavior.
+          for signature, statement in [
+              ('  createMediaObject(input: Record<string, unknown>, ctx: AuditContext) {', '    void ctx;\n'),
+              ('  removeRelation(uuid: string, ctx: AuditContext) {', '    void ctx;\n'),
+              ('  reorderMenu(uuid: string, items: string[], ctx: AuditContext) {', '    void ctx;\n'),
+              ('  ensureSlugRedirect(\n    type: string,\n    oldSlug: string,\n    newSlug: string,\n    ctx: AuditContext,\n  ) {', '    void ctx;\n'),
+          ]:
+              if signature in bridge_text and statement not in bridge_text[bridge_text.index(signature): bridge_text.index(signature)+len(signature)+80]:
+                  bridge_text = bridge_text.replace(signature, signature + '\n' + statement, 1)
+          bridge.write_text(bridge_text)
 
-          # The HTTP request IP is optional in Express; use a deterministic anonymous bucket when absent.
-          public_path = Path('src/modules/content/presentation/public-content.controller.ts')
-          public_text = public_path.read_text()
-          old_ip = "return this.service.view(uuid, request.ip, request.headers['user-agent']);"
-          new_ip = "return this.service.view(\n      uuid,\n      request.ip ?? 'unknown',\n      request.headers['user-agent'],\n    );"
-          if old_ip not in public_text:
-              raise SystemExit('public view IP anchor not found')
-          public_path.write_text(public_text.replace(old_ip, new_ip, 1))
-
-          # Use the public application methods already exposed by ContentService through the use-case names.
-          service_path = Path('src/modules/content/application/content.service.ts')
-          service = service_path.read_text()
-
-          anchor = """  async archive(uuid: string, ctx: AuditContext) {\n    return this.transition(uuid, 'archive', ctx);\n  }\n"""
-          transition_wrapper = anchor + """  async transitionArticle(\n    uuid: string,\n    action: 'publish' | 'unpublish' | 'archive',\n    ctx: AuditContext,\n  ) {\n    return this.transition(uuid, action, ctx);\n  }\n"""
-          if anchor in service:
-              service = service.replace(anchor, transition_wrapper, 1)
-
-          toggle_anchor = """  toggle(\n    kind: 'like' | 'bookmark',\n    uuid: string,\n    user: string,\n    ctx: AuditContext,\n  ) {\n    return this.repository.toggleInteraction(kind, uuid, user, ctx);\n  }\n"""
-          toggle_wrapper = toggle_anchor + """  interaction(\n    kind: 'like' | 'bookmark',\n    uuid: string,\n    user: string,\n    ctx: AuditContext,\n  ) {\n    return this.toggle(kind, uuid, user, ctx);\n  }\n"""
-          if toggle_anchor in service:
-              service = service.replace(toggle_anchor, toggle_wrapper, 1)
-
-          comment_anchor = """  comment(uuid: string, input: Record<string, unknown>, ctx: AuditContext) {\n    return this.repository.createComment(\n      uuid,\n      {\n        ...input,\n        userUuid: ctx.actorUuid,\n        content: sanitizeJson(input.content),\n      },\n      ctx,\n    );\n  }\n"""
-          comment_wrapper = comment_anchor + """  commentCreate(\n    uuid: string,\n    input: Record<string, unknown>,\n    ctx: AuditContext,\n  ) {\n    return this.comment(uuid, input, ctx);\n  }\n"""
-          if comment_anchor in service:
-              service = service.replace(comment_anchor, comment_wrapper, 1)
-
-          moderate_anchor = """  moderate(\n    uuid: string,\n    status: string,\n    reason: string | undefined,\n    ctx: AuditContext,\n  ) {\n    return this.repository.moderateComment(uuid, status, reason, ctx);\n  }\n"""
-          moderate_wrapper = moderate_anchor + """  commentModerate(\n    uuid: string,\n    status: string,\n    reason: string | undefined,\n    ctx: AuditContext,\n  ) {\n    return this.moderate(uuid, status, reason, ctx);\n  }\n"""
-          if moderate_anchor in service:
-              service = service.replace(moderate_anchor, moderate_wrapper, 1)
-
-          service_path.write_text(service)
+          # Remove imports that are provably unused and normalize formatting.
+          controller = Path('src/modules/content/presentation/content.controller.ts')
+          controller_text = controller.read_text().replace('  Headers,\n', '')
+          controller.write_text(controller_text)
+          supporting = Path('src/modules/content/presentation/supporting-content.controller.ts')
+          supporting_text = supporting.read_text().replace('  ApiResponse,\n', '')
+          supporting.write_text(supporting_text)
           PY
+
+          npx prettier --write \
+            src/modules/content/application/content.service.ts \
+            src/modules/content/infrastructure/persistence/prisma-article.repository.ts \
+            src/modules/content/infrastructure/persistence/prisma-content-operations.repository.ts \
+            src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts \
+            src/modules/content/infrastructure/prisma-content.repository.ts \
+            src/modules/content/presentation/content.controller.ts \
+            src/modules/content/presentation/supporting-content.controller.ts
 
       - name: Install dependencies
         run: npm ci
-
       - name: Prisma validation
         run: npx prisma validate
-
       - name: Generate Prisma client
         run: npm run prisma:generate
-
-      - name: TypeScript root-cause validation
+      - name: TypeScript validation
         run: npx tsc --noEmit
-
       - name: Lint validation
         run: npm run lint
-
       - name: Typecheck validation
         run: npm run typecheck
-
       - name: Build validation
         run: npm run build
-
       - name: Format validation
         run: npm run format:check
-
-      - name: Commit verified root-cause repair and remove one-off workflow
+      - name: Commit verified repair and remove one-off workflow
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add src
           git rm .github/workflows/_oneoff-fix-login-harness.yml
           git diff --cached --check
-          git commit -m 'fix(cms): repair content type contracts and imports'
+          git commit -m 'fix(cms): resolve lint and type safety errors'
           git push origin HEAD:main
 
-# Intentionally one-shot: this workflow removes itself after validation.
+# Intentionally one-shot: this workflow removes itself after successful validation.
