@@ -13,6 +13,7 @@ setDefault('APP_HOST', '127.0.0.1');
 setDefault('APP_PORT', '3001');
 setDefault('API_PREFIX', 'api');
 setDefault('API_VERSION', 'v1');
+setDefault('SWAGGER_ENABLED', 'true');
 setDefault('DATABASE_POOL_CONNECTION_LIMIT', '2');
 setDefault('DATABASE_CONNECT_TIMEOUT_MS', '5000');
 setDefault('DATABASE_ACQUIRE_TIMEOUT_MS', '10000');
