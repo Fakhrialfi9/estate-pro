@@ -7,7 +7,12 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { AuthenticatedRequest } from '../../profile/security/profile-authentication.guard.js';
 import { ProfileAuthenticationGuard } from '../../profile/security/profile-authentication.guard.js';
 import { ChangePasswordDto } from '../application/dto/change-password.dto.js';
@@ -38,6 +43,17 @@ export class CredentialsController {
     description:
       'Public endpoint. The response intentionally does not reveal whether the account exists.',
   })
+  @ApiResponse({
+    status: 201,
+    description: 'Password reset request accepted.',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+      },
+      required: ['message'],
+    },
+  })
   async requestReset(@Body() dto: PasswordResetRequestDto) {
     await this.resets.requestByEmail(dto.email);
     return {
@@ -51,6 +67,17 @@ export class CredentialsController {
     summary: 'Confirm password reset',
     description:
       'Public endpoint. Reset token validity and password policy are enforced by PasswordResetService.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Password reset completed successfully.',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+      },
+      required: ['message'],
+    },
   })
   async confirmReset(@Body() dto: PasswordResetConfirmDto) {
     try {
