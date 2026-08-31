@@ -186,7 +186,9 @@ const isInteractionPath = (path: string): boolean =>
 const isViewPath = (path: string, method: Method): boolean =>
   method === 'post' && /^\/api\/v1\/content\/articles\/[^/]+\/view$/.test(path);
 
-const ensureComponents = (document: MutableDocument): Record<string, Schema> => {
+const ensureComponents = (
+  document: MutableDocument,
+): Record<string, Schema> => {
   document.components ??= {};
   document.components.schemas ??= {};
   return document.components.schemas;
@@ -234,10 +236,17 @@ export const applyContentOpenApiContract = (
       if (!operation.responses) continue;
 
       for (const [status, rawResponse] of Object.entries(operation.responses)) {
-        if (!/^2\d\d$/.test(status) || status === '204' || !isObject(rawResponse)) {
+        if (
+          !/^2\d\d$/.test(status) ||
+          status === '204' ||
+          !isObject(rawResponse)
+        ) {
           continue;
         }
-        if (isObject(rawResponse.content) && Object.keys(rawResponse.content).length) {
+        if (
+          isObject(rawResponse.content) &&
+          Object.keys(rawResponse.content).length
+        ) {
           continue;
         }
 
