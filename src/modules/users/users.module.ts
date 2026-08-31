@@ -7,6 +7,7 @@ import { USER_PUBLIC_PORT } from '../../common/contracts/user-public.port.js';
 import { USER_REPOSITORY } from './domain/repositories/user.repository.js';
 import { PrismaUserRepository } from './infrastructure/persistence/prisma-user.repository.js';
 import { UserManagementService } from './application/services/user-management.service.js';
+import { UserPublicAdapter } from './application/services/user-public.adapter.js';
 import { UsersController } from './presentation/users.controller.js';
 import { UserManagementAccessGuard } from './security/user-management-access.guard.js';
 import { USER_PROFILE_REPOSITORY } from './profile/domain/repositories/user-profile.repository.js';
@@ -25,34 +26,10 @@ import { CredentialsController } from './credentials/presentation/credentials.co
 import { serializeUser } from './application/serializers/user.serializer.js';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, AuthorizationModule],
-  controllers: [UsersController, UserProfileController, CredentialsController],
-  providers: [
-    UserManagementService,
-    UserManagementAccessGuard,
-    UserProfileService,
-    UserProfileOwnershipPolicy,
-    ProfileAuthenticationGuard,
-    CredentialService,
-    PasswordResetService,
-    ConfiguredPasswordResetDeliveryService,
-    PasswordHasherService,
-    { provide: USER_REPOSITORY, useClass: PrismaUserRepository },
-    { provide: USER_PROFILE_REPOSITORY, useClass: PrismaUserProfileRepository },
-    { provide: CREDENTIAL_REPOSITORY, useClass: PrismaCredentialRepository },
-    { provide: PASSWORD_RESET_DELIVERY, useExisting: ConfiguredPasswordResetDeliveryService },
-    { provide: USER_IDENTITY_READER, useExisting: UserManagementService },
-    { provide: USER_PUBLIC_PORT, useExisting: UserManagementService },
-  ],
-  exports: [
-    UserManagementService,
-    CredentialService,
-    PasswordResetService,
-    USER_REPOSITORY,
-    CREDENTIAL_REPOSITORY,
-    USER_PUBLIC_PORT,
-    PasswordHasherService,
-  ],
+  imports:[DatabaseModule,AuditModule,AuthorizationModule],
+  controllers:[UsersController,UserProfileController,CredentialsController],
+  providers:[UserManagementService,UserPublicAdapter,UserManagementAccessGuard,UserProfileService,UserProfileOwnershipPolicy,ProfileAuthenticationGuard,CredentialService,PasswordResetService,ConfiguredPasswordResetDeliveryService,PasswordHasherService,{provide:USER_REPOSITORY,useClass:PrismaUserRepository},{provide:USER_PROFILE_REPOSITORY,useClass:PrismaUserProfileRepository},{provide:CREDENTIAL_REPOSITORY,useClass:PrismaCredentialRepository},{provide:PASSWORD_RESET_DELIVERY,useExisting:ConfiguredPasswordResetDeliveryService},{provide:USER_IDENTITY_READER,useExisting:UserManagementService},{provide:USER_PUBLIC_PORT,useExisting:UserPublicAdapter}],
+  exports:[UserManagementService,CredentialService,PasswordResetService,USER_REPOSITORY,CREDENTIAL_REPOSITORY,USER_PUBLIC_PORT,PasswordHasherService],
 })
 export class UsersModule {}
 
