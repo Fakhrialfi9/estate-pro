@@ -450,7 +450,6 @@ export class PrismaContentResourceRepository {
       menu: this.prisma.contentMenu,
       redirect: this.prisma.contentRedirect,
       media: this.prisma.contentMedia,
-      comment: this.prisma.contentComment,
     };
     return delegates[resource] as ResourceModel;
   }
