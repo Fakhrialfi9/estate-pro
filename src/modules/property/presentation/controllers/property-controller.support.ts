@@ -29,13 +29,32 @@ const SENSITIVE_FIELDS = new Set([
   'twoFactorSecret',
   'recoveryCodes',
 ]);
+
+const INTERNAL_FIELDS = new Set([
+  'id',
+  'propertyId',
+  'facilityId',
+  'propertyTypeId',
+  'propertyCategoryId',
+  'propertySubcategoryId',
+  'countryId',
+  'provinceId',
+  'cityId',
+  'districtId',
+  'subdistrictId',
+  'createdBy',
+  'updatedBy',
+  'verifiedBy',
+  'deletedBy',
+]);
+
 export const serializePropertyResponse = (value: unknown): unknown => {
   if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) return value.map(serializePropertyResponse);
   if (value && typeof value === 'object') {
     const result: Record<string, unknown> = {};
     for (const [key, nested] of Object.entries(value)) {
-      if (SENSITIVE_FIELDS.has(key)) continue;
+      if (SENSITIVE_FIELDS.has(key) || INTERNAL_FIELDS.has(key)) continue;
       result[key] = serializePropertyResponse(nested);
     }
     return result;
@@ -43,9 +62,11 @@ export const serializePropertyResponse = (value: unknown): unknown => {
   if (typeof value === 'bigint') return value.toString();
   return value;
 };
+
 export const response = (value: unknown) => ({
   data: serializePropertyResponse(value),
 });
+
 export const listResponse = (result: {
   items: readonly unknown[];
   total: number;

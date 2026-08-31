@@ -52,6 +52,8 @@ for _ in $(seq 1 30); do
 
   if [ "$live_status" = "200" ] && [ "$ready_status" = "200" ]; then
     printf 'Compiled runtime liveness/readiness checks passed on http://127.0.0.1:%s\n' "$PORT"
+    node scripts/validate-openapi.mjs "http://127.0.0.1:${PORT}/docs-json"
+    printf 'Compiled runtime OpenAPI contract validation passed.\n'
     exit 0
   fi
 

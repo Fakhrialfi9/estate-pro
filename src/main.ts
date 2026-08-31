@@ -2,10 +2,12 @@ import './infrastructure/observability/telemetry.js';
 
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { AppModule } from './app.module.js';
 import { configureApplication, getApplicationAddress } from './bootstrap.js';
+import { applyOpenApiContract } from './common/swagger/openapi-contract.js';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -15,10 +17,18 @@ async function bootstrap(): Promise<void> {
 
   configureApplication(app);
 
+  const configService = app.get(ConfigService);
+  const apiVersion = configService.getOrThrow<string>('api.version');
+  const apiPrefix = configService.getOrThrow<string>('api.prefix');
+  const appVersion = configService.getOrThrow<string>('app.version');
+  const appName = configService.getOrThrow<string>('app.name');
+
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Estate Pro API')
-    .setDescription('Estate Pro HTTP API')
-    .setVersion('1.0.0')
+    .setTitle(`${appName} API`)
+    .setDescription(
+      `Estate Pro HTTP API (${apiPrefix}/${apiVersion}). OpenAPI describes the public API contract; runtime validation, serialization, authentication, authorization, and error behavior remain authoritative.`,
+    )
+    .setVersion(appVersion)
     .addBearerAuth(
       {
         type: 'http',
@@ -30,7 +40,11 @@ async function bootstrap(): Promise<void> {
     )
     .build();
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  const document = applyOpenApiContract(
+    SwaggerModule.createDocument(app, swaggerConfig),
+    configService,
+  );
+
   SwaggerModule.setup('docs', app, document, {
     jsonDocumentUrl: 'docs-json',
     yamlDocumentUrl: 'docs-yaml',
