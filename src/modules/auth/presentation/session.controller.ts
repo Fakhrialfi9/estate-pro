@@ -8,7 +8,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import type { AccessTokenClaims } from '../application/services/jwt-token.service.js';
@@ -20,6 +25,23 @@ import { SECURITY_SESSION_RATE_LIMIT } from '../../../config/rate-limit.config.j
 interface AuthenticatedRequest extends Request {
   user: AccessTokenClaims;
 }
+
+const successResponseSchema = {
+  type: 'object',
+  properties: {
+    success: { type: 'boolean', example: true },
+  },
+  required: ['success'],
+};
+
+const logoutAllResponseSchema = {
+  type: 'object',
+  properties: {
+    success: { type: 'boolean', example: true },
+    revokedCount: { type: 'integer', minimum: 0 },
+  },
+  required: ['success', 'revokedCount'],
+};
 
 const requestContext = (request: Request) => ({
   ipAddress: request.ip,
@@ -50,6 +72,11 @@ export class SessionController {
     summary: 'Revoke all own sessions',
     description: 'Revokes all sessions owned by the authenticated user.',
   })
+  @ApiResponse({
+    status: 200,
+    description: 'All owned sessions were revoked.',
+    schema: logoutAllResponseSchema,
+  })
   async logoutAll(@Req() request: AuthenticatedRequest) {
     const revokedCount = await this.sessions.logoutAll(
       request.user.sub,
@@ -63,6 +90,11 @@ export class SessionController {
     summary: 'Revoke own session',
     description:
       'Revokes a session owned by the authenticated user using its public session identifier.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'The session was revoked successfully.',
+    schema: successResponseSchema,
   })
   async revoke(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
     this.assertPublicSessionId(id);
@@ -94,6 +126,11 @@ export class AdminSessionController {
     summary: 'Revoke another user session',
     description:
       'Privileged session administration; authorization is enforced by SessionAdminGuard.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'The target session was revoked successfully.',
+    schema: successResponseSchema,
   })
   async revoke(
     @Req() request: AuthenticatedRequest,
