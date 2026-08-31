@@ -30,9 +30,10 @@ import { SupportingContentController } from './presentation/supporting-content.c
 import { PublicContentController } from './presentation/public-content.controller.js';
 import { STORAGE_PROVIDER } from '../../infrastructure/storage/storage-provider.js';
 import { LocalStorageProvider } from '../../infrastructure/storage/local-storage.provider.js';
+import { AuthorizationModule } from '../../common/security/authorization.module.js';
 
 @Module({
-  imports: [DatabaseModule, AuditModule],
+  imports: [DatabaseModule, AuditModule, AuthorizationModule],
   controllers: [
     ContentController,
     SupportingContentController,
