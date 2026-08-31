@@ -2,7 +2,24 @@ import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { ContentService } from './application/content.service.js';
-import { CreateArticleUseCase, GetArticleUseCase, ListArticlesUseCase, UpdateArticleUseCase, DeleteArticleUseCase, RestoreArticleUseCase, DuplicateArticleUseCase, PublishArticleUseCase, UnpublishArticleUseCase, ArchiveArticleUseCase, ContentResourceUseCase, MediaUseCase, ContentRelationUseCase, ListRevisionsUseCase, RestoreRevisionUseCase, EngagementUseCase } from './application/use-cases/content.use-cases.js';
+import {
+  CreateArticleUseCase,
+  GetArticleUseCase,
+  ListArticlesUseCase,
+  UpdateArticleUseCase,
+  DeleteArticleUseCase,
+  RestoreArticleUseCase,
+  DuplicateArticleUseCase,
+  PublishArticleUseCase,
+  UnpublishArticleUseCase,
+  ArchiveArticleUseCase,
+  ContentResourceUseCase,
+  MediaUseCase,
+  ContentRelationUseCase,
+  ListRevisionsUseCase,
+  RestoreRevisionUseCase,
+  EngagementUseCase,
+} from './application/use-cases/content.use-cases.js';
 import { CONTENT_REPOSITORY } from './domain/repositories/content.repository.js';
 import { PrismaContentRepository } from './infrastructure/prisma-content.repository.js';
 import { PrismaArticleRepository } from './infrastructure/persistence/prisma-article.repository.js';
@@ -16,7 +33,11 @@ import { LocalStorageProvider } from '../../infrastructure/storage/local-storage
 
 @Module({
   imports: [DatabaseModule, AuditModule],
-  controllers: [ContentController, SupportingContentController, PublicContentController],
+  controllers: [
+    ContentController,
+    SupportingContentController,
+    PublicContentController,
+  ],
   providers: [
     PrismaArticleRepository,
     PrismaContentResourceRepository,
