@@ -1,18 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../prisma/generated/prisma/client.js';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
+import {
+  ArticleType,
+  ContentFormat,
+  ContentStatus,
+  ContentVisibility,
+} from '../../../../../prisma/generated/prisma/enums.js';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import {
   ContentConflictError,
   ContentConcurrencyError,
   ContentNotFoundError,
   ContentValidationError,
-} from '../application/content.errors.js';
+} from '.../../application/content.errors.js';
 import type {
   AuditContext,
   PaginationQuery,
   PagedResult,
-} from '../domain/content.types.js';
-import type { ArticleRecord } from '../domain/repositories/content.repository.js';
+} from '../../domain/content.types.js';
+import type { ArticleRecord } from '../../domain/repositories/content.repository.js';
 
 const jsonValue = (value: unknown): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -119,43 +125,43 @@ export class PrismaArticleRepository {
     return row.id;
   }
 
-  private enumStatus(value: unknown): Prisma.ContentStatus {
+  private enumStatus(value: unknown): ContentStatus {
     return value === 'IN_REVIEW'
-      ? Prisma.ContentStatus.IN_REVIEW
+      ? ContentStatus.IN_REVIEW
       : value === 'APPROVED'
-        ? Prisma.ContentStatus.APPROVED
+        ? ContentStatus.APPROVED
         : value === 'SCHEDULED'
-          ? Prisma.ContentStatus.SCHEDULED
+          ? ContentStatus.SCHEDULED
           : value === 'PUBLISHED'
-            ? Prisma.ContentStatus.PUBLISHED
+            ? ContentStatus.PUBLISHED
             : value === 'ARCHIVED'
-              ? Prisma.ContentStatus.ARCHIVED
+              ? ContentStatus.ARCHIVED
               : value === 'REJECTED'
-                ? Prisma.ContentStatus.REJECTED
-                : Prisma.ContentStatus.DRAFT;
+                ? ContentStatus.REJECTED
+                : ContentStatus.DRAFT;
   }
-  private enumVisibility(value: unknown): Prisma.ContentVisibility {
+  private enumVisibility(value: unknown): ContentVisibility {
     return value === 'PRIVATE'
-      ? Prisma.ContentVisibility.PRIVATE
-      : Prisma.ContentVisibility.PUBLIC;
+      ? ContentVisibility.PRIVATE
+      : ContentVisibility.PUBLIC;
   }
-  private enumFormat(value: unknown): Prisma.ContentFormat {
+  private enumFormat(value: unknown): ContentFormat {
     return value === 'MARKDOWN'
-      ? Prisma.ContentFormat.MARKDOWN
+      ? ContentFormat.MARKDOWN
       : value === 'BLOCKS'
-        ? Prisma.ContentFormat.BLOCKS
-        : Prisma.ContentFormat.RICH_TEXT;
+        ? ContentFormat.BLOCKS
+        : ContentFormat.RICH_TEXT;
   }
-  private enumType(value: unknown): Prisma.ArticleType {
+  private enumType(value: unknown): ArticleType {
     return value === 'NEWS'
-      ? Prisma.ArticleType.NEWS
+      ? ArticleType.NEWS
       : value === 'PRESS_RELEASE'
-        ? Prisma.ArticleType.PRESS_RELEASE
+        ? ArticleType.PRESS_RELEASE
         : value === 'GUIDE'
-          ? Prisma.ArticleType.GUIDE
+          ? ArticleType.GUIDE
           : value === 'CASE_STUDY'
-            ? Prisma.ArticleType.CASE_STUDY
-            : Prisma.ArticleType.ARTICLE;
+            ? ArticleType.CASE_STUDY
+            : ArticleType.ARTICLE;
   }
 
   async create(
@@ -197,9 +203,9 @@ export class PrismaArticleRepository {
             content: jsonValue(input.content),
             contentFormat: this.enumFormat(input.contentFormat),
             type: this.enumType(input.type),
-            status: Prisma.ContentStatus.DRAFT,
+            status: ContentStatus.DRAFT,
             visibility: this.enumVisibility(input.visibility),
-            language: String(input.language ?? 'id'),
+            language: typeof input.language === 'string' ? input.language : 'id',
             featured: input.featured === true,
             allowComments: input.allowComments !== false,
             wordCount: Number(input.wordCount ?? 0),
@@ -467,7 +473,7 @@ export class PrismaArticleRepository {
         where: { uuid },
         data: {
           status: next,
-          ...(next === Prisma.ContentStatus.PUBLISHED
+          ...(next === ContentStatus.PUBLISHED
             ? {
                 publishedAt: new Date(),
                 publishedBy: ctx.actorUuid,
