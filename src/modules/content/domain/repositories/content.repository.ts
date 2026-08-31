@@ -22,7 +22,6 @@ export interface ArticleRecord {
   wordCount: number;
   readingTimeMin: number;
   authorUuid: string | null;
-  categoryUuid: string | null;
   category: { uuid: string; name: string; slug: string } | null;
   tags: Array<{ uuid: string; name: string; slug: string }>;
   coverMedia: { uuid: string; url: string | null; alt: string | null } | null;
