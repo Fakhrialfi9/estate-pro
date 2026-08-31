@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import {
@@ -29,6 +28,10 @@ const plain = (value: unknown): Record<string, unknown> =>
         typeof item === 'bigint' ? item.toString() : item,
       ]),
   );
+
+function stringOrDefault(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
 
 @Injectable()
 export class PrismaContentOperationsRepository {
@@ -115,24 +118,24 @@ export class PrismaContentOperationsRepository {
         const next = await tx.contentPage.update({
           where: { uuid: entityUuid },
           data: {
-            title: String(snapshot.title),
-            slug: String(snapshot.slug),
-            template:
-              typeof snapshot.template === 'string'
-                ? snapshot.template
-                : current.template,
+            title:
+              typeof snapshot.title === 'string'
+                ? snapshot.title
+                : current.title,
+            slug:
+              typeof snapshot.slug === 'string' ? snapshot.slug : current.slug,
+            template: stringOrDefault(snapshot.template, current.template),
             content: jsonValue(snapshot.content),
-            contentFormat: String(
-              snapshot.contentFormat ?? 'RICH_TEXT',
+            contentFormat: stringOrDefault(
+              snapshot.contentFormat,
+              'RICH_TEXT',
             ) as ContentFormat,
             status: 'DRAFT',
-            visibility: String(
-              snapshot.visibility ?? 'PUBLIC',
+            visibility: stringOrDefault(
+              snapshot.visibility,
+              'PUBLIC',
             ) as ContentVisibility,
-            language:
-              typeof snapshot.language === 'string'
-                ? snapshot.language
-                : current.language,
+            language: stringOrDefault(snapshot.language, current.language),
             version: { increment: 1 },
             updatedBy: ctx.actorUuid,
           },
