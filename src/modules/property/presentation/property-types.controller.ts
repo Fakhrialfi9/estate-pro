@@ -16,7 +16,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -46,6 +51,52 @@ export const PROPERTY_TYPE_DELETE_PERMISSION = 'property-types.delete';
 
 type AuthenticatedRequest = Request & { user?: { sub?: string } };
 
+const propertyTypeResponseSchema = {
+  type: 'object',
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    code: { type: 'string' },
+    name: { type: 'string' },
+    slug: { type: 'string' },
+    description: { type: 'string', nullable: true },
+    icon: { type: 'string', nullable: true },
+    isActive: { type: 'boolean' },
+    sortOrder: { type: 'integer' },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+  required: [
+    'uuid',
+    'code',
+    'name',
+    'slug',
+    'description',
+    'icon',
+    'isActive',
+    'sortOrder',
+    'createdAt',
+    'updatedAt',
+  ],
+};
+
+const propertyTypeListResponseSchema = {
+  type: 'object',
+  properties: {
+    items: { type: 'array', items: propertyTypeResponseSchema },
+    meta: {
+      type: 'object',
+      properties: {
+        page: { type: 'integer', minimum: 1 },
+        limit: { type: 'integer', minimum: 1 },
+        total: { type: 'integer', minimum: 0 },
+        totalPages: { type: 'integer', minimum: 0 },
+      },
+      required: ['page', 'limit', 'total', 'totalPages'],
+    },
+  },
+  required: ['items', 'meta'],
+};
+
 @ApiTags('Property Types')
 @ApiBearerAuth()
 @Controller({ path: 'property-types', version: '1' })
@@ -62,6 +113,11 @@ export class PropertyTypesController {
   @Post()
   @RequirePermissions(PROPERTY_TYPE_CREATE_PERMISSION)
   @ApiOperation({ summary: 'Create property type' })
+  @ApiResponse({
+    status: 201,
+    description: 'Property type created.',
+    schema: propertyTypeResponseSchema,
+  })
   async create(
     @Req() request: AuthenticatedRequest,
     @Body() dto: CreatePropertyTypeDto,
@@ -83,6 +139,11 @@ export class PropertyTypesController {
   @Get()
   @RequirePermissions(PROPERTY_TYPE_READ_PERMISSION)
   @ApiOperation({ summary: 'List property types' })
+  @ApiResponse({
+    status: 200,
+    description: 'Property types returned.',
+    schema: propertyTypeListResponseSchema,
+  })
   async list(@Query() query: PropertyTypeQueryDto) {
     if (query.filterField === undefined && query.filterValue !== undefined) {
       throw new BadRequestException(
@@ -123,6 +184,11 @@ export class PropertyTypesController {
   @Get(':uuid')
   @RequirePermissions(PROPERTY_TYPE_READ_PERMISSION)
   @ApiOperation({ summary: 'Get property type' })
+  @ApiResponse({
+    status: 200,
+    description: 'Property type returned.',
+    schema: propertyTypeResponseSchema,
+  })
   async get(@Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string) {
     try {
       return serializePropertyType(await this.getPropertyType.execute(uuid));
@@ -134,6 +200,11 @@ export class PropertyTypesController {
   @Patch(':uuid')
   @RequirePermissions(PROPERTY_TYPE_UPDATE_PERMISSION)
   @ApiOperation({ summary: 'Update property type' })
+  @ApiResponse({
+    status: 200,
+    description: 'Property type updated.',
+    schema: propertyTypeResponseSchema,
+  })
   async update(
     @Req() request: AuthenticatedRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -158,6 +229,7 @@ export class PropertyTypesController {
   @HttpCode(204)
   @RequirePermissions(PROPERTY_TYPE_DELETE_PERMISSION)
   @ApiOperation({ summary: 'Soft-delete property type' })
+  @ApiResponse({ status: 204, description: 'Property type deleted.' })
   async remove(
     @Req() request: AuthenticatedRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
