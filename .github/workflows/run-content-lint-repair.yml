@@ -9,30 +9,46 @@ permissions:
 
 jobs:
   repair:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Skip bot-triggered repair
+        if: github.actor == 'github-actions[bot]'
+        run: echo 'skip repair for bot commit'
       - uses: actions/checkout@v4
+        if: github.actor != 'github-actions[bot]'
         with:
           ref: main
           fetch-depth: 1
       - uses: actions/setup-node@v4
+        if: github.actor != 'github-actions[bot]'
         with:
           node-version: 22
           cache: npm
       - run: npm install --global npm@11.18.0
+        if: github.actor != 'github-actions[bot]'
       - run: npm ci
+        if: github.actor != 'github-actions[bot]'
       - run: python3 scripts/repair-content-lint.py
+        if: github.actor != 'github-actions[bot]'
       - run: npx prettier --write src/modules/content
+        if: github.actor != 'github-actions[bot]'
       - run: npx prisma validate
+        if: github.actor != 'github-actions[bot]'
       - run: npm run prisma:generate
+        if: github.actor != 'github-actions[bot]'
       - run: npx tsc --noEmit
+        if: github.actor != 'github-actions[bot]'
       - run: npm run lint
+        if: github.actor != 'github-actions[bot]'
       - run: npm run typecheck
+        if: github.actor != 'github-actions[bot]'
       - run: npm run build
+        if: github.actor != 'github-actions[bot]'
       - run: npm run format:check
+        if: github.actor != 'github-actions[bot]'
       - name: Commit repair and remove temporary files
+        if: github.actor != 'github-actions[bot]'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+users.noreply.github.com'
