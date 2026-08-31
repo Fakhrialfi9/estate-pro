@@ -1,7 +1,9 @@
+import { Injectable } from '@nestjs/common';
 import { duplicatePairKey, normalizeEmail, normalizePhone } from '../../domain/crm.types.js';
 
 export interface DuplicateCandidate { readonly leadUuid:string; readonly email?:string|null; readonly phone?:string|null; readonly displayName?:string|null; }
 export interface DuplicateMatch { readonly pairKey:string; readonly candidateLeadUuid:string; readonly confidence:number; readonly signals:readonly string[]; }
+@Injectable()
 export class DuplicateDetector {
   detect(source:DuplicateCandidate,candidates:readonly DuplicateCandidate[]):readonly DuplicateMatch[]{
     const email=source.email?normalizeEmail(source.email):null; const phone=source.phone?normalizePhone(source.phone):null; const name=source.displayName?.trim().toLocaleLowerCase()??'';
