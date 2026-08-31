@@ -12,7 +12,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../../common/security/authorization.guard.js';
@@ -43,6 +48,41 @@ import {
 type RequestWithUser = Request & {
   user?: { sub?: string; permissions?: readonly string[] };
 };
+
+const listingItemSchema = {
+  type: 'object',
+  additionalProperties: true,
+};
+
+const listingResponseSchema = {
+  type: 'object',
+  properties: {
+    data: listingItemSchema,
+  },
+  required: ['data'],
+};
+
+const listingListResponseSchema = {
+  type: 'object',
+  properties: {
+    data: {
+      type: 'array',
+      items: listingItemSchema,
+    },
+    meta: {
+      type: 'object',
+      properties: {
+        page: { type: 'integer', minimum: 1 },
+        limit: { type: 'integer', minimum: 1 },
+        total: { type: 'integer', minimum: 0 },
+        totalPages: { type: 'integer', minimum: 0 },
+      },
+      required: ['page', 'limit', 'total', 'totalPages'],
+    },
+  },
+  required: ['data', 'meta'],
+};
+
 const actorOf = (
   request: RequestWithUser,
   userAgent?: string,
@@ -98,6 +138,18 @@ const listResponse = (result: {
 @ApiBearerAuth()
 @Controller({ path: 'property', version: '1' })
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
+@ApiResponse({
+  status: 200,
+  description: 'Listing resource returned successfully.',
+  schema: {
+    oneOf: [listingResponseSchema, listingListResponseSchema],
+  },
+})
+@ApiResponse({
+  status: 201,
+  description: 'Listing resource created or transition completed successfully.',
+  schema: listingResponseSchema,
+})
 export class ListingController {
   constructor(private readonly service: ListingService) {}
   @Post('listings')
