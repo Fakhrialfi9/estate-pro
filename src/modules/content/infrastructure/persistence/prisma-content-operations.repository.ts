@@ -117,7 +117,10 @@ export class PrismaContentOperationsRepository {
           data: {
             title: String(snapshot.title),
             slug: String(snapshot.slug),
-            template: typeof snapshot.template === 'string' ? snapshot.template : current.template,
+            template:
+              typeof snapshot.template === 'string'
+                ? snapshot.template
+                : current.template,
             content: jsonValue(snapshot.content),
             contentFormat: String(
               snapshot.contentFormat ?? 'RICH_TEXT',
@@ -126,7 +129,10 @@ export class PrismaContentOperationsRepository {
             visibility: String(
               snapshot.visibility ?? 'PUBLIC',
             ) as ContentVisibility,
-            language: typeof snapshot.language === 'string' ? snapshot.language : current.language,
+            language:
+              typeof snapshot.language === 'string'
+                ? snapshot.language
+                : current.language,
             version: { increment: 1 },
             updatedBy: ctx.actorUuid,
           },

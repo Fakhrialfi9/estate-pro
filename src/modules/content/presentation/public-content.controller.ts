@@ -80,6 +80,10 @@ export class PublicContentController {
   @Post('articles/:uuid/view')
   @ApiOperation({ summary: 'Record a privacy-preserving article view' })
   async view(@Param('uuid') uuid: string, @Req() request: Request) {
-    return this.service.view(uuid, request.ip ?? 'unknown', request.headers['user-agent']);
+    return this.service.view(
+      uuid,
+      request.ip ?? 'unknown',
+      request.headers['user-agent'],
+    );
   }
 }

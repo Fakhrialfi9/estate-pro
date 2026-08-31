@@ -205,7 +205,8 @@ export class PrismaArticleRepository {
             type: this.enumType(input.type),
             status: ContentStatus.DRAFT,
             visibility: this.enumVisibility(input.visibility),
-            language: typeof input.language === 'string' ? input.language : 'id',
+            language:
+              typeof input.language === 'string' ? input.language : 'id',
             featured: input.featured === true,
             allowComments: input.allowComments !== false,
             wordCount: Number(input.wordCount ?? 0),

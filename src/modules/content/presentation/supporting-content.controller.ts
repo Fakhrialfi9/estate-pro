@@ -12,21 +12,14 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { ContentResourceUseCase } from '../application/use-cases/content.use-cases.js';
 import { ContentService } from '../application/content.service.js';
-import {
-  ContentQueryDto,
-  ResourceDto,
-} from './dto/content.dto.js';
+import { ContentQueryDto, ResourceDto } from './dto/content.dto.js';
 
 type AuthRequest = Request & { user?: { sub?: string } };
 type Resource =

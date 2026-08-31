@@ -313,9 +313,7 @@ export class PrismaContentResourceRepository {
     const rows = await this.prisma.contentRelation.findMany({
       where: {
         sourceUuid,
-        ...(relationType
-          ? { relationType: relationType as RelationType }
-          : {}),
+        ...(relationType ? { relationType: relationType as RelationType } : {}),
       },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
@@ -331,9 +329,7 @@ export class PrismaContentResourceRepository {
         targetUuid: String(input.targetUuid),
         sourceType: String(input.sourceType),
         targetType: String(input.targetType),
-        relationType: String(
-          input.relationType ?? 'RELATED',
-        ) as RelationType,
+        relationType: String(input.relationType ?? 'RELATED') as RelationType,
         sortOrder: Number(input.sortOrder ?? 0),
         createdBy: ctx.actorUuid,
       },
@@ -419,9 +415,7 @@ export class PrismaContentResourceRepository {
           input.contentFormat ?? 'RICH_TEXT',
         ) as ContentFormat,
         status: 'DRAFT',
-        visibility: String(
-          input.visibility ?? 'PUBLIC',
-        ) as ContentVisibility,
+        visibility: String(input.visibility ?? 'PUBLIC') as ContentVisibility,
         language: typeof input.language === 'string' ? input.language : 'id',
         createdBy: ctx.actorUuid,
         version: 1,
@@ -478,9 +472,7 @@ export class PrismaContentResourceRepository {
         title: typeof input.title === 'string' ? input.title : null,
         subtitle: typeof input.subtitle === 'string' ? input.subtitle : null,
         linkUrl: typeof input.linkUrl === 'string' ? input.linkUrl : null,
-        placement: String(
-          input.placement ?? 'HOME_HERO',
-        ) as BannerPlacement,
+        placement: String(input.placement ?? 'HOME_HERO') as BannerPlacement,
         priority: Number(input.priority ?? 0),
         startAt: input.startAt ? new Date(String(input.startAt)) : null,
         endAt: input.endAt ? new Date(String(input.endAt)) : null,
