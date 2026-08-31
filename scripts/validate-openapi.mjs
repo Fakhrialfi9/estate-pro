@@ -26,69 +26,92 @@ const resolveLocalRef = (document, reference) => {
   return current;
 };
 
-const validateSchemaQuality = (document, schema, location) => {
-  assert(isObject(schema), `Schema is invalid: ${location}`);
-  if ('$ref' in schema) {
-    assert(typeof schema.$ref === 'string', `Schema $ref is invalid: ${location}`);
+const typeMatches = (schema, value) => {
+  if (value === null) return schema.nullable === true || schema.type === 'null';
+  if (!schema.type) return true;
+  switch (schema.type) {
+    case 'string': return typeof value === 'string';
+    case 'integer': return Number.isInteger(value);
+    case 'number': return typeof value === 'number';
+    case 'boolean': return typeof value === 'boolean';
+    case 'array': return Array.isArray(value);
+    case 'object': return isObject(value);
+    default: return true;
+  }
+};
+
+const validateSchemaQuality = (document, schema, location, seen = new Set()) => {
+  if (!isObject(schema)) return;
+  if (typeof schema.$ref === 'string') {
+    const target = resolveLocalRef(document, schema.$ref);
+    if (!seen.has(schema.$ref)) {
+      const next = new Set(seen);
+      next.add(schema.$ref);
+      validateSchemaQuality(document, target, location, next);
+    }
     return;
   }
-  if ('type' in schema) assert(typeof schema.type === 'string', `Schema type is invalid: ${location}`);
-  if ('format' in schema) assert(KNOWN_FORMATS.has(schema.format), `Unknown OpenAPI format ${schema.format}: ${location}`);
-  if ('required' in schema) {
-    assert(Array.isArray(schema.required), `Schema required must be an array: ${location}`);
-    for (const property of schema.required) assert(typeof property === 'string', `Schema required property is invalid: ${location}`);
+  if (schema.format !== undefined) assert(typeof schema.format === 'string' && KNOWN_FORMATS.has(schema.format), `Unknown schema format at ${location}: ${String(schema.format)}`);
+  if (Array.isArray(schema.enum)) {
+    assert(schema.enum.length > 0, `Empty enum at ${location}`);
+    if (schema.type === 'string') schema.enum.forEach((item) => assert(typeof item === 'string', `String enum contains non-string value at ${location}`));
   }
-  if ('properties' in schema) {
-    assert(isObject(schema.properties), `Schema properties must be an object: ${location}`);
-    for (const [name, propertySchema] of Object.entries(schema.properties)) validateSchemaQuality(document, propertySchema, `${location}.${name}`);
+  if (schema.minimum !== undefined) assert(typeof schema.minimum === 'number', `Non-numeric minimum at ${location}`);
+  if (schema.maximum !== undefined) assert(typeof schema.maximum === 'number', `Non-numeric maximum at ${location}`);
+  if (schema.minLength !== undefined) assert(Number.isInteger(schema.minLength) && schema.minLength >= 0, `Invalid minLength at ${location}`);
+  if (schema.maxLength !== undefined) assert(Number.isInteger(schema.maxLength) && schema.maxLength >= 0, `Invalid maxLength at ${location}`);
+  if (schema.minLength !== undefined && schema.maxLength !== undefined) assert(schema.minLength <= schema.maxLength, `minLength exceeds maxLength at ${location}`);
+  if (schema.properties !== undefined) {
+    assert(isObject(schema.properties), `Schema properties must be an object at ${location}`);
+    const properties = schema.properties;
+    for (const required of schema.required ?? []) {
+      assert(typeof required === 'string' && required in properties, `Required property ${String(required)} is missing from properties at ${location}`);
+    }
+    for (const [propertyName, propertySchema] of Object.entries(properties)) validateSchemaQuality(document, propertySchema, `${location}.${propertyName}`, seen);
   }
-  if ('items' in schema) validateSchemaQuality(document, schema.items, `${location}.items`);
-  if ('oneOf' in schema) {
-    assert(Array.isArray(schema.oneOf), `Schema oneOf must be an array: ${location}`);
-    for (const child of schema.oneOf) validateSchemaQuality(document, child, `${location}.oneOf`);
-  }
-  if ('anyOf' in schema) {
-    assert(Array.isArray(schema.anyOf), `Schema anyOf must be an array: ${location}`);
-    for (const child of schema.anyOf) validateSchemaQuality(document, child, `${location}.anyOf`);
-  }
-  if ('allOf' in schema) {
-    assert(Array.isArray(schema.allOf), `Schema allOf must be an array: ${location}`);
-    for (const child of schema.allOf) validateSchemaQuality(document, child, `${location}.allOf`);
-  }
-  if ('additionalProperties' in schema && isObject(schema.additionalProperties)) validateSchemaQuality(document, schema.additionalProperties, `${location}.additionalProperties`);
+  if (schema.items !== undefined) validateSchemaQuality(document, schema.items, `${location}[]`, seen);
+  for (const branch of [...(Array.isArray(schema.oneOf) ? schema.oneOf : []), ...(Array.isArray(schema.anyOf) ? schema.anyOf : []), ...(Array.isArray(schema.allOf) ? schema.allOf : [])]) validateSchemaQuality(document, branch, location, seen);
+  if ('default' in schema) assert(typeMatches(schema, schema.default), `Default value violates schema type at ${location}`);
 };
 
 const operationSchemasReferencedByResponses = (document) => {
-  const references = new Set();
+  const refs = new Set();
+  const collect = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach(collect);
+      return;
+    }
+    if (!isObject(value)) return;
+    if (typeof value.$ref === 'string') refs.add(value.$ref);
+    Object.values(value).forEach(collect);
+  };
   for (const item of Object.values(document.paths ?? {})) {
     if (!isObject(item)) continue;
-    for (const [method, operation] of Object.entries(item)) {
-      if (!METHODS.has(method) || !isObject(operation) || !isObject(operation.responses)) continue;
-      for (const response of Object.values(operation.responses)) {
-        if (!isObject(response)) continue;
-        const content = response.content;
-        if (!isObject(content)) continue;
-        for (const mediaType of Object.values(content)) {
-          if (!isObject(mediaType) || !isObject(mediaType.schema)) continue;
-          const schema = mediaType.schema;
-          if (typeof schema.$ref === 'string') references.add(schema.$ref);
-        }
-      }
-    }
+    for (const [method, operation] of Object.entries(item)) if (METHODS.has(method) && isObject(operation)) collect(operation.responses);
   }
-  return references;
+  return refs;
 };
 
 export const validateOpenApiDocument = (document) => {
-  assert(isObject(document), 'OpenAPI document is not an object');
-  assert(typeof document.openapi === 'string', 'Missing OpenAPI version');
-  assert(isObject(document.info), 'Missing OpenAPI info');
-  assert(isObject(document.paths), 'Missing OpenAPI paths');
-  assert(isObject(document.components), 'Missing OpenAPI components');
-  assert(isObject(document.components.schemas), 'Missing OpenAPI schemas');
+  assert(isObject(document), 'OpenAPI document must be an object');
+  assert(
+    (typeof document.openapi === 'string' && /^3\.0\.\d+$/.test(document.openapi)) || document.openapi === '3.1.0',
+    `Unsupported OpenAPI version: ${String(document.openapi)}`,
+  );
+  assert(isObject(document.info), 'OpenAPI info is missing');
+  assert(typeof document.info.title === 'string' && document.info.title.length > 0, 'OpenAPI title is missing');
+  assert(typeof document.info.version === 'string' && document.info.version.length > 0, 'API contract version is missing');
+  assert(isObject(document.paths), 'OpenAPI paths are missing');
+  assert(isObject(document.components), 'OpenAPI components are missing');
+  assert(isObject(document.components.schemas), 'OpenAPI schemas are missing');
+  assert(isObject(document.components.responses), 'OpenAPI reusable responses are missing');
+  assert(isObject(document.components.securitySchemes), 'OpenAPI security schemes are missing');
 
-  let operationCount = 0;
+  const bearer = document.components.securitySchemes.bearer;
+  assert(isObject(bearer) && bearer.type === 'http' && bearer.scheme === 'bearer' && bearer.bearerFormat === 'JWT', 'Bearer security scheme must be HTTP bearer JWT');
+
   const operationIds = new Set();
+  let operationCount = 0;
   const requestBodies = new Set();
   const responseRefs = operationSchemasReferencedByResponses(document);
 
