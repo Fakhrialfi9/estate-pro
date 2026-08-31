@@ -34,6 +34,7 @@ export const RESOURCE_TYPES = [
   'banner',
   'menu',
   'media',
+  'redirect',
 ] as const;
 export type ContentResourceType = (typeof RESOURCE_TYPES)[number];
 
