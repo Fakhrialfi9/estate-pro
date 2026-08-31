@@ -1,24 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
+import { Prisma } from '../../../../../../prisma/generated/prisma/client.js';
 import {
   ArticleType,
   ContentFormat,
   ContentStatus,
   ContentVisibility,
 } from '../../../../../prisma/generated/prisma/enums.js';
-import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
+import { PrismaService } from '../../../../../infrastructure/database/prisma/prisma.service.js';
 import {
   ContentConflictError,
   ContentConcurrencyError,
   ContentNotFoundError,
   ContentValidationError,
-} from '.../../application/content.errors.js';
+} from '.../.../../application/content.errors.js';
 import type {
   AuditContext,
   PaginationQuery,
   PagedResult,
-} from '../../domain/content.types.js';
-import type { ArticleRecord } from '../../domain/repositories/content.repository.js';
+} from '../../../domain/content.types.js';
+import type { ArticleRecord } from '../../../domain/repositories/content.repository.js';
 
 const jsonValue = (value: unknown): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
