@@ -1,5 +1,5 @@
 export interface CrmActor { readonly actorUuid: string; readonly requestId?: string; readonly ipAddress?: string; readonly userAgent?: string; }
-export interface PageQuery { readonly page?: number; readonly limit?: number; readonly search?: string; readonly sortBy?: string; readonly sortDirection?: 'asc' | 'desc'; }
+export interface PageQuery { readonly page?: number; readonly limit?: number; readonly search?: string; readonly sortBy?: string; readonly sortDirection?: 'asc' | 'desc'; readonly [key: string]: unknown; }
 export const pageOf = (query: PageQuery): { page: number; limit: number; skip: number } => { const page = Number.isInteger(query.page) && (query.page ?? 1) > 0 ? (query.page ?? 1) : 1; const limit = Number.isInteger(query.limit) ? Math.min(100, Math.max(1, query.limit ?? 20)) : 20; return { page, limit, skip: (page - 1) * limit }; };
 export const normalizeEmail = (value: string): string => value.trim().toLowerCase();
 export const normalizePhone = (value: string): string => value.replace(/[^0-9+]/g, '').trim();
