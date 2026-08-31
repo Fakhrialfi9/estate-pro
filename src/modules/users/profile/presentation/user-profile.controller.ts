@@ -13,7 +13,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { AuthenticatedRequest } from '../security/profile-authentication.guard.js';
 import { ProfileAuthenticationGuard } from '../security/profile-authentication.guard.js';
 import { CreateUserProfileDto } from '../application/dto/create-user-profile.dto.js';
@@ -28,6 +33,32 @@ import {
 } from '../domain/errors/user-profile.errors.js';
 import { UserNotFoundError } from '../../domain/errors/user.errors.js';
 
+const userProfileResponseSchema = {
+  type: 'object',
+  properties: {
+    userUuid: { type: 'string', format: 'uuid' },
+    firstName: { type: 'string', nullable: true },
+    lastName: { type: 'string', nullable: true },
+    imageUrl: { type: 'string', nullable: true },
+    avatarThumbnailUrl: { type: 'string', nullable: true },
+    timezone: { type: 'string' },
+    locale: { type: 'string' },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+  required: [
+    'userUuid',
+    'firstName',
+    'lastName',
+    'imageUrl',
+    'avatarThumbnailUrl',
+    'timezone',
+    'locale',
+    'createdAt',
+    'updatedAt',
+  ],
+} as const;
+
 @ApiTags('Profile')
 @ApiBearerAuth()
 @Controller({ path: 'users', version: '1' })
@@ -40,6 +71,11 @@ export class UserProfileController {
     summary: 'Create user profile',
     description:
       'Authenticated access only; the service enforces profile ownership.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'User profile created.',
+    schema: userProfileResponseSchema,
   })
   async create(
     @Param('uuid', ParseUUIDPipe) uuid: string,
@@ -61,6 +97,11 @@ export class UserProfileController {
     description:
       'Authenticated access only; only the owner may access the profile unless the application service policy permits otherwise.',
   })
+  @ApiResponse({
+    status: 200,
+    description: 'User profile returned.',
+    schema: userProfileResponseSchema,
+  })
   async get(
     @Param('uuid', ParseUUIDPipe) uuid: string,
     @Req() request: AuthenticatedRequest,
@@ -77,6 +118,11 @@ export class UserProfileController {
     summary: 'Update user profile',
     description:
       'Authenticated access only; ownership is enforced by the application service.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User profile updated.',
+    schema: userProfileResponseSchema,
   })
   async update(
     @Param('uuid', ParseUUIDPipe) uuid: string,
