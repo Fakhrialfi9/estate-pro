@@ -3,6 +3,7 @@ import { AuthorizationModule } from '../../common/security/authorization.module.
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { PasswordHasherService } from '../../common/security/password-hasher.service.js';
+import { USER_PUBLIC_PORT } from '../../common/contracts/user-public.port.js';
 import { USER_REPOSITORY } from './domain/repositories/user.repository.js';
 import { PrismaUserRepository } from './infrastructure/persistence/prisma-user.repository.js';
 import { UserManagementService } from './application/services/user-management.service.js';
@@ -18,10 +19,7 @@ import { USER_IDENTITY_READER } from './profile/application/types/user-identity-
 import { CREDENTIAL_REPOSITORY } from './credentials/domain/repositories/credential.repository.js';
 import { PrismaCredentialRepository } from './credentials/infrastructure/persistence/prisma-credential.repository.js';
 import { CredentialService } from './credentials/application/services/credential.service.js';
-import {
-  PASSWORD_RESET_DELIVERY,
-  PasswordResetService,
-} from './credentials/application/services/password-reset.service.js';
+import { PASSWORD_RESET_DELIVERY, PasswordResetService } from './credentials/application/services/password-reset.service.js';
 import { ConfiguredPasswordResetDeliveryService } from './credentials/application/services/configured-password-reset-delivery.service.js';
 import { CredentialsController } from './credentials/presentation/credentials.controller.js';
 import { serializeUser } from './application/serializers/user.serializer.js';
@@ -42,11 +40,9 @@ import { serializeUser } from './application/serializers/user.serializer.js';
     { provide: USER_REPOSITORY, useClass: PrismaUserRepository },
     { provide: USER_PROFILE_REPOSITORY, useClass: PrismaUserProfileRepository },
     { provide: CREDENTIAL_REPOSITORY, useClass: PrismaCredentialRepository },
-    {
-      provide: PASSWORD_RESET_DELIVERY,
-      useExisting: ConfiguredPasswordResetDeliveryService,
-    },
+    { provide: PASSWORD_RESET_DELIVERY, useExisting: ConfiguredPasswordResetDeliveryService },
     { provide: USER_IDENTITY_READER, useExisting: UserManagementService },
+    { provide: USER_PUBLIC_PORT, useExisting: UserManagementService },
   ],
   exports: [
     UserManagementService,
@@ -54,6 +50,7 @@ import { serializeUser } from './application/serializers/user.serializer.js';
     PasswordResetService,
     USER_REPOSITORY,
     CREDENTIAL_REPOSITORY,
+    USER_PUBLIC_PORT,
     PasswordHasherService,
   ],
 })
