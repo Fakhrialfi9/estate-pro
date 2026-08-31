@@ -42,12 +42,8 @@ jobs:
               path.write_text(text.replace(old, new, 1))
 
           service = Path('src/modules/content/application/content.service.ts')
-          replace_once(service,
-              '  PagedResult,\n',
-              '')
-          replace_once(service,
-              "        /[\\u0000-\\u001f]/.test(href)\n",
-              "        hasControlCharacters(href)\n")
+          replace_once(service, '  PagedResult,\n', '')
+          replace_once(service, "        /[\\u0000-\\u001f]/.test(href)\n", '        hasControlCharacters(href)\n')
           replace_once(service,
               "const words = (value: unknown): number => {\n",
               "const hasControlCharacters = (value: string): boolean =>\n  [...value].some((character) => character.charCodeAt(0) < 32);\n\nconst words = (value: unknown): number => {\n")
@@ -56,9 +52,7 @@ jobs:
               "provider:\n        typeof metadata.provider === 'string' ? metadata.provider : 'local',")
 
           article = Path('src/modules/content/infrastructure/persistence/prisma-article.repository.ts')
-          replace_once(article,
-              '            status: Prisma.ContentStatus.DRAFT,\n',
-              '            status: ContentStatus.DRAFT,\n')
+          replace_once(article, '            status: Prisma.ContentStatus.DRAFT,\n', '            status: ContentStatus.DRAFT,\n')
           replace_once(article,
               "            language: String(input.language ?? 'id'),\n",
               "            language:\n              typeof input.language === 'string' ? input.language : 'id',\n")
@@ -71,14 +65,12 @@ jobs:
           replace_once(article,
               '        if (input.language !== undefined)\n          data.language = String(input.language);\n',
               "        if (input.language !== undefined)\n          data.language = this.requiredString(input.language, 'language');\n")
-          marker = "  private enumStatus(value: unknown): ContentStatus {\n"
-          helper = """  private requiredString(value: unknown, field: string): string {\n    if (typeof value !== 'string' || !value.trim())\n      throw new ContentValidationError(`${field} is invalid`);\n    return value.trim();\n  }\n\n"""
-          replace_once(article, marker, helper + marker)
+          replace_once(article,
+              '  private enumStatus(value: unknown): Prisma.ContentStatus {\n',
+              "  private requiredString(value: unknown, field: string): string {\n    if (typeof value !== 'string' || !value.trim())\n      throw new ContentValidationError(`${field} is invalid`);\n    return value.trim();\n  }\n\n  private enumStatus(value: unknown): ContentStatus {\n")
 
           operations = Path('src/modules/content/infrastructure/persistence/prisma-content-operations.repository.ts')
-          replace_once(operations,
-              "import { createHash } from 'node:crypto';\n",
-              '')
+          replace_once(operations, "import { createHash } from 'node:crypto';\n", '')
           replace_once(operations,
               "            template: String(snapshot.template ?? current.template),\n",
               "            template:\n              typeof snapshot.template === 'string'\n                ? snapshot.template\n                : current.template,\n")
@@ -93,132 +85,70 @@ jobs:
               "            language:\n              typeof snapshot.language === 'string'\n                ? snapshot.language\n                : current.language,\n")
 
           resource = Path('src/modules/content/infrastructure/persistence/prisma-content-resource.repository.ts')
-          resource_text = resource.read_text()
-          marker = "function plain(value: unknown): Record<string, unknown> {\n"
-          helper = """function requiredString(value: unknown, field: string): string {\n  if (typeof value !== 'string' || !value.trim())\n    throw new ContentValidationError(`${field} is invalid`);\n  return value.trim();\n}\n\nfunction optionalString(value: unknown, fallback: string): string {\n  return typeof value === 'string' ? value : fallback;\n}\n\n"""
-          resource_text = resource_text.replace(marker, helper + marker, 1)
-          resource_text = resource_text.replace(
+          text = resource.read_text()
+          text = text.replace(
+              "function plain(value: unknown): Record<string, unknown> {\n",
+              """function requiredString(value: unknown, field: string): string {\n  if (typeof value !== 'string' || !value.trim())\n    throw new ContentValidationError(`${field} is invalid`);\n  return value.trim();\n}\n\nfunction optionalString(value: unknown, fallback: string): string {\n  return typeof value === 'string' ? value : fallback;\n}\n\nfunction plain(value: unknown): Record<string, unknown> {\n""", 1)
+          text = text.replace(
               "  ContentConflictError,\n  ContentNotFoundError,\n",
-              "  ContentConflictError,\n  ContentNotFoundError,\n  ContentValidationError,\n",
-              1,
-          )
-          resource_text = resource_text.replace(
-              "        provider: String(input.provider ?? 'local'),",
-              "        provider: optionalString(input.provider, 'local'),",
-          )
-          resource_text = resource_text.replace(
-              "          relationType: relationType as RelationType",
-              "          relationType: requiredString(relationType, 'relationType') as RelationType",
-          )
-          resource_text = resource_text.replace(
-              "        relationType: String(\n          input.relationType ?? 'RELATED',\n        ) as RelationType,",
-              "        relationType: requiredString(\n          input.relationType ?? 'RELATED',\n          'relationType',\n        ) as RelationType,",
-          )
-          resource_text = resource_text.replace(
-              "        title: String(input.title),\n        slug: String(input.slug),\n        template: String(input.template ?? 'default'),",
-              "        title: requiredString(input.title, 'title'),\n        slug: requiredString(input.slug, 'slug'),\n        template: optionalString(input.template, 'default'),",
-          )
-          resource_text = resource_text.replace(
-              "        contentFormat: String(\n          input.contentFormat ?? 'RICH_TEXT',\n        ) as ContentFormat,",
-              "        contentFormat: optionalString(\n          input.contentFormat,\n          'RICH_TEXT',\n        ) as ContentFormat,",
-          )
-          resource_text = resource_text.replace(
-              "        visibility: String(\n          input.visibility ?? 'PUBLIC',\n        ) as ContentVisibility,",
-              "        visibility: optionalString(input.visibility, 'PUBLIC') as ContentVisibility,",
-          )
-          resource_text = resource_text.replace(
-              "        language: String(input.language ?? 'id'),",
-              "        language: optionalString(input.language, 'id'),",
-          )
-          resource_text = resource_text.replace(
-              "        language: String(input.language ?? 'id'),",
-              "        language: optionalString(input.language, 'id'),",
-          )
-          resource_text = resource_text.replace(
-              "        placement: String(\n          input.placement ?? 'HOME_HERO',\n        ) as BannerPlacement,",
-              "        placement: optionalString(input.placement, 'HOME_HERO') as BannerPlacement,",
-          )
-          resource_text = resource_text.replace(
-              "        startAt: input.startAt ? new Date(String(input.startAt)) : null,",
-              "        startAt:\n          input.startAt === undefined\n            ? null\n            : new Date(requiredString(input.startAt, 'startAt')),",
-          )
-          resource_text = resource_text.replace(
-              "        endAt: input.endAt ? new Date(String(input.endAt)) : null,",
-              "        endAt:\n          input.endAt === undefined\n            ? null\n            : new Date(requiredString(input.endAt, 'endAt')),",
-          )
-          resource_text = resource_text.replace(
-              "    if (input.status !== undefined)\n      data.status = String(input.status) as ContentStatus;",
-              "    if (input.status !== undefined)\n      data.status = requiredString(input.status, 'status') as ContentStatus;",
-          )
-          resource_text = resource_text.replace(
-              "    if (input.visibility !== undefined)\n      data.visibility = String(input.visibility) as ContentVisibility;",
-              "    if (input.visibility !== undefined)\n      data.visibility = requiredString(input.visibility, 'visibility') as ContentVisibility;",
-          )
-          resource_text = resource_text.replace(
-              "    if (input.contentFormat !== undefined)\n      data.contentFormat = String(input.contentFormat) as ContentFormat;",
-              "    if (input.contentFormat !== undefined)\n      data.contentFormat = requiredString(input.contentFormat, 'contentFormat') as ContentFormat;",
-          )
-          resource_text = resource_text.replace(
-              "    if (input.placement !== undefined)\n      data.placement = String(input.placement) as BannerPlacement;",
-              "    if (input.placement !== undefined)\n      data.placement = requiredString(input.placement, 'placement') as BannerPlacement;",
-          )
-          resource_text = resource_text.replace(
-              "    if (input.startAt !== undefined)\n      data.startAt = input.startAt ? new Date(String(input.startAt)) : null;",
-              "    if (input.startAt !== undefined)\n      data.startAt = new Date(requiredString(input.startAt, 'startAt'));",
-          )
-          resource_text = resource_text.replace(
-              "    if (input.endAt !== undefined)\n      data.endAt = input.endAt ? new Date(String(input.endAt)) : null;",
-              "    if (input.endAt !== undefined)\n      data.endAt = new Date(requiredString(input.endAt, 'endAt'));",
-          )
-          resource_text = resource_text.replace(
-              "        const label = String(item.label ?? '').trim();",
-              "        const label = optionalString(item.label, '').trim();",
-          )
-          resource_text = resource_text.replace(
-              "            itemType: String(item.itemType ?? 'url'),",
-              "            itemType: optionalString(item.itemType, 'url'),",
-          )
-          resource_text = resource_text.replace(
-              "    findFirst(args: Record<string, unknown>): Promise<unknown | null>;\n    findUnique?(args: Record<string, unknown>): Promise<unknown | null>;",
-              "    findFirst(args: Record<string, unknown>): Promise<unknown>;\n    findUnique?(args: Record<string, unknown>): Promise<unknown>;",
-          )
-          resource.write_text(resource_text)
+              "  ContentConflictError,\n  ContentNotFoundError,\n  ContentValidationError,\n", 1)
+          replacements = {
+              "provider: String(input.provider ?? 'local')": "provider: optionalString(input.provider, 'local')",
+              "relationType: relationType as RelationType": "relationType: requiredString(relationType, 'relationType') as RelationType",
+              "relationType: String(\n          input.relationType ?? 'RELATED',\n        ) as RelationType": "relationType: requiredString(\n          input.relationType ?? 'RELATED',\n          'relationType',\n        ) as RelationType",
+              "title: String(input.title)": "title: requiredString(input.title, 'title')",
+              "slug: String(input.slug)": "slug: requiredString(input.slug, 'slug')",
+              "template: String(input.template ?? 'default')": "template: optionalString(input.template, 'default')",
+              "contentFormat: String(\n          input.contentFormat ?? 'RICH_TEXT',\n        ) as ContentFormat": "contentFormat: optionalString(\n          input.contentFormat,\n          'RICH_TEXT',\n        ) as ContentFormat",
+              "visibility: String(\n          input.visibility ?? 'PUBLIC',\n        ) as ContentVisibility": "visibility: optionalString(input.visibility, 'PUBLIC') as ContentVisibility",
+              "language: String(input.language ?? 'id')": "language: optionalString(input.language, 'id')",
+              "placement: String(\n          input.placement ?? 'HOME_HERO',\n        ) as BannerPlacement": "placement: optionalString(input.placement, 'HOME_HERO') as BannerPlacement",
+              "startAt: input.startAt ? new Date(String(input.startAt)) : null": "startAt:\n        input.startAt === undefined\n          ? null\n          : new Date(requiredString(input.startAt, 'startAt'))",
+              "endAt: input.endAt ? new Date(String(input.endAt)) : null": "endAt:\n        input.endAt === undefined\n          ? null\n          : new Date(requiredString(input.endAt, 'endAt'))",
+              "data.status = String(input.status) as ContentStatus": "data.status = requiredString(input.status, 'status') as ContentStatus",
+              "data.visibility = String(input.visibility) as ContentVisibility": "data.visibility = requiredString(input.visibility, 'visibility') as ContentVisibility",
+              "data.contentFormat = String(input.contentFormat) as ContentFormat": "data.contentFormat = requiredString(input.contentFormat, 'contentFormat') as ContentFormat",
+              "data.placement = String(input.placement) as BannerPlacement": "data.placement = requiredString(input.placement, 'placement') as BannerPlacement",
+              "data.startAt = input.startAt ? new Date(String(input.startAt)) : null": "data.startAt = new Date(requiredString(input.startAt, 'startAt'))",
+              "data.endAt = input.endAt ? new Date(String(input.endAt)) : null": "data.endAt = new Date(requiredString(input.endAt, 'endAt'))",
+              "const label = String(item.label ?? '').trim()": "const label = optionalString(item.label, '').trim()",
+              "itemType: String(item.itemType ?? 'url')": "itemType: optionalString(item.itemType, 'url')",
+              "findFirst(args: Record<string, unknown>): Promise<unknown | null>;": "findFirst(args: Record<string, unknown>): Promise<unknown>;",
+              "findUnique?(args: Record<string, unknown>): Promise<unknown | null>;": "findUnique?(args: Record<string, unknown>): Promise<unknown>;",
+          }
+          for old, new in replacements.items():
+              text = text.replace(old, new)
+          resource.write_text(text)
 
           bridge = Path('src/modules/content/infrastructure/prisma-content.repository.ts')
-          bridge_text = bridge.read_text()
-          bridge_text = bridge_text.replace(
-              "  ArticleRecord,\n  ContentRepository,\n",
-              "  ContentRepository,\n",
-              1,
-          )
-          # Remove unused context parameters from pass-through methods; the concrete interface permits fewer parameters.
-          bridge_text = bridge_text.replace(
+          text = bridge.read_text().replace('  ArticleRecord,\n', '')
+          text = text.replace(
               '  createMediaObject(input: Record<string, unknown>, ctx: AuditContext) {\n    return this.resources.createMedia(input);\n  }',
-              '  createMediaObject(input: Record<string, unknown>) {\n    return this.resources.createMedia(input);\n  }',
-          )
-          bridge_text = bridge_text.replace(
-              '    ctx: AuditContext,\n  ) {\n    return this.operations.toggle(kind, articleUuid, userUuid);\n  }',
-              '    _ctx: AuditContext,\n  ) {\n    return this.operations.toggle(kind, articleUuid, userUuid);\n  }',
-              1,
-          )
-          # The remaining unused context parameters are required by the interface; consume them explicitly without changing behavior.
-          for signature, statement in [
-              ('  createMediaObject(input: Record<string, unknown>, ctx: AuditContext) {', '    void ctx;\n'),
-              ('  removeRelation(uuid: string, ctx: AuditContext) {', '    void ctx;\n'),
-              ('  reorderMenu(uuid: string, items: string[], ctx: AuditContext) {', '    void ctx;\n'),
-              ('  ensureSlugRedirect(\n    type: string,\n    oldSlug: string,\n    newSlug: string,\n    ctx: AuditContext,\n  ) {', '    void ctx;\n'),
-          ]:
-              if signature in bridge_text and statement not in bridge_text[bridge_text.index(signature): bridge_text.index(signature)+len(signature)+80]:
-                  bridge_text = bridge_text.replace(signature, signature + '\n' + statement, 1)
-          bridge.write_text(bridge_text)
+              '  createMediaObject(input: Record<string, unknown>) {\n    return this.resources.createMedia(input);\n  }')
+          text = text.replace(
+              "    ctx: AuditContext,\n  ) {\n    return this.operations.toggle(kind, articleUuid, userUuid);\n  }",
+              "  ) {\n    return this.operations.toggle(kind, articleUuid, userUuid);\n  }", 1)
+          text = text.replace(
+              "    ctx: AuditContext,\n  ) {\n    return this.operations.moderate(uuid, status, reason);\n  }",
+              "  ) {\n    return this.operations.moderate(uuid, status, reason);\n  }", 1)
+          text = text.replace(
+              "    ctx: AuditContext,\n  ) {\n    return this.operations.comment(articleUuid, input);\n  }",
+              "  ) {\n    return this.operations.comment(articleUuid, input);\n  }", 1)
+          text = text.replace(
+              '  removeRelation(uuid: string, ctx: AuditContext) {\n    return this.resources.deleteRelation(uuid);\n  }',
+              '  removeRelation(uuid: string) {\n    return this.resources.deleteRelation(uuid);\n  }')
+          text = text.replace(
+              '  reorderMenu(uuid: string, items: string[], ctx: AuditContext) {\n    return this.resources.reorderMenu(uuid, items);\n  }',
+              '  reorderMenu(uuid: string, items: string[]) {\n    return this.resources.reorderMenu(uuid, items);\n  }')
+          text = text.replace(
+              "    ctx: AuditContext,\n  ) {\n    return this.resources.ensureRedirect(type, oldSlug, newSlug);\n  }",
+              "  ) {\n    return this.resources.ensureRedirect(type, oldSlug, newSlug);\n  }", 1)
+          bridge.write_text(text)
 
-          # Remove imports that are provably unused and normalize formatting.
           controller = Path('src/modules/content/presentation/content.controller.ts')
-          controller_text = controller.read_text().replace('  Headers,\n', '')
-          controller.write_text(controller_text)
+          controller.write_text(controller.read_text().replace('  Headers,\n', ''))
           supporting = Path('src/modules/content/presentation/supporting-content.controller.ts')
-          supporting_text = supporting.read_text().replace('  ApiResponse,\n', '')
-          supporting.write_text(supporting_text)
+          supporting.write_text(supporting.read_text().replace('  ApiResponse,\n', ''))
           PY
 
           npx prettier --write \
