@@ -1,8 +1,6 @@
-import type { UserStatus } from '../../modules/users/domain/entities/user.entity.js';
-
 export interface UserPublicSnapshot {
   readonly uuid: string;
-  readonly status: UserStatus;
+  readonly status: string;
   readonly isActive: boolean;
   readonly deletedAt: Date | null;
 }
