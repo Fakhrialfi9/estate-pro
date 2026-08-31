@@ -6,14 +6,13 @@ import { RequirePermissions } from '../../../common/security/authorization.decor
 import type { Request } from 'express';
 import { CrmService } from '../application/crm.service.js';
 import { PageDto, ContactDto, ContactPatchDto, AddressDto, PhoneDto, EmailDto, PreferenceDto, ConsentDto, RelationshipDto, LeadDto, LeadPatchDto, ConfigDto, ConfigPatchDto, NoteDto, AssignmentDto, StatusDto, ScoreRuleDto, DuplicateReviewDto, MergeDto, InquiryDto, InquiryPatchDto, ConversionDto, ActivityDto, ActivityPatchDto, ActivityStatusDto, CommunicationDto, CommunicationStatusDto, TemplateDto, TemplatePatchDto, ContactChildPatchDto } from './crm.dto.js';
-import type { CrmActor, PageQuery } from '../domain/crm.types.js';
+import type { CrmActor } from '../domain/crm.types.js';
 
 const actorOf=(req:Request,ua?:string,rid?:string):CrmActor=>({actorUuid:(req.user as {sub?:string}|undefined)?.sub??'',ipAddress:req.ip,userAgent:ua,requestId:rid});
 const out=(v:unknown):unknown=>v instanceof Date?v.toISOString():typeof v==='bigint'?v.toString():Array.isArray(v)?v.map(out):v&&typeof v==='object'?Object.fromEntries(Object.entries(v as Record<string,unknown>).filter(([k])=>!['id','contactId','leadId','statusId','sourceId','campaignId','typeId','activityId','templateId','password','secret','token','refreshToken'].includes(k)).map(([k,x])=>[k,out(x)])):v;
 const response=(v:unknown)=>({data:out(v)}); const list=(v:{items:readonly unknown[];total:number;page:number;limit:number})=>({data:out(v.items),meta:{page:v.page,limit:v.limit,total:v.total,totalPages:Math.ceil(v.total/v.limit)}});
 const childKind=(kind:string):'address'|'phone'|'email'=>{if(kind==='address'||kind==='phone'||kind==='email')return kind;throw new BadRequestException('Invalid contact child type');};
 const configKind=(kind:string):'source'|'campaign'|'type'|'status'|'tag'=>{if(kind==='source'||kind==='campaign'||kind==='type'||kind==='status'||kind==='tag')return kind;throw new BadRequestException('Invalid CRM configuration type');};
-const uuid=(name:string)=>(Param(name,new ParseUUIDPipe({version:'4'})));
 
 @ApiTags('CRM') @ApiBearerAuth() @Controller({path:'crm',version:'1'}) @UseGuards(JwtAuthGuard,AuthorizationGuard)
 export class CrmController {
