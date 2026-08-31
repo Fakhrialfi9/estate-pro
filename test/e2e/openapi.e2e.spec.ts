@@ -39,8 +39,12 @@ describe('OpenAPI contract (e2e)', () => {
 
   it('serves the Swagger UI and machine-readable documents', async () => {
     expect((await request(httpApplication!).get('/docs')).status).toBe(200);
-    expect((await request(httpApplication!).get('/docs-json')).status).toBe(200);
-    expect((await request(httpApplication!).get('/docs-yaml')).status).toBe(200);
+    expect((await request(httpApplication!).get('/docs-json')).status).toBe(
+      200,
+    );
+    expect((await request(httpApplication!).get('/docs-yaml')).status).toBe(
+      200,
+    );
   });
 
   it('validates the runtime-generated OpenAPI contract', async () => {

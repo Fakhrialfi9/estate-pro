@@ -20,7 +20,8 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   const apiVersion = configService.getOrThrow<string>('api.version');
   const apiPrefix = configService.getOrThrow<string>('api.prefix');
-  const swaggerEnabled = configService.get<boolean>('api.swaggerEnabled') ?? false;
+  const swaggerEnabled =
+    configService.get<boolean>('api.swaggerEnabled') ?? false;
   const appVersion = configService.getOrThrow<string>('app.version');
   const appName = configService.getOrThrow<string>('app.name');
 

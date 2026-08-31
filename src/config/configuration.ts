@@ -64,7 +64,10 @@ export const configurationValidationSchema = Joi.object({
   APP_PORT: Joi.number().integer().min(1).max(65535).default(3000),
   API_PREFIX: Joi.string().trim().min(1).default('api'),
   API_VERSION: Joi.string().trim().min(1).default('v1'),
-  SWAGGER_ENABLED: Joi.boolean().truthy('true').falsy('false').default(undefined),
+  SWAGGER_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(undefined),
   DATABASE_URL: Joi.string()
     .uri({ scheme: ['mysql'] })
     .required(),
@@ -199,20 +202,37 @@ export const configurationValidationSchema = Joi.object({
     .min(1024)
     .default(1048576),
   SECURITY_TRUST_PROXY: Joi.string().trim().min(1).invalid('true', 'false'),
-  SECURITY_CSP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
-  SECURITY_HSTS_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
+  SECURITY_CSP_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(false),
+  SECURITY_HSTS_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(false),
   LOG_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
   LOG_LEVEL: Joi.string()
     .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent')
     .default('info'),
   OTEL_SERVICE_NAME: Joi.string().trim().min(1).max(100),
-  OTEL_TRACING_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
+  OTEL_TRACING_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(true),
   OTEL_TRACES_EXPORTER: traceExporter.default('otlp'),
   OTEL_TRACES_SAMPLER: Joi.string()
-    .valid('always_on', 'always_off', 'traceidratio', 'parentbased_traceidratio')
+    .valid(
+      'always_on',
+      'always_off',
+      'traceidratio',
+      'parentbased_traceidratio',
+    )
     .default('parentbased_traceidratio'),
   OTEL_TRACES_SAMPLER_ARG: Joi.number().min(0).max(1).default(0.1),
-  OTEL_METRICS_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
+  OTEL_METRICS_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(true),
   OTEL_METRICS_EXPORTER: metricsExporter.default('otlp'),
   OTEL_EXPORTER_OTLP_ENDPOINT: Joi.string().uri().optional(),
   OTEL_METRIC_EXPORT_INTERVAL: Joi.number().integer().min(1000).default(60000),
