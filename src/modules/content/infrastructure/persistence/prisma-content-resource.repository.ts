@@ -11,6 +11,7 @@ import { PrismaService } from '../../../../infrastructure/database/prisma/prisma
 import {
   ContentConflictError,
   ContentNotFoundError,
+  ContentValidationError,
 } from '../../application/content.errors.js';
 import type {
   AuditContext,
@@ -19,17 +20,55 @@ import type {
   PagedResult,
 } from '../../domain/content.types.js';
 
+type ModelArgs = {
+  where: Record<string, unknown>;
+  skip?: number;
+  take?: number;
+  orderBy?: unknown;
+  include?: unknown;
+};
+type CreateArgs = { data: Record<string, unknown> };
+type UpdateArgs = { where: Record<string, unknown>; data: Record<string, unknown> };
+type ResourceModel = {
+  findMany(args: ModelArgs): Promise<unknown[]>;
+  findFirst(args: ModelArgs): Promise<unknown | null>;
+  findUnique(args: ModelArgs): Promise<unknown | null>;
+  create(args: CreateArgs): Promise<{ id: bigint; uuid: string }>;
+  update(args: UpdateArgs): Promise<unknown>;
+  updateMany(args: UpdateArgs): Promise<{ count: number }>;
+  count(args: { where: Record<string, unknown> }): Promise<number>;
+};
+
+function stringOrDefault(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
+function requiredString(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !value.trim())
+    throw new ContentValidationError(`${field} is invalid`);
+  return value.trim();
+}
+function optionalDate(value: unknown, field: string): Date | null {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string')
+    throw new ContentValidationError(`${field} is invalid`);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime()))
+    throw new ContentValidationError(`${field} is invalid`);
+  return date;
+}
 function jsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 function plain(value: unknown): Record<string, unknown> {
   const source = value as Record<string, unknown>;
-  const result: Record<string, unknown> = {};
-  for (const [key, item] of Object.entries(source)) {
-    if (key === 'id' || key === 'deletedBy') continue;
-    result[key] = typeof item === 'bigint' ? item.toString() : item;
-  }
-  return result;
+  return Object.fromEntries(
+    Object.entries(source)
+      .filter(([key]) => key !== 'id' && key !== 'deletedBy')
+      .map(([key, item]) => [
+        key,
+        typeof item === 'bigint' ? item.toString() : item,
+      ]),
+  );
 }
 
 @Injectable()
@@ -57,31 +96,28 @@ export class PrismaContentResourceRepository {
         { slug: { contains: search } },
       ];
     }
-    const sortField =
-      query.sortBy &&
-      [
-        'createdAt',
-        'updatedAt',
-        'publishedAt',
-        'sortOrder',
-        'priority',
-        'title',
-      ].includes(query.sortBy)
-        ? query.sortBy
-        : ['faq', 'testimonial'].includes(resource)
-          ? 'sortOrder'
-          : 'createdAt';
-    const orderBy = [
-      { [sortField]: query.sortDirection === 'asc' ? 'asc' : 'desc' },
-      { id: 'desc' },
-    ];
+    const sortField = [
+      'createdAt',
+      'updatedAt',
+      'publishedAt',
+      'sortOrder',
+      'priority',
+      'title',
+    ].includes(query.sortBy ?? '')
+      ? query.sortBy!
+      : ['faq', 'testimonial'].includes(resource)
+        ? 'sortOrder'
+        : 'createdAt';
     const model = this.model(resource);
     const [items, total] = await Promise.all([
       model.findMany({
         where,
         skip,
         take: limit,
-        orderBy,
+        orderBy: [
+          { [sortField]: query.sortDirection === 'asc' ? 'asc' : 'desc' },
+          { id: 'desc' },
+        ],
         ...(resource === 'menu'
           ? {
               include: {
@@ -109,12 +145,13 @@ export class PrismaContentResourceRepository {
     includeDeleted = false,
   ): Promise<Record<string, unknown> | null> {
     const model = this.model(resource);
-    const where = {
-      uuid,
-      ...(includeDeleted || resource === 'redirect' ? {} : { deletedAt: null }),
-    };
     const item = await model.findFirst({
-      where,
+      where: {
+        uuid,
+        ...(includeDeleted || resource === 'redirect'
+          ? {}
+          : { deletedAt: null }),
+      },
       ...(resource === 'menu'
         ? {
             include: {
@@ -133,8 +170,7 @@ export class PrismaContentResourceRepository {
   ): Promise<Record<string, unknown>> {
     try {
       const model = this.model(resource);
-      const data = this.createData(resource, input, ctx);
-      const item = await model.create({ data });
+      const item = await model.create({ data: this.createData(resource, input, ctx) });
       if (resource === 'menu' && Array.isArray(input.items))
         await this.replaceMenuItems(item.id, input.items);
       const fresh = await this.get(resource, item.uuid, true);
@@ -154,14 +190,12 @@ export class PrismaContentResourceRepository {
   ): Promise<Record<string, unknown>> {
     try {
       const model = this.model(resource);
-      const data = this.updateData(resource, input, ctx);
-      await model.update({ where: { uuid }, data });
-      const current = await model.findUnique?.({ where: { uuid } });
-      if (resource === 'menu' && current && Array.isArray(input.items))
-        await this.replaceMenuItems(
-          (current as { id: bigint }).id,
-          input.items,
-        );
+      await model.update({ where: { uuid }, data: this.updateData(resource, input, ctx) });
+      if (resource === 'menu' && Array.isArray(input.items)) {
+        const current = await model.findUnique({ where: { uuid } });
+        const id = this.objectBigInt(current, 'id');
+        await this.replaceMenuItems(id, input.items);
+      }
       const fresh = await this.get(resource, uuid, true);
       if (!fresh)
         throw new ContentNotFoundError(`${resource} not found after update`);
@@ -235,9 +269,7 @@ export class PrismaContentResourceRepository {
     return null;
   }
 
-  async createMedia(
-    input: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+  async createMedia(input: Record<string, unknown>): Promise<Record<string, unknown>> {
     const folder =
       typeof input.folderUuid === 'string'
         ? await this.prisma.contentMediaFolder.findFirst({
@@ -247,12 +279,12 @@ export class PrismaContentResourceRepository {
         : null;
     const media = await this.prisma.contentMedia.create({
       data: {
-        originalName: String(input.originalName),
-        storageKey: String(input.storageKey),
+        originalName: requiredString(input.originalName, 'originalName'),
+        storageKey: requiredString(input.storageKey, 'storageKey'),
         publicUrl: typeof input.publicUrl === 'string' ? input.publicUrl : null,
-        provider: typeof input.provider === 'string' ? input.provider : 'local',
-        mimeType: String(input.mimeType),
-        sizeBytes: BigInt(String(input.sizeBytes)),
+        provider: stringOrDefault(input.provider, 'local'),
+        mimeType: requiredString(input.mimeType, 'mimeType'),
+        sizeBytes: BigInt(requiredString(input.sizeBytes, 'sizeBytes')),
         width: typeof input.width === 'number' ? input.width : null,
         height: typeof input.height === 'number' ? input.height : null,
         alt: typeof input.alt === 'string' ? input.alt : null,
@@ -287,7 +319,7 @@ export class PrismaContentResourceRepository {
         where: { menuId: menu.id },
         select: { uuid: true },
       });
-      const known = new Set(items.map((i) => i.uuid));
+      const known = new Set(items.map((item) => item.uuid));
       if (items.length !== uuids.length || uuids.some((id) => !known.has(id)))
         throw new ContentConflictError(
           'Reorder payload must contain exactly all menu items',
@@ -297,12 +329,11 @@ export class PrismaContentResourceRepository {
           where: { uuid },
           data: { sortOrder: index },
         });
-      return (
-        await tx.contentMenuItem.findMany({
-          where: { menuId: menu.id },
-          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
-        })
-      ).map(plain);
+      const rows = await tx.contentMenuItem.findMany({
+        where: { menuId: menu.id },
+        orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+      });
+      return rows.map(plain);
     });
   }
 
@@ -313,29 +344,41 @@ export class PrismaContentResourceRepository {
     const rows = await this.prisma.contentRelation.findMany({
       where: {
         sourceUuid,
-        ...(relationType ? { relationType: relationType as RelationType } : {}),
+        ...(relationType
+          ? {
+              relationType: requiredString(
+                relationType,
+                'relationType',
+              ) as RelationType,
+            }
+          : {}),
       },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
     return rows.map(plain);
   }
+
   async addRelation(
     input: Record<string, unknown>,
     ctx: AuditContext,
   ): Promise<Record<string, unknown>> {
     const row = await this.prisma.contentRelation.create({
       data: {
-        sourceUuid: String(input.sourceUuid),
-        targetUuid: String(input.targetUuid),
-        sourceType: String(input.sourceType),
-        targetType: String(input.targetType),
-        relationType: String(input.relationType ?? 'RELATED') as RelationType,
-        sortOrder: Number(input.sortOrder ?? 0),
+        sourceUuid: requiredString(input.sourceUuid, 'sourceUuid'),
+        targetUuid: requiredString(input.targetUuid, 'targetUuid'),
+        sourceType: requiredString(input.sourceType, 'sourceType'),
+        targetType: requiredString(input.targetType, 'targetType'),
+        relationType: requiredString(
+          input.relationType ?? 'RELATED',
+          'relationType',
+        ) as RelationType,
+        sortOrder: typeof input.sortOrder === 'number' ? input.sortOrder : 0,
         createdBy: ctx.actorUuid,
       },
     });
     return plain(row);
   }
+
   async deleteRelation(uuid: string): Promise<void> {
     await this.prisma.contentRelation.delete({ where: { uuid } });
   }
@@ -360,44 +403,35 @@ export class PrismaContentResourceRepository {
     });
   }
 
-  private versioned(resource: string): boolean {
-    return [
-      'page',
-      'category',
-      'tag',
-      'faq',
-      'testimonial',
-      'banner',
-      'menu',
-    ].includes(resource);
+  private objectBigInt(value: unknown, field: string): bigint {
+    if (!value || typeof value !== 'object')
+      throw new ContentNotFoundError('Menu not found');
+    const raw = (value as Record<string, unknown>)[field];
+    if (typeof raw !== 'bigint')
+      throw new ContentNotFoundError(`${field} not found`);
+    return raw;
   }
-  private model(resource: Exclude<ContentResourceType, 'article'>): {
-    findMany(args: Record<string, unknown>): Promise<unknown[]>;
-    findFirst(args: Record<string, unknown>): Promise<unknown | null>;
-    findUnique?(args: Record<string, unknown>): Promise<unknown | null>;
-    create(
-      args: Record<string, unknown>,
-    ): Promise<{ id: bigint; uuid: string }>;
-    update(args: Record<string, unknown>): Promise<unknown>;
-    updateMany(args: Record<string, unknown>): Promise<{ count: number }>;
-    count(args: Record<string, unknown>): Promise<number>;
-  } {
-    return (
-      {
-        page: this.prisma.contentPage,
-        category: this.prisma.contentArticleCategory,
-        tag: this.prisma.contentTag,
-        faq: this.prisma.contentFaq,
-        testimonial: this.prisma.contentTestimonial,
-        banner: this.prisma.contentBanner,
-        menu: this.prisma.contentMenu,
-        redirect: this.prisma.contentRedirect,
-        media: this.prisma.contentMedia,
-        comment: this.prisma.contentComment,
-      } as const
-    )[resource] as unknown as ReturnType<
-      PrismaContentResourceRepository['model']
-    >;
+
+  private versioned(resource: string): boolean {
+    return ['page', 'category', 'tag', 'faq', 'testimonial', 'banner', 'menu'].includes(
+      resource,
+    );
+  }
+
+  private model(resource: Exclude<ContentResourceType, 'article'>): ResourceModel {
+    const delegates: Record<Exclude<ContentResourceType, 'article'>, unknown> = {
+      page: this.prisma.contentPage,
+      category: this.prisma.contentArticleCategory,
+      tag: this.prisma.contentTag,
+      faq: this.prisma.contentFaq,
+      testimonial: this.prisma.contentTestimonial,
+      banner: this.prisma.contentBanner,
+      menu: this.prisma.contentMenu,
+      redirect: this.prisma.contentRedirect,
+      media: this.prisma.contentMedia,
+      comment: this.prisma.contentComment,
+    };
+    return delegates[resource] as ResourceModel;
   }
 
   private createData(
@@ -407,94 +441,90 @@ export class PrismaContentResourceRepository {
   ): Record<string, unknown> {
     if (resource === 'page')
       return {
-        title: String(input.title),
-        slug: String(input.slug),
-        template: String(input.template ?? 'default'),
+        title: requiredString(input.title, 'title'),
+        slug: requiredString(input.slug, 'slug'),
+        template: stringOrDefault(input.template, 'default'),
         content: jsonValue(input.content),
-        contentFormat: String(
-          input.contentFormat ?? 'RICH_TEXT',
-        ) as ContentFormat,
+        contentFormat: stringOrDefault(input.contentFormat, 'RICH_TEXT') as ContentFormat,
         status: 'DRAFT',
-        visibility: String(input.visibility ?? 'PUBLIC') as ContentVisibility,
-        language: typeof input.language === 'string' ? input.language : 'id',
+        visibility: stringOrDefault(input.visibility, 'PUBLIC') as ContentVisibility,
+        language: stringOrDefault(input.language, 'id'),
         createdBy: ctx.actorUuid,
         version: 1,
       };
     if (resource === 'category')
       return {
-        name: String(input.name),
-        slug: String(input.slug),
-        description:
-          typeof input.description === 'string' ? input.description : null,
+        name: requiredString(input.name, 'name'),
+        slug: requiredString(input.slug, 'slug'),
+        description: typeof input.description === 'string' ? input.description : null,
         status: 'DRAFT',
         createdBy: ctx.actorUuid,
         version: 1,
       };
     if (resource === 'tag')
       return {
-        name: String(input.name),
-        slug: String(input.slug),
-        description:
-          typeof input.description === 'string' ? input.description : null,
+        name: requiredString(input.name, 'name'),
+        slug: requiredString(input.slug, 'slug'),
+        description: typeof input.description === 'string' ? input.description : null,
         createdBy: ctx.actorUuid,
         version: 1,
       };
     if (resource === 'faq')
       return {
-        question: String(input.question),
+        question: requiredString(input.question, 'question'),
         answer: jsonValue(input.answer),
         category: typeof input.category === 'string' ? input.category : null,
-        sortOrder: Number(input.sortOrder ?? 0),
+        sortOrder: typeof input.sortOrder === 'number' ? input.sortOrder : 0,
         status: 'DRAFT',
-        language: typeof input.language === 'string' ? input.language : 'id',
-        featured: Boolean(input.featured),
+        language: stringOrDefault(input.language, 'id'),
+        featured: input.featured === true,
         createdBy: ctx.actorUuid,
         version: 1,
       };
     if (resource === 'testimonial')
       return {
         quote: jsonValue(input.quote),
-        name: String(input.name),
+        name: requiredString(input.name, 'name'),
         role: typeof input.role === 'string' ? input.role : null,
         company: typeof input.company === 'string' ? input.company : null,
         avatarUrl: typeof input.avatarUrl === 'string' ? input.avatarUrl : null,
-        rating: input.rating === undefined ? null : Number(input.rating),
-        sortOrder: Number(input.sortOrder ?? 0),
-        featured: Boolean(input.featured),
+        rating: typeof input.rating === 'number' ? input.rating : null,
+        sortOrder: typeof input.sortOrder === 'number' ? input.sortOrder : 0,
+        featured: input.featured === true,
         status: 'DRAFT',
-        language: typeof input.language === 'string' ? input.language : 'id',
+        language: stringOrDefault(input.language, 'id'),
         createdBy: ctx.actorUuid,
         version: 1,
       };
     if (resource === 'banner')
       return {
-        name: String(input.name),
+        name: requiredString(input.name, 'name'),
         title: typeof input.title === 'string' ? input.title : null,
         subtitle: typeof input.subtitle === 'string' ? input.subtitle : null,
         linkUrl: typeof input.linkUrl === 'string' ? input.linkUrl : null,
-        placement: String(input.placement ?? 'HOME_HERO') as BannerPlacement,
-        priority: Number(input.priority ?? 0),
-        startAt: input.startAt ? new Date(String(input.startAt)) : null,
-        endAt: input.endAt ? new Date(String(input.endAt)) : null,
+        placement: stringOrDefault(input.placement, 'HOME_HERO') as BannerPlacement,
+        priority: typeof input.priority === 'number' ? input.priority : 0,
+        startAt: optionalDate(input.startAt, 'startAt'),
+        endAt: optionalDate(input.endAt, 'endAt'),
         status: 'DRAFT',
-        language: typeof input.language === 'string' ? input.language : 'id',
+        language: stringOrDefault(input.language, 'id'),
         createdBy: ctx.actorUuid,
         version: 1,
       };
     if (resource === 'menu')
       return {
-        name: String(input.name),
-        slug: String(input.slug),
-        location: String(input.location),
+        name: requiredString(input.name, 'name'),
+        slug: requiredString(input.slug, 'slug'),
+        location: requiredString(input.location, 'location'),
         status: 'DRAFT',
-        language: typeof input.language === 'string' ? input.language : 'id',
+        language: stringOrDefault(input.language, 'id'),
         createdBy: ctx.actorUuid,
         version: 1,
       };
     if (resource === 'redirect')
       return {
-        sourcePath: String(input.sourcePath),
-        destination: String(input.destination),
+        sourcePath: requiredString(input.sourcePath, 'sourcePath'),
+        destination: requiredString(input.destination, 'destination'),
         type: 'MOVED_PERMANENTLY',
         isActive: true,
         createdBy: ctx.actorUuid,
@@ -508,7 +538,7 @@ export class PrismaContentResourceRepository {
     ctx: AuditContext,
   ): Record<string, unknown> {
     const data: Record<string, unknown> = { updatedBy: ctx.actorUuid };
-    const common = [
+    const stringFields = [
       'name',
       'title',
       'subtitle',
@@ -525,35 +555,46 @@ export class PrismaContentResourceRepository {
       'sourcePath',
       'destination',
     ];
-    for (const key of common)
-      if (input[key] !== undefined) data[key] = input[key];
+    for (const field of stringFields) {
+      const value = input[field];
+      if (value !== undefined) data[field] = requiredString(value, field);
+    }
     if (input.content !== undefined) data.content = jsonValue(input.content);
     if (input.answer !== undefined) data.answer = jsonValue(input.answer);
     if (input.quote !== undefined) data.quote = jsonValue(input.quote);
-    for (const key of ['sortOrder', 'priority', 'rating'])
-      if (input[key] !== undefined) data[key] = Number(input[key]);
-    for (const key of ['featured', 'isActive'])
-      if (input[key] !== undefined) data[key] = Boolean(input[key]);
+    for (const field of ['sortOrder', 'priority', 'rating']) {
+      const value = input[field];
+      if (value !== undefined) {
+        if (typeof value !== 'number' || !Number.isFinite(value))
+          throw new ContentValidationError(`${field} is invalid`);
+        data[field] = value;
+      }
+    }
+    for (const field of ['featured', 'isActive']) {
+      const value = input[field];
+      if (value !== undefined) {
+        if (typeof value !== 'boolean')
+          throw new ContentValidationError(`${field} is invalid`);
+        data[field] = value;
+      }
+    }
     if (input.status !== undefined)
-      data.status = String(input.status) as ContentStatus;
+      data.status = requiredString(input.status, 'status') as ContentStatus;
     if (input.visibility !== undefined)
-      data.visibility = String(input.visibility) as ContentVisibility;
+      data.visibility = requiredString(input.visibility, 'visibility') as ContentVisibility;
     if (input.contentFormat !== undefined)
-      data.contentFormat = String(input.contentFormat) as ContentFormat;
+      data.contentFormat = requiredString(input.contentFormat, 'contentFormat') as ContentFormat;
     if (input.placement !== undefined)
-      data.placement = String(input.placement) as BannerPlacement;
+      data.placement = requiredString(input.placement, 'placement') as BannerPlacement;
     if (input.startAt !== undefined)
-      data.startAt = input.startAt ? new Date(String(input.startAt)) : null;
+      data.startAt = optionalDate(input.startAt, 'startAt');
     if (input.endAt !== undefined)
-      data.endAt = input.endAt ? new Date(String(input.endAt)) : null;
+      data.endAt = optionalDate(input.endAt, 'endAt');
     if (this.versioned(resource)) data.version = { increment: 1 };
     return data;
   }
 
-  private async replaceMenuItems(
-    menuId: bigint,
-    values: unknown[],
-  ): Promise<void> {
+  private async replaceMenuItems(menuId: bigint, values: unknown[]): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       await tx.contentMenuItem.deleteMany({ where: { menuId } });
       const seen = new Set<string>();
@@ -561,24 +602,29 @@ export class PrismaContentResourceRepository {
         if (!raw || typeof raw !== 'object')
           throw new ContentConflictError('Invalid menu item');
         const item = raw as Record<string, unknown>;
-        const label = String(item.label ?? '').trim();
+        const label = stringOrDefault(item.label, '').trim();
         if (!label || label.length > 180)
           throw new ContentConflictError('Menu item label is invalid');
-        const uuid = typeof item.uuid === 'string' ? item.uuid : label;
-        if (seen.has(uuid))
+        const identity =
+          typeof item.uuid === 'string' && item.uuid.trim() ? item.uuid : label;
+        if (seen.has(identity))
           throw new ContentConflictError('Duplicate menu item');
-        seen.add(uuid);
+        seen.add(identity);
+        const sortOrder =
+          typeof item.sortOrder === 'number' && Number.isFinite(item.sortOrder)
+            ? item.sortOrder
+            : index;
         await tx.contentMenuItem.create({
           data: {
             menuId,
             label,
-            itemType: String(item.itemType ?? 'url'),
+            itemType: stringOrDefault(item.itemType, 'url'),
             resourceUuid:
               typeof item.resourceUuid === 'string' ? item.resourceUuid : null,
             url: typeof item.url === 'string' ? item.url : null,
             target: typeof item.target === 'string' ? item.target : null,
             icon: typeof item.icon === 'string' ? item.icon : null,
-            sortOrder: Number(item.sortOrder ?? index),
+            sortOrder,
           },
         });
       }
@@ -586,20 +632,14 @@ export class PrismaContentResourceRepository {
   }
 
   private mapError(error: unknown): never {
-    if (
-      error instanceof ContentConflictError ||
-      error instanceof ContentNotFoundError
-    )
+    if (error instanceof ContentConflictError || error instanceof ContentNotFoundError)
       throw error;
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002')
         throw new ContentConflictError('A unique content value already exists');
       if (error.code === 'P2003')
-        throw new ContentConflictError(
-          'Content is referenced by another record',
-        );
-      if (error.code === 'P2025')
-        throw new ContentNotFoundError('Content not found');
+        throw new ContentConflictError('Content is referenced by another record');
+      if (error.code === 'P2025') throw new ContentNotFoundError('Content not found');
     }
     throw error;
   }
