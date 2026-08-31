@@ -34,8 +34,8 @@ type UpdateArgs = {
 };
 type ResourceModel = {
   findMany(args: ModelArgs): Promise<unknown[]>;
-  findFirst(args: ModelArgs): Promise<unknown | null>;
-  findUnique(args: ModelArgs): Promise<unknown | null>;
+  findFirst(args: ModelArgs): Promise<unknown>;
+  findUnique(args: ModelArgs): Promise<unknown>;
   create(args: CreateArgs): Promise<{ id: bigint; uuid: string }>;
   update(args: UpdateArgs): Promise<unknown>;
   updateMany(args: UpdateArgs): Promise<{ count: number }>;
