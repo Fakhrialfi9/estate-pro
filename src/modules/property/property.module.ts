@@ -34,6 +34,64 @@ import { PrismaPropertyExtrasRepository } from './infrastructure/persistence/pri
 import { PROPERTY_LIFECYCLE_REPOSITORY } from './domain/repositories/property-lifecycle.repository.js';
 import { PrismaPropertyLifecycleRepository } from './infrastructure/persistence/prisma-property-lifecycle.repository.js';
 import { PropertyMetricsInterceptor } from './observability/property-metrics.interceptor.js';
-import { PROPERTY_PUBLIC_PORT, type PropertyPublicPort } from '../../common/contracts/property-public.port.js';
-@Module({imports:[DatabaseModule,AuditModule,AuthorizationModule,ListingModule],controllers:[PropertyTypesController,PropertyController,PropertyCategoryController,PropertySubcategoryController,PropertyLocationController,PropertyFacilityController,PropertyDetailsController,PropertyExtrasController,PropertyLifecycleController],providers:[AuthorizationGuard,CreatePropertyTypeUseCase,DeletePropertyTypeUseCase,GetPropertyTypeUseCase,ListPropertyTypesUseCase,UpdatePropertyTypeUseCase,{provide:PROPERTY_TYPE_REPOSITORY,useClass:PrismaPropertyTypeRepository},PropertyMasterService,{provide:PROPERTY_MASTER_REPOSITORY,useClass:PrismaPropertyMasterStore},{provide:PROPERTY_DETAILS_REPOSITORY,useClass:PrismaPropertyDetailsRepository},{provide:PROPERTY_EXTRAS_REPOSITORY,useClass:PrismaPropertyExtrasRepository},{provide:PROPERTY_LIFECYCLE_REPOSITORY,useClass:PrismaPropertyLifecycleRepository},{provide:PROPERTY_PUBLIC_PORT,useExisting:PropertyMasterService},{provide:APP_INTERCEPTOR,useClass:PropertyMetricsInterceptor},PropertyDetailsService,PropertyExtrasService,PropertyLifecycleService],exports:[PROPERTY_TYPE_REPOSITORY,PROPERTY_MASTER_REPOSITORY,PROPERTY_DETAILS_REPOSITORY,PROPERTY_EXTRAS_REPOSITORY,PROPERTY_LIFECYCLE_REPOSITORY,PROPERTY_PUBLIC_PORT]})
+import {
+  PROPERTY_PUBLIC_PORT,
+  type PropertyPublicPort,
+} from '../../common/contracts/property-public.port.js';
+@Module({
+  imports: [DatabaseModule, AuditModule, AuthorizationModule, ListingModule],
+  controllers: [
+    PropertyTypesController,
+    PropertyController,
+    PropertyCategoryController,
+    PropertySubcategoryController,
+    PropertyLocationController,
+    PropertyFacilityController,
+    PropertyDetailsController,
+    PropertyExtrasController,
+    PropertyLifecycleController,
+  ],
+  providers: [
+    AuthorizationGuard,
+    CreatePropertyTypeUseCase,
+    DeletePropertyTypeUseCase,
+    GetPropertyTypeUseCase,
+    ListPropertyTypesUseCase,
+    UpdatePropertyTypeUseCase,
+    {
+      provide: PROPERTY_TYPE_REPOSITORY,
+      useClass: PrismaPropertyTypeRepository,
+    },
+    PropertyMasterService,
+    {
+      provide: PROPERTY_MASTER_REPOSITORY,
+      useClass: PrismaPropertyMasterStore,
+    },
+    {
+      provide: PROPERTY_DETAILS_REPOSITORY,
+      useClass: PrismaPropertyDetailsRepository,
+    },
+    {
+      provide: PROPERTY_EXTRAS_REPOSITORY,
+      useClass: PrismaPropertyExtrasRepository,
+    },
+    {
+      provide: PROPERTY_LIFECYCLE_REPOSITORY,
+      useClass: PrismaPropertyLifecycleRepository,
+    },
+    { provide: PROPERTY_PUBLIC_PORT, useExisting: PropertyMasterService },
+    { provide: APP_INTERCEPTOR, useClass: PropertyMetricsInterceptor },
+    PropertyDetailsService,
+    PropertyExtrasService,
+    PropertyLifecycleService,
+  ],
+  exports: [
+    PROPERTY_TYPE_REPOSITORY,
+    PROPERTY_MASTER_REPOSITORY,
+    PROPERTY_DETAILS_REPOSITORY,
+    PROPERTY_EXTRAS_REPOSITORY,
+    PROPERTY_LIFECYCLE_REPOSITORY,
+    PROPERTY_PUBLIC_PORT,
+  ],
+})
 export class PropertyModule {}

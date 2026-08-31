@@ -16,9 +16,26 @@ import { DuplicateDetector } from './application/ports/duplicate-detector.js';
 import { LeadMergePolicy } from './application/ports/merge.policy.js';
 
 @Module({
-  imports:[DatabaseModule,AuditModule,AuthorizationModule,PropertyModule,UsersModule],
-  controllers:[CrmController,CrmPublicInquiryController,CrmLifecycleController],
-  providers:[CrmService,CrmLifecycleService,ScoreDomainService,DuplicateDetector,LeadMergePolicy,{provide:CRM_REPOSITORY,useClass:PrismaCrmRepository}],
-  exports:[CRM_REPOSITORY,CrmService],
+  imports: [
+    DatabaseModule,
+    AuditModule,
+    AuthorizationModule,
+    PropertyModule,
+    UsersModule,
+  ],
+  controllers: [
+    CrmController,
+    CrmPublicInquiryController,
+    CrmLifecycleController,
+  ],
+  providers: [
+    CrmService,
+    CrmLifecycleService,
+    ScoreDomainService,
+    DuplicateDetector,
+    LeadMergePolicy,
+    { provide: CRM_REPOSITORY, useClass: PrismaCrmRepository },
+  ],
+  exports: [CRM_REPOSITORY, CrmService],
 })
 export class CrmModule {}
