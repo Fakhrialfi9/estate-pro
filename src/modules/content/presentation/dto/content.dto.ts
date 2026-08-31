@@ -59,8 +59,23 @@ export class ContentQueryDto {
   @IsEnum(CONTENT_STATUSES)
   status?: (typeof CONTENT_STATUSES)[number];
   @IsOptional() @IsString() @MaxLength(12) language?: string;
-  @IsOptional() @IsString() @MaxLength(30) sortBy?: string;
-  @IsOptional() @IsString() @MaxLength(4) sortDirection?: 'asc' | 'desc';
+  @IsOptional()
+  @IsEnum([
+    'createdAt',
+    'updatedAt',
+    'publishedAt',
+    'sortOrder',
+    'priority',
+    'title',
+  ])
+  sortBy?:
+    | 'createdAt'
+    | 'updatedAt'
+    | 'publishedAt'
+    | 'sortOrder'
+    | 'priority'
+    | 'title';
+  @IsOptional() @IsEnum(['asc', 'desc']) sortDirection?: 'asc' | 'desc';
 }
 
 export class ResourceDto {
