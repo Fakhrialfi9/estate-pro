@@ -52,7 +52,9 @@ export class PropertyExtrasController {
 
   @Get('utilities')
   @RequirePermissions('property-utilities.read')
-  getUtilities(@Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string) {
+  getUtilities(
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     return this.s.getUtilities(id).then(out);
   }
 
@@ -70,7 +72,9 @@ export class PropertyExtrasController {
 
   @Get('legal')
   @RequirePermissions('property-legal.read')
-  getLegal(@Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string) {
+  getLegal(
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     return this.s.getLegal(id).then(out);
   }
 
@@ -88,7 +92,9 @@ export class PropertyExtrasController {
 
   @Get('certificates')
   @RequirePermissions('property-certificates.read')
-  listCertificates(@Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string) {
+  listCertificates(
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     return this.s.listCertificates(id).then(out);
   }
 
@@ -132,7 +138,9 @@ export class PropertyExtrasController {
 
   @Get('financial')
   @RequirePermissions('property-financial.read')
-  getFinancial(@Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string) {
+  getFinancial(
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     return this.s.getFinancial(id).then(out);
   }
 
@@ -150,7 +158,9 @@ export class PropertyExtrasController {
 
   @Get('features')
   @RequirePermissions('property-features.read')
-  getFeatures(@Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string) {
+  getFeatures(
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     return this.s.getFeatures(id).then(out);
   }
 
@@ -168,7 +178,9 @@ export class PropertyExtrasController {
 
   @Get('security')
   @RequirePermissions('property-security.read')
-  getSecurity(@Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string) {
+  getSecurity(
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     return this.s.getSecurity(id).then(out);
   }
 
@@ -186,7 +198,9 @@ export class PropertyExtrasController {
 
   @Get('environment')
   @RequirePermissions('property-environment.read')
-  getEnvironment(@Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string) {
+  getEnvironment(
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     return this.s.getEnvironment(id).then(out);
   }
 
@@ -204,7 +218,9 @@ export class PropertyExtrasController {
 
   @Get('seo')
   @RequirePermissions('property-seo.read')
-  getSeo(@Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string) {
+  getSeo(
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     return this.s.getSeo(id).then(out);
   }
 
@@ -222,7 +238,9 @@ export class PropertyExtrasController {
 
   @Get('media')
   @RequirePermissions('property-media.read')
-  listMedia(@Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string) {
+  listMedia(
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     return this.s.listMedia(id).then(out);
   }
 
