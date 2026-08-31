@@ -294,7 +294,7 @@ export class ContentService {
         allowComments: source.allowComments,
         wordCount: source.wordCount,
         readingTimeMin: source.readingTimeMin,
-        categoryUuid: undefined,
+        categoryUuid: source.category?.uuid,
         coverMediaUuid: source.coverMedia?.uuid,
         authorUuid: source.authorUuid,
         tags: source.tags.map((t) => t.uuid),
@@ -320,6 +320,13 @@ export class ContentService {
   }
   async archive(uuid: string, ctx: AuditContext) {
     return this.transition(uuid, 'archive', ctx);
+  }
+  async transitionArticle(
+    uuid: string,
+    action: 'publish' | 'unpublish' | 'archive',
+    ctx: AuditContext,
+  ) {
+    return this.transition(uuid, action, ctx);
   }
   private async transition(
     uuid: string,
@@ -503,6 +510,14 @@ export class ContentService {
   ) {
     return this.repository.toggleInteraction(kind, uuid, user, ctx);
   }
+  interaction(
+    kind: 'like' | 'bookmark',
+    uuid: string,
+    user: string,
+    ctx: AuditContext,
+  ) {
+    return this.toggle(kind, uuid, user, ctx);
+  }
   comment(uuid: string, input: Record<string, unknown>, ctx: AuditContext) {
     return this.repository.createComment(
       uuid,
@@ -514,6 +529,13 @@ export class ContentService {
       ctx,
     );
   }
+  commentCreate(
+    uuid: string,
+    input: Record<string, unknown>,
+    ctx: AuditContext,
+  ) {
+    return this.comment(uuid, input, ctx);
+  }
   moderate(
     uuid: string,
     status: string,
@@ -521,6 +543,14 @@ export class ContentService {
     ctx: AuditContext,
   ) {
     return this.repository.moderateComment(uuid, status, reason, ctx);
+  }
+  commentModerate(
+    uuid: string,
+    status: string,
+    reason: string | undefined,
+    ctx: AuditContext,
+  ) {
+    return this.moderate(uuid, status, reason, ctx);
   }
   view(uuid: string, ip: string, ua?: string) {
     return this.repository.trackView(
