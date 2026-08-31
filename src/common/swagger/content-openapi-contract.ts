@@ -239,7 +239,8 @@ export const applyContentOpenApiContract = (
         if (
           !/^2\d\d$/.test(status) ||
           status === '204' ||
-          !isObject(rawResponse)
+          !isObject(rawResponse) ||
+          '$ref' in rawResponse
         ) {
           continue;
         }
