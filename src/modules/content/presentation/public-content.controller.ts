@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import {
   Controller,
   Get,
-  Headers,
   Param,
   Post,
   Req,
@@ -10,9 +9,9 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { Public } from '../../common/security/authorization.decorators.js';
-import { ContentService } from './application/content.service.js';
-import { ContentNotFoundError } from './application/content.errors.js';
+import { Public } from '../../../common/security/authorization.decorators.js';
+import { ContentService } from '../application/content.service.js';
+import { ContentNotFoundError } from '../../application/content.errors.js';
 
 @ApiTags('CMS Public')
 @Public()
@@ -80,6 +79,6 @@ export class PublicContentController {
   @Post('articles/:uuid/view')
   @ApiOperation({ summary: 'Record a privacy-preserving article view' })
   async view(@Param('uuid') uuid: string, @Req() request: Request) {
-    return this.service.view(uuid, request.ip, request.headers['user-agent']);
+    return this.service.view(uuid, request.ip ?? 'unknown', request.headers['user-agent']);
   }
 }
