@@ -1,16 +1,21 @@
 import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../prisma/generated/prisma/client.js';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
+import {
+  ContentFormat,
+  ContentVisibility,
+  ModerationStatus,
+} from '../../../../../prisma/generated/prisma/enums.js';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import {
   ContentConflictError,
   ContentNotFoundError,
-} from '../../content/application/content.errors.js';
+} from '../../../application/content.errors.js';
 import type {
   AuditContext,
   ContentResourceType,
-} from '../../content/domain/content.types.js';
-import type { ArticleRecord } from '../../content/domain/repositories/content.repository.js';
+} from '../../../domain/content.types.js';
+import type { ArticleRecord } from '../../../domain/repositories/content.repository.js';
 import { PrismaArticleRepository } from './prisma-article.repository.js';
 
 const jsonValue = (value: unknown): Prisma.InputJsonValue =>
@@ -112,16 +117,16 @@ export class PrismaContentOperationsRepository {
           data: {
             title: String(snapshot.title),
             slug: String(snapshot.slug),
-            template: String(snapshot.template ?? current.template),
+            template: typeof snapshot.template === 'string' ? snapshot.template : current.template,
             content: jsonValue(snapshot.content),
             contentFormat: String(
               snapshot.contentFormat ?? 'RICH_TEXT',
-            ) as Prisma.ContentFormat,
+            ) as ContentFormat,
             status: 'DRAFT',
             visibility: String(
               snapshot.visibility ?? 'PUBLIC',
-            ) as Prisma.ContentVisibility,
-            language: String(snapshot.language ?? current.language),
+            ) as ContentVisibility,
+            language: typeof snapshot.language === 'string' ? snapshot.language : current.language,
             version: { increment: 1 },
             updatedBy: ctx.actorUuid,
           },
@@ -384,7 +389,7 @@ export class PrismaContentOperationsRepository {
     const row = await this.prisma.contentComment.update({
       where: { uuid },
       data: {
-        status: status as Prisma.ModerationStatus,
+        status: status as ModerationStatus,
         moderationReason: reason ?? null,
         deletedAt: status === 'DELETED' ? new Date() : null,
       },
