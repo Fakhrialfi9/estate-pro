@@ -5,10 +5,7 @@ import type {
   PaginationQuery,
   PagedResult,
 } from '../domain/content.types.js';
-import type {
-  ArticleRecord,
-  ContentRepository,
-} from '../domain/repositories/content.repository.js';
+import type { ContentRepository } from '../domain/repositories/content.repository.js';
 import { PrismaArticleRepository } from './persistence/prisma-article.repository.js';
 import { PrismaContentResourceRepository } from './persistence/prisma-content-resource.repository.js';
 import { PrismaContentOperationsRepository } from './persistence/prisma-content-operations.repository.js';
@@ -40,9 +37,9 @@ export class PrismaContentRepository implements ContentRepository {
     uuid: string,
     input: Record<string, unknown>,
     expectedVersion?: number,
-    ctx?: AuditContext,
+    ctx: AuditContext = {},
   ) {
-    return this.articles.update(uuid, input, expectedVersion, ctx ?? {});
+    return this.articles.update(uuid, input, expectedVersion, ctx);
   }
   softDeleteArticle(uuid: string, ctx: AuditContext) {
     return this.articles.softDelete(uuid, ctx);
@@ -123,12 +120,12 @@ export class PrismaContentRepository implements ContentRepository {
   ) {
     return this.resources.restore(resource, uuid, ctx);
   }
-  async getPublic(resource: 'article' | 'page', slug: string, language = 'id') {
+  getPublic(resource: 'article' | 'page', slug: string, language = 'id') {
     return resource === 'article'
       ? this.operations.getPublicArticle(slug, language)
       : this.resources.publicItem(resource, slug, language);
   }
-  createMediaObject(input: Record<string, unknown>, ctx: AuditContext) {
+  createMediaObject(input: Record<string, unknown>) {
     return this.resources.createMedia(input);
   }
   deleteMediaObject(uuid: string, ctx: AuditContext) {
@@ -138,26 +135,16 @@ export class PrismaContentRepository implements ContentRepository {
     kind: 'like' | 'bookmark',
     articleUuid: string,
     userUuid: string,
-    ctx: AuditContext,
   ) {
     return this.operations.toggle(kind, articleUuid, userUuid);
   }
   trackView(articleUuid: string, fingerprint: string) {
     return this.operations.viewHash(articleUuid, fingerprint);
   }
-  moderateComment(
-    uuid: string,
-    status: string,
-    reason: string | undefined,
-    ctx: AuditContext,
-  ) {
+  moderateComment(uuid: string, status: string, reason?: string) {
     return this.operations.moderate(uuid, status, reason);
   }
-  createComment(
-    articleUuid: string,
-    input: Record<string, unknown>,
-    ctx: AuditContext,
-  ) {
+  createComment(articleUuid: string, input: Record<string, unknown>) {
     return this.operations.comment(articleUuid, input);
   }
   addRelation(input: Record<string, unknown>, ctx: AuditContext) {
@@ -166,18 +153,13 @@ export class PrismaContentRepository implements ContentRepository {
   listRelations(uuid: string, type?: string) {
     return this.resources.relations(uuid, type);
   }
-  removeRelation(uuid: string, ctx: AuditContext) {
+  removeRelation(uuid: string) {
     return this.resources.deleteRelation(uuid);
   }
-  reorderMenu(uuid: string, items: string[], ctx: AuditContext) {
+  reorderMenu(uuid: string, items: string[]) {
     return this.resources.reorderMenu(uuid, items);
   }
-  ensureSlugRedirect(
-    type: string,
-    oldSlug: string,
-    newSlug: string,
-    ctx: AuditContext,
-  ) {
+  ensureSlugRedirect(type: string, oldSlug: string, newSlug: string) {
     return this.resources.ensureRedirect(type, oldSlug, newSlug);
   }
 }
