@@ -29,6 +29,14 @@ import {
   InvalidPasswordError,
 } from '../domain/errors/credential.errors.js';
 
+const messageResponseSchema = {
+  type: 'object',
+  properties: {
+    message: { type: 'string' },
+  },
+  required: ['message'],
+};
+
 @ApiTags('Password')
 @Controller({ path: '', version: '1' })
 export class CredentialsController {
@@ -46,13 +54,7 @@ export class CredentialsController {
   @ApiResponse({
     status: 201,
     description: 'Password reset request accepted.',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-      },
-      required: ['message'],
-    },
+    schema: messageResponseSchema,
   })
   async requestReset(@Body() dto: PasswordResetRequestDto) {
     await this.resets.requestByEmail(dto.email);
@@ -71,13 +73,7 @@ export class CredentialsController {
   @ApiResponse({
     status: 201,
     description: 'Password reset completed successfully.',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-      },
-      required: ['message'],
-    },
+    schema: messageResponseSchema,
   })
   async confirmReset(@Body() dto: PasswordResetConfirmDto) {
     try {
@@ -95,6 +91,11 @@ export class CredentialsController {
     summary: 'Change current password',
     description:
       'Authenticated endpoint. Current password, Argon2 hashing, confirmation, session invalidation and audit rules are handled by CredentialService.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Password changed successfully.',
+    schema: messageResponseSchema,
   })
   async changePassword(
     @Req() request: AuthenticatedRequest,
