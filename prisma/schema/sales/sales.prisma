@@ -45,6 +45,7 @@ model SalesOpportunity {
   pipelineUuid   String?                        @db.Char(36)
   stageUuid      String?                        @db.Char(36)
   propertyUuid   String?                        @db.Char(36)
+  lostReasonUuid String?                        @db.Char(36)
   title          String                         @db.VarChar(180)
   valueAmount    Decimal?                       @db.Decimal(19, 4)
   currency       String?                        @db.Char(3)
@@ -64,6 +65,7 @@ model SalesOpportunity {
   @@index([teamUuid, status])
   @@index([pipelineUuid, stageUuid, status])
   @@index([propertyUuid, status])
+  @@index([lostReasonUuid])
   @@index([createdAt])
   @@map("sales_opportunities")
 }
@@ -178,6 +180,7 @@ model SalesDeal {
   offerUuid       String?          @db.Char(36)
   status          String           @default("OPEN") @db.VarChar(30)
   ownerUserUuid   String?          @db.Char(36)
+  lostReasonUuid  String?          @db.Char(36)
   currency        String?          @db.Char(3)
   totalAmount     Decimal?         @db.Decimal(19, 4)
   version         Int              @default(1)
@@ -190,6 +193,7 @@ model SalesDeal {
   closing         SalesClosing?
   commission      SalesCommission?
   @@index([ownerUserUuid, status, createdAt])
+  @@index([lostReasonUuid])
   @@index([offerUuid])
   @@map("sales_deals")
 }
