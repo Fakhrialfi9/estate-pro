@@ -554,12 +554,10 @@ export class PrismaCrmRepository implements CrmRepository {
         ...(i.campaignUuid !== undefined
           ? {
               campaignId: i.campaignUuid
-                ? ((
-                    await this.prisma.crmLeadCampaign.findFirst({
-                      where: { uuid: toText(i.campaignUuid) },
-                      select: { id: true },
-                    })
-                  )?.id ?? null)
+                ? (await this.prisma.crmLeadCampaign.findFirst({
+                    where: { uuid: toText(i.campaignUuid) },
+                    select: { id: true },
+                  }))?.id ?? null
                 : null,
             }
           : {}),
@@ -1360,7 +1358,7 @@ export class PrismaCrmRepository implements CrmRepository {
       },
     });
   }
-  async transitionActivity(uuid: string, status: string, a: CrmActor) {
+  async transitionActivity(uuid: string, status: string) {
     const r = await this.getActivity(uuid);
     const current = toText((r as Row).status);
     const allowed: Record<string, readonly string[]> = {
@@ -1399,11 +1397,9 @@ export class PrismaCrmRepository implements CrmRepository {
           ? ((await this.getActivity(toText(i.activityUuid))) as Row).id
           : null,
         templateId: i.templateUuid
-          ? ((
-              await this.prisma.crmCommunicationTemplate.findFirst({
-                where: { uuid: toText(i.templateUuid) },
-              })
-            )?.id ?? null)
+          ? (await this.prisma.crmCommunicationTemplate.findFirst({
+              where: { uuid: toText(i.templateUuid) },
+            }))?.id ?? null
           : null,
         providerName: i.providerName ? toText(i.providerName) : null,
         destination: toText(i.destination),
