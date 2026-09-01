@@ -18,6 +18,7 @@ import {
   normalizeEmail,
   normalizePhone,
   normalizeText,
+  toText,
   type CrmActor,
   type PageQuery,
   type ScoreInput,
@@ -110,9 +111,9 @@ export class CrmService {
   ): Record<string, unknown> {
     const output = { ...input };
     if (output.subject !== undefined && output.subject !== null)
-      assertPlainText(String(output.subject));
+      assertPlainText(toText(output.subject));
     if (output.body !== undefined) {
-      const body = String(output.body);
+      const body = toText(output.body);
       assertPlainText(body);
       for (const match of body.matchAll(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g)) {
         const variable = match[1];
@@ -126,22 +127,22 @@ export class CrmService {
   }
   createContact(i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
-      const owner = i.ownerUserUuid ? String(i.ownerUserUuid) : null;
+      const owner = i.ownerUserUuid ? toText(i.ownerUserUuid) : null;
       if (owner) {
         const u = await this.user.getUser(owner);
         if (!u.isActive || u.deletedAt)
           throw new ForbiddenException('Contact owner is not active');
       }
       const r = await this.repo.createContact({
-        firstName: normalizeText(String(i.firstName), 100),
-        lastName: i.lastName ? normalizeText(String(i.lastName), 100) : null,
-        displayName: normalizeText(String(i.displayName), 220),
+        firstName: normalizeText(toText(i.firstName), 100),
+        lastName: i.lastName ? normalizeText(toText(i.lastName), 100) : null,
+        displayName: normalizeText(toText(i.displayName), 220),
         companyName: i.companyName
-          ? normalizeText(String(i.companyName), 180)
+          ? normalizeText(toText(i.companyName), 180)
           : null,
-        jobTitle: i.jobTitle ? normalizeText(String(i.jobTitle), 120) : null,
+        jobTitle: i.jobTitle ? normalizeText(toText(i.jobTitle), 120) : null,
         ownerUserUuid: owner,
-        source: i.source ? normalizeText(String(i.source), 80) : null,
+        source: i.source ? normalizeText(toText(i.source), 80) : null,
       });
       await this.auditRecord(
         'CRM_CONTACT_CREATED',
@@ -173,7 +174,7 @@ export class CrmService {
             i[field] === null
               ? null
               : normalizeText(
-                  String(i[field]),
+                  toText(i[field]),
                   field === 'displayName'
                     ? 220
                     : ['firstName', 'lastName'].includes(field)
@@ -188,9 +189,9 @@ export class CrmService {
         'companyName',
         'jobTitle',
       ])
-        if (patch[field] !== null) assertPlainText(String(patch[field]));
+        if (patch[field] !== null) assertPlainText(toText(patch[field]));
       if (patch.lastName !== null && patch.lastName !== undefined)
-        assertPlainText(String(patch.lastName));
+        assertPlainText(toText(patch.lastName));
       const r = await this.repo.updateContact(u, patch);
       await this.auditRecord('CRM_CONTACT_UPDATED', 'contact', u, a);
       return r;
@@ -223,8 +224,8 @@ export class CrmService {
       } else {
         if (typeof i.line1 !== 'string')
           throw new BadRequestException('Address line1 is required');
-        i.countryCode = String(i.countryCode).toUpperCase();
-        if (!/^[A-Z]{2}$/.test(String(i.countryCode)))
+        i.countryCode = toText(i.countryCode).toUpperCase();
+        if (!/^[A-Z]{2}$/.test(toText(i.countryCode)))
           throw new BadRequestException('countryCode must be ISO-3166 alpha-2');
         r = await this.repo.addContactAddress(contactUuid, i);
       }
@@ -360,7 +361,7 @@ export class CrmService {
   createLead(i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
       if (i.ownerUserUuid) {
-        const u = await this.user.getUser(String(i.ownerUserUuid));
+        const u = await this.user.getUser(toText(i.ownerUserUuid));
         if (!u.isActive || u.deletedAt)
           throw new ForbiddenException('Lead owner is not active');
       }
@@ -451,8 +452,8 @@ export class CrmService {
   createScoreRule(i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
       if (
-        !SCORE_FIELDS.has(String(i.field)) ||
-        !SCORE_OPERATORS.has(String(i.operator))
+        !SCORE_FIELDS.has(toText(i.field)) ||
+        !SCORE_OPERATORS.has(toText(i.operator))
       )
         throw new BadRequestException(
           'Unsupported score rule field or operator',
@@ -469,9 +470,9 @@ export class CrmService {
   }
   updateScoreRule(u: string, i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
-      if (i.field !== undefined && !SCORE_FIELDS.has(String(i.field)))
+      if (i.field !== undefined && !SCORE_FIELDS.has(toText(i.field)))
         throw new BadRequestException('Unsupported score rule field');
-      if (i.operator !== undefined && !SCORE_OPERATORS.has(String(i.operator)))
+      if (i.operator !== undefined && !SCORE_OPERATORS.has(toText(i.operator)))
         throw new BadRequestException('Unsupported score rule operator');
       const r = await this.repo.updateScoreRule(u, i);
       await this.auditRecord('CRM_SCORE_RULE_UPDATED', 'score_rule', u, a);
@@ -575,9 +576,9 @@ export class CrmService {
   inquiry(i: Record<string, unknown>, a?: CrmActor) {
     return this.unwrap(async () => {
       for (const field of ['message', 'serviceContext'])
-        if (typeof i[field] === 'string') assertPlainText(String(i[field]));
+        if (typeof i[field] === 'string') assertPlainText(i[field]);
       if (i.propertyUuid)
-        await this.property.getProperty(String(i.propertyUuid));
+        await this.property.getProperty(toText(i.propertyUuid));
       const r = await this.repo.createInquiry(i);
       if (a)
         await this.auditRecord(
@@ -597,7 +598,7 @@ export class CrmService {
   }
   inquiryUpdate(u: string, i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
-      if (typeof i.message === 'string') assertPlainText(String(i.message));
+      if (typeof i.message === 'string') assertPlainText(i.message);
       const r = await this.repo.updateInquiry(u, i);
       await this.auditRecord('CRM_INQUIRY_UPDATED', 'inquiry', u, a);
       return r;
@@ -612,7 +613,7 @@ export class CrmService {
   }
   activityCreate(i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
-      if (i.description) assertPlainText(String(i.description));
+      if (i.description) assertPlainText(toText(i.description));
       const r = await this.repo.createActivity(i);
       await this.auditRecord(
         'CRM_ACTIVITY_CREATED',
@@ -632,7 +633,7 @@ export class CrmService {
   activityUpdate(u: string, i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
       for (const field of ['subject', 'description'])
-        if (typeof i[field] === 'string') assertPlainText(String(i[field]));
+        if (typeof i[field] === 'string') assertPlainText(i[field]);
       const r = await this.repo.updateActivity(u, i);
       await this.auditRecord('CRM_ACTIVITY_UPDATED', 'activity', u, a);
       return r;
@@ -651,7 +652,7 @@ export class CrmService {
         throw new BadRequestException(
           'Provider secrets are not accepted by the API',
         );
-      assertPlainText(String(i.body));
+      assertPlainText(toText(i.body));
       const r = await this.repo.createCommunication(i);
       await this.auditRecord(
         'CRM_COMMUNICATION_CREATED',
@@ -677,7 +678,7 @@ export class CrmService {
     return this.unwrap(async () => {
       for (const field of ['providerMessageId', 'providerError'])
         if (i[field] !== undefined && typeof i[field] === 'string')
-          assertPlainText(String(i[field]));
+          assertPlainText(i[field]);
       if (i.providerSecret)
         throw new BadRequestException(
           'Provider secrets are not accepted by the API',
@@ -698,7 +699,7 @@ export class CrmService {
   templateCreate(i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
       const validated = this.validateTemplate(i);
-      const body = String(validated.body);
+      const body = toText(validated.body);
       const r = await this.repo.createTemplate({ ...validated, body });
       await this.auditRecord(
         'CRM_TEMPLATE_CREATED',
