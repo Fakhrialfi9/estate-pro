@@ -1,6 +1,7 @@
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
@@ -13,7 +14,7 @@ describe('CRM security boundary', () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication();
-    configureApplication(app as import('@nestjs/platform-express').NestExpressApplication);
+    configureApplication(app as NestExpressApplication);
     await app.init();
   });
   afterAll(async () => {
