@@ -60,7 +60,6 @@ model PropertyPreference {
   createdAt             DateTime                @default(now()) @map("created_at")
   updatedAt             DateTime                @updatedAt @map("updated_at")
   archivedAt            DateTime?               @map("archived_at")
-  recommendations       Recommendation[]
 
   @@unique([subjectType, subjectUuid], map: "property_preferences_subject_key")
   @@index([subjectType, subjectUuid, status], map: "property_preferences_subject_status_idx")
@@ -110,7 +109,7 @@ model RecommendationItem {
   propertyUuid     String         @map("property_uuid") @db.Char(36)
   listingUuid      String         @map("listing_uuid") @db.Char(36)
   rank             Int
-  score            Decimal        @db.Decimal(6, 2)
+  score             Decimal        @db.Decimal(6, 2)
   explanation      Json
   createdAt        DateTime       @default(now()) @map("created_at")
   recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
@@ -141,17 +140,17 @@ model RecommendationHistory {
 }
 
 model MatchFeedback {
-  id                   BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid                 String             @unique @default(uuid()) @db.Char(36)
-  recommendationItemId BigInt             @map("recommendation_item_id") @db.UnsignedBigInt
-  subjectType          String             @map("subject_type") @db.VarChar(20)
-  subjectUuid          String             @map("subject_uuid") @db.Char(36)
-  propertyUuid         String             @map("property_uuid") @db.Char(36)
-  listingUuid          String             @map("listing_uuid") @db.Char(36)
+  id                   BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid                 String            @unique @default(uuid()) @db.Char(36)
+  recommendationItemId BigInt            @map("recommendation_item_id") @db.UnsignedBigInt
+  subjectType          String            @map("subject_type") @db.VarChar(20)
+  subjectUuid          String            @map("subject_uuid") @db.Char(36)
+  propertyUuid         String            @map("property_uuid") @db.Char(36)
+  listingUuid          String            @map("listing_uuid") @db.Char(36)
   feedback             MatchingFeedbackType
-  createdAt             DateTime           @default(now()) @map("created_at")
-  updatedAt             DateTime           @updatedAt @map("updated_at")
-  recommendationItem   RecommendationItem  @relation(fields: [recommendationItemId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  recommendationItem   RecommendationItem @relation(fields: [recommendationItemId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([recommendationItemId, subjectType, subjectUuid], map: "match_feedback_item_subject_key")
   @@index([subjectType, subjectUuid, feedback, updatedAt], map: "match_feedback_subject_idx")
