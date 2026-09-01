@@ -14,12 +14,10 @@ import {
 } from './authorization.decorators.js';
 import { AuthorizationService } from './authorization.service.js';
 import { PropertyAccessGuard } from './property-access.guard.js';
+import type { AccessTokenClaims } from './access-token-verifier.port.js';
 
 type AuthorizationRequest = Request & {
-  user?: {
-    sub?: string;
-    permissions?: string[];
-  };
+  user?: AccessTokenClaims;
 };
 
 @Injectable()
