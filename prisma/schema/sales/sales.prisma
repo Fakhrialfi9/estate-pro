@@ -4,9 +4,9 @@ model SalesPipeline {
   name          String              @db.VarChar(150)
   description   String?             @db.Text
   status        String              @default("ACTIVE") @db.VarChar(20)
-  sortOrder     Int                 @default(0) @map("sort_order")
-  createdAt     DateTime            @default(now()) @map("created_at")
-  updatedAt     DateTime            @updatedAt @map("updated_at")
+  sortOrder     Int                 @default(0)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
   stages        SalesPipelineStage[]
   opportunities SalesOpportunity[]
   @@index([status, sortOrder])
@@ -19,12 +19,12 @@ model SalesPipelineStage {
   pipelineUuid  String                        @db.Char(36)
   code          String                        @db.VarChar(60)
   name          String                        @db.VarChar(150)
-  sortOrder     Int                           @map("sort_order")
+  sortOrder     Int
   probability   Int                           @default(0)
-  isTerminal    Boolean                       @default(false) @map("is_terminal")
-  isActive      Boolean                       @default(true) @map("is_active")
-  createdAt     DateTime                      @default(now()) @map("created_at")
-  updatedAt     DateTime                      @updatedAt @map("updated_at")
+  isTerminal    Boolean                       @default(false)
+  isActive      Boolean                       @default(true)
+  createdAt     DateTime                      @default(now())
+  updatedAt     DateTime                      @updatedAt
   pipeline      SalesPipeline                 @relation(fields: [pipelineUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   opportunities SalesOpportunity[]
   historyTo    SalesOpportunityStageHistory[] @relation("StageHistoryTo")
@@ -78,7 +78,7 @@ model SalesOpportunityStageHistory {
   toStatus        String              @db.VarChar(30)
   actorUserUuid   String              @db.Char(36)
   reason          String?             @db.VarChar(500)
-  occurredAt      DateTime            @default(now()) @map("occurred_at")
+  occurredAt      DateTime            @default(now())
   opportunity     SalesOpportunity    @relation(fields: [opportunityUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   fromStage       SalesPipelineStage? @relation("StageHistoryFrom", fields: [fromStageUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   toStage         SalesPipelineStage? @relation("StageHistoryTo", fields: [toStageUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
@@ -95,10 +95,10 @@ model SalesActivity {
   status          String           @default("OPEN") @db.VarChar(20)
   subject         String           @db.VarChar(180)
   body            String?          @db.Text
-  dueAt           DateTime?        @map("due_at")
-  completedAt     DateTime?        @map("completed_at")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  dueAt           DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   opportunity     SalesOpportunity @relation(fields: [opportunityUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   @@index([opportunityUuid, status, dueAt])
   @@index([actorUserUuid, dueAt])
@@ -111,12 +111,12 @@ model SalesViewing {
   opportunityUuid String           @db.Char(36)
   propertyUuid    String           @db.Char(36)
   contactUuid     String           @db.Char(36)
-  scheduledAt     DateTime         @map("scheduled_at")
+  scheduledAt     DateTime
   status          String           @default("REQUESTED") @db.VarChar(20)
   notes           String?          @db.Text
   actorUserUuid   String           @db.Char(36)
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   opportunity     SalesOpportunity @relation(fields: [opportunityUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   @@index([opportunityUuid, scheduledAt])
   @@index([propertyUuid, scheduledAt, status])
@@ -131,8 +131,8 @@ model SalesNegotiation {
   status          String                       @default("OPEN") @db.VarChar(20)
   notes           String?                      @db.Text
   version         Int                          @default(1)
-  createdAt       DateTime                     @default(now()) @map("created_at")
-  updatedAt       DateTime                     @updatedAt @map("updated_at")
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
   opportunity     SalesOpportunity             @relation(fields: [opportunityUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   history         SalesNegotiationHistory[]
   offers          SalesOffer[]
@@ -147,7 +147,7 @@ model SalesNegotiationHistory {
   fromStatus      String?           @db.VarChar(20)
   toStatus        String            @db.VarChar(20)
   actorUserUuid   String            @db.Char(36)
-  occurredAt      DateTime          @default(now()) @map("occurred_at")
+  occurredAt      DateTime          @default(now())
   negotiation     SalesNegotiation  @relation(fields: [negotiationUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   @@index([negotiationUuid, occurredAt])
   @@map("sales_negotiation_history")
@@ -161,9 +161,9 @@ model SalesOffer {
   amount          Decimal          @db.Decimal(19, 4)
   currency        String           @db.Char(3)
   status          String           @default("DRAFT") @db.VarChar(20)
-  expiresAt       DateTime?        @map("expires_at")
+  expiresAt       DateTime?
   actorUserUuid   String           @db.Char(36)
-  createdAt       DateTime         @default(now()) @map("created_at")
+  createdAt       DateTime         @default(now())
   negotiation     SalesNegotiation @relation(fields: [negotiationUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   deals           SalesDeal[]
   @@unique([negotiationUuid, version])
@@ -182,8 +182,8 @@ model SalesDeal {
   totalAmount     Decimal?         @db.Decimal(19, 4)
   version         Int              @default(1)
   idempotencyKey  String           @unique @db.VarChar(120)
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   opportunity     SalesOpportunity @relation(fields: [opportunityUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   offer           SalesOffer?      @relation(fields: [offerUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   items           SalesDealItem[]
@@ -204,8 +204,8 @@ model SalesDealItem {
   unitAmount   Decimal   @db.Decimal(19, 4)
   lineAmount   Decimal   @db.Decimal(19, 4)
   currency     String    @db.Char(3)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   deal         SalesDeal @relation(fields: [dealUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   @@index([dealUuid])
   @@map("sales_deal_items")
@@ -216,10 +216,10 @@ model SalesClosing {
   uuid           String    @unique @default(uuid()) @db.Char(36)
   dealUuid       String    @unique @db.Char(36)
   method         String    @db.VarChar(40)
-  closedAt       DateTime  @map("closed_at")
+  closedAt       DateTime
   actorUserUuid  String    @db.Char(36)
   idempotencyKey String    @unique @db.VarChar(120)
-  createdAt      DateTime  @default(now()) @map("created_at")
+  createdAt      DateTime  @default(now())
   deal           SalesDeal @relation(fields: [dealUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   @@map("sales_closings")
 }
@@ -229,9 +229,9 @@ model SalesLostReason {
   uuid      String   @unique @default(uuid()) @db.Char(36)
   code      String   @unique @db.VarChar(60)
   name      String   @db.VarChar(180)
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   @@index([isActive])
   @@map("sales_lost_reasons")
 }
@@ -241,10 +241,10 @@ model SalesCommissionRule {
   uuid        String               @unique @default(uuid()) @db.Char(36)
   code        String               @unique @db.VarChar(60)
   name        String               @db.VarChar(180)
-  ratePercent Decimal              @db.Decimal(7, 4) @map("rate_percent")
-  isActive    Boolean              @default(true) @map("is_active")
-  createdAt   DateTime             @default(now()) @map("created_at")
-  updatedAt   DateTime             @updatedAt @map("updated_at")
+  ratePercent Decimal              @db.Decimal(7, 4)
+  isActive    Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
   commissions SalesCommission[]
   @@index([isActive])
   @@map("sales_commission_rules")
@@ -255,14 +255,14 @@ model SalesCommission {
   uuid           String              @unique @default(uuid()) @db.Char(36)
   dealUuid       String              @unique @db.Char(36)
   ruleUuid       String              @db.Char(36)
-  baseAmount     Decimal             @db.Decimal(19, 4) @map("base_amount")
-  ratePercent    Decimal             @db.Decimal(7, 4) @map("rate_percent")
+  baseAmount     Decimal             @db.Decimal(19, 4)
+  ratePercent    Decimal             @db.Decimal(7, 4)
   amount         Decimal             @db.Decimal(19, 4)
   currency       String              @db.Char(3)
   status         String              @default("PENDING") @db.VarChar(20)
-  calculatedAt   DateTime            @default(now()) @map("calculated_at")
-  approvedAt     DateTime?           @map("approved_at")
-  settledAt      DateTime?           @map("settled_at")
+  calculatedAt   DateTime            @default(now())
+  approvedAt     DateTime?
+  settledAt      DateTime?
   idempotencyKey String              @unique @db.VarChar(120)
   rule           SalesCommissionRule @relation(fields: [ruleUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
   deal           SalesDeal            @relation(fields: [dealUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
