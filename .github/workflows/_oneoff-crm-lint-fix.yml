@@ -92,8 +92,10 @@ jobs:
 
           const service = 'src/modules/crm/application/crm.service.ts';
           let svc = read(service);
-          svc = svc.replace('  duplicates(u: string) {', '  async duplicates(u: string): Promise<readonly unknown[]> {');
-          svc = svc.replace('    return this.unwrap(() => this.repo.detectDuplicates(u));', '    return await this.unwrap<readonly unknown[]>(() => this.repo.detectDuplicates(u));');
+          svc = svc.replace(
+            /  duplicates\(u: string\) \{\n    return this\.unwrap\(\(\) => this\.repo\.detectDuplicates\(u\)\);\n  \}/,
+            "  async duplicates(u: string): Promise<readonly unknown[]> {\n    return await this.unwrap<readonly unknown[]>(() => this.repo.detectDuplicates(u));\n  }",
+          );
           write(service, svc);
 
           const repo = 'src/modules/crm/infrastructure/persistence/prisma-crm.repository.ts';
