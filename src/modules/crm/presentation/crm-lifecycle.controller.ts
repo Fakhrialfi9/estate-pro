@@ -53,12 +53,8 @@ class ClosureDto {
   outcome!: 'WON' | 'LOST' | 'DISQUALIFIED' | 'OTHER';
 }
 
-interface AuthenticatedRequest extends Request {
-  user?: { sub?: string; permissions?: string[] };
-}
-
 const actor = (
-  request: AuthenticatedRequest,
+  request: Request,
   userAgent?: string,
   requestId?: string,
 ) => ({
@@ -85,7 +81,7 @@ export class CrmLifecycleController {
   @ApiResponse({ status: 401 })
   @ApiResponse({ status: 403 })
   qualify(
-    @Req() request: AuthenticatedRequest,
+    @Req() request: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
     @Body() dto: QualifyDto,
     @Headers('user-agent') userAgent?: string,
@@ -103,7 +99,7 @@ export class CrmLifecycleController {
   @ApiResponse({ status: 400 })
   @ApiResponse({ status: 403 })
   nurture(
-    @Req() request: AuthenticatedRequest,
+    @Req() request: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
   ) {
     return this.service
@@ -118,7 +114,7 @@ export class CrmLifecycleController {
   @ApiResponse({ status: 400 })
   @ApiResponse({ status: 403 })
   reactivate(
-    @Req() request: AuthenticatedRequest,
+    @Req() request: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
   ) {
     return this.service
@@ -133,7 +129,7 @@ export class CrmLifecycleController {
   @ApiResponse({ status: 400 })
   @ApiResponse({ status: 403 })
   close(
-    @Req() request: AuthenticatedRequest,
+    @Req() request: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
     @Body() dto: ClosureDto,
   ) {
@@ -151,7 +147,7 @@ export class CrmLifecycleController {
   @ApiResponse({ status: 403 })
   @ApiResponse({ status: 409 })
   convert(
-    @Req() request: AuthenticatedRequest,
+    @Req() request: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
@@ -167,7 +163,7 @@ export class CrmLifecycleController {
   @ApiResponse({ status: 401 })
   @ApiResponse({ status: 403 })
   timeline(
-    @Req() request: AuthenticatedRequest,
+    @Req() request: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
     @Query() query: PageDto,
   ) {
