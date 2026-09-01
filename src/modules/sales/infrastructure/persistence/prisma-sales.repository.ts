@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import {
   dealTransitionAllowed,
@@ -42,6 +43,12 @@ const pageOf = (value: unknown, fallback = 1): number => {
     : fallback;
 };
 
+const queryString = (value: unknown): string => {
+  if (typeof value !== 'string')
+    throw new ConflictException('Invalid query filter');
+  return value;
+};
+
 const toOpportunity = (record: {
   uuid: string;
   leadUuid: string;
@@ -52,7 +59,7 @@ const toOpportunity = (record: {
   stageUuid: string | null;
   propertyUuid: string | null;
   title: string;
-  valueAmount: unknown;
+  valueAmount: Prisma.Decimal | null;
   currency: string | null;
   status: string;
   version: number;
@@ -60,7 +67,7 @@ const toOpportunity = (record: {
   updatedAt: Date;
 }): SalesOpportunityRow => ({
   ...record,
-  valueAmount: record.valueAmount == null ? null : String(record.valueAmount),
+  valueAmount: record.valueAmount == null ? null : record.valueAmount.toString(),
   status: record.status as OpportunityStatus,
 });
 
@@ -111,7 +118,8 @@ export class PrismaSalesRepository implements SalesRepository {
   async listPipelines(query: Record<string, unknown>) {
     const page = pageOf(query.page);
     const limit = pageOf(query.limit, 20);
-    const where = query.status ? { status: String(query.status) } : {};
+    const status = query.status ? queryString(query.status) : undefined;
+    const where = status ? { status } : {};
     const [items, total] = await Promise.all([
       this.prisma.salesPipeline.findMany({
         where,
@@ -288,18 +296,23 @@ export class PrismaSalesRepository implements SalesRepository {
   async listOpportunities(query: Record<string, unknown>) {
     const page = pageOf(query.page);
     const limit = pageOf(query.limit, 20);
+    const ownerUserUuid = query.ownerUserUuid
+      ? queryString(query.ownerUserUuid)
+      : undefined;
+    const status = query.status ? queryString(query.status) : undefined;
+    const pipelineUuid = query.pipelineUuid
+      ? queryString(query.pipelineUuid)
+      : undefined;
+    const stageUuid = query.stageUuid ? queryString(query.stageUuid) : undefined;
+    const propertyUuid = query.propertyUuid
+      ? queryString(query.propertyUuid)
+      : undefined;
     const where = {
-      ...(query.ownerUserUuid
-        ? { ownerUserUuid: String(query.ownerUserUuid) }
-        : {}),
-      ...(query.status ? { status: String(query.status) } : {}),
-      ...(query.pipelineUuid
-        ? { pipelineUuid: String(query.pipelineUuid) }
-        : {}),
-      ...(query.stageUuid ? { stageUuid: String(query.stageUuid) } : {}),
-      ...(query.propertyUuid
-        ? { propertyUuid: String(query.propertyUuid) }
-        : {}),
+      ...(ownerUserUuid ? { ownerUserUuid } : {}),
+      ...(status ? { status } : {}),
+      ...(pipelineUuid ? { pipelineUuid } : {}),
+      ...(stageUuid ? { stageUuid } : {}),
+      ...(propertyUuid ? { propertyUuid } : {}),
     };
     const [items, total] = await Promise.all([
       this.prisma.salesOpportunity.findMany({
@@ -443,15 +456,19 @@ export class PrismaSalesRepository implements SalesRepository {
   async listActivities(query: Record<string, unknown>) {
     const page = pageOf(query.page);
     const limit = pageOf(query.limit, 20);
+    const opportunityUuid = query.opportunityUuid
+      ? queryString(query.opportunityUuid)
+      : undefined;
+    const actorUserUuid = query.actorUserUuid
+      ? queryString(query.actorUserUuid)
+      : undefined;
+    const type = query.type ? queryString(query.type) : undefined;
+    const status = query.status ? queryString(query.status) : undefined;
     const where = {
-      ...(query.opportunityUuid
-        ? { opportunityUuid: String(query.opportunityUuid) }
-        : {}),
-      ...(query.actorUserUuid
-        ? { actorUserUuid: String(query.actorUserUuid) }
-        : {}),
-      ...(query.type ? { type: String(query.type) } : {}),
-      ...(query.status ? { status: String(query.status) } : {}),
+      ...(opportunityUuid ? { opportunityUuid } : {}),
+      ...(actorUserUuid ? { actorUserUuid } : {}),
+      ...(type ? { type } : {}),
+      ...(status ? { status } : {}),
     };
     const [items, total] = await Promise.all([
       this.prisma.salesActivity.findMany({
@@ -514,14 +531,17 @@ export class PrismaSalesRepository implements SalesRepository {
   async listViewings(query: Record<string, unknown>) {
     const page = pageOf(query.page);
     const limit = pageOf(query.limit, 20);
+    const opportunityUuid = query.opportunityUuid
+      ? queryString(query.opportunityUuid)
+      : undefined;
+    const propertyUuid = query.propertyUuid
+      ? queryString(query.propertyUuid)
+      : undefined;
+    const status = query.status ? queryString(query.status) : undefined;
     const where = {
-      ...(query.opportunityUuid
-        ? { opportunityUuid: String(query.opportunityUuid) }
-        : {}),
-      ...(query.propertyUuid
-        ? { propertyUuid: String(query.propertyUuid) }
-        : {}),
-      ...(query.status ? { status: String(query.status) } : {}),
+      ...(opportunityUuid ? { opportunityUuid } : {}),
+      ...(propertyUuid ? { propertyUuid } : {}),
+      ...(status ? { status } : {}),
     };
     const [items, total] = await Promise.all([
       this.prisma.salesViewing.findMany({
@@ -719,14 +739,17 @@ export class PrismaSalesRepository implements SalesRepository {
   async listDeals(query: Record<string, unknown>) {
     const page = pageOf(query.page);
     const limit = pageOf(query.limit, 20);
+    const ownerUserUuid = query.ownerUserUuid
+      ? queryString(query.ownerUserUuid)
+      : undefined;
+    const status = query.status ? queryString(query.status) : undefined;
+    const propertyUuid = query.propertyUuid
+      ? queryString(query.propertyUuid)
+      : undefined;
     const where = {
-      ...(query.ownerUserUuid
-        ? { ownerUserUuid: String(query.ownerUserUuid) }
-        : {}),
-      ...(query.status ? { status: String(query.status) } : {}),
-      ...(query.propertyUuid
-        ? { opportunity: { propertyUuid: String(query.propertyUuid) } }
-        : {}),
+      ...(ownerUserUuid ? { ownerUserUuid } : {}),
+      ...(status ? { status } : {}),
+      ...(propertyUuid ? { opportunity: { propertyUuid } } : {}),
     };
     const [items, total] = await Promise.all([
       this.prisma.salesDeal.findMany({
@@ -743,7 +766,7 @@ export class PrismaSalesRepository implements SalesRepository {
   private async recalculateDealTotal<T extends Tx>(dealUuid: string, tx: T) {
     const items = await tx.salesDealItem.findMany({ where: { dealUuid } });
     const total = items.reduce(
-      (sum, item) => sum + scaledAmount(String(item.lineAmount)),
+      (sum, item) => sum + scaledAmount(item.lineAmount.toString()),
       0n,
     );
     await tx.salesDeal.update({
@@ -784,7 +807,7 @@ export class PrismaSalesRepository implements SalesRepository {
     if (['CLOSED', 'LOST', 'CANCELLED'].includes(String(deal.status)))
       throw new ConflictException('Terminal deal cannot be edited');
     const quantity = input.quantity ?? current.quantity;
-    const unitAmount = input.unitAmount ?? String(current.unitAmount);
+    const unitAmount = input.unitAmount ?? current.unitAmount.toString();
     return this.prisma.$transaction(async (tx) => {
       const item = await tx.salesDealItem.update({
         where: { uuid },
@@ -928,7 +951,7 @@ export class PrismaSalesRepository implements SalesRepository {
       throw new ConflictException('Deal changed concurrently');
     return this.getDeal(uuid);
   }
-  async reopenDeal() {
+  reopenDeal() {
     throw new ConflictException(
       'Terminal deals are immutable and cannot be reopened',
     );
@@ -1053,7 +1076,8 @@ export class PrismaSalesRepository implements SalesRepository {
   async commissionReport(query: Record<string, unknown>) {
     const page = pageOf(query.page);
     const limit = pageOf(query.limit, 20);
-    const where = query.status ? { status: String(query.status) } : {};
+    const status = query.status ? queryString(query.status) : undefined;
+    const where = status ? { status } : {};
     const [items, total] = await Promise.all([
       this.prisma.salesCommission.findMany({
         where,
@@ -1068,11 +1092,11 @@ export class PrismaSalesRepository implements SalesRepository {
       select: { amount: true },
     });
     const sum = all.reduce(
-      (acc, row) => acc + scaledAmount(String(row.amount)),
+      (acc, row) => acc + scaledAmount(row.amount.toString()),
       0n,
     );
     return {
-      status: query.status ?? 'ALL',
+      status: status ?? 'ALL',
       count: total,
       total: formatAmount(sum),
       items,
@@ -1081,15 +1105,18 @@ export class PrismaSalesRepository implements SalesRepository {
     } as unknown as SalesRecord;
   }
   async forecast(query: Record<string, unknown>) {
+    const ownerUserUuid = query.ownerUserUuid
+      ? queryString(query.ownerUserUuid)
+      : undefined;
+    const from = query.from ? queryString(query.from) : undefined;
+    const to = query.to ? queryString(query.to) : undefined;
     const where = {
-      ...(query.ownerUserUuid
-        ? { ownerUserUuid: String(query.ownerUserUuid) }
-        : {}),
-      ...(query.from || query.to
+      ...(ownerUserUuid ? { ownerUserUuid } : {}),
+      ...(from || to
         ? {
             createdAt: {
-              ...(query.from ? { gte: new Date(String(query.from)) } : {}),
-              ...(query.to ? { lte: new Date(String(query.to)) } : {}),
+              ...(from ? { gte: new Date(from) } : {}),
+              ...(to ? { lte: new Date(to) } : {}),
             },
           }
         : {}),
@@ -1103,7 +1130,7 @@ export class PrismaSalesRepository implements SalesRepository {
     let pipeline = 0n;
     let weighted = 0n;
     for (const row of rows) {
-      const amount = scaledAmount(String(row.valueAmount ?? '0'));
+      const amount = scaledAmount(row.valueAmount?.toString() ?? '0');
       const probability = BigInt(row.stage?.probability ?? 0);
       pipeline += amount;
       weighted += (amount * probability) / 100n;
