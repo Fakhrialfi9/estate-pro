@@ -10,7 +10,7 @@ import type { SecurityAuditRepository } from '../../../common/audit/security-aud
 import { AUDIT_ACTIONS } from '../../../common/audit/audit-events.js';
 import { SALES_CONVERSION_PORT } from '../../../common/contracts/sales-conversion.port.js';
 import type { SalesConversionPort } from '../../../common/contracts/sales-conversion.port.js';
-import type { CrmActor, PageQuery } from '../domain/crm.types.js';
+import { toText, type CrmActor, type PageQuery } from '../domain/crm.types.js';
 import { CrmService } from './crm.service.js';
 import { PrismaCrmLifecycleRepository } from '../infrastructure/persistence/prisma-crm-lifecycle.repository.js';
 import { LeadLifecyclePolicy } from '../domain/lead-lifecycle.policy.js';
@@ -273,10 +273,10 @@ export class CrmLifecycleService {
     }
 
     events.sort((a, b) => {
-      const left = new Date(String(a.createdAt ?? '')).getTime();
-      const right = new Date(String(b.createdAt ?? '')).getTime();
+      const left = new Date(toText(a.createdAt ?? '')).getTime();
+      const right = new Date(toText(b.createdAt ?? '')).getTime();
       if (left !== right) return right - left;
-      return String(a.source ?? '').localeCompare(String(b.source ?? ''));
+      return toText(a.source ?? '').localeCompare(toText(b.source ?? ''));
     });
 
     const start = (page - 1) * limit;
