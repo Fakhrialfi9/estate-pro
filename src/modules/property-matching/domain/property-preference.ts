@@ -41,23 +41,8 @@ export class PropertyPreference {
     return new PropertyPreference({ ...input, version, hardCriteria });
   }
 
-  get value(): PropertyPreferenceState {
-    return {
-      ...this.state,
-      transactionTypes: [...this.state.transactionTypes],
-      propertyTypeUuids: [...this.state.propertyTypeUuids],
-      propertyCategoryUuids: [...this.state.propertyCategoryUuids],
-      hardCriteria: [...this.state.hardCriteria],
-      location: this.state.location ? { ...this.state.location } : undefined,
-      budget: this.state.budget ? { ...this.state.budget } : undefined,
-      specification: this.state.specification ? structuredClone(this.state.specification) : undefined,
-    };
-  }
-
-  withVersion(version: number): PropertyPreference {
-    if (!Number.isInteger(version) || version <= this.state.version) throw new Error('version must increase');
-    return new PropertyPreference({ ...this.state, version });
-  }
+  get value(): PropertyPreferenceState { return { ...this.state, transactionTypes: [...this.state.transactionTypes], propertyTypeUuids: [...this.state.propertyTypeUuids], propertyCategoryUuids: [...this.state.propertyCategoryUuids], hardCriteria: [...this.state.hardCriteria], location: this.state.location ? { ...this.state.location } : undefined, budget: this.state.budget ? { ...this.state.budget } : undefined, specification: this.state.specification ? structuredClone(this.state.specification) : undefined }; }
+  withVersion(version: number): PropertyPreference { if (!Number.isInteger(version) || version <= this.state.version) throw new Error('version must increase'); return new PropertyPreference({ ...this.state, version }); }
 
   static assertBudget(budget: BudgetPreference | undefined): void {
     if (!budget) return;
@@ -72,6 +57,7 @@ export class PropertyPreference {
     if (!location) return;
     for (const [field, value] of Object.entries(location)) if (field.endsWith('Uuid') && value != null && !UUID_V4.test(String(value))) throw new Error(`${field} must be a UUID`);
     if (location.radiusKm != null && (!Number.isFinite(location.radiusKm) || location.radiusKm <= 0 || location.radiusKm > 500)) throw new Error('radiusKm must be > 0 and <= 500');
+    if (location.radiusKm != null && (location.latitude == null || location.longitude == null)) throw new Error('radiusKm requires latitude and longitude');
     if ((location.latitude == null) !== (location.longitude == null)) throw new Error('latitude and longitude must be supplied together');
     if (location.latitude != null && (location.latitude < -90 || location.latitude > 90)) throw new Error('latitude out of range');
     if (location.longitude != null && (location.longitude < -180 || location.longitude > 180)) throw new Error('longitude out of range');
