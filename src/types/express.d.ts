@@ -1,23 +1,7 @@
-import type { Request } from 'express';
+import type { AccessTokenClaims } from '../common/security/access-token-verifier.port.js';
 
 declare module 'express-serve-static-core' {
   interface Request {
-    user?: {
-      sub?: string;
-      [key: string]: unknown;
-    };
+    user?: AccessTokenClaims;
   }
 }
-
-declare module '../modules/crm/presentation/crm.dto.js' {
-  interface PageDto {
-    [key: string]: unknown;
-  }
-}
-
-export type AuthenticatedRequest = Request & {
-  user: {
-    sub: string;
-    [key: string]: unknown;
-  };
-};
