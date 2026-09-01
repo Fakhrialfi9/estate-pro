@@ -1,0 +1,17 @@
+import type { Request } from 'express';
+
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: {
+      sub?: string;
+      [key: string]: unknown;
+    };
+  }
+}
+
+export type AuthenticatedRequest = Request & {
+  user: {
+    sub: string;
+    [key: string]: unknown;
+  };
+};
