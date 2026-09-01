@@ -83,7 +83,7 @@ const parseScaled = (value: string): bigint => {
     );
   }
 
-  const [whole, fractional = ''] = value.split('.');
+  const [whole = '0', fractional = ''] = value.split('.');
   return BigInt(whole) * 10000n + BigInt((fractional + '0000').slice(0, 4));
 };
 
@@ -140,49 +140,41 @@ export const transitionAllowed = (from: string, to: string): boolean =>
   OPPORTUNITY_TRANSITIONS[from]?.includes(to) ?? false;
 
 export const viewingTransitionAllowed = (from: string, to: string): boolean =>
-  (
-    ({
-      REQUESTED: ['CONFIRMED', 'CANCELLED'],
-      CONFIRMED: ['COMPLETED', 'CANCELLED', 'NO_SHOW'],
-      COMPLETED: [],
-      CANCELLED: [],
-      NO_SHOW: [],
-    }) satisfies Record<string, readonly string[]>
-  )[from]?.includes(to) ?? false;
+  ({
+    REQUESTED: ['CONFIRMED', 'CANCELLED'],
+    CONFIRMED: ['COMPLETED', 'CANCELLED', 'NO_SHOW'],
+    COMPLETED: [],
+    CANCELLED: [],
+    NO_SHOW: [],
+  } as Record<string, readonly string[]>)[from]?.includes(to) ?? false;
 
 export const negotiationTransitionAllowed = (
   from: string,
   to: string,
 ): boolean =>
-  (
-    ({
-      OPEN: ['ACTIVE', 'REJECTED', 'CLOSED'],
-      ACTIVE: ['ACCEPTED', 'REJECTED', 'CLOSED'],
-      ACCEPTED: ['CLOSED'],
-      REJECTED: ['CLOSED'],
-      CLOSED: [],
-    }) satisfies Record<string, readonly string[]>
-  )[from]?.includes(to) ?? false;
+  ({
+    OPEN: ['ACTIVE', 'REJECTED', 'CLOSED'],
+    ACTIVE: ['ACCEPTED', 'REJECTED', 'CLOSED'],
+    ACCEPTED: ['CLOSED'],
+    REJECTED: ['CLOSED'],
+    CLOSED: [],
+  } as Record<string, readonly string[]>)[from]?.includes(to) ?? false;
 
 export const offerTransitionAllowed = (from: string, to: string): boolean =>
-  (
-    ({
-      DRAFT: ['SUBMITTED', 'REJECTED'],
-      SUBMITTED: ['ACCEPTED', 'REJECTED', 'EXPIRED'],
-      ACCEPTED: [],
-      REJECTED: [],
-      EXPIRED: [],
-    }) satisfies Record<string, readonly string[]>
-  )[from]?.includes(to) ?? false;
+  ({
+    DRAFT: ['SUBMITTED', 'REJECTED'],
+    SUBMITTED: ['ACCEPTED', 'REJECTED', 'EXPIRED'],
+    ACCEPTED: [],
+    REJECTED: [],
+    EXPIRED: [],
+  } as Record<string, readonly string[]>)[from]?.includes(to) ?? false;
 
 export const dealTransitionAllowed = (from: string, to: string): boolean =>
-  (
-    ({
-      OPEN: ['IN_PROGRESS', 'READY_TO_CLOSE', 'LOST', 'CANCELLED'],
-      IN_PROGRESS: ['READY_TO_CLOSE', 'LOST', 'CANCELLED'],
-      READY_TO_CLOSE: ['CLOSED', 'LOST'],
-      CLOSED: [],
-      LOST: [],
-      CANCELLED: [],
-    }) satisfies Record<string, readonly string[]>
-  )[from]?.includes(to) ?? false;
+  ({
+    OPEN: ['IN_PROGRESS', 'READY_TO_CLOSE', 'LOST', 'CANCELLED'],
+    IN_PROGRESS: ['READY_TO_CLOSE', 'LOST', 'CANCELLED'],
+    READY_TO_CLOSE: ['CLOSED', 'LOST'],
+    CLOSED: [],
+    LOST: [],
+    CANCELLED: [],
+  } as Record<string, readonly string[]>)[from]?.includes(to) ?? false;
