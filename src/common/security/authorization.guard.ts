@@ -48,11 +48,11 @@ export class AuthorizationGuard implements CanActivate {
     if (!permissions && !roles) throw new ForbiddenException();
 
     const request = context.switchToHttp().getRequest<AuthorizationRequest>();
-    const userUuid = request.user?.sub;
-    if (!userUuid) throw new UnauthorizedException();
+    const user = request.user;
+    if (!user?.sub) throw new UnauthorizedException();
 
     try {
-      const snapshot = await this.authorization.resolve(userUuid);
+      const snapshot = await this.authorization.resolve(user.sub);
       if (permissions) {
         this.authorization.assertPermissions(
           snapshot,
@@ -65,7 +65,7 @@ export class AuthorizationGuard implements CanActivate {
       }
 
       request.user = {
-        ...request.user,
+        ...user,
         sub: snapshot.userUuid,
         permissions: [...snapshot.permissionCodes],
       };
