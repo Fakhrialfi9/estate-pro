@@ -1,15 +1,271 @@
-model SalesOpportunity {
-  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid String @unique @default(uuid()) @db.Char(36)
-  leadUuid String @unique @db.Char(36)
-  contactUuid String @db.Char(36)
-  ownerUserUuid String? @db.Char(36)
-  status String @default("OPEN") @db.VarChar(30)
-  idempotencyKey String @unique @db.VarChar(120)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model SalesPipeline {
+  id            BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid          String              @unique @default(uuid()) @db.Char(36)
+  name          String              @db.VarChar(150)
+  description   String?             @db.Text
+  status        String              @default("ACTIVE") @db.VarChar(20)
+  sortOrder     Int                 @default(0) @map("sort_order")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  stages        SalesPipelineStage[]
+  opportunities SalesOpportunity[]
+  @@index([status, sortOrder])
+  @@map("sales_pipelines")
+}
 
-  @@index([contactUuid])
+model SalesPipelineStage {
+  id            BigInt                        @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid          String                        @unique @default(uuid()) @db.Char(36)
+  pipelineUuid  String                        @db.Char(36)
+  code          String                        @db.VarChar(60)
+  name          String                        @db.VarChar(150)
+  sortOrder     Int                           @map("sort_order")
+  probability   Int                           @default(0)
+  isTerminal    Boolean                       @default(false) @map("is_terminal")
+  isActive      Boolean                       @default(true) @map("is_active")
+  createdAt     DateTime                      @default(now()) @map("created_at")
+  updatedAt     DateTime                      @updatedAt @map("updated_at")
+  pipeline      SalesPipeline                 @relation(fields: [pipelineUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  opportunities SalesOpportunity[]
+  historyTo    SalesOpportunityStageHistory[] @relation("StageHistoryTo")
+  historyFrom  SalesOpportunityStageHistory[] @relation("StageHistoryFrom")
+  @@unique([pipelineUuid, code])
+  @@unique([pipelineUuid, sortOrder])
+  @@index([pipelineUuid, isActive, sortOrder])
+  @@map("sales_pipeline_stages")
+}
+
+model SalesOpportunity {
+  id             BigInt                         @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid           String                         @unique @default(uuid()) @db.Char(36)
+  leadUuid       String                         @unique @db.Char(36)
+  contactUuid    String                         @db.Char(36)
+  ownerUserUuid  String?                        @db.Char(36)
+  teamUuid       String?                        @db.Char(36)
+  pipelineUuid   String?                        @db.Char(36)
+  stageUuid      String?                        @db.Char(36)
+  propertyUuid   String?                        @db.Char(36)
+  title          String                         @db.VarChar(180)
+  valueAmount    Decimal?                       @db.Decimal(19, 4)
+  currency       String?                        @db.Char(3)
+  status         String                         @default("OPEN") @db.VarChar(30)
+  version        Int                            @default(1)
+  idempotencyKey String                         @unique @db.VarChar(120)
+  createdAt      DateTime                       @default(now())
+  updatedAt      DateTime                       @updatedAt
+  pipeline       SalesPipeline?                 @relation(fields: [pipelineUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  stage          SalesPipelineStage?            @relation(fields: [stageUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  stageHistory   SalesOpportunityStageHistory[]
+  activities     SalesActivity[]
+  viewings       SalesViewing[]
+  negotiations   SalesNegotiation[]
+  deal           SalesDeal?
   @@index([ownerUserUuid, status])
+  @@index([teamUuid, status])
+  @@index([pipelineUuid, stageUuid, status])
+  @@index([propertyUuid, status])
+  @@index([createdAt])
   @@map("sales_opportunities")
+}
+
+model SalesOpportunityStageHistory {
+  id              BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid            String              @unique @default(uuid()) @db.Char(36)
+  opportunityUuid String              @db.Char(36)
+  fromStageUuid   String?             @db.Char(36)
+  toStageUuid     String?             @db.Char(36)
+  fromStatus      String?             @db.VarChar(30)
+  toStatus        String              @db.VarChar(30)
+  actorUserUuid   String              @db.Char(36)
+  reason          String?             @db.VarChar(500)
+  occurredAt      DateTime            @default(now()) @map("occurred_at")
+  opportunity     SalesOpportunity    @relation(fields: [opportunityUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  fromStage       SalesPipelineStage? @relation("StageHistoryFrom", fields: [fromStageUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  toStage         SalesPipelineStage? @relation("StageHistoryTo", fields: [toStageUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  @@index([opportunityUuid, occurredAt])
+  @@map("sales_opportunity_stage_history")
+}
+
+model SalesActivity {
+  id              BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid            String           @unique @default(uuid()) @db.Char(36)
+  opportunityUuid String           @db.Char(36)
+  actorUserUuid   String           @db.Char(36)
+  type            String           @db.VarChar(30)
+  status          String           @default("OPEN") @db.VarChar(20)
+  subject         String           @db.VarChar(180)
+  body            String?          @db.Text
+  dueAt           DateTime?        @map("due_at")
+  completedAt     DateTime?        @map("completed_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  opportunity     SalesOpportunity @relation(fields: [opportunityUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  @@index([opportunityUuid, status, dueAt])
+  @@index([actorUserUuid, dueAt])
+  @@map("sales_activities")
+}
+
+model SalesViewing {
+  id              BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid            String           @unique @default(uuid()) @db.Char(36)
+  opportunityUuid String           @db.Char(36)
+  propertyUuid    String           @db.Char(36)
+  contactUuid     String           @db.Char(36)
+  scheduledAt     DateTime         @map("scheduled_at")
+  status          String           @default("REQUESTED") @db.VarChar(20)
+  notes           String?          @db.Text
+  actorUserUuid   String           @db.Char(36)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  opportunity     SalesOpportunity @relation(fields: [opportunityUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  @@index([opportunityUuid, scheduledAt])
+  @@index([propertyUuid, scheduledAt, status])
+  @@map("sales_viewings")
+}
+
+model SalesNegotiation {
+  id              BigInt                       @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid            String                       @unique @default(uuid()) @db.Char(36)
+  opportunityUuid String                       @db.Char(36)
+  openedByUuid    String                       @db.Char(36)
+  status          String                       @default("OPEN") @db.VarChar(20)
+  notes           String?                      @db.Text
+  version         Int                          @default(1)
+  createdAt       DateTime                     @default(now()) @map("created_at")
+  updatedAt       DateTime                     @updatedAt @map("updated_at")
+  opportunity     SalesOpportunity             @relation(fields: [opportunityUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  history         SalesNegotiationHistory[]
+  offers          SalesOffer[]
+  @@index([opportunityUuid, status])
+  @@map("sales_negotiations")
+}
+
+model SalesNegotiationHistory {
+  id              BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid            String            @unique @default(uuid()) @db.Char(36)
+  negotiationUuid String            @db.Char(36)
+  fromStatus      String?           @db.VarChar(20)
+  toStatus        String            @db.VarChar(20)
+  actorUserUuid   String            @db.Char(36)
+  occurredAt      DateTime          @default(now()) @map("occurred_at")
+  negotiation     SalesNegotiation  @relation(fields: [negotiationUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  @@index([negotiationUuid, occurredAt])
+  @@map("sales_negotiation_history")
+}
+
+model SalesOffer {
+  id              BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid            String           @unique @default(uuid()) @db.Char(36)
+  negotiationUuid String           @db.Char(36)
+  version         Int
+  amount          Decimal          @db.Decimal(19, 4)
+  currency        String           @db.Char(3)
+  status          String           @default("DRAFT") @db.VarChar(20)
+  expiresAt       DateTime?        @map("expires_at")
+  actorUserUuid   String           @db.Char(36)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  negotiation     SalesNegotiation @relation(fields: [negotiationUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  deals           SalesDeal[]
+  @@unique([negotiationUuid, version])
+  @@index([negotiationUuid, status, version])
+  @@map("sales_offers")
+}
+
+model SalesDeal {
+  id              BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid            String           @unique @default(uuid()) @db.Char(36)
+  opportunityUuid String           @unique @db.Char(36)
+  offerUuid       String?          @db.Char(36)
+  status          String           @default("OPEN") @db.VarChar(30)
+  ownerUserUuid   String?          @db.Char(36)
+  currency        String?          @db.Char(3)
+  totalAmount     Decimal?         @db.Decimal(19, 4)
+  version         Int              @default(1)
+  idempotencyKey  String           @unique @db.VarChar(120)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  opportunity     SalesOpportunity @relation(fields: [opportunityUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  offer           SalesOffer?      @relation(fields: [offerUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  items           SalesDealItem[]
+  closing         SalesClosing?
+  commission      SalesCommission?
+  @@index([ownerUserUuid, status, createdAt])
+  @@index([offerUuid])
+  @@map("sales_deals")
+}
+
+model SalesDealItem {
+  id           BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid         String    @unique @default(uuid()) @db.Char(36)
+  dealUuid     String    @db.Char(36)
+  propertyUuid String?   @db.Char(36)
+  description  String    @db.VarChar(255)
+  quantity     Int
+  unitAmount   Decimal   @db.Decimal(19, 4)
+  lineAmount   Decimal   @db.Decimal(19, 4)
+  currency     String    @db.Char(3)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deal         SalesDeal @relation(fields: [dealUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  @@index([dealUuid])
+  @@map("sales_deal_items")
+}
+
+model SalesClosing {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid           String    @unique @default(uuid()) @db.Char(36)
+  dealUuid       String    @unique @db.Char(36)
+  method         String    @db.VarChar(40)
+  closedAt       DateTime  @map("closed_at")
+  actorUserUuid  String    @db.Char(36)
+  idempotencyKey String    @unique @db.VarChar(120)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  deal           SalesDeal @relation(fields: [dealUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  @@map("sales_closings")
+}
+
+model SalesLostReason {
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid      String   @unique @default(uuid()) @db.Char(36)
+  code      String   @unique @db.VarChar(60)
+  name      String   @db.VarChar(180)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([isActive])
+  @@map("sales_lost_reasons")
+}
+
+model SalesCommissionRule {
+  id          BigInt               @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String               @unique @default(uuid()) @db.Char(36)
+  code        String               @unique @db.VarChar(60)
+  name        String               @db.VarChar(180)
+  ratePercent Decimal              @db.Decimal(7, 4) @map("rate_percent")
+  isActive    Boolean              @default(true) @map("is_active")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+  commissions SalesCommission[]
+  @@index([isActive])
+  @@map("sales_commission_rules")
+}
+
+model SalesCommission {
+  id             BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid           String              @unique @default(uuid()) @db.Char(36)
+  dealUuid       String              @unique @db.Char(36)
+  ruleUuid       String              @db.Char(36)
+  baseAmount     Decimal             @db.Decimal(19, 4) @map("base_amount")
+  ratePercent    Decimal             @db.Decimal(7, 4) @map("rate_percent")
+  amount         Decimal             @db.Decimal(19, 4)
+  currency       String              @db.Char(3)
+  status         String              @default("PENDING") @db.VarChar(20)
+  calculatedAt   DateTime            @default(now()) @map("calculated_at")
+  approvedAt     DateTime?           @map("approved_at")
+  settledAt      DateTime?           @map("settled_at")
+  idempotencyKey String              @unique @db.VarChar(120)
+  rule           SalesCommissionRule @relation(fields: [ruleUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  deal           SalesDeal            @relation(fields: [dealUuid], references: [uuid], onDelete: Restrict, onUpdate: Cascade)
+  @@index([status, calculatedAt])
+  @@map("sales_commissions")
 }
