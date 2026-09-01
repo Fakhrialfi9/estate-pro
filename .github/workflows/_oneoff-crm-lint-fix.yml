@@ -32,7 +32,6 @@ jobs:
         run: |
           node <<'NODE'
           const fs = require('node:fs');
-
           const read = (file) => fs.readFileSync(file, 'utf8');
           const write = (file, content) => fs.writeFileSync(file, content);
 
@@ -94,8 +93,8 @@ jobs:
           const service = 'src/modules/crm/application/crm.service.ts';
           let svc = read(service);
           svc = svc.replace(
-            "  duplicates(u: string) {\n    return this.unwrap(() => this.repo.detectDuplicates(u));\n  }",
-            "  duplicates(u: string): Promise<readonly unknown[]> {\n    return this.unwrap<readonly unknown[]>(() => this.repo.detectDuplicates(u));\n  }",
+            /  duplicates\(u: string\) \{\n    return this\.unwrap\(\(\) => this\.repo\.detectDuplicates\(u\)\);\n  \}/,
+            "  async duplicates(u: string): Promise<readonly unknown[]> {\n    return await this.unwrap<readonly unknown[]>(() => this.repo.detectDuplicates(u));\n  }",
           );
           write(service, svc);
 
