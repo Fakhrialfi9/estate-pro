@@ -7,8 +7,29 @@ import type {
 
 export const MATCHING_REPOSITORY = Symbol('MATCHING_REPOSITORY');
 export const SAVED_PROPERTY_PORT = Symbol('SAVED_PROPERTY_PORT');
+
 export type StoredPreference = PropertyPreferenceState & {
   status: 'ACTIVE' | 'ARCHIVED';
+};
+
+export type StoredRecommendation = {
+  readonly uuid: string;
+  readonly subjectType: MatchingSubjectType;
+  readonly subjectUuid: string;
+  readonly preferenceVersion: number;
+  readonly algorithmVersion: number;
+  readonly source: string;
+  readonly generatedAt: Date;
+  readonly candidateCount: number;
+  readonly stale: boolean;
+  readonly items: readonly {
+    readonly uuid: string;
+    readonly propertyUuid: string;
+    readonly listingUuid: string;
+    readonly rank: number;
+    readonly score: number;
+    readonly explanation: unknown;
+  }[];
 };
 
 export interface SavedPropertyPort {
@@ -70,7 +91,7 @@ export interface MatchingRepository extends SavedPropertyPort {
   getLatestRecommendation(
     subjectType: MatchingSubjectType,
     subjectUuid: string,
-  ): Promise<unknown | null>;
+  ): Promise<StoredRecommendation | null>;
   listRecommendationHistory(
     subjectType: MatchingSubjectType,
     subjectUuid: string,
