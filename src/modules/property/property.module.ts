@@ -34,10 +34,8 @@ import { PrismaPropertyExtrasRepository } from './infrastructure/persistence/pri
 import { PROPERTY_LIFECYCLE_REPOSITORY } from './domain/repositories/property-lifecycle.repository.js';
 import { PrismaPropertyLifecycleRepository } from './infrastructure/persistence/prisma-property-lifecycle.repository.js';
 import { PropertyMetricsInterceptor } from './observability/property-metrics.interceptor.js';
-import {
-  PROPERTY_PUBLIC_PORT,
-  type PropertyPublicPort,
-} from '../../common/contracts/property-public.port.js';
+import { PROPERTY_PUBLIC_PORT } from '../../common/contracts/property-public.port.js';
+
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule, ListingModule],
   controllers: [
