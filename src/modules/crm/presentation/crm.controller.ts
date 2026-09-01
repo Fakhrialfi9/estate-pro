@@ -220,6 +220,19 @@ export class CrmController {
   }
   @Patch('contacts/:uuid')
   @RequirePermissions('crm.contacts.update')
+  @ApiResponse({
+    status: 200,
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'object',
+          additionalProperties: true,
+        },
+      },
+      required: ['data'],
+    },
+  })
   updateContact(
     @Req() r: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string,
