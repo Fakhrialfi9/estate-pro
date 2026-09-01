@@ -12,7 +12,10 @@ import {
 } from '../../domain/crm.types.js';
 import type { CrmRepository } from '../../domain/repositories/crm.repository.js';
 
-type Row = Record<string, unknown>;
+type Row = Record<string, unknown> & {
+  id?: bigint | number;
+  activityUuid?: string | bigint | number;
+};
 const asRow = (v: unknown): Row =>
   v && typeof v === 'object' ? (v as Row) : {};
 const pageResult = (
@@ -500,7 +503,7 @@ export class PrismaCrmRepository implements CrmRepository {
         status: {
           select: { uuid: true, code: true, name: true, isClosed: true },
         },
-        tags: {
+        tagLinks: {
           include: { tag: { select: { uuid: true, code: true, name: true } } },
         },
         notes: { orderBy: { createdAt: 'desc' } },
@@ -980,7 +983,7 @@ export class PrismaCrmRepository implements CrmRepository {
     const p = pageOf(q);
     const map = delegateName[kind];
     if (!map) throw new Error('Invalid configuration type');
-    const d = (this.prisma as Row)[map] as {
+    const d = (this.prisma as unknown as Row)[map] as {
       findMany: (x: object) => Promise<unknown[]>;
       count: (x: object) => Promise<number>;
     };
