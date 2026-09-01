@@ -57,7 +57,11 @@ interface AuthenticatedRequest extends Request {
   user?: { sub?: string; permissions?: string[] };
 }
 
-const actor = (request: AuthenticatedRequest, userAgent?: string, requestId?: string) => ({
+const actor = (
+  request: AuthenticatedRequest,
+  userAgent?: string,
+  requestId?: string,
+) => ({
   actorUuid: request.user?.sub ?? '',
   permissions: request.user?.permissions ?? [],
   ipAddress: request.ip,
