@@ -137,7 +137,19 @@ export class CrmController {
   @Post('contacts')
   @RequirePermissions('crm.contacts.create')
   @ApiOperation({ summary: 'Create contact' })
-  @ApiResponse({ status: 201 })
+  @ApiResponse({
+    status: 201,
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'object',
+          additionalProperties: true,
+        },
+      },
+      required: ['data'],
+    },
+  })
   @ApiResponse({ status: 400 })
   @ApiResponse({ status: 401 })
   @ApiResponse({ status: 403 })
