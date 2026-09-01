@@ -20,6 +20,8 @@ import type {
   OfferInput,
   OpportunityInput,
   PipelineInput,
+  SalesDealRecord,
+  SalesNegotiationRecord,
   SalesOpportunityRow,
   SalesRecord,
   SalesRepository,
@@ -590,8 +592,15 @@ export class PrismaSalesRepository implements SalesRepository {
       return negotiation;
     });
   }
-  async getNegotiation(uuid: string) {
-    return this.prisma.salesNegotiation.findUnique({ where: { uuid } });
+  async getNegotiation(
+    uuid: string,
+  ): Promise<SalesNegotiationRecord | null> {
+    const record = await this.prisma.salesNegotiation.findUnique({
+      where: { uuid },
+    });
+    return record
+      ? { ...record, status: record.status as NegotiationStatus }
+      : null;
   }
   async transitionNegotiation(
     uuid: string,
@@ -733,11 +742,12 @@ export class PrismaSalesRepository implements SalesRepository {
       return deal;
     });
   }
-  async getDeal(uuid: string) {
-    return this.prisma.salesDeal.findUnique({
+  async getDeal(uuid: string): Promise<SalesDealRecord | null> {
+    const record = await this.prisma.salesDeal.findUnique({
       where: { uuid },
       include: { items: true, closing: true, commission: true },
     });
+    return record ? { ...record, status: record.status as DealStatus } : null;
   }
   async listDeals(query: Record<string, unknown>) {
     const page = pageOf(query.page);
