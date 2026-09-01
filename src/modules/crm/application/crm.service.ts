@@ -472,10 +472,7 @@ export class CrmService {
     return this.unwrap(async () => {
       if (i.field !== undefined && !SCORE_FIELDS.has(toText(i.field)))
         throw new BadRequestException('Unsupported score rule field');
-      if (
-        i.operator !== undefined &&
-        !SCORE_OPERATORS.has(toText(i.operator))
-      )
+      if (i.operator !== undefined && !SCORE_OPERATORS.has(toText(i.operator)))
         throw new BadRequestException('Unsupported score rule operator');
       const r = await this.repo.updateScoreRule(u, i);
       await this.auditRecord('CRM_SCORE_RULE_UPDATED', 'score_rule', u, a);
