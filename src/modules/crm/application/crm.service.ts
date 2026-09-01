@@ -445,59 +445,28 @@ export class CrmService {
   score(u: string) {
     return this.unwrap(() => this.repo.getLeadScore(u));
   }
-  scoreRules() {
-    return this.repo.listScoreRules();
-  }
-  createScoreRule(i: Record<string, unknown>, a: CrmActor) {
-    return this.unwrap(async () => {
-      if (
-        !SCORE_FIELDS.has(String(i.field)) ||
-        !SCORE_OPERATORS.has(String(i.operator))
-      )
-        throw new BadRequestException(
-          'Unsupported score rule field or operator',
-        );
-      const r = await this.repo.createScoreRule(i);
-      await this.auditRecord(
-        'CRM_SCORE_RULE_CREATED',
-        'score_rule',
-        (r as Record<string, unknown>).uuid as string,
-        a,
-      );
-      return r;
-    });
-  }
-  updateScoreRule(u: string, i: Record<string, unknown>, a: CrmActor) {
-    return this.unwrap(async () => {
-      if (i.field !== undefined && !SCORE_FIELDS.has(String(i.field)))
-        throw new BadRequestException('Unsupported score rule field');
-      if (i.operator !== undefined && !SCORE_OPERATORS.has(String(i.operator)))
-        throw new BadRequestException('Unsupported score rule operator');
-      const r = await this.repo.updateScoreRule(u, i);
-      await this.auditRecord('CRM_SCORE_RULE_UPDATED', 'score_rule', u, a);
-      return r;
-    });
-  }
-  deleteScoreRule(u: string, a: CrmActor) {
-    return this.unwrap(async () => {
-      await this.repo.deleteScoreRule(u);
-      await this.auditRecord('CRM_SCORE_RULE_DELETED', 'score_rule', u, a);
-    });
-  }
   recalcScore(u: string, a: CrmActor) {
     return this.unwrap(async () => {
-      const lead = (await this.repo.getLead(u)) as Record<string, unknown>;
-      const contact = lead.contact as Record<string, unknown>;
-      const rules = (await this.repo.listScoreRules()) as ScoreRule[];
+      const lead = await this.repo.getLead(u);
+      const rawRules = await this.repo.listScoreRules();
+      const rules: ScoreRule[] = rawRules.map((x) => ({
+        uuid: String((x as Record<string, unknown>).uuid),
+        field: String((x as Record<string, unknown>).field),
+        operator: String((x as Record<string, unknown>).operator),
+        value: String((x as Record<string, unknown>).value),
+        points: Number((x as Record<string, unknown>).points),
+        isActive: Boolean((x as Record<string, unknown>).isActive),
+      }));
+      for (const rule of rules) {
+        if (!SCORE_FIELDS.has(rule.field) || !SCORE_OPERATORS.has(rule.operator))
+          throw new BadRequestException('Invalid score rule');
+      }
       const input: ScoreInput = {
-        values: {
-          displayName: contact.displayName,
-          source: (lead.source as Record<string, unknown>)?.code,
-          status: (lead.status as Record<string, unknown>)?.code,
-          type: (lead.type as Record<string, unknown>)?.code,
-          ownerUserUuid: lead.ownerUserUuid,
-          score: lead.score,
-        },
+        displayName: String((lead as Record<string, unknown>).displayName),
+        source: String((lead as Record<string, unknown>).source),
+        status: String((lead as Record<string, unknown>).status),
+        type: String((lead as Record<string, unknown>).type),
+        ownerUserUuid: String((lead as Record<string, unknown>).ownerUserUuid),
       };
       const calculated = calculateScore(input, rules);
       const r = await this.repo.saveScore(
@@ -509,14 +478,16 @@ export class CrmService {
       return { ...r, factors: calculated.factors };
     });
   }
-  duplicates(u: string) {
-    return this.unwrap(() => this.repo.detectDuplicates(u));
+  duplicates(u: string): Promise<readonly unknown[]> {
+    return this.unwrap<readonly unknown[]>(() => this.repo.detectDuplicates(u));
   }
   duplicateList(q: PageQuery) {
     return this.repo.listDuplicates(q);
   }
   duplicateReview(u: string, status: string, a: CrmActor) {
     return this.unwrap(async () => {
+      if (!['CONFIRMED', 'IGNORED'].includes(status))
+        throw new BadRequestException('Invalid duplicate review status');
       const r = await this.repo.reviewDuplicate(u, status, a);
       await this.auditRecord('CRM_DUPLICATE_REVIEWED', 'duplicate', u, a);
       return r;
@@ -524,14 +495,10 @@ export class CrmService {
   }
   merge(source: string, target: string, a: CrmActor) {
     return this.unwrap(async () => {
+      if (source === target)
+        throw new BadRequestException('Cannot merge a lead with itself');
       const r = await this.repo.mergeLeads(source, target, a);
-      await this.auditRecord(
-        'CRM_LEAD_MERGED',
-        'lead',
-        target,
-        a,
-        `source=${source}`,
-      );
+      await this.auditRecord('CRM_LEAD_MERGED', 'lead', target, a);
       return r;
     });
   }
@@ -542,26 +509,18 @@ export class CrmService {
   configCreate(kind: string, i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
       this.assertConfigKind(kind);
+      if (!i.code || !i.name)
+        throw new BadRequestException('Configuration code and name are required');
       const r = await this.repo.createConfig(kind, i);
-      await this.auditRecord(
-        `CRM_${kind.toUpperCase()}_CREATED`,
-        kind,
-        (r as Record<string, unknown>).uuid as string,
-        a,
-      );
+      await this.auditRecord('CRM_CONFIG_CREATED', kind, (r as Record<string, unknown>).uuid as string, a);
       return r;
     });
   }
-  configUpdate(
-    kind: string,
-    u: string,
-    i: Record<string, unknown>,
-    a: CrmActor,
-  ) {
+  configUpdate(kind: string, u: string, i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
       this.assertConfigKind(kind);
       const r = await this.repo.updateConfig(kind, u, i);
-      await this.auditRecord(`CRM_${kind.toUpperCase()}_UPDATED`, kind, u, a);
+      await this.auditRecord('CRM_CONFIG_UPDATED', kind, u, a);
       return r;
     });
   }
@@ -569,35 +528,28 @@ export class CrmService {
     return this.unwrap(async () => {
       this.assertConfigKind(kind);
       await this.repo.archiveConfig(kind, u);
-      await this.auditRecord(`CRM_${kind.toUpperCase()}_ARCHIVED`, kind, u, a);
+      await this.auditRecord('CRM_CONFIG_ARCHIVED', kind, u, a);
     });
   }
   inquiry(i: Record<string, unknown>, a?: CrmActor) {
     return this.unwrap(async () => {
-      for (const field of ['message', 'serviceContext'])
-        if (typeof i[field] === 'string') assertPlainText(String(i[field]));
-      if (i.propertyUuid)
-        await this.property.getProperty(String(i.propertyUuid));
-      const r = await this.repo.createInquiry(i);
-      if (a)
-        await this.auditRecord(
-          'CRM_INQUIRY_CREATED',
-          'inquiry',
-          (r as Record<string, unknown>).uuid as string,
-          a,
-        );
-      return r;
+      if (i.website) throw new ForbiddenException('Spam detected');
+      const intent = String(i.intent);
+      if (!['PROPERTY_INQUIRY', 'CONTACT_MESSAGE', 'PRICE_REQUEST', 'CALLBACK_REQUEST', 'CONSULTATION', 'BROCHURE_REQUEST', 'VIEWING_REQUEST'].includes(intent))
+        throw new BadRequestException('Unsupported inquiry intent');
+      if (i.message !== undefined) assertPlainText(normalizeText(String(i.message), 5000));
+      const payload = { ...i, ...(a ? { actorUuid: a.actorUuid, requestId: a.requestId } : {}) };
+      return this.repo.createInquiry(payload);
     });
+  }
+  inquiryList(q: PageQuery) {
+    return this.repo.listInquiries(q);
   }
   inquiryGet(u: string) {
     return this.unwrap(() => this.repo.getInquiry(u));
   }
-  inquiryList(q: PageQuery & Record<string, unknown>) {
-    return this.repo.listInquiries(q);
-  }
   inquiryUpdate(u: string, i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
-      if (typeof i.message === 'string') assertPlainText(String(i.message));
       const r = await this.repo.updateInquiry(u, i);
       await this.auditRecord('CRM_INQUIRY_UPDATED', 'inquiry', u, a);
       return r;
@@ -612,113 +564,71 @@ export class CrmService {
   }
   activityCreate(i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
-      if (i.description) assertPlainText(String(i.description));
       const r = await this.repo.createActivity(i);
-      await this.auditRecord(
-        'CRM_ACTIVITY_CREATED',
-        'activity',
-        (r as Record<string, unknown>).uuid as string,
-        a,
-      );
+      await this.auditRecord('CRM_ACTIVITY_CREATED', 'activity', (r as Record<string, unknown>).uuid as string, a);
       return r;
     });
+  }
+  activityList(q: PageQuery) {
+    return this.repo.listActivities(q);
   }
   activityGet(u: string) {
     return this.unwrap(() => this.repo.getActivity(u));
   }
-  activityList(q: PageQuery & Record<string, unknown>) {
-    return this.repo.listActivities(q);
-  }
   activityUpdate(u: string, i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
-      for (const field of ['subject', 'description'])
-        if (typeof i[field] === 'string') assertPlainText(String(i[field]));
       const r = await this.repo.updateActivity(u, i);
       await this.auditRecord('CRM_ACTIVITY_UPDATED', 'activity', u, a);
       return r;
     });
   }
-  activityTransition(u: string, status: string, a: CrmActor) {
+  activityStatus(u: string, status: string, a: CrmActor) {
     return this.unwrap(async () => {
       const r = await this.repo.transitionActivity(u, status, a);
       await this.auditRecord('CRM_ACTIVITY_STATUS_CHANGED', 'activity', u, a);
       return r;
     });
   }
+  timeline(u: string, q: PageQuery) {
+    return this.repo.activityTimeline(u, q);
+  }
   communicationCreate(i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
-      if (i.providerSecret)
-        throw new BadRequestException(
-          'Provider secrets are not accepted by the API',
-        );
-      assertPlainText(String(i.body));
-      const r = await this.repo.createCommunication(i);
-      await this.auditRecord(
-        'CRM_COMMUNICATION_CREATED',
-        'communication',
-        (r as Record<string, unknown>).uuid as string,
-        a,
-      );
+      const payload = this.validateTemplate(i);
+      const r = await this.repo.createCommunication(payload);
+      await this.auditRecord('CRM_COMMUNICATION_CREATED', 'communication', (r as Record<string, unknown>).uuid as string, a);
       return r;
     });
+  }
+  communicationList(q: PageQuery) {
+    return this.repo.listCommunications(q);
   }
   communicationGet(u: string) {
     return this.unwrap(() => this.repo.getCommunication(u));
   }
-  communicationList(q: PageQuery & Record<string, unknown>) {
-    return this.repo.listCommunications(q);
-  }
-  communicationTransition(
-    u: string,
-    status: string,
-    i: Record<string, unknown>,
-    a: CrmActor,
-  ) {
+  communicationStatus(u: string, status: string, a: CrmActor) {
     return this.unwrap(async () => {
-      for (const field of ['providerMessageId', 'providerError'])
-        if (i[field] !== undefined && typeof i[field] === 'string')
-          assertPlainText(String(i[field]));
-      if (i.providerSecret)
-        throw new BadRequestException(
-          'Provider secrets are not accepted by the API',
-        );
-      const r = await this.repo.transitionCommunication(u, status, i);
-      await this.auditRecord(
-        'CRM_COMMUNICATION_STATUS_CHANGED',
-        'communication',
-        u,
-        a,
-      );
+      const r = await this.repo.transitionCommunication(u, status, a as unknown as Record<string, unknown>);
+      await this.auditRecord('CRM_COMMUNICATION_STATUS_CHANGED', 'communication', u, a);
       return r;
     });
   }
-  templates(q: PageQuery) {
+  templateList(q: PageQuery) {
     return this.repo.listTemplates(q);
   }
   templateCreate(i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
-      const validated = this.validateTemplate(i);
-      const body = String(validated.body);
-      const r = await this.repo.createTemplate({ ...validated, body });
-      await this.auditRecord(
-        'CRM_TEMPLATE_CREATED',
-        'communication_template',
-        (r as Record<string, unknown>).uuid as string,
-        a,
-      );
+      const payload = this.validateTemplate(i);
+      const r = await this.repo.createTemplate(payload);
+      await this.auditRecord('CRM_TEMPLATE_CREATED', 'template', (r as Record<string, unknown>).uuid as string, a);
       return r;
     });
   }
   templateUpdate(u: string, i: Record<string, unknown>, a: CrmActor) {
     return this.unwrap(async () => {
-      const validated = this.validateTemplate(i);
-      const r = await this.repo.updateTemplate(u, validated);
-      await this.auditRecord(
-        'CRM_TEMPLATE_UPDATED',
-        'communication_template',
-        u,
-        a,
-      );
+      const payload = this.validateTemplate(i);
+      const r = await this.repo.updateTemplate(u, payload);
+      await this.auditRecord('CRM_TEMPLATE_UPDATED', 'template', u, a);
       return r;
     });
   }
