@@ -1,4 +1,8 @@
-export type LeadLifecycleAction = 'QUALIFY' | 'NURTURE' | 'REACTIVATE' | 'CLOSE';
+export type LeadLifecycleAction =
+  | 'QUALIFY'
+  | 'NURTURE'
+  | 'REACTIVATE'
+  | 'CLOSE';
 
 const ACTIVE_STATUSES = new Set(['NEW', 'CONTACTED', 'NURTURING']);
 const CLOSED_STATUSES = new Set(['CLOSED_WON', 'CLOSED_LOST', 'ARCHIVED']);
