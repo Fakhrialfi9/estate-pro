@@ -23,8 +23,11 @@ import { RolesModule } from './modules/roles/roles.module.js';
 import { SystemModule } from './modules/system/system.module.js';
 import { ContentModule } from './modules/content/content.module.js';
 import { CrmModule } from './modules/crm/crm.module.js';
+import { SalesModule } from './modules/sales/sales.module.js';
+
 const shouldSkipThrottling = (context: ExecutionContext): boolean =>
   context.getClass() === HealthController;
+
 const validateEnvironment = (
   env: Record<string, unknown>,
 ): Record<string, unknown> => {
@@ -36,6 +39,7 @@ const validateEnvironment = (
   if (result.error) throw result.error;
   return result.value as Record<string, unknown>;
 };
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -71,6 +75,7 @@ const validateEnvironment = (
     SystemModule,
     ContentModule,
     CrmModule,
+    SalesModule,
     HealthModule,
   ],
   controllers: [AppController],
