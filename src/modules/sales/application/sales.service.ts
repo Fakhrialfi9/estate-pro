@@ -665,7 +665,7 @@ export class SalesService {
     this.require(actor, 'sales.deals.read');
     const deal = await this.repository.getDeal(uuid);
     if (!deal) throw new NotFoundException('Deal not found');
-    this.ensureOwner(actor, (deal.ownerUserUuid as string | null) ?? null);
+    this.ensureOwner(actor, deal.ownerUserUuid);
     return deal;
   }
 
@@ -814,7 +814,7 @@ export class SalesService {
     return result;
   }
 
-  async reopenDeal(uuid: string, reason: string, actor: SalesActor) {
+  reopenDeal(uuid: string, reason: string, actor: SalesActor) {
     this.require(actor, 'sales.deals.reopen');
     if (!reason.trim())
       throw new BadRequestException('Reopen reason is required');
