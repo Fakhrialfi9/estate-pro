@@ -82,7 +82,7 @@ const scaledAmount = (value: string): bigint => {
     throw new ConflictException(
       'Amount must be a non-negative decimal with up to 4 fraction digits',
     );
-  const [whole, fractional = ''] = value.split('.');
+  const [whole = '0', fractional = ''] = value.split('.');
   return BigInt(whole) * 10000n + BigInt((fractional + '0000').slice(0, 4));
 };
 const formatAmount = (value: bigint): string =>
