@@ -637,7 +637,7 @@ export class SalesController {
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
     @Body() dto: ReopenDto,
   ) {
-    return this.sales.reopenDeal(uuid, dto.reason, actorOf(request)).then(data);
+    return this.sales.reopenDeal(uuid, dto.reason, actorOf(request));
   }
 
   @Get('lost-reasons')
