@@ -77,7 +77,8 @@ jobs:
 
           const publicController = 'src/modules/crm/presentation/crm-public-inquiry.controller.ts';
           let pc = read(publicController);
-          pc = pc.replace("    @Headers('user-agent') ua?: string,\n    @Headers('x-request-id') rid?: string,\n", "    @Headers('user-agent') _ua?: string,\n    @Headers('x-request-id') _rid?: string,\n");
+          pc = pc.replace("import { Body, Controller, Headers, Post } from '@nestjs/common';", "import { Body, Controller, Post } from '@nestjs/common';");
+          pc = pc.replace("    @Headers('user-agent') ua?: string,\n    @Headers('x-request-id') rid?: string,\n", '');
           write(publicController, pc);
 
           const propertyModule = 'src/modules/property/property.module.ts';
@@ -89,6 +90,19 @@ jobs:
           let t = read(test);
           t = t.replace("import { INestApplication } from '@nestjs/common';", "import type { INestApplication } from '@nestjs/common';");
           write(test, t);
+
+          const service = 'src/modules/crm/application/crm.service.ts';
+          let svc = read(service);
+          svc = svc.replace(
+            "  duplicates(u: string) {\n    return this.unwrap(() => this.repo.detectDuplicates(u));\n  }",
+            "  duplicates(u: string): Promise<readonly unknown[]> {\n    return this.unwrap<readonly unknown[]>(() => this.repo.detectDuplicates(u));\n  }",
+          );
+          write(service, svc);
+
+          const repo = 'src/modules/crm/infrastructure/persistence/prisma-crm.repository.ts';
+          let rp = read(repo);
+          rp = rp.replace('  async transitionActivity(uuid: string, status: string, a: CrmActor) {', '  async transitionActivity(uuid: string, status: string) {');
+          write(repo, rp);
           NODE
       - name: Format modified sources
         run: npm exec -- prettier --write "src/modules/crm/**/*.ts" "src/modules/property/property.module.ts" "test/e2e/crm-security.e2e.spec.ts" --no-error-on-unmatched-pattern
