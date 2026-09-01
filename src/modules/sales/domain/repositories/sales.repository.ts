@@ -39,6 +39,7 @@ export interface SalesNegotiationRecord extends SalesRecord {
 export interface SalesDealRecord extends SalesRecord {
   readonly status: DealStatus;
   readonly ownerUserUuid: string | null;
+  readonly version: number;
 }
 
 export interface PipelineInput {
