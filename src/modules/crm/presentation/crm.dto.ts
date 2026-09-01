@@ -24,6 +24,7 @@ export class PageDto {
   @IsIn(['createdAt', 'updatedAt', 'displayName', 'score', 'code'])
   sortBy?: string;
   @IsOptional() @IsIn(['asc', 'desc']) sortDirection: 'asc' | 'desc' = 'desc';
+  readonly [key: string]: unknown;
 }
 export class ContactDto {
   @IsString() @MinLength(1) @MaxLength(100) firstName!: string;
@@ -218,31 +219,34 @@ export class ActivityStatusDto {
   status!: string;
 }
 export class CommunicationDto {
-  @IsIn(['EMAIL', 'WHATSAPP', 'SMS']) channel!: string;
+  @IsIn(['EMAIL', 'SMS', 'WHATSAPP', 'CALL'])
+  channel!: string;
   @IsOptional() @IsIn(['INBOUND', 'OUTBOUND']) direction?: string;
-  @IsOptional() @IsUUID() contactUuid?: string;
+  @IsUUID() contactUuid!: string;
   @IsOptional() @IsUUID() leadUuid?: string;
   @IsOptional() @IsUUID() activityUuid?: string;
   @IsOptional() @IsUUID() templateUuid?: string;
-  @IsOptional() @IsString() @MaxLength(60) providerName?: string;
+  @IsOptional() @IsString() @MaxLength(120) providerName?: string;
   @IsString() @MaxLength(254) destination!: string;
   @IsOptional() @IsString() @MaxLength(255) subject?: string;
   @IsString() @MaxLength(10000) body!: string;
 }
 export class CommunicationStatusDto {
-  @IsIn(['SENT', 'DELIVERED', 'FAILED', 'CANCELLED']) status!: string;
-  @IsOptional() @IsString() @MaxLength(160) providerMessageId?: string;
-  @IsOptional() @IsString() @MaxLength(500) providerError?: string;
+  @IsIn(['QUEUED', 'SENT', 'DELIVERED', 'FAILED', 'CANCELLED'])
+  status!: string;
+  @IsOptional() @IsString() @MaxLength(255) providerMessageId?: string;
+  @IsOptional() @IsString() @MaxLength(2000) providerError?: string;
+  providerSecret?: never;
 }
 export class TemplateDto {
   @IsString() @MaxLength(80) code!: string;
-  @IsString() @MaxLength(150) name!: string;
-  @IsIn(['EMAIL', 'WHATSAPP', 'SMS']) channel!: string;
+  @IsString() @MaxLength(120) name!: string;
+  @IsIn(['EMAIL', 'SMS', 'WHATSAPP', 'CALL']) channel!: string;
   @IsOptional() @IsString() @MaxLength(255) subject?: string | null;
-  @IsString() @MaxLength(10000) body!: string;
+  @IsString() @MaxLength(20000) body!: string;
 }
 export class TemplatePatchDto {
-  @IsOptional() @IsString() @MaxLength(150) name?: string;
+  @IsOptional() @IsString() @MaxLength(120) name?: string;
   @IsOptional() @IsString() @MaxLength(255) subject?: string | null;
-  @IsOptional() @IsString() @MaxLength(10000) body?: string;
+  @IsOptional() @IsString() @MaxLength(20000) body?: string;
 }
