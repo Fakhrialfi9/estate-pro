@@ -12,7 +12,6 @@ import type {
 
 export interface SalesRecord {
   readonly uuid: string;
-  readonly [key: string]: unknown;
 }
 
 export interface SalesOpportunityRow {
@@ -171,8 +170,8 @@ export interface SalesRepository {
     uuid: string,
     status: ViewingStatus,
     scheduledAt: Date | null,
-    actor: SalesActor,
-  ): Promise<SalesRecord>;
+    actor?: SalesActor,
+  ): Promise<SalesRecord | null>;
   listViewings(
     query: Record<string, unknown>,
   ): Promise<PageResult<SalesRecord>>;
@@ -222,7 +221,7 @@ export interface SalesRepository {
     reasonUuid: string,
     actor: SalesActor,
   ): Promise<SalesRecord | null>;
-  reopenDeal(uuid: string, actor: SalesActor): Promise<SalesRecord | null>;
+  reopenDeal(uuid: string, actor: SalesActor): never;
   listLostReasons(): Promise<SalesRecord[]>;
   createLostReason(input: {
     code: string;
