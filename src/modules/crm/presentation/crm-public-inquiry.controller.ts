@@ -12,7 +12,19 @@ export class CrmPublicInquiryController {
   @Post('inquiries')
   @Public()
   @ApiOperation({ summary: 'Public CRM inquiry intake' })
-  @ApiResponse({ status: 201 })
+  @ApiResponse({
+    status: 201,
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'object',
+          additionalProperties: true,
+        },
+      },
+      required: ['data'],
+    },
+  })
   @ApiResponse({ status: 400 })
   @ApiResponse({ status: 413 })
   @ApiResponse({ status: 429 })
