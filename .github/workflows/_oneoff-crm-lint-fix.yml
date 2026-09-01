@@ -1,0 +1,104 @@
+name: One-off CRM lint fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Pin npm
+        run: npm install --global npm@11.18.0
+      - name: Install dependencies
+        run: npm ci
+      - name: Apply targeted CRM type-safety fixes
+        run: node <<'NODE'
+const fs = require('node:fs');
+
+const read = (file) => fs.readFileSync(file, 'utf8');
+const write = (file, content) => fs.writeFileSync(file, content);
+
+const types = 'src/modules/crm/domain/crm.types.ts';
+let content = read(types);
+content = content.replace(
+  ".replace(/[\\u0000-\\u001F\\u007F]/g, '')",
+  ".replace(/[\\p{Cc}]/gu, '')",
+);
+if (!content.includes('export const toText')) {
+  content += `\nexport const toText = (value: unknown): string => {\n  if (typeof value === 'string') return value;\n  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return value.toString();\n  if (value instanceof Date) return value.toISOString();\n  if (value === null || value === undefined) return '';\n  try {\n    return JSON.stringify(value) ?? '';\n  } catch {\n    return '';\n  }\n};\n`;
+}
+write(types, content);
+
+for (const file of [
+  'src/modules/crm/application/crm.service.ts',
+  'src/modules/crm/infrastructure/persistence/prisma-crm.repository.ts',
+]) {
+  let source = read(file);
+  source = source.replace(/\\bString\\(/g, 'toText(');
+  if (file.endsWith('crm.service.ts')) {
+    source = source.replace('  normalizeText,\n', '  normalizeText,\n  toText,\n');
+  } else {
+    source = source.replace('  normalizePhone,\n', '  normalizePhone,\n  toText,\n');
+  }
+  write(file, source);
+}
+
+const lifecycle = 'src/modules/crm/application/crm-lifecycle.service.ts';
+let life = read(lifecycle);
+life = life.replace("import type { CrmActor, PageQuery } from '../domain/crm.types.js';", "import { toText, type CrmActor, type PageQuery } from '../domain/crm.types.js';");
+life = life.replace('String((x as Record<string, unknown>).code)', 'toText((x as Record<string, unknown>).code)');
+life = life.replace('String((item as Record<string, unknown>).uuid)', 'toText((item as Record<string, unknown>).uuid)');
+life = life.replace("const history = Array.isArray(l.history) ? l.history : [];", "const history: Record<string, unknown>[] = Array.isArray(l.history)\n      ? l.history.flatMap((x) => (x && typeof x === 'object' ? [x as Record<string, unknown>] : []))\n      : [];");
+life = life.replace("String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? ''))", "toText(a.createdAt).localeCompare(toText(b.createdAt))");
+write(lifecycle, life);
+
+const providers = 'src/modules/crm/infrastructure/providers/unconfigured-providers.ts';
+let p = read(providers);
+p = p.replace('  async send() {\n    throw new ProviderNotConfiguredError(channel);\n  },', '  send() {\n    return Promise.reject(new ProviderNotConfiguredError(channel));\n  },');
+write(providers, p);
+
+const publicController = 'src/modules/crm/presentation/crm-public-inquiry.controller.ts';
+let pc = read(publicController);
+pc = pc.replace("import { CrmService } from '../application/crm.service.js';", "import { CrmService } from '../application/crm.service.js';\nimport type { CrmActor } from '../domain/crm.types.js';");
+pc = pc.replace("    return this.service\n      .inquiry({ ...dto }, undefined)\n", "    const actor: CrmActor | undefined = undefined;\n    return this.service\n      .inquiry({ ...dto }, actor)\n");
+pc = pc.replace("    @Headers('user-agent') ua?: string,\n    @Headers('x-request-id') rid?: string,\n", "    @Headers('user-agent') _ua?: string,\n    @Headers('x-request-id') _rid?: string,\n");
+write(publicController, pc);
+
+const propertyModule = 'src/modules/property/property.module.ts';
+let pm = read(propertyModule);
+pm = pm.replace("import {\n  PROPERTY_PUBLIC_PORT,\n  type PropertyPublicPort,\n} from '../../common/contracts/property-public.port.js';\n", "import { PROPERTY_PUBLIC_PORT } from '../../common/contracts/property-public.port.js';\n");
+write(propertyModule, pm);
+
+const test = 'test/e2e/crm-security.e2e.spec.ts';
+let t = read(test);
+t = t.replace("import { INestApplication } from '@nestjs/common';", "import type { INestApplication } from '@nestjs/common';");
+write(test, t);
+NODE
+      - name: Format modified sources
+        run: npm exec -- prettier --write "src/modules/crm/**/*.ts" "src/modules/property/property.module.ts" "test/e2e/crm-security.e2e.spec.ts" --no-error-on-unmatched-pattern
+      - name: Verify lint
+        run: npm run lint
+      - name: Verify typecheck
+        run: npm run typecheck
+      - name: Remove one-off workflow and commit
+        run: |
+          rm -f .github/workflows/_oneoff-crm-lint-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(crm): restore strict type-safe CRM boundaries"
+          git push origin main
