@@ -59,8 +59,8 @@ type PreferenceRow = Prisma.PropertyPreferenceGetPayload<true>;
 
 const decimalString = (value: Prisma.Decimal | null): string | null =>
   value == null ? null : value.toString();
-const decimalNumber = (value: Prisma.Decimal | null): number | null =>
-  value == null ? null : Number(value);
+const decimalNumber = (value: Prisma.Decimal | null): number | undefined =>
+  value == null ? undefined : Number(value);
 const parseJson = (value: string): Prisma.InputJsonValue =>
   JSON.parse(value) as Prisma.InputJsonValue;
 
@@ -103,9 +103,9 @@ const toPreference = (row: PreferenceRow): StoredPreference => ({
           cityUuid: row.cityUuid ?? undefined,
           districtUuid: row.districtUuid ?? undefined,
           subdistrictUuid: row.subdistrictUuid ?? undefined,
-          radiusKm: decimalNumber(row.radiusKm) ?? undefined,
-          latitude: decimalNumber(row.latitude) ?? undefined,
-          longitude: decimalNumber(row.longitude) ?? undefined,
+          radiusKm: decimalNumber(row.radiusKm),
+          latitude: decimalNumber(row.latitude),
+          longitude: decimalNumber(row.longitude),
         }
       : undefined,
   budget:
@@ -115,7 +115,7 @@ const toPreference = (row: PreferenceRow): StoredPreference => ({
           max: decimalString(row.budgetMax) ?? undefined,
           currency: row.budgetCurrency,
           frequency: row.budgetFrequency as PriceFrequency,
-          tolerancePercent: decimalNumber(row.tolerancePercent) ?? undefined,
+          tolerancePercent: decimalNumber(row.tolerancePercent),
         }
       : undefined,
   specification:
@@ -411,8 +411,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
               row.property.specification.buildingArea,
             ),
             parkingSpaces: row.property.specification.parkingSpaces,
-            furnishedStatus: row.property.specification
-              .furnishedStatus as never,
+            furnishedStatus: row.property.specification.furnishedStatus as never,
             condition: row.property.specification.condition as never,
           }
         : null,
@@ -592,7 +591,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
       );
     return {
       uuid: row.uuid,
-      subjectType: row.subjectType,
+      subjectType: row.subjectType as MatchingSubjectType,
       subjectUuid: row.subjectUuid,
       preferenceVersion: row.preferenceVersion,
       algorithmVersion: row.algorithmVersion,
