@@ -592,9 +592,7 @@ export class PrismaSalesRepository implements SalesRepository {
       return negotiation;
     });
   }
-  async getNegotiation(
-    uuid: string,
-  ): Promise<SalesNegotiationRecord | null> {
+  async getNegotiation(uuid: string): Promise<SalesNegotiationRecord | null> {
     const record = await this.prisma.salesNegotiation.findUnique({
       where: { uuid },
     });
