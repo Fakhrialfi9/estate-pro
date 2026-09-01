@@ -6,7 +6,7 @@ import { MATCHING_ALGORITHM_VERSION, MAX_CANDIDATE_POOL, MAX_MATCH_PAGE_SIZE, MI
 import { PropertyPreference } from '../domain/property-preference.js';
 import { MatchingEngine } from '../domain/matching-engine.js';
 import { MATCHING_REPOSITORY, type MatchingRepository } from './matching.ports.js';
-import { MATCHING_AUDIT_ACTIONS } from '../infrastructure/matching-audit.actions.js';
+import { MATCHING_AUDIT_ACTIONS } from './matching-audit.actions.js';
 
 const meter = metrics.getMeter('estate-pro.property-matching');
 const requestCounter = meter.createCounter('property_matching_requests_total');
@@ -67,7 +67,16 @@ export class PropertyMatchingService {
     await this.assertSubjectAccess(subjectType, subjectUuid, actor);
     const current = await this.repository.findPreference(subjectType, subjectUuid);
     if (!current || current.status !== 'ARCHIVED' || current.version !== expectedVersion) throw new ConflictException('Preference version is stale');
-    return this.repository.restorePreference(subjectType, subjectUuid, expectedVersion, PropertyPreference.create({ ...current, version: current.version + 1 }).value);
+    return this.repository.restorePreference(subjectType, subjectUuid, expectedVersion, PropertyPreference.create({
+      version: current.version + 1,
+      transactionTypes: current.transactionTypes,
+      propertyTypeUuids: current.propertyTypeUuids,
+      propertyCategoryUuids: current.propertyCategoryUuids,
+      location: current.location,
+      budget: current.budget,
+      specification: current.specification,
+      hardCriteria: current.hardCriteria,
+    }).value);
   }
 
   async match(subjectType: MatchingSubjectType, subjectUuid: string, options: { minScore?: number; page?: number; limit?: number }, actor: MatchingActor) {
@@ -101,10 +110,9 @@ export class PropertyMatchingService {
       candidateHistogram.record(pool.length);
       const signals = await this.repository.getSignals(actor.actorUuid, pool.map((candidate) => candidate.listingUuid));
       const results = this.engine.evaluate(preference, pool, signals).filter((item) => item.score >= this.minimum(options.minScore)).slice(0, Math.min(MAX_MATCH_PAGE_SIZE, Math.max(1, options.limit ?? 20)));
-      const generatedAt = new Date();
       const snapshot = await this.repository.saveRecommendation({
         subjectType, subjectUuid, preferenceVersion: preference.version, algorithmVersion: MATCHING_ALGORITHM_VERSION, source, candidateCount: pool.length,
-        items: results.map((item, index) => ({ propertyUuid: item.propertyUuid, listingUuid: item.listingUuid, rank: index + 1, score: item.score, explanation: JSON.stringify(item.explanation) })), now: generatedAt,
+        items: results.map((item, index) => ({ propertyUuid: item.propertyUuid, listingUuid: item.listingUuid, rank: index + 1, score: item.score, explanation: JSON.stringify(item.explanation) })), now: new Date(),
       });
       await this.auditSafe(source === 'GENERATED' ? MATCHING_AUDIT_ACTIONS.RECOMMENDATION_GENERATED : MATCHING_AUDIT_ACTIONS.RECOMMENDATION_REFRESHED, snapshot.uuid, actor, 'RECOMMENDATION');
       return { ...snapshot, preferenceVersion: preference.version, algorithmVersion: MATCHING_ALGORITHM_VERSION };
@@ -138,7 +146,7 @@ export class PropertyMatchingService {
     return result;
   }
 
-  async savedProperties(actor: MatchingActor) { return { data: await this.repository.listSavedListings(actor.actorUuid) }; }
+  async savedProperties(actor: MatchingActor) { return this.repository.listSavedListings(actor.actorUuid); }
 
   private async requireActivePreference(subjectType: MatchingSubjectType, subjectUuid: string) {
     const preference = await this.repository.findPreference(subjectType, subjectUuid);
