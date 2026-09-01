@@ -167,7 +167,32 @@ export class CrmController {
   @Get('contacts')
   @RequirePermissions('crm.contacts.read')
   @ApiOperation({ summary: 'List contacts' })
-  @ApiResponse({ status: 200 })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: true,
+          },
+        },
+        meta: {
+          type: 'object',
+          properties: {
+            page: { type: 'integer' },
+            limit: { type: 'integer' },
+            total: { type: 'integer' },
+            totalPages: { type: 'integer' },
+          },
+          required: ['page', 'limit', 'total', 'totalPages'],
+        },
+      },
+      required: ['data', 'meta'],
+    },
+  })
   listContacts(@Query() q: PageDto) {
     return this.service.listContacts(q).then(list);
   }
