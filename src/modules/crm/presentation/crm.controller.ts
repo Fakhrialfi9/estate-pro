@@ -128,6 +128,27 @@ const configKind = (
   throw new BadRequestException('Invalid CRM configuration type');
 };
 
+const crmSuccessResponse = (status: 200 | 201) =>
+  ApiResponse({
+    status,
+    schema: {
+      type: 'object',
+      properties: {
+        data: {},
+        meta: {
+          type: 'object',
+          properties: {
+            page: { type: 'integer' },
+            limit: { type: 'integer' },
+            total: { type: 'integer' },
+            totalPages: { type: 'integer' },
+          },
+        },
+      },
+      required: ['data'],
+    },
+  });
+
 @ApiTags('CRM')
 @ApiBearerAuth()
 @Controller({ path: 'crm', version: '1' })
@@ -244,6 +265,7 @@ export class CrmController {
       .updateContact(u, { ...d }, actorOf(r, ua, rid))
       .then(response);
   }
+  @crmSuccessResponse(200)
   @Delete('contacts/:uuid')
   @RequirePermissions('crm.contacts.archive')
   archiveContact(
@@ -256,6 +278,7 @@ export class CrmController {
       .archiveContact(u, actorOf(r, ua, rid))
       .then(() => ({ data: null }));
   }
+  @crmSuccessResponse(201)
   @Post('contacts/:uuid/addresses')
   @RequirePermissions('crm.contacts.update')
   addAddress(
@@ -267,6 +290,7 @@ export class CrmController {
       .child('address', u, { ...d }, actorOf(r))
       .then(response);
   }
+  @crmSuccessResponse(201)
   @Post('contacts/:uuid/phones')
   @RequirePermissions('crm.contacts.update')
   addPhone(
@@ -276,6 +300,7 @@ export class CrmController {
   ) {
     return this.service.child('phone', u, { ...d }, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(201)
   @Post('contacts/:uuid/emails')
   @RequirePermissions('crm.contacts.update')
   addEmail(
@@ -285,6 +310,7 @@ export class CrmController {
   ) {
     return this.service.child('email', u, { ...d }, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(200)
   @Patch('contacts/:contactUuid/contact-fields/:kind/:uuid')
   @RequirePermissions('crm.contacts.update')
   updateChild(
@@ -299,6 +325,7 @@ export class CrmController {
       .childUpdate(childKind(kindValue), contactUuid, u, { ...d }, actorOf(r))
       .then(response);
   }
+  @crmSuccessResponse(200)
   @Delete('contacts/:contactUuid/contact-fields/:kind/:uuid')
   @RequirePermissions('crm.contacts.update')
   deleteChild(
@@ -312,6 +339,7 @@ export class CrmController {
       .childDelete(childKind(kindValue), contactUuid, u, actorOf(r))
       .then(() => ({ data: null }));
   }
+  @crmSuccessResponse(201)
   @Post('contacts/:uuid/:kind/:childUuid/primary')
   @RequirePermissions('crm.contacts.update')
   primary(
@@ -324,6 +352,7 @@ export class CrmController {
       .childPrimary(childKind(kindValue), c, u, actorOf(r))
       .then(response);
   }
+  @crmSuccessResponse(200)
   @Patch('contacts/:uuid/preferences')
   @RequirePermissions('crm.contacts.update')
   preferences(
@@ -333,6 +362,7 @@ export class CrmController {
   ) {
     return this.service.preferences(u, { ...d }, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(201)
   @Post('contacts/:uuid/consents')
   @RequirePermissions('crm.contacts.consent')
   consent(
@@ -342,6 +372,7 @@ export class CrmController {
   ) {
     return this.service.consent(u, { ...d }, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(201)
   @Post('contacts/:uuid/relationships')
   @RequirePermissions('crm.contacts.update')
   relationship(
@@ -353,6 +384,7 @@ export class CrmController {
       .relationship(u, d.targetContactUuid, { ...d }, actorOf(r))
       .then(response);
   }
+  @crmSuccessResponse(200)
   @Delete('contact-relationships/:uuid')
   @RequirePermissions('crm.contacts.update')
   removeRelationship(
@@ -363,36 +395,47 @@ export class CrmController {
       .removeRelationship(u, actorOf(r))
       .then(() => ({ data: null }));
   }
-  @Post('leads') @RequirePermissions('crm.leads.create') createLead(
-    @Req() r: Request,
-    @Body() d: LeadDto,
-  ) {
+  @crmSuccessResponse(201)
+  @Post('leads')
+  @RequirePermissions('crm.leads.create')
+  createLead(@Req() r: Request, @Body() d: LeadDto) {
     return this.service.createLead({ ...d }, actorOf(r)).then(response);
   }
-  @Get('leads') @RequirePermissions('crm.leads.read') listLeads(
-    @Query() q: PageDto,
-  ) {
+  @crmSuccessResponse(200)
+  @Get('leads')
+  @RequirePermissions('crm.leads.read')
+  listLeads(@Query() q: PageDto) {
     return this.service.listLeads(q).then(list);
   }
-  @Get('leads/:uuid') @RequirePermissions('crm.leads.read') getLead(
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string,
-  ) {
+  @crmSuccessResponse(200)
+  @Get('leads/:uuid')
+  @RequirePermissions('crm.leads.read')
+  getLead(@Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string) {
     return this.service.getLead(u).then(response);
   }
-  @Patch('leads/:uuid') @RequirePermissions('crm.leads.update') updateLead(
+  @crmSuccessResponse(200)
+  @Patch('leads/:uuid')
+  @RequirePermissions('crm.leads.update')
+  updateLead(
     @Req() r: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string,
     @Body() d: LeadPatchDto,
   ) {
     return this.service.updateLead(u, { ...d }, actorOf(r)).then(response);
   }
-  @Delete('leads/:uuid') @RequirePermissions('crm.leads.archive') archiveLead(
+  @crmSuccessResponse(200)
+  @Delete('leads/:uuid')
+  @RequirePermissions('crm.leads.archive')
+  archiveLead(
     @Req() r: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string,
   ) {
     return this.service.archiveLead(u, actorOf(r)).then(() => ({ data: null }));
   }
-  @Post('leads/:uuid/status') @RequirePermissions('crm.leads.update') status(
+  @crmSuccessResponse(201)
+  @Post('leads/:uuid/status')
+  @RequirePermissions('crm.leads.update')
+  status(
     @Req() r: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string,
     @Body() d: StatusDto,
@@ -401,13 +444,17 @@ export class CrmController {
       .changeStatus(u, d.statusUuid, actorOf(r))
       .then(response);
   }
-  @Post('leads/:uuid/assign') @RequirePermissions('crm.leads.assign') assign(
+  @crmSuccessResponse(201)
+  @Post('leads/:uuid/assign')
+  @RequirePermissions('crm.leads.assign')
+  assign(
     @Req() r: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string,
     @Body() d: AssignmentDto,
   ) {
     return this.service.assign(u, d.userUuid, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(200)
   @Delete('leads/:uuid/assign')
   @RequirePermissions('crm.leads.assign')
   unassign(
@@ -416,13 +463,17 @@ export class CrmController {
   ) {
     return this.service.unassign(u, actorOf(r)).then(response);
   }
-  @Post('leads/:uuid/notes') @RequirePermissions('crm.leads.update') note(
+  @crmSuccessResponse(201)
+  @Post('leads/:uuid/notes')
+  @RequirePermissions('crm.leads.update')
+  note(
     @Req() r: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string,
     @Body() d: NoteDto,
   ) {
     return this.service.note(u, d.body, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(201)
   @Post('leads/:uuid/tags/:tagUuid')
   @RequirePermissions('crm.leads.update')
   tag(
@@ -432,6 +483,7 @@ export class CrmController {
   ) {
     return this.service.tag(u, t, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(200)
   @Delete('leads/:uuid/tags/:tagUuid')
   @RequirePermissions('crm.leads.update')
   untag(
@@ -441,17 +493,22 @@ export class CrmController {
   ) {
     return this.service.untag(u, t, actorOf(r)).then(() => ({ data: null }));
   }
-  @Get('leads/:uuid/history') @RequirePermissions('crm.leads.read') history(
+  @crmSuccessResponse(200)
+  @Get('leads/:uuid/history')
+  @RequirePermissions('crm.leads.read')
+  history(
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string,
     @Query() q: PageDto,
   ) {
     return this.service.history(u, q).then(list);
   }
-  @Get('leads/:uuid/score') @RequirePermissions('crm.leads.read') score(
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string,
-  ) {
+  @crmSuccessResponse(200)
+  @Get('leads/:uuid/score')
+  @RequirePermissions('crm.leads.read')
+  score(@Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string) {
     return this.service.score(u).then(response);
   }
+  @crmSuccessResponse(201)
   @Post('leads/:uuid/score/recalculate')
   @RequirePermissions('crm.leads.update')
   recalc(
@@ -460,15 +517,19 @@ export class CrmController {
   ) {
     return this.service.recalcScore(u, actorOf(r)).then(response);
   }
-  @Get('score-rules') @RequirePermissions('crm.scoring.read') rules() {
+  @crmSuccessResponse(200)
+  @Get('score-rules')
+  @RequirePermissions('crm.scoring.read')
+  rules() {
     return this.service.scoreRules().then(response);
   }
-  @Post('score-rules') @RequirePermissions('crm.scoring.manage') createRule(
-    @Req() r: Request,
-    @Body() d: ScoreRuleDto,
-  ) {
+  @crmSuccessResponse(201)
+  @Post('score-rules')
+  @RequirePermissions('crm.scoring.manage')
+  createRule(@Req() r: Request, @Body() d: ScoreRuleDto) {
     return this.service.createScoreRule({ ...d }, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(200)
   @Patch('score-rules/:uuid')
   @RequirePermissions('crm.scoring.manage')
   updateRule(
@@ -478,6 +539,7 @@ export class CrmController {
   ) {
     return this.service.updateScoreRule(u, { ...d }, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(200)
   @Delete('score-rules/:uuid')
   @RequirePermissions('crm.scoring.manage')
   deleteRule(
@@ -488,16 +550,19 @@ export class CrmController {
       .deleteScoreRule(u, actorOf(r))
       .then(() => ({ data: null }));
   }
+  @crmSuccessResponse(201)
   @Post('leads/:uuid/duplicates/detect')
   @RequirePermissions('crm.duplicates.read')
   duplicates(@Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string) {
     return this.service.duplicates(u).then(response);
   }
-  @Get('duplicates') @RequirePermissions('crm.duplicates.read') duplicateList(
-    @Query() q: PageDto,
-  ) {
+  @crmSuccessResponse(200)
+  @Get('duplicates')
+  @RequirePermissions('crm.duplicates.read')
+  duplicateList(@Query() q: PageDto) {
     return this.service.duplicateList(q).then(list);
   }
+  @crmSuccessResponse(201)
   @Post('duplicates/:uuid/review')
   @RequirePermissions('crm.duplicates.manage')
   duplicateReview(
@@ -507,20 +572,26 @@ export class CrmController {
   ) {
     return this.service.duplicateReview(u, d.status, actorOf(r)).then(response);
   }
-  @Post('leads/:uuid/merge') @RequirePermissions('crm.leads.merge') merge(
+  @crmSuccessResponse(201)
+  @Post('leads/:uuid/merge')
+  @RequirePermissions('crm.leads.merge')
+  merge(
     @Req() r: Request,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string,
     @Body() d: MergeDto,
   ) {
     return this.service.merge(u, d.targetLeadUuid, actorOf(r)).then(response);
   }
-  @Get('configs/:kind') @RequirePermissions('crm.config.read') configList(
-    @Param('kind') kind: string,
-    @Query() q: PageDto,
-  ) {
+  @crmSuccessResponse(200)
+  @Get('configs/:kind')
+  @RequirePermissions('crm.config.read')
+  configList(@Param('kind') kind: string, @Query() q: PageDto) {
     return this.service.configList(configKind(kind), q).then(list);
   }
-  @Post('configs/:kind') @RequirePermissions('crm.config.manage') configCreate(
+  @crmSuccessResponse(201)
+  @Post('configs/:kind')
+  @RequirePermissions('crm.config.manage')
+  configCreate(
     @Req() r: Request,
     @Param('kind') kind: string,
     @Body() d: ConfigDto,
@@ -529,6 +600,7 @@ export class CrmController {
       .configCreate(configKind(kind), { ...d }, actorOf(r))
       .then(response);
   }
+  @crmSuccessResponse(200)
   @Patch('configs/:kind/:uuid')
   @RequirePermissions('crm.config.manage')
   configUpdate(
@@ -541,6 +613,7 @@ export class CrmController {
       .configUpdate(configKind(kind), u, { ...d }, actorOf(r))
       .then(response);
   }
+  @crmSuccessResponse(200)
   @Delete('configs/:kind/:uuid')
   @RequirePermissions('crm.config.manage')
   configDelete(
@@ -552,7 +625,10 @@ export class CrmController {
       .configDelete(configKind(kind), u, actorOf(r))
       .then(() => ({ data: null }));
   }
-  @Post('inquiries') @RequirePermissions('crm.inquiries.create') createInquiry(
+  @crmSuccessResponse(201)
+  @Post('inquiries')
+  @RequirePermissions('crm.inquiries.create')
+  createInquiry(
     @Req() r: Request,
     @Body() d: InquiryDto,
     @Headers('user-agent') ua?: string,
@@ -560,16 +636,19 @@ export class CrmController {
   ) {
     return this.service.inquiry({ ...d }, actorOf(r, ua, rid)).then(response);
   }
-  @Get('inquiries') @RequirePermissions('crm.inquiries.read') inquiryList(
-    @Query() q: PageDto,
-  ) {
+  @crmSuccessResponse(200)
+  @Get('inquiries')
+  @RequirePermissions('crm.inquiries.read')
+  inquiryList(@Query() q: PageDto) {
     return this.service.inquiryList(q).then(list);
   }
-  @Get('inquiries/:uuid') @RequirePermissions('crm.inquiries.read') inquiryGet(
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string,
-  ) {
+  @crmSuccessResponse(200)
+  @Get('inquiries/:uuid')
+  @RequirePermissions('crm.inquiries.read')
+  inquiryGet(@Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string) {
     return this.service.inquiryGet(u).then(response);
   }
+  @crmSuccessResponse(200)
   @Patch('inquiries/:uuid')
   @RequirePermissions('crm.inquiries.update')
   inquiryUpdate(
@@ -579,6 +658,7 @@ export class CrmController {
   ) {
     return this.service.inquiryUpdate(u, { ...d }, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(201)
   @Post('inquiries/:uuid/convert')
   @RequirePermissions('crm.inquiries.convert')
   inquiryConvert(
@@ -588,21 +668,25 @@ export class CrmController {
   ) {
     return this.service.inquiryConvert(u, { ...d }, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(201)
   @Post('activities')
   @RequirePermissions('crm.activities.create')
   activityCreate(@Req() r: Request, @Body() d: ActivityDto) {
     return this.service.activityCreate({ ...d }, actorOf(r)).then(response);
   }
-  @Get('activities') @RequirePermissions('crm.activities.read') activityList(
-    @Query() q: PageDto,
-  ) {
+  @crmSuccessResponse(200)
+  @Get('activities')
+  @RequirePermissions('crm.activities.read')
+  activityList(@Query() q: PageDto) {
     return this.service.activityList(q).then(list);
   }
+  @crmSuccessResponse(200)
   @Get('activities/:uuid')
   @RequirePermissions('crm.activities.read')
   activityGet(@Param('uuid', new ParseUUIDPipe({ version: '4' })) u: string) {
     return this.service.activityGet(u).then(response);
   }
+  @crmSuccessResponse(200)
   @Patch('activities/:uuid')
   @RequirePermissions('crm.activities.update')
   activityUpdate(
@@ -612,6 +696,7 @@ export class CrmController {
   ) {
     return this.service.activityUpdate(u, { ...d }, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(201)
   @Post('activities/:uuid/status')
   @RequirePermissions('crm.activities.update')
   activityStatus(
@@ -623,6 +708,7 @@ export class CrmController {
       .activityTransition(u, d.status, actorOf(r))
       .then(response);
   }
+  @crmSuccessResponse(201)
   @Post('communications')
   @RequirePermissions('crm.communications.create')
   communicationCreate(@Req() r: Request, @Body() d: CommunicationDto) {
@@ -630,11 +716,13 @@ export class CrmController {
       .communicationCreate({ ...d }, actorOf(r))
       .then(response);
   }
+  @crmSuccessResponse(200)
   @Get('communications')
   @RequirePermissions('crm.communications.read')
   communicationList(@Query() q: PageDto) {
     return this.service.communicationList(q).then(list);
   }
+  @crmSuccessResponse(200)
   @Get('communications/:uuid')
   @RequirePermissions('crm.communications.read')
   communicationGet(
@@ -642,6 +730,7 @@ export class CrmController {
   ) {
     return this.service.communicationGet(u).then(response);
   }
+  @crmSuccessResponse(201)
   @Post('communications/:uuid/status')
   @RequirePermissions('crm.communications.update')
   communicationStatus(
@@ -653,16 +742,19 @@ export class CrmController {
       .communicationTransition(u, d.status, { ...d }, actorOf(r))
       .then(response);
   }
+  @crmSuccessResponse(200)
   @Get('communication-templates')
   @RequirePermissions('crm.communications.read')
   templates(@Query() q: PageDto) {
     return this.service.templates(q).then(list);
   }
+  @crmSuccessResponse(201)
   @Post('communication-templates')
   @RequirePermissions('crm.communications.manage')
   templateCreate(@Req() r: Request, @Body() d: TemplateDto) {
     return this.service.templateCreate({ ...d }, actorOf(r)).then(response);
   }
+  @crmSuccessResponse(200)
   @Patch('communication-templates/:uuid')
   @RequirePermissions('crm.communications.manage')
   templateUpdate(
