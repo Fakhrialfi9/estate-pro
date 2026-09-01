@@ -4,6 +4,7 @@ import type { Request } from 'express';
 import {
   ACCESS_TOKEN_VERIFIER,
   type AccessTokenVerifier,
+  type AccessTokenClaims,
 } from '../../../../common/security/access-token-verifier.port.js';
 import {
   AUTHENTICATION_SESSION_PORT,
@@ -11,9 +12,8 @@ import {
 } from '../../../../common/security/authentication-session.port.js';
 import { USER_IDENTITY_READER } from '../application/types/user-identity-reader.js';
 import type { UserIdentityReader } from '../application/types/user-identity-reader.js';
-import type { AuthenticatedPrincipal } from '../application/types/authenticated-principal.js';
 
-export type AuthenticatedRequest = Request & { user?: AuthenticatedPrincipal };
+export type AuthenticatedRequest = Request & { user?: AccessTokenClaims };
 
 @Injectable()
 export class ProfileAuthenticationGuard implements CanActivate {
@@ -38,12 +38,7 @@ export class ProfileAuthenticationGuard implements CanActivate {
         throw new UnauthorizedException();
       const actor = await this.users.getByUuid(claims.sub);
       if (!actor.isAccessible()) throw new UnauthorizedException();
-      request.user = {
-        sub: claims.sub,
-        ...(claims.permissions !== undefined
-          ? { permissions: claims.permissions }
-          : {}),
-      };
+      request.user = claims;
       return true;
     } catch (error: unknown) {
       if (error instanceof UnauthorizedException) throw error;
