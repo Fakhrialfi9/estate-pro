@@ -79,9 +79,7 @@ export const assertLeadStatusTransition = (
 };
 
 export interface ScoreInput {
-  readonly values: Readonly<
-    Record<string, string | number | boolean | null | undefined>
-  >;
+  readonly values: Readonly<Record<string, unknown>>;
 }
 
 export interface ScoreRule {
@@ -101,11 +99,11 @@ export const matchesScoreRule = (
   const expected = rule.value;
   switch (rule.operator) {
     case 'EQ':
-      return String(actual).toLowerCase() === expected.toLowerCase();
+      return toText(actual).toLowerCase() === expected.toLowerCase();
     case 'NEQ':
-      return String(actual).toLowerCase() !== expected.toLowerCase();
+      return toText(actual).toLowerCase() !== expected.toLowerCase();
     case 'CONTAINS':
-      return String(actual).toLowerCase().includes(expected.toLowerCase());
+      return toText(actual).toLowerCase().includes(expected.toLowerCase());
     case 'GT':
       return Number(actual) > Number(expected);
     case 'GTE':
