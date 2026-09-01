@@ -9,6 +9,12 @@ declare module 'express-serve-static-core' {
   }
 }
 
+declare module '../modules/crm/presentation/crm.dto.js' {
+  interface PageDto {
+    [key: string]: unknown;
+  }
+}
+
 export type AuthenticatedRequest = Request & {
   user: {
     sub: string;
