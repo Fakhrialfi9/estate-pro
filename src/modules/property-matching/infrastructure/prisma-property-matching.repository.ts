@@ -411,7 +411,8 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
               row.property.specification.buildingArea,
             ),
             parkingSpaces: row.property.specification.parkingSpaces,
-            furnishedStatus: row.property.specification.furnishedStatus as never,
+            furnishedStatus: row.property.specification
+              .furnishedStatus as never,
             condition: row.property.specification.condition as never,
           }
         : null,
