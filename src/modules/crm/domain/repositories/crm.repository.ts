@@ -155,11 +155,7 @@ export interface CrmRepository {
     uuid: string,
     input: Record<string, unknown>,
   ): Promise<unknown>;
-  transitionActivity(
-    uuid: string,
-    status: string,
-    actor: CrmActor,
-  ): Promise<unknown>;
+  transitionActivity(uuid: string, status: string): Promise<unknown>;
   createCommunication(input: Record<string, unknown>): Promise<unknown>;
   getCommunication(uuid: string): Promise<unknown>;
   listCommunications(query: PageQuery & Record<string, unknown>): Promise<{
