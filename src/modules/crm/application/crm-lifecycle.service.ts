@@ -1,13 +1,21 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
+import { SECURITY_AUDIT_REPOSITORY } from '../../../common/audit/security-audit.port.js';
+import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';
+import { AUDIT_ACTIONS } from '../../../common/audit/audit-events.js';
+import { SALES_CONVERSION_PORT } from '../../../common/contracts/sales-conversion.port.js';
+import type { SalesConversionPort } from '../../../common/contracts/sales-conversion.port.js';
 import type { CrmActor, PageQuery } from '../domain/crm.types.js';
 import { CrmService } from './crm.service.js';
 import { PrismaCrmLifecycleRepository } from '../infrastructure/persistence/prisma-crm-lifecycle.repository.js';
 import { LeadLifecyclePolicy } from '../domain/lead-lifecycle.policy.js';
 import { QualificationPolicy } from '../domain/qualification.policy.js';
 import { ClosurePolicy, type ClosureOutcome } from '../domain/closure.policy.js';
-import { SALES_CONVERSION_PORT } from '../../../common/contracts/sales-conversion.port.js';
-import type { SalesConversionPort } from '../../../common/contracts/sales-conversion.port.js';
 
 interface ActorWithPermissions extends CrmActor {
   readonly permissions?: readonly string[];
@@ -23,6 +31,8 @@ export class CrmLifecycleService {
     private readonly closure: ClosurePolicy,
     @Inject(SALES_CONVERSION_PORT)
     private readonly sales: SalesConversionPort,
+    @Inject(SECURITY_AUDIT_REPOSITORY)
+    private readonly audit: SecurityAuditRepository,
     private readonly logger: PinoLogger,
   ) {}
 
@@ -39,6 +49,46 @@ export class CrmLifecycleService {
       throw new ForbiddenException('CRM lead is outside your permitted scope');
     }
     return lead;
+  }
+
+  private async auditLifecycle(
+    action: string,
+    uuid: string,
+    actor: ActorWithPermissions,
+    reason?: string,
+  ): Promise<void> {
+    await this.audit.record({
+      action,
+      actorUuid: actor.actorUuid,
+      userUuid: actor.actorUuid,
+      actorType: 'AUTHENTICATED',
+      entityType: 'lead',
+      entityUuid: uuid,
+      requestId: actor.requestId,
+      ipAddress: actor.ipAddress,
+      userAgent: actor.userAgent,
+      result: 'SUCCESS',
+      ...(reason ? { reason } : {}),
+    });
+  }
+
+  private logLifecycle(
+    action: string,
+    uuid: string,
+    actor: ActorWithPermissions,
+    extra: Record<string, unknown> = {},
+  ): void {
+    this.logger.info(
+      {
+        actionId: action,
+        resourceType: 'lead',
+        resourceUuid: uuid,
+        actorUuid: actor.actorUuid,
+        requestId: actor.requestId,
+        ...extra,
+      },
+      `CRM ${action}`,
+    );
   }
 
   async qualify(uuid: string, reason: string, actor: ActorWithPermissions) {
@@ -60,26 +110,27 @@ export class CrmLifecycleService {
       qualificationReason: decision.reason,
       actor,
     });
-    this.logger.info(
-      {
-        actionId: 'crm.lead.qualify',
-        resourceType: 'lead',
-        resourceUuid: uuid,
-        actorUuid: actor.actorUuid,
-      },
-      'CRM lead qualified',
+    await this.auditLifecycle(
+      AUDIT_ACTIONS.CRM_LEAD_QUALIFIED,
+      uuid,
+      actor,
+      decision.reason,
     );
+    this.logLifecycle('crm.lead.qualify', uuid, actor);
     return result;
   }
 
   async nurture(uuid: string, actor: ActorWithPermissions) {
     const lead = await this.scopedLead(uuid, actor);
     this.lifecycle.assertCan('NURTURE', lead.statusCode);
-    return this.repo.setLifecycle({
+    const result = await this.repo.setLifecycle({
       leadUuid: uuid,
       toStatus: 'NURTURING',
       actor,
     });
+    await this.auditLifecycle(AUDIT_ACTIONS.CRM_LEAD_NURTURED, uuid, actor);
+    this.logLifecycle('crm.lead.nurture', uuid, actor);
+    return result;
   }
 
   async nurtureWorkflow(uuid: string, actor: ActorWithPermissions) {
@@ -98,11 +149,18 @@ export class CrmLifecycleService {
   async reactivate(uuid: string, actor: ActorWithPermissions) {
     const lead = await this.scopedLead(uuid, actor);
     this.lifecycle.assertCan('REACTIVATE', lead.statusCode);
-    return this.repo.setLifecycle({
+    const result = await this.repo.setLifecycle({
       leadUuid: uuid,
       toStatus: 'CONTACTED',
       actor,
     });
+    await this.auditLifecycle(
+      AUDIT_ACTIONS.CRM_LEAD_REACTIVATED,
+      uuid,
+      actor,
+    );
+    this.logLifecycle('crm.lead.reactivate', uuid, actor);
+    return result;
   }
 
   async close(
@@ -114,13 +172,23 @@ export class CrmLifecycleService {
     const lead = await this.scopedLead(uuid, actor);
     this.lifecycle.assertCan('CLOSE', lead.statusCode);
     const decision = this.closure.decide(reason, outcome);
-    return this.repo.setLifecycle({
+    const result = await this.repo.setLifecycle({
       leadUuid: uuid,
       toStatus: decision.outcome === 'WON' ? 'CLOSED_WON' : 'CLOSED_LOST',
       closureReason: decision.reason,
       closureOutcome: decision.outcome,
       actor,
     });
+    await this.auditLifecycle(
+      AUDIT_ACTIONS.CRM_LEAD_CLOSED,
+      uuid,
+      actor,
+      `${decision.outcome}: ${decision.reason}`,
+    );
+    this.logLifecycle('crm.lead.close', uuid, actor, {
+      outcome: decision.outcome,
+    });
+    return result;
   }
 
   async convert(
@@ -142,16 +210,15 @@ export class CrmLifecycleService {
       idempotencyKey: key,
     });
     await this.repo.markConverted(uuid, key);
-    this.logger.info(
-      {
-        actionId: 'crm.lead.convert',
-        resourceType: 'lead',
-        resourceUuid: uuid,
-        opportunityUuid: result.opportunityUuid,
-        actorUuid: actor.actorUuid,
-      },
-      'CRM lead converted',
+    await this.auditLifecycle(
+      AUDIT_ACTIONS.CRM_LEAD_CONVERTED,
+      uuid,
+      actor,
     );
+    this.logLifecycle('crm.lead.convert', uuid, actor, {
+      opportunityUuid: result.opportunityUuid,
+      created: result.created,
+    });
     return {
       leadUuid: uuid,
       opportunityUuid: result.opportunityUuid,
@@ -166,7 +233,17 @@ export class CrmLifecycleService {
   ) {
     await this.scopedLead(sourceUuid, actor);
     await this.scopedLead(targetUuid, actor);
-    return this.crm.merge(sourceUuid, targetUuid, actor);
+    const result = await this.crm.merge(sourceUuid, targetUuid, actor);
+    await this.auditLifecycle(
+      AUDIT_ACTIONS.CRM_LEAD_MERGED,
+      sourceUuid,
+      actor,
+      `merged into ${targetUuid}`,
+    );
+    this.logLifecycle('crm.lead.merge', sourceUuid, actor, {
+      targetUuid,
+    });
+    return result;
   }
 
   async timeline(
@@ -175,13 +252,18 @@ export class CrmLifecycleService {
     actor: ActorWithPermissions,
   ) {
     await this.scopedLead(uuid, actor);
+    const page = Math.max(1, query.page ?? 1);
+    const limit = Math.min(100, Math.max(1, query.limit ?? 20));
+    const fetchLimit = Math.min(500, page * limit);
+    const sourceQuery = { ...query, page: 1, limit: fetchLimit };
+
     const [lead, history, activities, inquiries, communications] =
       await Promise.all([
         this.crm.getLead(uuid),
-        this.crm.history(uuid, query),
-        this.crm.activityList({ ...query, leadUuid: uuid }),
-        this.crm.inquiryList({ ...query, leadUuid: uuid }),
-        this.crm.communicationList({ ...query, leadUuid: uuid }),
+        this.crm.history(uuid, sourceQuery),
+        this.crm.activityList({ ...sourceQuery, leadUuid: uuid }),
+        this.crm.inquiryList({ ...sourceQuery, leadUuid: uuid }),
+        this.crm.communicationList({ ...sourceQuery, leadUuid: uuid }),
       ]);
 
     const events: Array<Record<string, unknown>> = [];
@@ -204,15 +286,16 @@ export class CrmLifecycleService {
     events.sort((a, b) => {
       const left = new Date(String(a.createdAt ?? '')).getTime();
       const right = new Date(String(b.createdAt ?? '')).getTime();
-      return left - right;
+      if (left !== right) return right - left;
+      return String(a.source ?? '').localeCompare(String(b.source ?? ''));
     });
 
-    const page = Math.max(1, query.page ?? 1);
-    const limit = Math.min(100, Math.max(1, query.limit ?? 20));
     const start = (page - 1) * limit;
+    const total =
+      1 + history.total + activities.total + inquiries.total + communications.total;
     return {
       items: events.slice(start, start + limit),
-      total: events.length,
+      total,
       page,
       limit,
     };
