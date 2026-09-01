@@ -59,7 +59,6 @@ jobs:
               assert count == 1, f'{path}: expected exactly 1 match, found {count}'
               p.write_text(text.replace(old, new, 1))
 
-          # Matching repository typing.
           replace_once(
               'src/modules/property-matching/infrastructure/prisma-property-matching.repository.ts',
               "const decimalNumber = (value: Prisma.Decimal | null): number | null =>\n  value == null ? null : Number(value);",
@@ -67,12 +66,10 @@ jobs:
           )
           replace_once(
               'src/modules/property-matching/infrastructure/prisma-property-matching.repository.ts',
-              "          subjectType: row.subjectType,",
-              "          subjectType: row.subjectType as MatchingSubjectType,",
+              "      subjectType: row.subjectType,",
+              "      subjectType: row.subjectType as MatchingSubjectType,",
           )
 
-          # Sales service: remove genuinely unused imports, preserve transition logic in repository,
-          # pass the actor required by the repository contract, and avoid coercing arbitrary objects.
           p = Path('src/modules/sales/application/sales.service.ts')
           text = p.read_text()
           text = text.replace('  offerTransitionAllowed,\n', '')
@@ -91,28 +88,15 @@ jobs:
           text = text.replace(old, new, 1)
           p.write_text(text)
 
-          # Sales domain money parsing: destructured tuple element must be total under strict indexing.
-          replace_once(
-              'src/modules/sales/domain/sales.types.ts',
-              "  const [whole, fractional = ''] = value.split('.');",
-              "  const [whole = '0', fractional = ''] = value.split('.');",
-          )
           p = Path('src/modules/sales/domain/sales.types.ts')
           text = p.read_text()
-          for name in ('OPPORTUNITY_TRANSITIONS', 'VIEWING_TRANSITIONS', 'NEGOTIATION_TRANSITIONS', 'OFFER_TRANSITIONS', 'DEAL_TRANSITIONS'):
-              text = text.replace(f"const {name}: Record<string, readonly string[]> =", f"const {name}: Record<string, readonly string[]> =")
-          text = re.sub(
-              r"const (VIEWING|NEGOTIATION|OFFER|DEAL)_TRANSITIONS: Record<string, readonly string\[]> = (\{[\s\S]*?\n\});",
-              lambda m: m.group(0),
-              text,
-          )
-          # Replace `satisfies Record...` tables with explicit Record annotations so Array.includes accepts string.
-          text = text.replace("    })\n      satisfies Record<string, readonly string[]>\n  )[from]?", "    })[from]?")
-          text = text.replace("    })\n  )[from]?.includes(to) ?? false;", "    })[from]?.includes(to) ?? false;")
+          text = text.replace("  const [whole, fractional = ''] = value.split('.');", "  const [whole = '0', fractional = ''] = value.split('.');", 1)
+          text = text.replace("  (\n    ({\n      REQUESTED: ['CONFIRMED', 'CANCELLED'],\n      CONFIRMED: ['COMPLETED', 'CANCELLED', 'NO_SHOW'],\n      COMPLETED: [],\n      CANCELLED: [],\n      NO_SHOW: [],\n    }) satisfies Record<string, readonly string[]>\n  )[from]?.includes(to) ?? false;", "  ({\n    REQUESTED: ['CONFIRMED', 'CANCELLED'],\n    CONFIRMED: ['COMPLETED', 'CANCELLED', 'NO_SHOW'],\n    COMPLETED: [],\n    CANCELLED: [],\n    NO_SHOW: [],\n  } as Record<string, readonly string[]>)[from]?.includes(to) ?? false;", 1)
+          text = text.replace("  (\n    ({\n      OPEN: ['ACTIVE', 'REJECTED', 'CLOSED'],\n      ACTIVE: ['ACCEPTED', 'REJECTED', 'CLOSED'],\n      ACCEPTED: ['CLOSED'],\n      REJECTED: ['CLOSED'],\n      CLOSED: [],\n    }) satisfies Record<string, readonly string[]>\n  )[from]?.includes(to) ?? false;", "  ({\n    OPEN: ['ACTIVE', 'REJECTED', 'CLOSED'],\n    ACTIVE: ['ACCEPTED', 'REJECTED', 'CLOSED'],\n    ACCEPTED: ['CLOSED'],\n    REJECTED: ['CLOSED'],\n    CLOSED: [],\n  } as Record<string, readonly string[]>)[from]?.includes(to) ?? false;", 1)
+          text = text.replace("  (\n    ({\n      DRAFT: ['SUBMITTED', 'REJECTED'],\n      SUBMITTED: ['ACCEPTED', 'REJECTED', 'EXPIRED'],\n      ACCEPTED: [],\n      REJECTED: [],\n      EXPIRED: [],\n    }) satisfies Record<string, readonly string[]>\n  )[from]?.includes(to) ?? false;", "  ({\n    DRAFT: ['SUBMITTED', 'REJECTED'],\n    SUBMITTED: ['ACCEPTED', 'REJECTED', 'EXPIRED'],\n    ACCEPTED: [],\n    REJECTED: [],\n    EXPIRED: [],\n  } as Record<string, readonly string[]>)[from]?.includes(to) ?? false;", 1)
+          text = text.replace("  (\n    ({\n      OPEN: ['IN_PROGRESS', 'READY_TO_CLOSE', 'LOST', 'CANCELLED'],\n      IN_PROGRESS: ['READY_TO_CLOSE', 'LOST', 'CANCELLED'],\n      READY_TO_CLOSE: ['CLOSED', 'LOST'],\n      CLOSED: [],\n      LOST: [],\n      CANCELLED: [],\n    }) satisfies Record<string, readonly string[]>\n  )[from]?.includes(to) ?? false;", "  ({\n    OPEN: ['IN_PROGRESS', 'READY_TO_CLOSE', 'LOST', 'CANCELLED'],\n    IN_PROGRESS: ['READY_TO_CLOSE', 'LOST', 'CANCELLED'],\n    READY_TO_CLOSE: ['CLOSED', 'LOST'],\n    CLOSED: [],\n    LOST: [],\n    CANCELLED: [],\n  } as Record<string, readonly string[]>)[from]?.includes(to) ?? false;", 1)
           p.write_text(text)
 
-          # Repository contract: represent records by the public UUID only, align optional actor parameter,
-          # and model reopenDeal's terminal-only behavior as never.
           p = Path('src/modules/sales/domain/repositories/sales.repository.ts')
           text = p.read_text()
           old = '''export interface SalesRecord {\n  readonly uuid: string;\n  readonly [key: string]: unknown;\n}'''
@@ -129,38 +113,35 @@ jobs:
           text = text.replace(old, new, 1)
           p.write_text(text)
 
-          # Prisma schema: the repository already validates the lost-reason UUID; persist it on Sales records.
-          p = Path('prisma/schema/sales/sales.prisma')
-          text = p.read_text()
-          text = text.replace(
-              '  propertyUuid   String?                        @db.Char(36)\n  title',
-              '  propertyUuid   String?                        @db.Char(36)\n  lostReasonUuid  String?                        @db.Char(36)\n  title',
-              1,
-          )
-          text = text.replace(
-              '  ownerUserUuid   String?          @db.Char(36)\n  currency',
-              '  ownerUserUuid   String?          @db.Char(36)\n  lostReasonUuid  String?          @db.Char(36)\n  currency',
-              1,
-          )
-          text = text.replace(
-              '  @@index([propertyUuid, status])\n  @@index([createdAt])',
-              '  @@index([propertyUuid, status])\n  @@index([lostReasonUuid])\n  @@index([createdAt])',
-              1,
-          )
-          text = text.replace(
-              '  @@index([ownerUserUuid, status, createdAt])\n  @@index([offerUuid])',
-              '  @@index([ownerUserUuid, status, createdAt])\n  @@index([lostReasonUuid])\n  @@index([offerUuid])',
-              1,
-          )
-          p.write_text(text)
-
-          # Repository money parsing.
+          p = Path('src/modules/sales/infrastructure/persistence/prisma-sales.repository.ts')
           replace_once(
               'src/modules/sales/infrastructure/persistence/prisma-sales.repository.ts',
               "  const [whole, fractional = ''] = value.split('.');",
               "  const [whole = '0', fractional = ''] = value.split('.');",
           )
 
+          p = Path('prisma/schema/sales/sales.prisma')
+          text = p.read_text()
+          assert text.count('  propertyUuid   String?                        @db.Char(36)\n  title') == 1
+          text = text.replace(
+              '  propertyUuid   String?                        @db.Char(36)\n  title',
+              '  propertyUuid   String?                        @db.Char(36)\n  lostReasonUuid  String?                        @db.Char(36)\n  title', 1)
+          assert text.count('  ownerUserUuid   String?          @db.Char(36)\n  currency') == 1
+          text = text.replace(
+              '  ownerUserUuid   String?          @db.Char(36)\n  currency',
+              '  ownerUserUuid   String?          @db.Char(36)\n  lostReasonUuid  String?          @db.Char(36)\n  currency', 1)
+          assert text.count('  @@index([propertyUuid, status])\n  @@index([createdAt])') == 1
+          text = text.replace('  @@index([propertyUuid, status])\n  @@index([createdAt])', '  @@index([propertyUuid, status])\n  @@index([lostReasonUuid])\n  @@index([createdAt])', 1)
+          assert text.count('  @@index([ownerUserUuid, status, createdAt])\n  @@index([offerUuid])') == 1
+          text = text.replace('  @@index([ownerUserUuid, status, createdAt])\n  @@index([offerUuid])', '  @@index([ownerUserUuid, status, createdAt])\n  @@index([lostReasonUuid])\n  @@index([offerUuid])', 1)
+          p.write_text(text)
+
+          mdir = Path('prisma/migrations/20260901153000_add_sales_lost_reason')
+          mdir.mkdir(parents=True, exist_ok=True)
+          (mdir / 'migration.sql').write_text('''ALTER TABLE `sales_opportunities`\n  ADD COLUMN `lostReasonUuid` CHAR(36) NULL,\n  ADD INDEX `sales_opportunities_lostReasonUuid_idx` (`lostReasonUuid`);\n\nALTER TABLE `sales_deals`\n  ADD COLUMN `lostReasonUuid` CHAR(36) NULL,\n  ADD INDEX `sales_deals_lostReasonUuid_idx` (`lostReasonUuid`);\n''')
+
+      - name: Validate source changes
+        run: git diff --check
       - name: Prisma validate
         run: npx prisma validate
       - name: Prisma generate
@@ -191,13 +172,11 @@ jobs:
         run: npm run test:openapi
       - name: Full tests
         run: npm run test:all
-
       - name: Commit repaired repository
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git status --short
-          git diff --check
-          git add src prisma/schema .github/workflows/repair-validation.yml
+          git add src prisma .github/workflows/repair-validation.yml
           git commit -m "fix: resolve sales and matching validation errors [repair-bot]"
           git push origin main
