@@ -126,7 +126,7 @@ export class ConfigPatchDto {
   @IsOptional() @IsString() @MaxLength(20) color?: string | null;
 }
 export class NoteDto {
-  @IsString() @MinLength(1) @MaxLength(5000) body!: string;
+  @IsString() @IsNotEmpty() @MaxLength(5000) body!: string;
 }
 export class AssignmentDto {
   @IsUUID() userUuid!: string;
@@ -236,7 +236,6 @@ export class CommunicationStatusDto {
   status!: string;
   @IsOptional() @IsString() @MaxLength(255) providerMessageId?: string;
   @IsOptional() @IsString() @MaxLength(2000) providerError?: string;
-  providerSecret?: never;
 }
 export class TemplateDto {
   @IsString() @MaxLength(80) code!: string;
