@@ -17,10 +17,8 @@ import {
   dealTransitionAllowed,
   isUuid,
   negotiationTransitionAllowed,
-  offerTransitionAllowed,
   parseMoney,
   transitionAllowed,
-  viewingTransitionAllowed,
 } from '../domain/sales.types.js';
 import type {
   ActivityStatus,
@@ -341,6 +339,7 @@ export class SalesService {
       uuid,
       input.ownerUserUuid ?? null,
       input.teamUuid ?? null,
+      actor,
     );
     await this.writeAudit(
       AUDIT_ACTIONS.SALES_OPPORTUNITY_ASSIGNED,
@@ -475,8 +474,8 @@ export class SalesService {
 
   async listActivities(query: Record<string, unknown>, actor: SalesActor) {
     this.require(actor, 'sales.activities.read');
-    if (query.opportunityUuid)
-      await this.getOpportunity(String(query.opportunityUuid), actor);
+    if (typeof query.opportunityUuid === 'string')
+      await this.getOpportunity(query.opportunityUuid, actor);
     return this.repository.listActivities(query);
   }
 
@@ -538,8 +537,8 @@ export class SalesService {
 
   async listViewings(query: Record<string, unknown>, actor: SalesActor) {
     this.require(actor, 'sales.viewings.read');
-    if (query.opportunityUuid)
-      await this.getOpportunity(String(query.opportunityUuid), actor);
+    if (typeof query.opportunityUuid === 'string')
+      await this.getOpportunity(query.opportunityUuid, actor);
     return this.repository.listViewings(query);
   }
 
@@ -681,7 +680,7 @@ export class SalesService {
   async addDealItem(
     dealUuid: string,
     input: {
-      propertyUuid?: string;
+      propertyUuid?: string | null;
       description: string;
       quantity: number;
       unitAmount: string;
