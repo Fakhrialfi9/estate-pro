@@ -70,16 +70,14 @@ export class CrmLifecycleController {
   @RequirePermissions('crm.leads.read')
   @ApiOperation({ summary: 'Unified lead timeline' })
   timeline(@Param('uuid') u: string, @Query() q: PageDto) {
-    return this.service
-      .timeline(u, q)
-      .then((data) => ({
-        data: data.items,
-        meta: {
-          page: data.page,
-          limit: data.limit,
-          total: data.total,
-          totalPages: Math.ceil(data.total / data.limit),
-        },
-      }));
+    return this.service.timeline(u, q).then((data) => ({
+      data: data.items,
+      meta: {
+        page: data.page,
+        limit: data.limit,
+        total: data.total,
+        totalPages: Math.ceil(data.total / data.limit),
+      },
+    }));
   }
 }

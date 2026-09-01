@@ -3,9 +3,7 @@ import type { PageQuery, CrmActor } from '../crm.types.js';
 export interface CrmRepository {
   createContact(input: Record<string, unknown>): Promise<unknown>;
   getContact(uuid: string): Promise<unknown>;
-  listContacts(
-    query: PageQuery,
-  ): Promise<{
+  listContacts(query: PageQuery): Promise<{
     items: readonly unknown[];
     total: number;
     page: number;
@@ -58,9 +56,7 @@ export interface CrmRepository {
   removeRelationship(uuid: string): Promise<void>;
   createLead(input: Record<string, unknown>, actor: CrmActor): Promise<unknown>;
   getLead(uuid: string): Promise<unknown>;
-  listLeads(
-    query: PageQuery & Record<string, unknown>,
-  ): Promise<{
+  listLeads(query: PageQuery & Record<string, unknown>): Promise<{
     items: readonly unknown[];
     total: number;
     page: number;
@@ -101,9 +97,7 @@ export interface CrmRepository {
   ): Promise<unknown>;
   deleteScoreRule(uuid: string): Promise<void>;
   detectDuplicates(uuid: string): Promise<readonly unknown[]>;
-  listDuplicates(
-    query: PageQuery,
-  ): Promise<{
+  listDuplicates(query: PageQuery): Promise<{
     items: readonly unknown[];
     total: number;
     page: number;
@@ -137,9 +131,7 @@ export interface CrmRepository {
   archiveConfig(kind: string, uuid: string): Promise<void>;
   createInquiry(input: Record<string, unknown>): Promise<unknown>;
   getInquiry(uuid: string): Promise<unknown>;
-  listInquiries(
-    query: PageQuery & Record<string, unknown>,
-  ): Promise<{
+  listInquiries(query: PageQuery & Record<string, unknown>): Promise<{
     items: readonly unknown[];
     total: number;
     page: number;
@@ -153,9 +145,7 @@ export interface CrmRepository {
   ): Promise<unknown>;
   createActivity(input: Record<string, unknown>): Promise<unknown>;
   getActivity(uuid: string): Promise<unknown>;
-  listActivities(
-    query: PageQuery & Record<string, unknown>,
-  ): Promise<{
+  listActivities(query: PageQuery & Record<string, unknown>): Promise<{
     items: readonly unknown[];
     total: number;
     page: number;
@@ -172,9 +162,7 @@ export interface CrmRepository {
   ): Promise<unknown>;
   createCommunication(input: Record<string, unknown>): Promise<unknown>;
   getCommunication(uuid: string): Promise<unknown>;
-  listCommunications(
-    query: PageQuery & Record<string, unknown>,
-  ): Promise<{
+  listCommunications(query: PageQuery & Record<string, unknown>): Promise<{
     items: readonly unknown[];
     total: number;
     page: number;
@@ -185,9 +173,7 @@ export interface CrmRepository {
     status: string,
     input: Record<string, unknown>,
   ): Promise<unknown>;
-  listTemplates(
-    query: PageQuery,
-  ): Promise<{
+  listTemplates(query: PageQuery): Promise<{
     items: readonly unknown[];
     total: number;
     page: number;
