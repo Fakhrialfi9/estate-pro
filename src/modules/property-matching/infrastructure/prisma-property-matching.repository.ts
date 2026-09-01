@@ -4,6 +4,7 @@ import type { PrismaService } from '../../../infrastructure/database/prisma/pris
 import type {
   MatchingRepository,
   StoredPreference,
+  StoredRecommendation,
 } from '../application/matching.ports.js';
 import type {
   BehavioralSignal,
@@ -54,12 +55,14 @@ const candidateSelect = {
 type CandidateRow = Prisma.PropertyListingGetPayload<{
   select: typeof candidateSelect;
 }>;
-type PreferenceRow = Prisma.PropertyPreferenceGetPayload<{}>;
+type PreferenceRow = Prisma.PropertyPreferenceGetPayload<true>;
 
 const decimalString = (value: Prisma.Decimal | null): string | null =>
   value == null ? null : value.toString();
 const decimalNumber = (value: Prisma.Decimal | null): number | null =>
   value == null ? null : Number(value);
+const parseJson = (value: string): Prisma.InputJsonValue =>
+  JSON.parse(value) as Prisma.InputJsonValue;
 
 const toPreference = (row: PreferenceRow): StoredPreference => ({
   version: row.version,
@@ -506,7 +509,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
             listingUuid: item.listingUuid,
             rank: item.rank,
             score: item.score,
-            explanation: JSON.parse(item.explanation),
+            explanation: parseJson(item.explanation),
           })),
         });
         await tx.matchScore.createMany({
@@ -544,7 +547,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
   async getLatestRecommendation(
     subjectType: MatchingSubjectType,
     subjectUuid: string,
-  ): Promise<unknown | null> {
+  ): Promise<StoredRecommendation | null> {
     const row = await this.prisma.recommendation.findFirst({
       where: { subjectType, subjectUuid },
       orderBy: [{ generatedAt: 'desc' }, { id: 'desc' }],
