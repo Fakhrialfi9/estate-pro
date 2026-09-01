@@ -2,7 +2,9 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Req,
@@ -11,66 +13,161 @@ import {
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiParam,
+  ApiProperty,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
-import type { Request } from 'express';
-import { IsOptional, IsString, MinLength } from 'class-validator';
 import { CrmLifecycleService } from '../application/crm-lifecycle.service.js';
 import { PageDto } from './crm.dto.js';
-class ClosureDto {
-  @IsOptional() @IsString() @MinLength(1) reason?: string;
+
+class QualifyDto {
+  @ApiProperty({ maxLength: 255 })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(255)
+  reason!: string;
 }
-const actor = (r: Request) => ({
-  actorUuid: (r.user as { sub?: string } | undefined)?.sub ?? '',
-  ipAddress: r.ip,
+
+class ClosureDto {
+  @ApiProperty({ required: false, maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(255)
+  reason?: string;
+
+  @ApiProperty({ enum: ['WON', 'LOST', 'DISQUALIFIED', 'OTHER'] })
+  @IsIn(['WON', 'LOST', 'DISQUALIFIED', 'OTHER'])
+  outcome!: 'WON' | 'LOST' | 'DISQUALIFIED' | 'OTHER';
+}
+
+interface AuthenticatedRequest extends Request {
+  user?: { sub?: string; permissions?: string[] };
+}
+
+const actor = (request: AuthenticatedRequest, userAgent?: string, requestId?: string) => ({
+  actorUuid: request.user?.sub ?? '',
+  permissions: request.user?.permissions ?? [],
+  ipAddress: request.ip,
+  userAgent,
+  requestId,
 });
+
 @ApiTags('CRM Lead Lifecycle')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller({ path: 'crm/leads', version: '1' })
 export class CrmLifecycleController {
   constructor(private readonly service: CrmLifecycleService) {}
+
   @Post(':uuid/qualify')
-  @RequirePermissions('crm.leads.update')
-  @ApiOperation({ summary: 'Qualify a lead' })
+  @RequirePermissions('crm.leads.qualify')
+  @ApiOperation({ summary: 'Qualify a lead with an explicit reason' })
+  @ApiParam({ name: 'uuid' })
   @ApiResponse({ status: 200 })
-  qualify(@Req() r: Request, @Param('uuid') u: string) {
-    return this.service.qualify(u, actor(r)).then((data) => ({ data }));
+  @ApiResponse({ status: 400 })
+  @ApiResponse({ status: 401 })
+  @ApiResponse({ status: 403 })
+  qualify(
+    @Req() request: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Body() dto: QualifyDto,
+    @Headers('user-agent') userAgent?: string,
+    @Headers('x-request-id') requestId?: string,
+  ) {
+    return this.service
+      .qualify(uuid, dto.reason, actor(request, userAgent, requestId))
+      .then((data) => ({ data }));
   }
+
   @Post(':uuid/nurture')
-  @RequirePermissions('crm.leads.update')
+  @RequirePermissions('crm.leads.nurture')
   @ApiOperation({ summary: 'Start lead nurturing' })
-  nurture(@Req() r: Request, @Param('uuid') u: string) {
-    return this.service.nurtureWorkflow(u, actor(r)).then((data) => ({ data }));
+  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 400 })
+  @ApiResponse({ status: 403 })
+  nurture(
+    @Req() request: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+  ) {
+    return this.service
+      .nurtureWorkflow(uuid, actor(request))
+      .then((data) => ({ data }));
   }
+
   @Post(':uuid/reactivate')
-  @RequirePermissions('crm.leads.update')
-  @ApiOperation({ summary: 'Reactivate a closed lead' })
-  reactivate(@Req() r: Request, @Param('uuid') u: string) {
-    return this.service.reactivate(u, actor(r)).then((data) => ({ data }));
+  @RequirePermissions('crm.leads.reactivate')
+  @ApiOperation({ summary: 'Reactivate an eligible closed lead' })
+  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 400 })
+  @ApiResponse({ status: 403 })
+  reactivate(
+    @Req() request: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+  ) {
+    return this.service
+      .reactivate(uuid, actor(request))
+      .then((data) => ({ data }));
   }
+
   @Post(':uuid/close')
-  @RequirePermissions('crm.leads.archive')
-  @ApiOperation({ summary: 'Close a lead with reason' })
-  close(@Req() r: Request, @Param('uuid') u: string, @Body() d: ClosureDto) {
-    return this.service.close(u, d.reason, actor(r)).then((data) => ({ data }));
+  @RequirePermissions('crm.leads.close')
+  @ApiOperation({ summary: 'Close a lead with an explicit reason and outcome' })
+  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 400 })
+  @ApiResponse({ status: 403 })
+  close(
+    @Req() request: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Body() dto: ClosureDto,
+  ) {
+    return this.service
+      .close(uuid, dto.reason ?? '', dto.outcome, actor(request))
+      .then((data) => ({ data }));
   }
+
   @Post(':uuid/convert')
   @RequirePermissions('crm.leads.convert')
-  @ApiOperation({ summary: 'Prepare qualified-lead conversion boundary' })
+  @ApiOperation({ summary: 'Convert a qualified lead into Sales' })
   @ApiResponse({ status: 200 })
-  convert(@Param('uuid') u: string) {
-    return this.service.conversionPlan(u).then((data) => ({ data }));
+  @ApiResponse({ status: 400 })
+  @ApiResponse({ status: 401 })
+  @ApiResponse({ status: 403 })
+  @ApiResponse({ status: 409 })
+  convert(
+    @Req() request: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.service
+      .convert(uuid, actor(request), idempotencyKey)
+      .then((data) => ({ data }));
   }
+
   @Get(':uuid/timeline')
   @RequirePermissions('crm.leads.read')
-  @ApiOperation({ summary: 'Unified lead timeline' })
-  timeline(@Param('uuid') u: string, @Query() q: PageDto) {
-    return this.service.timeline(u, q).then((data) => ({
+  @ApiOperation({ summary: 'Unified, paginated lead timeline read model' })
+  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 401 })
+  @ApiResponse({ status: 403 })
+  timeline(
+    @Req() request: AuthenticatedRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Query() query: PageDto,
+  ) {
+    return this.service.timeline(uuid, query, actor(request)).then((data) => ({
       data: data.items,
       meta: {
         page: data.page,
