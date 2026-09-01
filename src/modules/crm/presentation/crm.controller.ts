@@ -199,7 +199,19 @@ export class CrmController {
   @Get('contacts/:uuid')
   @RequirePermissions('crm.contacts.read')
   @ApiOperation({ summary: 'Get contact' })
-  @ApiResponse({ status: 200 })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'object',
+          additionalProperties: true,
+        },
+      },
+      required: ['data'],
+    },
+  })
   @ApiResponse({ status: 401 })
   @ApiResponse({ status: 403 })
   @ApiResponse({ status: 404 })
