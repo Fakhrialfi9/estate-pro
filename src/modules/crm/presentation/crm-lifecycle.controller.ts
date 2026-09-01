@@ -53,11 +53,7 @@ class ClosureDto {
   outcome!: 'WON' | 'LOST' | 'DISQUALIFIED' | 'OTHER';
 }
 
-const actor = (
-  request: Request,
-  userAgent?: string,
-  requestId?: string,
-) => ({
+const actor = (request: Request, userAgent?: string, requestId?: string) => ({
   actorUuid: request.user?.sub ?? '',
   permissions: request.user?.permissions ?? [],
   ipAddress: request.ip,
