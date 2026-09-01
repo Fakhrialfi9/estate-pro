@@ -4,8 +4,10 @@ import { AuditModule } from '../audit/audit.module.js';
 import { AuthorizationModule } from '../../common/security/authorization.module.js';
 import { PropertyModule } from '../property/property.module.js';
 import { UsersModule } from '../users/users.module.js';
+import { SalesModule } from '../sales/sales.module.js';
 import { CRM_REPOSITORY } from './domain/repositories/crm.repository.js';
 import { PrismaCrmRepository } from './infrastructure/persistence/prisma-crm.repository.js';
+import { PrismaCrmLifecycleRepository } from './infrastructure/persistence/prisma-crm-lifecycle.repository.js';
 import { CrmService } from './application/crm.service.js';
 import { CrmLifecycleService } from './application/crm-lifecycle.service.js';
 import { CrmController } from './presentation/crm.controller.js';
@@ -14,6 +16,9 @@ import { CrmLifecycleController } from './presentation/crm-lifecycle.controller.
 import { ScoreDomainService } from './application/ports/score-domain.service.js';
 import { DuplicateDetector } from './application/ports/duplicate-detector.js';
 import { LeadMergePolicy } from './application/ports/merge.policy.js';
+import { LeadLifecyclePolicy } from './domain/lead-lifecycle.policy.js';
+import { QualificationPolicy } from './domain/qualification.policy.js';
+import { ClosurePolicy } from './domain/closure.policy.js';
 
 @Module({
   imports: [
@@ -22,6 +27,7 @@ import { LeadMergePolicy } from './application/ports/merge.policy.js';
     AuthorizationModule,
     PropertyModule,
     UsersModule,
+    SalesModule,
   ],
   controllers: [
     CrmController,
@@ -31,9 +37,13 @@ import { LeadMergePolicy } from './application/ports/merge.policy.js';
   providers: [
     CrmService,
     CrmLifecycleService,
+    PrismaCrmLifecycleRepository,
     ScoreDomainService,
     DuplicateDetector,
     LeadMergePolicy,
+    LeadLifecyclePolicy,
+    QualificationPolicy,
+    ClosurePolicy,
     { provide: CRM_REPOSITORY, useClass: PrismaCrmRepository },
   ],
   exports: [CRM_REPOSITORY, CrmService],
