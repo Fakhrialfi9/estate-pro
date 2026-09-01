@@ -25,7 +25,9 @@ describe('CRM architecture boundaries', () => {
     const normalizedController = controller.replace(/\s+/g, '');
     expect(controller).toContain('JwtAuthGuard');
     expect(controller).toContain('AuthorizationGuard');
-    expect(normalizedController).toContain("@Controller({path:'crm',version:'1'})");
+    expect(normalizedController).toContain(
+      "@Controller({path:'crm',version:'1'})",
+    );
     expect(controller).toContain("RequirePermissions('crm.contacts.read')");
   });
 });
