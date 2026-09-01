@@ -67,7 +67,8 @@ const toOpportunity = (record: {
   updatedAt: Date;
 }): SalesOpportunityRow => ({
   ...record,
-  valueAmount: record.valueAmount == null ? null : record.valueAmount.toString(),
+  valueAmount:
+    record.valueAmount == null ? null : record.valueAmount.toString(),
   status: record.status as OpportunityStatus,
 });
 
@@ -303,7 +304,9 @@ export class PrismaSalesRepository implements SalesRepository {
     const pipelineUuid = query.pipelineUuid
       ? queryString(query.pipelineUuid)
       : undefined;
-    const stageUuid = query.stageUuid ? queryString(query.stageUuid) : undefined;
+    const stageUuid = query.stageUuid
+      ? queryString(query.stageUuid)
+      : undefined;
     const propertyUuid = query.propertyUuid
       ? queryString(query.propertyUuid)
       : undefined;
