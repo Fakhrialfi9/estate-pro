@@ -22,9 +22,10 @@ describe('CRM architecture boundaries', () => {
     const controller = await read(
       'src/modules/crm/presentation/crm.controller.ts',
     );
+    const normalizedController = controller.replace(/\s+/g, '');
     expect(controller).toContain('JwtAuthGuard');
     expect(controller).toContain('AuthorizationGuard');
-    expect(controller).toContain("Controller({path:'crm',version:'1'})");
+    expect(normalizedController).toContain("@Controller({path:'crm',version:'1'})");
     expect(controller).toContain("RequirePermissions('crm.contacts.read')");
   });
 });
