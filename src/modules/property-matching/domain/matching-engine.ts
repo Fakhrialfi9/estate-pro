@@ -24,7 +24,8 @@ const stringRangeMatch = (value: string | null, range: { min?: string; max?: str
   if (max != null && numeric > max) return false;
   return true;
 };
-const locationLevel = (preference: PropertyPreferenceState['location'], candidate: MatchCandidate['location']): number => {
+
+const hierarchyRatio = (preference: PropertyPreferenceState['location'], candidate: MatchCandidate['location']): number => {
   if (!preference || !candidate) return 0;
   const levels: (keyof NonNullable<PropertyPreferenceState['location']>)[] = ['countryUuid', 'provinceUuid', 'cityUuid', 'districtUuid', 'subdistrictUuid'];
   let matched = 0;
@@ -33,11 +34,46 @@ const locationLevel = (preference: PropertyPreferenceState['location'], candidat
     const preferred = preference[level];
     if (preferred == null) continue;
     requested += 1;
-    if (candidate[level] !== preferred) return matched / requested;
+    if (candidate[level] !== preferred) break;
     matched += 1;
   }
   return requested === 0 ? 0 : matched / requested;
 };
+
+const distanceKm = (preference: PropertyPreferenceState['location'], candidate: MatchCandidate['location']): number | null => {
+  if (!preference?.radiusKm || preference.latitude == null || preference.longitude == null || !candidate || candidate.latitude == null || candidate.longitude == null) return null;
+  const toRadians = (value: number): number => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const lat1 = toRadians(preference.latitude);
+  const lat2 = toRadians(candidate.latitude);
+  const dLat = toRadians(candidate.latitude - preference.latitude);
+  const dLon = toRadians(candidate.longitude - preference.longitude);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const locationHardMatch = (preference: PropertyPreferenceState['location'], candidate: MatchCandidate['location']): boolean => {
+  if (!preference) return true;
+  const hierarchyRequested = [preference.countryUuid, preference.provinceUuid, preference.cityUuid, preference.districtUuid, preference.subdistrictUuid].some(Boolean);
+  if (hierarchyRequested && hierarchyRatio(preference, candidate) < 1) return false;
+  if (preference.radiusKm != null) {
+    const distance = distanceKm(preference, candidate);
+    return distance != null && distance <= preference.radiusKm;
+  }
+  return hierarchyRequested;
+};
+
+const locationScore = (preference: PropertyPreferenceState['location'], candidate: MatchCandidate['location']): number => {
+  if (!preference) return 0;
+  const hierarchy = hierarchyRatio(preference, candidate);
+  if (preference.radiusKm != null) {
+    const distance = distanceKm(preference, candidate);
+    if (distance == null || preference.radiusKm <= 0) return hierarchy;
+    return Math.max(hierarchy, clamp(1 - distance / preference.radiusKm, 0, 1));
+  }
+  return hierarchy;
+};
+
 const moneyToCents = (value: string | null | undefined): bigint | null => {
   if (value == null || !/^\d+(?:\.\d{1,2})?$/.test(value)) return null;
   const [whole = '0', fraction = ''] = value.split('.');
@@ -64,7 +100,7 @@ const evaluateHardCriteria = (preference: PropertyPreferenceState, candidate: Ma
   if (preference.hardCriteria.includes('transactionType') && !preference.transactionTypes.includes(candidate.transactionType)) failures.push('transactionType');
   if (preference.hardCriteria.includes('propertyType') && !preference.propertyTypeUuids.includes(candidate.propertyTypeUuid)) failures.push('propertyType');
   if (preference.hardCriteria.includes('propertyCategory') && !preference.propertyCategoryUuids.includes(candidate.propertyCategoryUuid)) failures.push('propertyCategory');
-  if (preference.hardCriteria.includes('location') && locationLevel(preference.location, candidate.location) < 1) failures.push('location');
+  if (preference.hardCriteria.includes('location') && !locationHardMatch(preference.location, candidate.location)) failures.push('location');
   if (preference.hardCriteria.includes('budget') && !budgetFit(preference.budget, candidate)) failures.push('budget');
   return failures;
 };
@@ -80,76 +116,19 @@ const weightedScore = (preference: PropertyPreferenceState, candidate: MatchCand
   let possible = 0;
   let earned = 0;
   const hard = new Set(preference.hardCriteria);
-  if (preference.transactionTypes.length > 0 && !hard.has('transactionType')) {
-    possible += 30;
-    const points = preference.transactionTypes.includes(candidate.transactionType) ? 30 : 0;
-    earned += points;
-    add('transactionType', points, points > 0);
-  }
-  if (preference.propertyTypeUuids.length > 0 && !hard.has('propertyType')) {
-    possible += 15;
-    const points = preference.propertyTypeUuids.includes(candidate.propertyTypeUuid) ? 15 : 0;
-    earned += points;
-    add('propertyType', points, points > 0);
-  }
-  if (preference.propertyCategoryUuids.length > 0 && !hard.has('propertyCategory')) {
-    possible += 10;
-    const points = preference.propertyCategoryUuids.includes(candidate.propertyCategoryUuid) ? 10 : 0;
-    earned += points;
-    add('propertyCategory', points, points > 0);
-  }
-  if (preference.budget && !hard.has('budget')) {
-    possible += 20;
-    const points = budgetFit(preference.budget, candidate) ? 20 : 0;
-    earned += points;
-    add('budget', points, points > 0);
-    if (!points) penalties.push('budget_mismatch');
-  }
-  if (preference.location && !hard.has('location')) {
-    possible += 15;
-    const ratio = locationLevel(preference.location, candidate.location);
-    const points = Math.round(ratio * 15);
-    earned += points;
-    add('location', points, points > 0);
-  }
+  if (preference.transactionTypes.length > 0 && !hard.has('transactionType')) { possible += 30; const points = preference.transactionTypes.includes(candidate.transactionType) ? 30 : 0; earned += points; add('transactionType', points, points > 0); }
+  if (preference.propertyTypeUuids.length > 0 && !hard.has('propertyType')) { possible += 15; const points = preference.propertyTypeUuids.includes(candidate.propertyTypeUuid) ? 15 : 0; earned += points; add('propertyType', points, points > 0); }
+  if (preference.propertyCategoryUuids.length > 0 && !hard.has('propertyCategory')) { possible += 10; const points = preference.propertyCategoryUuids.includes(candidate.propertyCategoryUuid) ? 10 : 0; earned += points; add('propertyCategory', points, points > 0); }
+  if (preference.budget && !hard.has('budget')) { possible += 20; const points = budgetFit(preference.budget, candidate) ? 20 : 0; earned += points; add('budget', points, points > 0); if (!points) penalties.push('budget_mismatch'); }
+  if (preference.location && !hard.has('location')) { possible += 15; const points = Math.round(locationScore(preference.location, candidate.location) * 15); earned += points; add('location', points, points > 0); }
   const specification = preference.specification;
   const candidateSpecification = candidate.specification;
-  if (specification?.bedrooms) {
-    possible += 5;
-    const points = rangeMatch(candidateSpecification?.bedrooms ?? null, specification.bedrooms) ? 5 : 0;
-    earned += points;
-    add('bedrooms', points, points > 0);
-  }
-  if (specification?.bathrooms) {
-    possible += 5;
-    const points = stringRangeMatch(candidateSpecification?.bathrooms ?? null, specification.bathrooms) ? 5 : 0;
-    earned += points;
-    add('bathrooms', points, points > 0);
-  }
-  if (specification?.areaSqm) {
-    possible += 5;
-    const points = stringRangeMatch(candidateSpecification?.buildingAreaSqm ?? null, specification.areaSqm) ? 5 : 0;
-    earned += points;
-    add('areaSqm', points, points > 0);
-  }
-  if (specification?.parkingSpaces) {
-    possible += 5;
-    const points = rangeMatch(candidateSpecification?.parkingSpaces ?? null, specification.parkingSpaces) ? 5 : 0;
-    earned += points;
-    add('parkingSpaces', points, points > 0);
-  }
-  if (specification?.furnishedStatus) {
-    possible += 5;
-    const points = candidateSpecification?.furnishedStatus === specification.furnishedStatus ? 5 : 0;
-    earned += points;
-    add('furnishedStatus', points, points > 0);
-  }
-  if (specification?.condition) {
-    possible += 5;
-    const points = candidateSpecification?.condition === specification.condition ? 5 : 0;
-    earned += points;
-    add('condition', points, points > 0);
-  }
+  if (specification?.bedrooms) { possible += 5; const points = rangeMatch(candidateSpecification?.bedrooms ?? null, specification.bedrooms) ? 5 : 0; earned += points; add('bedrooms', points, points > 0); }
+  if (specification?.bathrooms) { possible += 5; const points = stringRangeMatch(candidateSpecification?.bathrooms ?? null, specification.bathrooms) ? 5 : 0; earned += points; add('bathrooms', points, points > 0); }
+  if (specification?.areaSqm) { possible += 5; const points = stringRangeMatch(candidateSpecification?.buildingAreaSqm ?? null, specification.areaSqm) ? 5 : 0; earned += points; add('areaSqm', points, points > 0); }
+  if (specification?.parkingSpaces) { possible += 5; const points = rangeMatch(candidateSpecification?.parkingSpaces ?? null, specification.parkingSpaces) ? 5 : 0; earned += points; add('parkingSpaces', points, points > 0); }
+  if (specification?.furnishedStatus) { possible += 5; const points = candidateSpecification?.furnishedStatus === specification.furnishedStatus ? 5 : 0; earned += points; add('furnishedStatus', points, points > 0); }
+  if (specification?.condition) { possible += 5; const points = candidateSpecification?.condition === specification.condition ? 5 : 0; earned += points; add('condition', points, points > 0); }
   possible += 10;
   let behavior = 0;
   if (signal.saved) behavior += 4;
