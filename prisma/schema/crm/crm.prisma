@@ -220,8 +220,12 @@ model CrmLead {
   score Int @default(0)
   scoreVersion Int @default(1)
   qualifiedAt DateTime?
+  qualificationReason String? @db.VarChar(255)
   closedAt DateTime?
   closureReason String? @db.VarChar(255)
+  closureOutcome String? @db.VarChar(30)
+  convertedAt DateTime?
+  conversionKey String? @unique @db.VarChar(120)
   archivedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -378,6 +382,7 @@ model CrmInquiry {
   timezone String? @db.VarChar(50)
   deliveryPreference String? @db.VarChar(30)
   serviceContext String? @db.VarChar(255)
+  idempotencyKey String? @unique @db.VarChar(120)
   spamScore Int @default(0)
   convertedAt DateTime?
   createdAt DateTime @default(now())
@@ -453,6 +458,7 @@ model CrmCommunication {
   destination String @db.VarChar(254)
   subject String? @db.VarChar(255)
   body String @db.Text
+  idempotencyKey String? @unique @db.VarChar(120)
   queuedAt DateTime @default(now())
   sentAt DateTime?
   deliveredAt DateTime?
