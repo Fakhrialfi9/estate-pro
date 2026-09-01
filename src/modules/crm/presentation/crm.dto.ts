@@ -126,7 +126,7 @@ export class ConfigPatchDto {
   @IsOptional() @IsString() @MaxLength(20) color?: string | null;
 }
 export class NoteDto {
-  @IsString() @IsNotEmpty() @MaxLength(5000) body!: string;
+  @IsString() @MinLength(1) @MaxLength(5000) body!: string;
 }
 export class AssignmentDto {
   @IsUUID() userUuid!: string;
