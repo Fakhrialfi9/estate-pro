@@ -1,44 +1,39 @@
-import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import { PrismaService } from '../../infrastructure/database/prisma/prisma.service.js';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import type {
   SalesConversionInput,
   SalesConversionPort,
   SalesConversionResult,
 } from '../../common/contracts/sales-conversion.port.js';
+import { SALES_REPOSITORY } from './domain/repositories/sales.repository.js';
+import type { SalesRepository } from './domain/repositories/sales.repository.js';
 
 @Injectable()
 export class PrismaSalesConversionAdapter implements SalesConversionPort {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(SALES_REPOSITORY)
+    private readonly repository: SalesRepository,
+  ) {}
 
   async createFromQualifiedLead(
     input: SalesConversionInput,
   ): Promise<SalesConversionResult> {
-    const existing = await this.prisma.salesOpportunity.findUnique({
-      where: { leadUuid: input.leadUuid },
-    });
+    if (!input.idempotencyKey.trim()) {
+      throw new ConflictException('Conversion idempotency key is required');
+    }
+
+    const existing = await this.repository.findConversion(input.leadUuid);
     if (existing) {
       return { opportunityUuid: existing.uuid, created: false };
     }
 
-    try {
-      const created = await this.prisma.salesOpportunity.create({
-        data: {
-          uuid: randomUUID(),
-          leadUuid: input.leadUuid,
-          contactUuid: input.contactUuid,
-          ownerUserUuid: input.ownerUserUuid,
-          status: 'OPEN',
-          idempotencyKey: input.idempotencyKey,
-        },
-      });
-      return { opportunityUuid: created.uuid, created: true };
-    } catch (error) {
-      const raced = await this.prisma.salesOpportunity.findUnique({
-        where: { leadUuid: input.leadUuid },
-      });
-      if (raced) return { opportunityUuid: raced.uuid, created: false };
-      throw error;
-    }
+    const opportunity = await this.repository.createOpportunity({
+      leadUuid: input.leadUuid,
+      contactUuid: input.contactUuid,
+      ownerUserUuid: input.ownerUserUuid,
+      title: `Opportunity from qualified lead ${input.leadUuid}`,
+      idempotencyKey: input.idempotencyKey,
+    });
+
+    return { opportunityUuid: opportunity.uuid, created: true };
   }
 }
