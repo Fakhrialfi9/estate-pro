@@ -114,12 +114,11 @@ describe('MatchingEngine', () => {
     expect(first.map((item) => [item.listingUuid, item.score])).toEqual(
       second.map((item) => [item.listingUuid, item.score]),
     );
-    expect(first[0]?.explanation).toEqual(
-      expect.objectContaining({
-        matched: expect.any(Array),
-        missed: expect.any(Array),
-        contributions: expect.any(Array),
-      }),
-    );
+
+    const explanation = first[0]?.explanation;
+    expect(explanation).toBeDefined();
+    expect(Array.isArray(explanation?.matched)).toBe(true);
+    expect(Array.isArray(explanation?.missed)).toBe(true);
+    expect(Array.isArray(explanation?.contributions)).toBe(true);
   });
 });
