@@ -12,7 +12,9 @@ describe('Property matching repository integration', () => {
   const subjectUuid = '88888888-8888-4888-8888-888888888888';
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [DatabaseModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [DatabaseModule],
+    }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
     prisma = app.get(PrismaService);
@@ -32,7 +34,12 @@ describe('Property matching repository integration', () => {
       propertyTypeUuids: [],
       propertyCategoryUuids: [],
       hardCriteria: ['transactionType'],
-      budget: { min: '500000000', max: '1000000000', currency: 'IDR', frequency: 'TOTAL' },
+      budget: {
+        min: '500000000',
+        max: '1000000000',
+        currency: 'IDR',
+        frequency: 'TOTAL',
+      },
     });
     expect(created.version).toBe(1);
     const updated = await repository.updatePreference('USER', subjectUuid, 1, {
@@ -41,6 +48,8 @@ describe('Property matching repository integration', () => {
       budget: { ...created.budget!, max: '1200000000' },
     });
     expect(updated.version).toBe(2);
-    await expect(repository.updatePreference('USER', subjectUuid, 1, updated)).rejects.toThrow('Preference version is stale');
+    await expect(
+      repository.updatePreference('USER', subjectUuid, 1, updated),
+    ).rejects.toThrow('Preference version is stale');
   });
 });

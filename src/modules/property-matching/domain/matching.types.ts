@@ -1,21 +1,110 @@
-export const MATCHING_ALGORITHM_VERSION = 1 as const;
-export const MAX_CANDIDATE_POOL = 500 as const;
-export const DEFAULT_MATCH_PAGE_SIZE = 20 as const;
-export const MAX_MATCH_PAGE_SIZE = 50 as const;
-export const MIN_SAFE_SCORE = 35 as const;
+export const MATCHING_ALGORITHM_VERSION = 1;
+export const MAX_CANDIDATE_POOL = 500;
+export const DEFAULT_MATCH_PAGE_SIZE = 20;
+export const MAX_MATCH_PAGE_SIZE = 50;
+export const MIN_SAFE_SCORE = 35;
 
 export const MATCHING_SUBJECT_TYPES = ['USER', 'CONTACT', 'LEAD'] as const;
 export type MatchingSubjectType = (typeof MATCHING_SUBJECT_TYPES)[number];
-export const HARD_CRITERIA = ['transactionType', 'propertyType', 'propertyCategory', 'location', 'budget'] as const;
+export const HARD_CRITERIA = [
+  'transactionType',
+  'propertyType',
+  'propertyCategory',
+  'location',
+  'budget',
+] as const;
 export type HardCriterion = (typeof HARD_CRITERIA)[number];
-export const FEEDBACK_TYPES = ['INTERESTED', 'NOT_RELEVANT', 'HIDDEN', 'CONTACTED'] as const;
+export const FEEDBACK_TYPES = [
+  'INTERESTED',
+  'NOT_RELEVANT',
+  'HIDDEN',
+  'CONTACTED',
+] as const;
 export type MatchFeedbackType = (typeof FEEDBACK_TYPES)[number];
 export type PriceFrequency = 'TOTAL' | 'PER_MONTH' | 'PER_YEAR' | 'PER_DAY';
-export type LocationPreference = { countryUuid?: string; provinceUuid?: string; cityUuid?: string; districtUuid?: string; subdistrictUuid?: string; radiusKm?: number; latitude?: number; longitude?: number };
-export type BudgetPreference = { min?: string; max?: string; currency: string; frequency: PriceFrequency; tolerancePercent?: number };
-export type SpecificationPreference = { bedrooms?: { min?: number; max?: number }; bathrooms?: { min?: string; max?: string }; areaSqm?: { min?: string; max?: string }; parkingSpaces?: { min?: number; max?: number }; furnishedStatus?: 'UNFURNISHED' | 'SEMI_FURNISHED' | 'FULLY_FURNISHED'; condition?: 'NEW' | 'GOOD' | 'FAIR' | 'NEEDS_RENOVATION' | 'RENOVATED' };
-export type PropertyPreferenceState = { version: number; transactionTypes: readonly ('SALE' | 'RENT' | 'LEASE' | 'AUCTION' | 'JOINT_VENTURE' | 'OTHER')[]; propertyTypeUuids: readonly string[]; propertyCategoryUuids: readonly string[]; location?: LocationPreference; budget?: BudgetPreference; specification?: SpecificationPreference; hardCriteria: readonly HardCriterion[] };
-export type MatchCandidate = { propertyUuid: string; listingUuid: string; propertyTypeUuid: string; propertyCategoryUuid: string; transactionType: PropertyPreferenceState['transactionTypes'][number]; listingStatus: 'PUBLISHED'; visibility: 'PUBLIC'; publishedAt: Date; expiresAt: Date | null; price: { currency: string; priceType: PriceFrequency; minPrice: string | null; maxPrice: string | null } | null; location: LocationPreference | null; specification: { bedrooms: number; bathrooms: string; buildingAreaSqm: string | null; parkingSpaces: number; furnishedStatus: SpecificationPreference['furnishedStatus'] | null; condition: SpecificationPreference['condition'] | null } | null };
-export type BehavioralSignal = { saved: boolean; viewedAt: Date | null; inquiryCount: number; viewCount: number };
-export type MatchExplanation = { matched: readonly string[]; missed: readonly string[]; penalties: readonly string[]; contributions: readonly { criterion: string; points: number }[] };
-export type MatchResult = { propertyUuid: string; listingUuid: string; score: number; explanation: MatchExplanation };
+export type LocationPreference = {
+  countryUuid?: string;
+  provinceUuid?: string;
+  cityUuid?: string;
+  districtUuid?: string;
+  subdistrictUuid?: string;
+  radiusKm?: number;
+  latitude?: number;
+  longitude?: number;
+};
+export type BudgetPreference = {
+  min?: string;
+  max?: string;
+  currency: string;
+  frequency: PriceFrequency;
+  tolerancePercent?: number;
+};
+export type SpecificationPreference = {
+  bedrooms?: { min?: number; max?: number };
+  bathrooms?: { min?: string; max?: string };
+  areaSqm?: { min?: string; max?: string };
+  parkingSpaces?: { min?: number; max?: number };
+  furnishedStatus?: 'UNFURNISHED' | 'SEMI_FURNISHED' | 'FULLY_FURNISHED';
+  condition?: 'NEW' | 'GOOD' | 'FAIR' | 'NEEDS_RENOVATION' | 'RENOVATED';
+};
+export type PropertyPreferenceState = {
+  version: number;
+  transactionTypes: readonly (
+    | 'SALE'
+    | 'RENT'
+    | 'LEASE'
+    | 'AUCTION'
+    | 'JOINT_VENTURE'
+    | 'OTHER'
+  )[];
+  propertyTypeUuids: readonly string[];
+  propertyCategoryUuids: readonly string[];
+  location?: LocationPreference;
+  budget?: BudgetPreference;
+  specification?: SpecificationPreference;
+  hardCriteria: readonly HardCriterion[];
+};
+export type MatchCandidate = {
+  propertyUuid: string;
+  listingUuid: string;
+  propertyTypeUuid: string;
+  propertyCategoryUuid: string;
+  transactionType: PropertyPreferenceState['transactionTypes'][number];
+  listingStatus: 'PUBLISHED';
+  visibility: 'PUBLIC';
+  publishedAt: Date;
+  expiresAt: Date | null;
+  price: {
+    currency: string;
+    priceType: PriceFrequency;
+    minPrice: string | null;
+    maxPrice: string | null;
+  } | null;
+  location: LocationPreference | null;
+  specification: {
+    bedrooms: number;
+    bathrooms: string;
+    buildingAreaSqm: string | null;
+    parkingSpaces: number;
+    furnishedStatus: SpecificationPreference['furnishedStatus'] | null;
+    condition: SpecificationPreference['condition'] | null;
+  } | null;
+};
+export type BehavioralSignal = {
+  saved: boolean;
+  viewedAt: Date | null;
+  inquiryCount: number;
+  viewCount: number;
+};
+export type MatchExplanation = {
+  matched: readonly string[];
+  missed: readonly string[];
+  penalties: readonly string[];
+  contributions: readonly { criterion: string; points: number }[];
+};
+export type MatchResult = {
+  propertyUuid: string;
+  listingUuid: string;
+  score: number;
+  explanation: MatchExplanation;
+};

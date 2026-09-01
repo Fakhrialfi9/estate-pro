@@ -11,7 +11,14 @@ import { PropertyMatchingController } from './presentation/property-matching.con
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule],
   controllers: [PropertyMatchingController],
-  providers: [MatchingEngine, PropertyMatchingService, { provide: MATCHING_REPOSITORY, useClass: PrismaPropertyMatchingRepository }],
+  providers: [
+    MatchingEngine,
+    PropertyMatchingService,
+    {
+      provide: MATCHING_REPOSITORY,
+      useClass: PrismaPropertyMatchingRepository,
+    },
+  ],
   exports: [PropertyMatchingService],
 })
 export class PropertyMatchingModule {}
