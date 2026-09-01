@@ -12,7 +12,7 @@ export class LeadMergePolicy {
       throw new Error('Cannot merge a lead into itself');
   }
   merge<T extends Record<string, unknown>>(source: T, target: T): T {
-    const survivor = { ...target };
+    const survivor: Record<string, unknown> = { ...target };
     for (const [field, value] of Object.entries(source)) {
       if (field === 'uuid' || field === 'id') continue;
       if (
@@ -25,6 +25,6 @@ export class LeadMergePolicy {
       )
         survivor[field] = value;
     }
-    return survivor;
+    return survivor as T;
   }
 }
