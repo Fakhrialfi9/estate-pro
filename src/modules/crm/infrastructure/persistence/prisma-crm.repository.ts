@@ -6,6 +6,7 @@ import {
   duplicatePairKey,
   normalizeEmail,
   normalizePhone,
+  toText,
   type PageQuery,
   type CrmActor,
 } from '../../domain/crm.types.js';
@@ -41,14 +42,14 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmContact.create({
       data: {
         uuid: randomUUID(),
-        firstName: String(input.firstName),
-        lastName: input.lastName == null ? null : String(input.lastName),
-        displayName: String(input.displayName),
-        companyName: input.companyName ? String(input.companyName) : null,
-        jobTitle: input.jobTitle ? String(input.jobTitle) : null,
+        firstName: toText(input.firstName),
+        lastName: input.lastName == null ? null : toText(input.lastName),
+        displayName: toText(input.displayName),
+        companyName: input.companyName ? toText(input.companyName) : null,
+        jobTitle: input.jobTitle ? toText(input.jobTitle) : null,
         status: 'ACTIVE',
-        ownerUserUuid: input.ownerUserUuid ? String(input.ownerUserUuid) : null,
-        source: input.source ? String(input.source) : null,
+        ownerUserUuid: input.ownerUserUuid ? toText(input.ownerUserUuid) : null,
+        source: input.source ? toText(input.source) : null,
       },
     });
   }
@@ -108,22 +109,22 @@ export class PrismaCrmRepository implements CrmRepository {
       where: { id: current.id },
       data: {
         ...(input.firstName !== undefined
-          ? { firstName: String(input.firstName) }
+          ? { firstName: toText(input.firstName) }
           : {}),
         ...(input.lastName !== undefined
-          ? { lastName: input.lastName == null ? null : String(input.lastName) }
+          ? { lastName: input.lastName == null ? null : toText(input.lastName) }
           : {}),
         ...(input.displayName !== undefined
-          ? { displayName: String(input.displayName) }
+          ? { displayName: toText(input.displayName) }
           : {}),
         ...(input.companyName !== undefined
           ? {
               companyName:
-                input.companyName == null ? null : String(input.companyName),
+                input.companyName == null ? null : toText(input.companyName),
             }
           : {}),
         ...(input.jobTitle !== undefined
-          ? { jobTitle: input.jobTitle == null ? null : String(input.jobTitle) }
+          ? { jobTitle: input.jobTitle == null ? null : toText(input.jobTitle) }
           : {}),
       },
     });
@@ -158,13 +159,13 @@ export class PrismaCrmRepository implements CrmRepository {
         data: {
           uuid: randomUUID(),
           contactId: id,
-          type: String(i.type),
-          line1: String(i.line1),
-          line2: i.line2 ? String(i.line2) : null,
-          city: String(i.city),
-          region: i.region ? String(i.region) : null,
-          postalCode: i.postalCode ? String(i.postalCode) : null,
-          countryCode: String(i.countryCode).toUpperCase(),
+          type: toText(i.type),
+          line1: toText(i.line1),
+          line2: i.line2 ? toText(i.line2) : null,
+          city: toText(i.city),
+          region: i.region ? toText(i.region) : null,
+          postalCode: i.postalCode ? toText(i.postalCode) : null,
+          countryCode: toText(i.countryCode).toUpperCase(),
           isPrimary: i.isPrimary === true,
         },
       });
@@ -172,7 +173,7 @@ export class PrismaCrmRepository implements CrmRepository {
   }
   async addContactPhone(c: string, i: Row) {
     const id = await this.contactId(c);
-    const normalized = normalizePhone(String(i.value));
+    const normalized = normalizePhone(toText(i.value));
     return this.prisma.$transaction(async (tx) => {
       if (i.isPrimary === true)
         await tx.crmContactPhone.updateMany({
@@ -183,8 +184,8 @@ export class PrismaCrmRepository implements CrmRepository {
         data: {
           uuid: randomUUID(),
           contactId: id,
-          type: String(i.type),
-          value: String(i.value),
+          type: toText(i.type),
+          value: toText(i.value),
           normalizedValue: normalized,
           isPrimary: i.isPrimary === true,
           isVerified: false,
@@ -194,7 +195,7 @@ export class PrismaCrmRepository implements CrmRepository {
   }
   async addContactEmail(c: string, i: Row) {
     const id = await this.contactId(c);
-    const normalized = normalizeEmail(String(i.value));
+    const normalized = normalizeEmail(toText(i.value));
     return this.prisma.$transaction(async (tx) => {
       if (i.isPrimary === true)
         await tx.crmContactEmail.updateMany({
@@ -205,8 +206,8 @@ export class PrismaCrmRepository implements CrmRepository {
         data: {
           uuid: randomUUID(),
           contactId: id,
-          type: String(i.type),
-          value: String(i.value),
+          type: toText(i.type),
+          value: toText(i.value),
           normalizedValue: normalized,
           isPrimary: i.isPrimary === true,
           isVerified: false,
@@ -231,11 +232,11 @@ export class PrismaCrmRepository implements CrmRepository {
         data: {
           ...(i.value !== undefined
             ? {
-                value: String(i.value),
-                normalizedValue: normalizeEmail(String(i.value)),
+                value: toText(i.value),
+                normalizedValue: normalizeEmail(toText(i.value)),
               }
             : {}),
-          ...(i.type !== undefined ? { type: String(i.type) } : {}),
+          ...(i.type !== undefined ? { type: toText(i.type) } : {}),
         },
       });
     }
@@ -249,11 +250,11 @@ export class PrismaCrmRepository implements CrmRepository {
         data: {
           ...(i.value !== undefined
             ? {
-                value: String(i.value),
-                normalizedValue: normalizePhone(String(i.value)),
+                value: toText(i.value),
+                normalizedValue: normalizePhone(toText(i.value)),
               }
             : {}),
-          ...(i.type !== undefined ? { type: String(i.type) } : {}),
+          ...(i.type !== undefined ? { type: toText(i.type) } : {}),
         },
       });
     }
@@ -264,16 +265,16 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmContactAddress.update({
       where: { id: current.id },
       data: {
-        ...(i.line1 !== undefined ? { line1: String(i.line1) } : {}),
+        ...(i.line1 !== undefined ? { line1: toText(i.line1) } : {}),
         ...(i.line2 !== undefined
-          ? { line2: i.line2 == null ? null : String(i.line2) }
+          ? { line2: i.line2 == null ? null : toText(i.line2) }
           : {}),
-        ...(i.city !== undefined ? { city: String(i.city) } : {}),
+        ...(i.city !== undefined ? { city: toText(i.city) } : {}),
         ...(i.region !== undefined
-          ? { region: i.region == null ? null : String(i.region) }
+          ? { region: i.region == null ? null : toText(i.region) }
           : {}),
         ...(i.postalCode !== undefined
-          ? { postalCode: i.postalCode == null ? null : String(i.postalCode) }
+          ? { postalCode: i.postalCode == null ? null : toText(i.postalCode) }
           : {}),
       },
     });
@@ -352,28 +353,28 @@ export class PrismaCrmRepository implements CrmRepository {
       create: {
         uuid: randomUUID(),
         contactId: id,
-        preferredChannel: String(i.preferredChannel ?? 'EMAIL'),
+        preferredChannel: toText(i.preferredChannel ?? 'EMAIL'),
         preferredLanguage: i.preferredLanguage
-          ? String(i.preferredLanguage)
+          ? toText(i.preferredLanguage)
           : null,
         marketingEmail: i.marketingEmail === true,
         marketingSms: i.marketingSms === true,
         marketingWhatsapp: i.marketingWhatsapp === true,
-        quietHoursStart: i.quietHoursStart ? String(i.quietHoursStart) : null,
-        quietHoursEnd: i.quietHoursEnd ? String(i.quietHoursEnd) : null,
-        timezone: String(i.timezone ?? 'UTC'),
+        quietHoursStart: i.quietHoursStart ? toText(i.quietHoursStart) : null,
+        quietHoursEnd: i.quietHoursEnd ? toText(i.quietHoursEnd) : null,
+        timezone: toText(i.timezone ?? 'UTC'),
       },
       update: {
-        preferredChannel: String(i.preferredChannel ?? 'EMAIL'),
+        preferredChannel: toText(i.preferredChannel ?? 'EMAIL'),
         preferredLanguage: i.preferredLanguage
-          ? String(i.preferredLanguage)
+          ? toText(i.preferredLanguage)
           : null,
         marketingEmail: i.marketingEmail === true,
         marketingSms: i.marketingSms === true,
         marketingWhatsapp: i.marketingWhatsapp === true,
-        quietHoursStart: i.quietHoursStart ? String(i.quietHoursStart) : null,
-        quietHoursEnd: i.quietHoursEnd ? String(i.quietHoursEnd) : null,
-        timezone: String(i.timezone ?? 'UTC'),
+        quietHoursStart: i.quietHoursStart ? toText(i.quietHoursStart) : null,
+        quietHoursEnd: i.quietHoursEnd ? toText(i.quietHoursEnd) : null,
+        timezone: toText(i.timezone ?? 'UTC'),
       },
     });
   }
@@ -384,11 +385,11 @@ export class PrismaCrmRepository implements CrmRepository {
       data: {
         uuid: randomUUID(),
         contactId: id,
-        consentType: String(i.consentType),
-        status: String(i.status),
-        source: String(i.source),
-        grantedAt: String(i.status) === 'GRANTED' ? now : null,
-        revokedAt: String(i.status) === 'REVOKED' ? now : null,
+        consentType: toText(i.consentType),
+        status: toText(i.status),
+        source: toText(i.source),
+        grantedAt: toText(i.status) === 'GRANTED' ? now : null,
+        revokedAt: toText(i.status) === 'REVOKED' ? now : null,
         actorUserUuid: a.actorUuid,
       },
     });
@@ -404,7 +405,7 @@ export class PrismaCrmRepository implements CrmRepository {
         uuid: randomUUID(),
         fromContactId: from,
         toContactId: to,
-        relationshipType: String(i.relationshipType),
+        relationshipType: toText(i.relationshipType),
         isReciprocal: i.isReciprocal === true,
       },
     });
@@ -423,21 +424,21 @@ export class PrismaCrmRepository implements CrmRepository {
   async createLead(i: Row, a: CrmActor) {
     const [contact, source, type, status, campaign] = await Promise.all([
       this.prisma.crmContact.findFirst({
-        where: { uuid: String(i.contactUuid), archivedAt: null },
+        where: { uuid: toText(i.contactUuid), archivedAt: null },
         select: { id: true },
       }),
       this.prisma.crmLeadSource.findFirst({
-        where: { uuid: String(i.sourceUuid), deletedAt: null, isActive: true },
+        where: { uuid: toText(i.sourceUuid), deletedAt: null, isActive: true },
         select: { id: true },
       }),
       this.prisma.crmLeadType.findFirst({
-        where: { uuid: String(i.typeUuid), deletedAt: null, isActive: true },
+        where: { uuid: toText(i.typeUuid), deletedAt: null, isActive: true },
         select: { id: true },
       }),
       i.statusUuid
         ? this.prisma.crmLeadStatus.findFirst({
             where: {
-              uuid: String(i.statusUuid),
+              uuid: toText(i.statusUuid),
               deletedAt: null,
               isActive: true,
             },
@@ -450,7 +451,7 @@ export class PrismaCrmRepository implements CrmRepository {
       i.campaignUuid
         ? this.prisma.crmLeadCampaign.findFirst({
             where: {
-              uuid: String(i.campaignUuid),
+              uuid: toText(i.campaignUuid),
               deletedAt: null,
               isActive: true,
             },
@@ -460,7 +461,7 @@ export class PrismaCrmRepository implements CrmRepository {
     ]);
     if (!contact || !source || !type || !status)
       throw new Error('Invalid lead reference');
-    const code = String(
+    const code = toText(
       i.code ?? `LEAD-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
     );
     const lead = await this.prisma.crmLead.create({
@@ -515,10 +516,10 @@ export class PrismaCrmRepository implements CrmRepository {
     const p = pageOf(q);
     const where: Row = { archivedAt: null };
     for (const key of ['ownerUserUuid'])
-      if (q[key]) where[key] = String(q[key]);
-    if (q.statusUuid) where.status = { uuid: String(q.statusUuid) };
-    if (q.sourceUuid) where.source = { uuid: String(q.sourceUuid) };
-    if (q.typeUuid) where.type = { uuid: String(q.typeUuid) };
+      if (q[key]) where[key] = toText(q[key]);
+    if (q.statusUuid) where.status = { uuid: toText(q.statusUuid) };
+    if (q.sourceUuid) where.source = { uuid: toText(q.sourceUuid) };
+    if (q.typeUuid) where.type = { uuid: toText(q.typeUuid) };
     if (q.search)
       where.OR = [
         { code: { contains: q.search } },
@@ -549,16 +550,14 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmLead.update({
       where: { id },
       data: {
-        ...(i.code !== undefined ? { code: String(i.code) } : {}),
+        ...(i.code !== undefined ? { code: toText(i.code) } : {}),
         ...(i.campaignUuid !== undefined
           ? {
               campaignId: i.campaignUuid
-                ? ((
-                    await this.prisma.crmLeadCampaign.findFirst({
-                      where: { uuid: String(i.campaignUuid) },
-                      select: { id: true },
-                    })
-                  )?.id ?? null)
+                ? (await this.prisma.crmLeadCampaign.findFirst({
+                    where: { uuid: toText(i.campaignUuid) },
+                    select: { id: true },
+                  }))?.id ?? null
                 : null,
             }
           : {}),
@@ -769,10 +768,10 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmLeadScoreRule.create({
       data: {
         uuid: randomUUID(),
-        code: String(i.code),
-        field: String(i.field),
-        operator: String(i.operator),
-        value: String(i.value),
+        code: toText(i.code),
+        field: toText(i.field),
+        operator: toText(i.operator),
+        value: toText(i.value),
         points: Number(i.points),
         priority: Number(i.priority ?? 0),
       },
@@ -784,9 +783,9 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmLeadScoreRule.update({
       where: { id: r.id },
       data: {
-        ...(i.field !== undefined ? { field: String(i.field) } : {}),
-        ...(i.operator !== undefined ? { operator: String(i.operator) } : {}),
-        ...(i.value !== undefined ? { value: String(i.value) } : {}),
+        ...(i.field !== undefined ? { field: toText(i.field) } : {}),
+        ...(i.operator !== undefined ? { operator: toText(i.operator) } : {}),
+        ...(i.value !== undefined ? { value: toText(i.value) } : {}),
         ...(i.points !== undefined ? { points: Number(i.points) } : {}),
         ...(i.priority !== undefined ? { priority: Number(i.priority) } : {}),
         ...(i.isActive !== undefined ? { isActive: i.isActive === true } : {}),
@@ -812,7 +811,7 @@ export class PrismaCrmRepository implements CrmRepository {
     const phone = (c.phones as Row[] | undefined)?.find(
       (e) => e.isPrimary === true,
     )?.normalizedValue as string | undefined;
-    const name = String(c.displayName ?? '');
+    const name = toText(c.displayName ?? '');
     const candidates = await this.prisma.crmLead.findMany({
       where: { archivedAt: null, NOT: { uuid } },
       include: { contact: { include: { emails: true, phones: true } } },
@@ -839,7 +838,7 @@ export class PrismaCrmRepository implements CrmRepository {
       }
       if (
         name &&
-        String(cc.displayName ?? '').toLowerCase() === name.toLowerCase()
+        toText(cc.displayName ?? '').toLowerCase() === name.toLowerCase()
       ) {
         confidence += 20;
         signals.push('NAME');
@@ -850,15 +849,15 @@ export class PrismaCrmRepository implements CrmRepository {
           where: { pairKey },
           create: {
             uuid: randomUUID(),
-            leadId: BigInt(String(leadRow.id)),
-            candidateLeadId: BigInt(String((candidate as Row).id)),
+            leadId: BigInt(toText(leadRow.id)),
+            candidateLeadId: BigInt(toText((candidate as Row).id)),
             pairKey,
             confidence,
             signals: signals.join(','),
           },
           update: {
-            leadId: BigInt(String(leadRow.id)),
-            candidateLeadId: BigInt(String((candidate as Row).id)),
+            leadId: BigInt(toText(leadRow.id)),
+            candidateLeadId: BigInt(toText((candidate as Row).id)),
             confidence,
             signals: signals.join(','),
             status: 'CANDIDATE',
@@ -1002,24 +1001,24 @@ export class PrismaCrmRepository implements CrmRepository {
       return this.prisma.crmLeadSource.create({
         data: {
           uuid: randomUUID(),
-          code: String(i.code),
-          name: String(i.name),
-          description: i.description ? String(i.description) : null,
+          code: toText(i.code),
+          name: toText(i.name),
+          description: i.description ? toText(i.description) : null,
         },
       });
     if (kind === 'campaign') {
       const source = await this.prisma.crmLeadSource.findFirst({
-        where: { uuid: String(i.sourceUuid), deletedAt: null },
+        where: { uuid: toText(i.sourceUuid), deletedAt: null },
       });
       if (!source) throw new Error('Source not found');
       return this.prisma.crmLeadCampaign.create({
         data: {
           uuid: randomUUID(),
           sourceId: source.id,
-          code: String(i.code),
-          name: String(i.name),
-          startsAt: i.startsAt ? new Date(String(i.startsAt)) : null,
-          endsAt: i.endsAt ? new Date(String(i.endsAt)) : null,
+          code: toText(i.code),
+          name: toText(i.name),
+          startsAt: i.startsAt ? new Date(toText(i.startsAt)) : null,
+          endsAt: i.endsAt ? new Date(toText(i.endsAt)) : null,
         },
       });
     }
@@ -1027,16 +1026,16 @@ export class PrismaCrmRepository implements CrmRepository {
       return this.prisma.crmLeadType.create({
         data: {
           uuid: randomUUID(),
-          code: String(i.code),
-          name: String(i.name),
+          code: toText(i.code),
+          name: toText(i.name),
         },
       });
     if (kind === 'status')
       return this.prisma.crmLeadStatus.create({
         data: {
           uuid: randomUUID(),
-          code: String(i.code),
-          name: String(i.name),
+          code: toText(i.code),
+          name: toText(i.name),
           sortOrder: Number(i.sortOrder ?? 0),
           isClosed: i.isClosed === true,
         },
@@ -1044,9 +1043,9 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmLeadTag.create({
       data: {
         uuid: randomUUID(),
-        code: String(i.code),
-        name: String(i.name),
-        color: i.color ? String(i.color) : null,
+        code: toText(i.code),
+        name: toText(i.name),
+        color: i.color ? toText(i.color) : null,
       },
     });
   }
@@ -1055,11 +1054,11 @@ export class PrismaCrmRepository implements CrmRepository {
       return this.prisma.crmLeadSource.update({
         where: { uuid },
         data: {
-          ...(i.name !== undefined ? { name: String(i.name) } : {}),
+          ...(i.name !== undefined ? { name: toText(i.name) } : {}),
           ...(i.description !== undefined
             ? {
                 description:
-                  i.description == null ? null : String(i.description),
+                  i.description == null ? null : toText(i.description),
               }
             : {}),
           ...(i.isActive !== undefined
@@ -1071,7 +1070,7 @@ export class PrismaCrmRepository implements CrmRepository {
       return this.prisma.crmLeadCampaign.update({
         where: { uuid },
         data: {
-          ...(i.name !== undefined ? { name: String(i.name) } : {}),
+          ...(i.name !== undefined ? { name: toText(i.name) } : {}),
           ...(i.isActive !== undefined
             ? { isActive: i.isActive === true }
             : {}),
@@ -1081,7 +1080,7 @@ export class PrismaCrmRepository implements CrmRepository {
       return this.prisma.crmLeadType.update({
         where: { uuid },
         data: {
-          ...(i.name !== undefined ? { name: String(i.name) } : {}),
+          ...(i.name !== undefined ? { name: toText(i.name) } : {}),
           ...(i.isActive !== undefined
             ? { isActive: i.isActive === true }
             : {}),
@@ -1091,7 +1090,7 @@ export class PrismaCrmRepository implements CrmRepository {
       return this.prisma.crmLeadStatus.update({
         where: { uuid },
         data: {
-          ...(i.name !== undefined ? { name: String(i.name) } : {}),
+          ...(i.name !== undefined ? { name: toText(i.name) } : {}),
           ...(i.isClosed !== undefined
             ? { isClosed: i.isClosed === true }
             : {}),
@@ -1103,9 +1102,9 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmLeadTag.update({
       where: { uuid },
       data: {
-        ...(i.name !== undefined ? { name: String(i.name) } : {}),
+        ...(i.name !== undefined ? { name: toText(i.name) } : {}),
         ...(i.color !== undefined
-          ? { color: i.color == null ? null : String(i.color) }
+          ? { color: i.color == null ? null : toText(i.color) }
           : {}),
         ...(i.isActive !== undefined ? { isActive: i.isActive === true } : {}),
       },
@@ -1142,29 +1141,29 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmInquiry.create({
       data: {
         uuid: randomUUID(),
-        intent: String(i.intent),
+        intent: toText(i.intent),
         status: 'NEW',
         contactId: i.contactUuid
-          ? await this.contactId(String(i.contactUuid))
+          ? await this.contactId(toText(i.contactUuid))
           : null,
-        propertyUuid: i.propertyUuid ? String(i.propertyUuid) : null,
-        requesterName: i.requesterName ? String(i.requesterName) : null,
+        propertyUuid: i.propertyUuid ? toText(i.propertyUuid) : null,
+        requesterName: i.requesterName ? toText(i.requesterName) : null,
         requesterEmail: i.requesterEmail
-          ? normalizeEmail(String(i.requesterEmail))
+          ? normalizeEmail(toText(i.requesterEmail))
           : null,
         requesterPhone: i.requesterPhone
-          ? normalizePhone(String(i.requesterPhone))
+          ? normalizePhone(toText(i.requesterPhone))
           : null,
-        message: i.message ? String(i.message) : null,
+        message: i.message ? toText(i.message) : null,
         preferredChannel: i.preferredChannel
-          ? String(i.preferredChannel)
+          ? toText(i.preferredChannel)
           : null,
-        preferredAt: i.preferredAt ? new Date(String(i.preferredAt)) : null,
-        timezone: i.timezone ? String(i.timezone) : null,
+        preferredAt: i.preferredAt ? new Date(toText(i.preferredAt)) : null,
+        timezone: i.timezone ? toText(i.timezone) : null,
         deliveryPreference: i.deliveryPreference
-          ? String(i.deliveryPreference)
+          ? toText(i.deliveryPreference)
           : null,
-        serviceContext: i.serviceContext ? String(i.serviceContext) : null,
+        serviceContext: i.serviceContext ? toText(i.serviceContext) : null,
         spamScore: Number(i.spamScore ?? 0),
       },
     });
@@ -1177,10 +1176,10 @@ export class PrismaCrmRepository implements CrmRepository {
   async listInquiries(q: PageQuery & Row) {
     const p = pageOf(q);
     const where: Row = {};
-    if (q.intent) where.intent = String(q.intent);
-    if (q.status) where.status = String(q.status);
-    if (q.propertyUuid) where.propertyUuid = String(q.propertyUuid);
-    if (q.leadUuid) where.lead = { uuid: String(q.leadUuid) };
+    if (q.intent) where.intent = toText(q.intent);
+    if (q.status) where.status = toText(q.status);
+    if (q.propertyUuid) where.propertyUuid = toText(q.propertyUuid);
+    if (q.leadUuid) where.lead = { uuid: toText(q.leadUuid) };
     const [items, total] = await Promise.all([
       this.prisma.crmInquiry.findMany({
         where,
@@ -1196,16 +1195,16 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmInquiry.update({
       where: { uuid },
       data: {
-        ...(i.status !== undefined ? { status: String(i.status) } : {}),
+        ...(i.status !== undefined ? { status: toText(i.status) } : {}),
         ...(i.contactUuid !== undefined
           ? {
               contactId: i.contactUuid
-                ? await this.contactId(String(i.contactUuid))
+                ? await this.contactId(toText(i.contactUuid))
                 : null,
             }
           : {}),
         ...(i.message !== undefined
-          ? { message: i.message == null ? null : String(i.message) }
+          ? { message: i.message == null ? null : toText(i.message) }
           : {}),
       },
     });
@@ -1220,21 +1219,21 @@ export class PrismaCrmRepository implements CrmRepository {
       const [source, type, status] = await Promise.all([
         tx.crmLeadSource.findFirst({
           where: {
-            uuid: String(input.sourceUuid),
+            uuid: toText(input.sourceUuid),
             isActive: true,
             deletedAt: null,
           },
         }),
         tx.crmLeadType.findFirst({
           where: {
-            uuid: String(input.typeUuid),
+            uuid: toText(input.typeUuid),
             isActive: true,
             deletedAt: null,
           },
         }),
         tx.crmLeadStatus.findFirst({
           where: {
-            uuid: String(input.statusUuid),
+            uuid: toText(input.statusUuid),
             isActive: true,
             deletedAt: null,
           },
@@ -1245,7 +1244,7 @@ export class PrismaCrmRepository implements CrmRepository {
       const lead = await tx.crmLead.create({
         data: {
           uuid: randomUUID(),
-          code: String(input.code ?? `LEAD-${Date.now()}`),
+          code: toText(input.code ?? `LEAD-${Date.now()}`),
           contactId,
           sourceId: source.id,
           typeId: type.id,
@@ -1270,34 +1269,34 @@ export class PrismaCrmRepository implements CrmRepository {
   }
   async createActivity(i: Row) {
     const contactId = i.contactUuid
-      ? await this.contactId(String(i.contactUuid))
+      ? await this.contactId(toText(i.contactUuid))
       : null;
-    const leadId = i.leadUuid ? await this.leadId(String(i.leadUuid)) : null;
+    const leadId = i.leadUuid ? await this.leadId(toText(i.leadUuid)) : null;
     if (!contactId && !leadId)
       throw new Error('Activity must reference a contact or lead');
     return this.prisma.crmActivity.create({
       data: {
         uuid: randomUUID(),
-        type: String(i.type),
+        type: toText(i.type),
         status: 'CREATED',
-        priority: String(i.priority ?? 'NORMAL'),
-        subject: String(i.subject),
-        description: i.description ? String(i.description) : null,
+        priority: toText(i.priority ?? 'NORMAL'),
+        subject: toText(i.subject),
+        description: i.description ? toText(i.description) : null,
         contactId,
         leadId,
         assigneeUserUuid: i.assigneeUserUuid
-          ? String(i.assigneeUserUuid)
+          ? toText(i.assigneeUserUuid)
           : null,
-        dueAt: i.dueAt ? new Date(String(i.dueAt)) : null,
-        callOutcome: i.callOutcome ? String(i.callOutcome) : null,
+        dueAt: i.dueAt ? new Date(toText(i.dueAt)) : null,
+        callOutcome: i.callOutcome ? toText(i.callOutcome) : null,
         durationSeconds:
           i.durationSeconds != null ? Number(i.durationSeconds) : null,
         meetingStartAt: i.meetingStartAt
-          ? new Date(String(i.meetingStartAt))
+          ? new Date(toText(i.meetingStartAt))
           : null,
-        meetingEndAt: i.meetingEndAt ? new Date(String(i.meetingEndAt)) : null,
-        location: i.location ? String(i.location) : null,
-        reminderAt: i.reminderAt ? new Date(String(i.reminderAt)) : null,
+        meetingEndAt: i.meetingEndAt ? new Date(toText(i.meetingEndAt)) : null,
+        location: i.location ? toText(i.location) : null,
+        reminderAt: i.reminderAt ? new Date(toText(i.reminderAt)) : null,
       },
     });
   }
@@ -1319,10 +1318,10 @@ export class PrismaCrmRepository implements CrmRepository {
       if (q[k])
         where[k === 'leadUuid' ? 'lead' : k === 'contactUuid' ? 'contact' : k] =
           k === 'leadUuid'
-            ? { uuid: String(q[k]) }
+            ? { uuid: toText(q[k]) }
             : k === 'contactUuid'
-              ? { uuid: String(q[k]) }
-              : String(q[k]);
+              ? { uuid: toText(q[k]) }
+              : toText(q[k]);
     }
     const [items, total] = await Promise.all([
       this.prisma.crmActivity.findMany({
@@ -1340,19 +1339,20 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmActivity.update({
       where: { id: (r as Row).id },
       data: {
-        ...(i.subject !== undefined ? { subject: String(i.subject) } : {}),
+        ...(i.subject !== undefined ? { subject: toText(i.subject) } : {}),
         ...(i.description !== undefined
           ? {
-              description: i.description == null ? null : String(i.description),
+              description:
+                i.description == null ? null : toText(i.description),
             }
           : {}),
         ...(i.dueAt !== undefined
-          ? { dueAt: i.dueAt ? new Date(String(i.dueAt)) : null }
+          ? { dueAt: i.dueAt ? new Date(toText(i.dueAt)) : null }
           : {}),
         ...(i.assigneeUserUuid !== undefined
           ? {
               assigneeUserUuid: i.assigneeUserUuid
-                ? String(i.assigneeUserUuid)
+                ? toText(i.assigneeUserUuid)
                 : null,
             }
           : {}),
@@ -1361,7 +1361,7 @@ export class PrismaCrmRepository implements CrmRepository {
   }
   async transitionActivity(uuid: string, status: string, a: CrmActor) {
     const r = await this.getActivity(uuid);
-    const current = String((r as Row).status);
+    const current = toText((r as Row).status);
     const allowed: Record<string, readonly string[]> = {
       CREATED: ['ASSIGNED', 'IN_PROGRESS', 'CANCELLED'],
       ASSIGNED: ['IN_PROGRESS', 'CANCELLED'],
@@ -1387,27 +1387,25 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmCommunication.create({
       data: {
         uuid: randomUUID(),
-        channel: String(i.channel),
-        direction: String(i.direction ?? 'OUTBOUND'),
+        channel: toText(i.channel),
+        direction: toText(i.direction ?? 'OUTBOUND'),
         status: 'QUEUED',
         contactId: i.contactUuid
-          ? await this.contactId(String(i.contactUuid))
+          ? await this.contactId(toText(i.contactUuid))
           : null,
-        leadId: i.leadUuid ? await this.leadId(String(i.leadUuid)) : null,
+        leadId: i.leadUuid ? await this.leadId(toText(i.leadUuid)) : null,
         activityId: i.activityUuid
-          ? ((await this.getActivity(String(i.activityUuid))) as Row).id
+          ? ((await this.getActivity(toText(i.activityUuid))) as Row).id
           : null,
         templateId: i.templateUuid
-          ? ((
-              await this.prisma.crmCommunicationTemplate.findFirst({
-                where: { uuid: String(i.templateUuid) },
-              })
-            )?.id ?? null)
+          ? (await this.prisma.crmCommunicationTemplate.findFirst({
+              where: { uuid: toText(i.templateUuid) },
+            }))?.id ?? null
           : null,
-        providerName: i.providerName ? String(i.providerName) : null,
-        destination: String(i.destination),
-        subject: i.subject ? String(i.subject) : null,
-        body: String(i.body),
+        providerName: i.providerName ? toText(i.providerName) : null,
+        destination: toText(i.destination),
+        subject: i.subject ? toText(i.subject) : null,
+        body: toText(i.body),
       },
     });
   }
@@ -1419,10 +1417,10 @@ export class PrismaCrmRepository implements CrmRepository {
   async listCommunications(q: PageQuery & Row) {
     const p = pageOf(q);
     const where: Row = {};
-    if (q.channel) where.channel = String(q.channel);
-    if (q.status) where.status = String(q.status);
-    if (q.leadUuid) where.lead = { uuid: String(q.leadUuid) };
-    if (q.contactUuid) where.contact = { uuid: String(q.contactUuid) };
+    if (q.channel) where.channel = toText(q.channel);
+    if (q.status) where.status = toText(q.status);
+    if (q.leadUuid) where.lead = { uuid: toText(q.leadUuid) };
+    if (q.contactUuid) where.contact = { uuid: toText(q.contactUuid) };
     const [items, total] = await Promise.all([
       this.prisma.crmCommunication.findMany({
         where,
@@ -1436,7 +1434,7 @@ export class PrismaCrmRepository implements CrmRepository {
   }
   async transitionCommunication(uuid: string, status: string, i: Row) {
     const r = await this.getCommunication(uuid);
-    const current = String((r as Row).status);
+    const current = toText((r as Row).status);
     const allowed: Record<string, readonly string[]> = {
       QUEUED: ['SENT', 'FAILED', 'CANCELLED'],
       SENT: ['DELIVERED', 'FAILED'],
@@ -1453,9 +1451,9 @@ export class PrismaCrmRepository implements CrmRepository {
       data: {
         status,
         providerMessageId: i.providerMessageId
-          ? String(i.providerMessageId)
+          ? toText(i.providerMessageId)
           : undefined,
-        providerError: i.providerError ? String(i.providerError) : undefined,
+        providerError: i.providerError ? toText(i.providerError) : undefined,
         sentAt:
           status === 'SENT' ? new Date() : ((r as Row).sentAt as Date | null),
         deliveredAt:
@@ -1485,11 +1483,11 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmCommunicationTemplate.create({
       data: {
         uuid: randomUUID(),
-        code: String(i.code),
-        name: String(i.name),
-        channel: String(i.channel),
-        subject: i.subject ? String(i.subject) : null,
-        body: String(i.body),
+        code: toText(i.code),
+        name: toText(i.name),
+        channel: toText(i.channel),
+        subject: i.subject ? toText(i.subject) : null,
+        body: toText(i.body),
       },
     });
   }
@@ -1501,11 +1499,11 @@ export class PrismaCrmRepository implements CrmRepository {
     return this.prisma.crmCommunicationTemplate.update({
       where: { id: r.id },
       data: {
-        ...(i.name !== undefined ? { name: String(i.name) } : {}),
+        ...(i.name !== undefined ? { name: toText(i.name) } : {}),
         ...(i.subject !== undefined
-          ? { subject: i.subject == null ? null : String(i.subject) }
+          ? { subject: i.subject == null ? null : toText(i.subject) }
           : {}),
-        ...(i.body !== undefined ? { body: String(i.body) } : {}),
+        ...(i.body !== undefined ? { body: toText(i.body) } : {}),
         version: { increment: 1 },
       },
     });
