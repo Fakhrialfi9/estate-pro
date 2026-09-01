@@ -64,7 +64,8 @@ export class PrismaCrmLifecycleRepository {
       const next = await tx.crmLeadStatus.findFirst({
         where: { code: input.toStatus, isActive: true, deletedAt: null },
       });
-      if (!next) throw new Error(`CRM status ${input.toStatus} is not configured`);
+      if (!next)
+        throw new Error(`CRM status ${input.toStatus} is not configured`);
 
       const transition = await tx.crmLeadStatusTransition.findFirst({
         where: { fromStatusId: current.statusId, toStatusId: next.id },
