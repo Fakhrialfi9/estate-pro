@@ -15,7 +15,10 @@ import { CrmService } from './crm.service.js';
 import { PrismaCrmLifecycleRepository } from '../infrastructure/persistence/prisma-crm-lifecycle.repository.js';
 import { LeadLifecyclePolicy } from '../domain/lead-lifecycle.policy.js';
 import { QualificationPolicy } from '../domain/qualification.policy.js';
-import { ClosurePolicy, type ClosureOutcome } from '../domain/closure.policy.js';
+import {
+  ClosurePolicy,
+  type ClosureOutcome,
+} from '../domain/closure.policy.js';
 
 interface ActorWithPermissions extends CrmActor {
   readonly permissions?: readonly string[];
@@ -154,11 +157,7 @@ export class CrmLifecycleService {
       toStatus: 'CONTACTED',
       actor,
     });
-    await this.auditLifecycle(
-      AUDIT_ACTIONS.CRM_LEAD_REACTIVATED,
-      uuid,
-      actor,
-    );
+    await this.auditLifecycle(AUDIT_ACTIONS.CRM_LEAD_REACTIVATED, uuid, actor);
     this.logLifecycle('crm.lead.reactivate', uuid, actor);
     return result;
   }
@@ -198,9 +197,7 @@ export class CrmLifecycleService {
   ) {
     const lead = await this.scopedLead(uuid, actor);
     if (lead.statusCode !== 'QUALIFIED') {
-      throw new BadRequestException(
-        'Lead must be QUALIFIED before conversion',
-      );
+      throw new BadRequestException('Lead must be QUALIFIED before conversion');
     }
     const key = idempotencyKey?.trim() || `lead:${uuid}:conversion`;
     const result = await this.sales.createFromQualifiedLead({
@@ -210,11 +207,7 @@ export class CrmLifecycleService {
       idempotencyKey: key,
     });
     await this.repo.markConverted(uuid, key);
-    await this.auditLifecycle(
-      AUDIT_ACTIONS.CRM_LEAD_CONVERTED,
-      uuid,
-      actor,
-    );
+    await this.auditLifecycle(AUDIT_ACTIONS.CRM_LEAD_CONVERTED, uuid, actor);
     this.logLifecycle('crm.lead.convert', uuid, actor, {
       opportunityUuid: result.opportunityUuid,
       created: result.created,
@@ -246,11 +239,7 @@ export class CrmLifecycleService {
     return result;
   }
 
-  async timeline(
-    uuid: string,
-    query: PageQuery,
-    actor: ActorWithPermissions,
-  ) {
+  async timeline(uuid: string, query: PageQuery, actor: ActorWithPermissions) {
     await this.scopedLead(uuid, actor);
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 20));
@@ -292,7 +281,11 @@ export class CrmLifecycleService {
 
     const start = (page - 1) * limit;
     const total =
-      1 + history.total + activities.total + inquiries.total + communications.total;
+      1 +
+      history.total +
+      activities.total +
+      inquiries.total +
+      communications.total;
     return {
       items: events.slice(start, start + limit),
       total,
