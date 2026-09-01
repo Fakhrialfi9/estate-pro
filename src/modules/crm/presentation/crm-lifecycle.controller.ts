@@ -61,6 +61,48 @@ const actor = (request: Request, userAgent?: string, requestId?: string) => ({
   requestId,
 });
 
+const lifecycleSuccessResponse = (description: string) =>
+  ApiResponse({
+    status: 200,
+    description,
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'object',
+          additionalProperties: true,
+        },
+      },
+      required: ['data'],
+    },
+  });
+
+const lifecycleListResponse = (description: string) =>
+  ApiResponse({
+    status: 200,
+    description,
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: { type: 'object', additionalProperties: true },
+        },
+        meta: {
+          type: 'object',
+          properties: {
+            page: { type: 'integer', minimum: 1 },
+            limit: { type: 'integer', minimum: 1 },
+            total: { type: 'integer', minimum: 0 },
+            totalPages: { type: 'integer', minimum: 0 },
+          },
+          required: ['page', 'limit', 'total', 'totalPages'],
+        },
+      },
+      required: ['data', 'meta'],
+    },
+  });
+
 @ApiTags('CRM Lead Lifecycle')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
@@ -72,7 +114,7 @@ export class CrmLifecycleController {
   @RequirePermissions('crm.leads.qualify')
   @ApiOperation({ summary: 'Qualify a lead with an explicit reason' })
   @ApiParam({ name: 'uuid' })
-  @ApiResponse({ status: 200 })
+  @lifecycleSuccessResponse('Qualified lead')
   @ApiResponse({ status: 400 })
   @ApiResponse({ status: 401 })
   @ApiResponse({ status: 403 })
@@ -91,8 +133,9 @@ export class CrmLifecycleController {
   @Post(':uuid/nurture')
   @RequirePermissions('crm.leads.nurture')
   @ApiOperation({ summary: 'Start lead nurturing' })
-  @ApiResponse({ status: 200 })
+  @lifecycleSuccessResponse('Nurturing workflow started')
   @ApiResponse({ status: 400 })
+  @ApiResponse({ status: 401 })
   @ApiResponse({ status: 403 })
   nurture(
     @Req() request: Request,
@@ -106,8 +149,9 @@ export class CrmLifecycleController {
   @Post(':uuid/reactivate')
   @RequirePermissions('crm.leads.reactivate')
   @ApiOperation({ summary: 'Reactivate an eligible closed lead' })
-  @ApiResponse({ status: 200 })
+  @lifecycleSuccessResponse('Reactivated lead')
   @ApiResponse({ status: 400 })
+  @ApiResponse({ status: 401 })
   @ApiResponse({ status: 403 })
   reactivate(
     @Req() request: Request,
@@ -121,8 +165,9 @@ export class CrmLifecycleController {
   @Post(':uuid/close')
   @RequirePermissions('crm.leads.close')
   @ApiOperation({ summary: 'Close a lead with an explicit reason and outcome' })
-  @ApiResponse({ status: 200 })
+  @lifecycleSuccessResponse('Closed lead')
   @ApiResponse({ status: 400 })
+  @ApiResponse({ status: 401 })
   @ApiResponse({ status: 403 })
   close(
     @Req() request: Request,
@@ -137,7 +182,7 @@ export class CrmLifecycleController {
   @Post(':uuid/convert')
   @RequirePermissions('crm.leads.convert')
   @ApiOperation({ summary: 'Convert a qualified lead into Sales' })
-  @ApiResponse({ status: 200 })
+  @lifecycleSuccessResponse('Converted lead')
   @ApiResponse({ status: 400 })
   @ApiResponse({ status: 401 })
   @ApiResponse({ status: 403 })
@@ -155,7 +200,7 @@ export class CrmLifecycleController {
   @Get(':uuid/timeline')
   @RequirePermissions('crm.leads.read')
   @ApiOperation({ summary: 'Unified, paginated lead timeline read model' })
-  @ApiResponse({ status: 200 })
+  @lifecycleListResponse('Paginated lead timeline')
   @ApiResponse({ status: 401 })
   @ApiResponse({ status: 403 })
   timeline(
