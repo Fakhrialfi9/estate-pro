@@ -32,6 +32,15 @@ export interface SalesOpportunityRow {
   updatedAt: Date;
 }
 
+export interface SalesNegotiationRecord extends SalesRecord {
+  readonly status: NegotiationStatus;
+}
+
+export interface SalesDealRecord extends SalesRecord {
+  readonly status: DealStatus;
+  readonly ownerUserUuid: string | null;
+}
+
 export interface PipelineInput {
   name: string;
   description?: string | null;
@@ -179,7 +188,7 @@ export interface SalesRepository {
     input: NegotiationInput,
     actor: SalesActor,
   ): Promise<SalesRecord>;
-  getNegotiation(uuid: string): Promise<SalesRecord | null>;
+  getNegotiation(uuid: string): Promise<SalesNegotiationRecord | null>;
   transitionNegotiation(
     uuid: string,
     status: NegotiationStatus,
@@ -194,7 +203,7 @@ export interface SalesRepository {
   ): Promise<SalesRecord | null>;
   listOffers(negotiationUuid: string): Promise<SalesRecord[]>;
   createDeal(input: DealInput, actor: SalesActor): Promise<SalesRecord>;
-  getDeal(uuid: string): Promise<SalesRecord | null>;
+  getDeal(uuid: string): Promise<SalesDealRecord | null>;
   listDeals(query: Record<string, unknown>): Promise<PageResult<SalesRecord>>;
   addDealItem(input: DealItemInput, actor: SalesActor): Promise<SalesRecord>;
   updateDealItem(
