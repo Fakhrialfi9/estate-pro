@@ -230,7 +230,7 @@ export interface SalesRepository {
     reasonUuid: string,
     actor: SalesActor,
   ): Promise<SalesRecord | null>;
-  reopenDeal(uuid: string, actor: SalesActor): never;
+  reopenDeal(uuid: string, actor: SalesActor): void;
   listLostReasons(): Promise<SalesRecord[]>;
   createLostReason(input: {
     code: string;
