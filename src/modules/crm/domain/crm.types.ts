@@ -1,9 +1,11 @@
 export interface CrmActor {
   readonly actorUuid: string;
+  readonly permissions?: readonly string[];
   readonly requestId?: string;
   readonly ipAddress?: string;
   readonly userAgent?: string;
 }
+
 export interface PageQuery {
   readonly page?: number;
   readonly limit?: number;
@@ -12,6 +14,7 @@ export interface PageQuery {
   readonly sortDirection?: 'asc' | 'desc';
   readonly [key: string]: unknown;
 }
+
 export const pageOf = (
   query: PageQuery,
 ): { page: number; limit: number; skip: number } => {
@@ -24,20 +27,42 @@ export const pageOf = (
     : 20;
   return { page, limit, skip: (page - 1) * limit };
 };
+
 export const normalizeEmail = (value: string): string =>
   value.trim().toLowerCase();
+
 export const normalizePhone = (value: string): string =>
   value.replace(/[^0-9+]/g, '').trim();
+
 export const normalizeText = (value: string, max: number): string =>
   value
     .normalize('NFKC')
-    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[\p{Cc}]/gu, '')
     .trim()
     .slice(0, max);
+
+export const toText = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  )
+    return value.toString();
+  if (value instanceof Date) return value.toISOString();
+  if (value === null || value === undefined) return '';
+  try {
+    return JSON.stringify(value) ?? '';
+  } catch {
+    return '';
+  }
+};
+
 export const assertPlainText = (value: string): void => {
   if (/[<>]/.test(value) || /javascript\s*:/i.test(value))
     throw new Error('HTML or executable URL content is not allowed');
 };
+
 export const assertLeadStatusTransition = (
   from: { code: string },
   to: { code: string },
@@ -52,11 +77,13 @@ export const assertLeadStatusTransition = (
   )
     throw new Error(`Invalid transition ${from.code} -> ${to.code}`);
 };
+
 export interface ScoreInput {
   readonly values: Readonly<
     Record<string, string | number | boolean | null | undefined>
   >;
 }
+
 export interface ScoreRule {
   readonly code: string;
   readonly field: string;
@@ -64,6 +91,7 @@ export interface ScoreRule {
   readonly value: string;
   readonly points: number;
 }
+
 export const matchesScoreRule = (
   input: ScoreInput,
   rule: ScoreRule,
@@ -94,6 +122,7 @@ export const matchesScoreRule = (
       return false;
   }
 };
+
 export const calculateScore = (
   input: ScoreInput,
   rules: readonly ScoreRule[],
@@ -113,5 +142,6 @@ export const calculateScore = (
     factors,
   };
 };
+
 export const duplicatePairKey = (a: string, b: string): string =>
   [a, b].sort().join(':');
