@@ -72,12 +72,24 @@ jobs:
         run: bash scripts/check-secrets.sh
       - name: Canonicalize pending source formatting
         run: |
-          npx prettier --write src/modules/agent-management/application/agent-management.service.ts
-          if ! git diff --quiet -- src/modules/agent-management/application/agent-management.service.ts; then
+          npx prettier --write \
+            src/modules/agent-management/application/agent-management.service.ts \
+            src/modules/automation/application/services/automation.service.ts \
+            src/modules/automation/application/validation/workflow-validator.ts \
+            src/modules/automation/presentation/automation.dto.ts
+          if ! git diff --quiet -- \
+            src/modules/agent-management/application/agent-management.service.ts \
+            src/modules/automation/application/services/automation.service.ts \
+            src/modules/automation/application/validation/workflow-validator.ts \
+            src/modules/automation/presentation/automation.dto.ts; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add src/modules/agent-management/application/agent-management.service.ts
-            git commit -m "style(agent): apply canonical formatting [skip ci]"
+            git add \
+              src/modules/agent-management/application/agent-management.service.ts \
+              src/modules/automation/application/services/automation.service.ts \
+              src/modules/automation/application/validation/workflow-validator.ts \
+              src/modules/automation/presentation/automation.dto.ts
+            git commit -m "style(automation): apply canonical formatting [skip ci]"
             git push origin HEAD:main
           fi
       - name: Format check
