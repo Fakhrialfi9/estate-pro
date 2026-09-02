@@ -1,5 +1,5 @@
 import type { AccessTokenClaims } from '../../../common/security/access-token-verifier.port.js';
-import type { AnalyticsScope } from '../domain/analytics.types.js';
+import type { AnalyticsScope } from '../analytics.types.js';
 
 export const ANALYTICS_READ_PERMISSION = 'analytics.read';
 export const ANALYTICS_GLOBAL_READ_PERMISSION = 'analytics.read.all';
@@ -10,7 +10,7 @@ export const ANALYTICS_ADMIN_PERMISSION = 'analytics.manage';
 
 export class AnalyticsScopePolicy {
   resolve(user: AccessTokenClaims): AnalyticsScope {
-    const permissions = new Set(user.permissions ?? []);
+    const permissions = new Set<string>(user.permissions ?? []);
     const global =
       permissions.has(ANALYTICS_GLOBAL_READ_PERMISSION) ||
       permissions.has(ANALYTICS_ADMIN_PERMISSION);
@@ -20,7 +20,7 @@ export class AnalyticsScopePolicy {
   }
 
   canReadRevenue(user: AccessTokenClaims): boolean {
-    const permissions = new Set(user.permissions ?? []);
+    const permissions = new Set<string>(user.permissions ?? []);
     return (
       permissions.has(ANALYTICS_REVENUE_READ_PERMISSION) ||
       permissions.has(ANALYTICS_ADMIN_PERMISSION) ||
@@ -29,7 +29,7 @@ export class AnalyticsScopePolicy {
   }
 
   canExport(user: AccessTokenClaims): boolean {
-    const permissions = new Set(user.permissions ?? []);
+    const permissions = new Set<string>(user.permissions ?? []);
     return (
       permissions.has(ANALYTICS_EXPORT_PERMISSION) ||
       permissions.has(ANALYTICS_ADMIN_PERMISSION)
@@ -37,7 +37,7 @@ export class AnalyticsScopePolicy {
   }
 
   canForecast(user: AccessTokenClaims): boolean {
-    const permissions = new Set(user.permissions ?? []);
+    const permissions = new Set<string>(user.permissions ?? []);
     return (
       permissions.has(ANALYTICS_FORECAST_PERMISSION) ||
       permissions.has(ANALYTICS_ADMIN_PERMISSION)
