@@ -101,7 +101,7 @@ describe('analytics domain semantics', () => {
   it('marks forecast confidence insufficient below minimum sample', async () => {
     const forecastRepo = {
       ...repo,
-      forecastInput: () => [
+      forecastInput: async () => [
         {
           closedRevenue: 100,
           closedDeals: 2,
