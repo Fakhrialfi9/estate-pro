@@ -7,6 +7,7 @@ import { PrismaSalesRepository } from './infrastructure/persistence/prisma-sales
 import { SalesService } from './application/sales.service.js';
 import { SalesAutomationAdapter } from './application/services/sales-automation.adapter.js';
 import { SalesController } from './presentation/sales.controller.js';
+import './presentation/sales-openapi.js';
 import { SALES_CONVERSION_PORT } from '../../common/contracts/sales-conversion.port.js';
 import { PrismaSalesConversionAdapter } from './sales-conversion.adapter.js';
 import { SALES_AUTOMATION_PORT } from '../../common/contracts/automation-sales.port.js';
