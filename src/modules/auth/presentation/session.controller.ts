@@ -14,13 +14,11 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import type { AccessTokenClaims } from '../application/services/jwt-token.service.js';
 import { SessionService } from '../application/services/session.service.js';
 import { JwtAuthGuard } from '../security/jwt-auth.guard.js';
 import { SessionAdminGuard } from '../security/session-admin.guard.js';
-import { SECURITY_SESSION_RATE_LIMIT } from '../../../config/rate-limit.config.js';
 
 interface AuthenticatedRequest extends Request {
   user: AccessTokenClaims;
@@ -53,7 +51,6 @@ const requestContext = (request: Request) => ({
 @ApiBearerAuth()
 @Controller('auth/sessions')
 @UseGuards(JwtAuthGuard)
-@Throttle({ default: SECURITY_SESSION_RATE_LIMIT })
 export class SessionController {
   constructor(private readonly sessions: SessionService) {}
 
@@ -117,7 +114,6 @@ export class SessionController {
 @ApiBearerAuth()
 @Controller('admin/session-management')
 @UseGuards(JwtAuthGuard, SessionAdminGuard)
-@Throttle({ default: SECURITY_SESSION_RATE_LIMIT })
 export class AdminSessionController {
   constructor(private readonly sessions: SessionService) {}
 
@@ -137,7 +133,7 @@ export class AdminSessionController {
     @Param('userUuid') userUuid: string,
     @Param('id') id: string,
   ) {
-    if (!/^[0-9a-f-]{36}$/i.test(userUuid) || !/^\d+$/.test(id)) {
+    if (!/^\d+$/.test(id) || !/^[0-9a-f-]{36}$/i.test(userUuid)) {
       throw new BadRequestException('Invalid session target');
     }
     await this.sessions.adminRevoke(
