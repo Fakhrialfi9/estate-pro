@@ -1,4 +1,9 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiExtraModels,
+  ApiProperty,
+  ApiPropertyOptional,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
@@ -208,6 +213,7 @@ export class AvailabilityExceptionDto {
   @MaxLength(255)
   reason?: string;
 }
+@ApiExtraModels(ScheduleItemDto, AvailabilityExceptionDto)
 export class AvailabilityUpdateDto {
   @ApiProperty({
     type: String,
@@ -225,11 +231,17 @@ export class AvailabilityUpdateDto {
   @Type(() => Date)
   @IsDate()
   effectiveAt?: Date;
-  @ApiProperty({ type: [ScheduleItemDto] })
+  @ApiProperty({
+    type: 'array',
+    items: { $ref: getSchemaPath(ScheduleItemDto) },
+  })
   @ValidateNested({ each: true })
   @Type(() => ScheduleItemDto)
   schedule!: ScheduleItemDto[];
-  @ApiProperty({ type: [AvailabilityExceptionDto] })
+  @ApiProperty({
+    type: 'array',
+    items: { $ref: getSchemaPath(AvailabilityExceptionDto) },
+  })
   @ValidateNested({ each: true })
   @Type(() => AvailabilityExceptionDto)
   exceptions!: AvailabilityExceptionDto[];
