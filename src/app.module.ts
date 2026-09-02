@@ -23,6 +23,7 @@ import { CrmModule } from './modules/crm/crm.module.js';
 import { SalesModule } from './modules/sales/sales.module.js';
 import { PropertyMatchingModule } from './modules/property-matching/property-matching.module.js';
 import { AutomationModule } from './modules/automation/automation.module.js';
+import { AgentManagementModule } from './modules/agent-management/agent-management.module.js';
 
 const shouldSkipThrottling = (context: ExecutionContext): boolean => context.getClass() === HealthController;
 const validateEnvironment = (env: Record<string, unknown>): Record<string, unknown> => {
@@ -51,6 +52,7 @@ const validateEnvironment = (env: Record<string, unknown>): Record<string, unkno
     ContentModule,
     CrmModule,
     SalesModule,
+    AgentManagementModule,
     PropertyMatchingModule,
     AutomationModule,
     HealthModule,
