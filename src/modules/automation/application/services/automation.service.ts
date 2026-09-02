@@ -608,7 +608,10 @@ export class AutomationService {
     const context = record(execution.contextSnapshot);
     const graph = definition.graph;
     const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
-    let current = toStringValue(execution.currentNodeId, graph.entryNodeId);
+    let current: string | null = toStringValue(
+      execution.currentNodeId,
+      graph.entryNodeId,
+    );
     const visited = new Set<string>();
     while (current) {
       if (visited.has(current))
