@@ -1,36 +1,33 @@
 import { randomUUID } from 'node:crypto';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, type Mock } from 'vitest';
 import type { ConfigService } from '@nestjs/config';
 import { PrismaSecurityAuditRepository } from '../../../src/infrastructure/audit/prisma-security-audit.repository.js';
 import type { SecurityAuditEvent } from '../../../src/common/audit/security-audit.port.js';
 import type { PrismaService } from '../../../src/infrastructure/database/prisma/prisma.service.js';
 
+type AuditMock = Mock;
 type AuditTransaction = {
-  authenticationUser: {
-    findFirst: ReturnType<typeof vi.fn>;
-  };
-  authorizationRole: { findFirst: ReturnType<typeof vi.fn> };
-  authorizationPermission: { findFirst: ReturnType<typeof vi.fn> };
+  authenticationUser: { findFirst: AuditMock };
+  authorizationRole: { findFirst: AuditMock };
+  authorizationPermission: { findFirst: AuditMock };
   auditLog: {
-    create: ReturnType<typeof vi.fn>;
-    findMany: ReturnType<typeof vi.fn>;
-    count: ReturnType<typeof vi.fn>;
+    create: AuditMock;
+    findMany: AuditMock;
+    count: AuditMock;
   };
-  auditLogChange: { createMany: ReturnType<typeof vi.fn> };
+  auditLogChange: { createMany: AuditMock };
 };
 
 const createTransaction = (
   actorUuid: string,
-  auditLogCreate: ReturnType<typeof vi.fn>,
-  auditLogChangeCreateMany?: ReturnType<typeof vi.fn>,
+  auditLogCreate: AuditMock,
+  auditLogChangeCreateMany?: AuditMock,
 ): AuditTransaction => ({
   authenticationUser: {
-    findFirst: vi
-      .fn<() => Promise<{ id: bigint; uuid: string } | null>>()
-      .mockResolvedValue({
-        id: 7n,
-        uuid: actorUuid,
-      }),
+    findFirst: vi.fn<() => Promise<{ id: bigint; uuid: string } | null>>().mockResolvedValue({
+      id: 7n,
+      uuid: actorUuid,
+    }),
   },
   authorizationRole: { findFirst: vi.fn() },
   authorizationPermission: { findFirst: vi.fn() },
@@ -40,12 +37,11 @@ const createTransaction = (
     count: vi.fn(),
   },
   auditLogChange: {
-    createMany:
-      auditLogChangeCreateMany ?? vi.fn().mockResolvedValue(undefined),
+    createMany: auditLogChangeCreateMany ?? vi.fn().mockResolvedValue(undefined),
   },
 });
 
-const createRepository = (transaction: ReturnType<typeof vi.fn>) => {
+const createRepository = (transaction: AuditMock): PrismaSecurityAuditRepository => {
   const prisma = { $transaction: transaction } as unknown as PrismaService;
   const configGet = vi.fn<() => number>().mockReturnValue(1024);
   const config = { get: configGet } as unknown as ConfigService;
@@ -57,14 +53,10 @@ describe('PrismaSecurityAuditRepository', () => {
     const actorUuid = randomUUID();
     const auditLogCreate = vi
       .fn<() => Promise<{ id: bigint }>>()
-      .mockResolvedValue({
-        id: 1n,
-      });
+      .mockResolvedValue({ id: 1n });
     const tx = createTransaction(actorUuid, auditLogCreate);
     const transaction = vi
-      .fn<
-        (callback: (value: AuditTransaction) => unknown) => Promise<unknown>
-      >()
+      .fn<(callback: (value: AuditTransaction) => unknown) => Promise<unknown>>()
       .mockImplementation((callback) => Promise.resolve(callback(tx)));
     const repository = createRepository(transaction);
     const event: SecurityAuditEvent = {
@@ -100,30 +92,23 @@ describe('PrismaSecurityAuditRepository', () => {
     const actorUuid = randomUUID();
     const auditLogCreate = vi
       .fn<() => Promise<{ id: bigint }>>()
-      .mockResolvedValue({
-        id: 1n,
-      });
+      .mockResolvedValue({ id: 1n });
     const auditLogChangeCreateMany = vi
       .fn<() => Promise<void>>()
       .mockResolvedValue(undefined);
-    const tx = createTransaction(
-      actorUuid,
-      auditLogCreate,
-      auditLogChangeCreateMany,
-    );
+    const tx = createTransaction(actorUuid, auditLogCreate, auditLogChangeCreateMany);
     const transaction = vi
-      .fn<
-        (callback: (value: AuditTransaction) => unknown) => Promise<unknown>
-      >()
+      .fn<(callback: (value: AuditTransaction) => unknown) => Promise<unknown>>()
       .mockImplementation((callback) => Promise.resolve(callback(tx)));
     const repository = createRepository(transaction);
+    const entityUuid = randomUUID();
     const event: SecurityAuditEvent = {
       action: 'property.utilities.update',
       actorUuid,
       subjectUuid: actorUuid,
       actorType: 'AUTHENTICATED',
       entityType: 'property_utilities',
-      entityUuid: randomUUID(),
+      entityUuid,
       requestId: 'request-123',
       result: 'SUCCESS',
       changes: [
@@ -155,7 +140,7 @@ describe('PrismaSecurityAuditRepository', () => {
         action: 'property.utilities.update',
         entityType: 'property_utilities',
         entityId: null,
-        resourceId: event.entityUuid ?? null,
+        resourceId: entityUuid,
         result: 'SUCCESS',
       }),
     });
