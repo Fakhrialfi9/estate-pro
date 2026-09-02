@@ -38,6 +38,7 @@ API_VERSION="v1" \
 DATABASE_URL="mysql://test:test-password@127.0.0.1:3306/estate_pro_test" \
 JWT_SECRET="test-only-secret-that-is-at-least-32-chars" \
 SECURITY_CORS_ORIGINS="http://localhost:3000" \
+SWAGGER_ENABLED="true" \
 OTEL_TRACING_ENABLED="false" \
 OTEL_METRICS_ENABLED="false" \
 LOG_LEVEL="silent" \
