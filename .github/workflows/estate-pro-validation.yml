@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test
@@ -35,17 +35,6 @@ jobs:
           cache: npm
       - name: Pin npm
         run: npm install --global npm@11.18.0
-      - name: Regenerate npm lockfile
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Commit regenerated lockfile
-        run: |
-          if ! git diff --quiet -- package-lock.json; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore(deps): regenerate lockfile for NestJS 12 [skip ci]"
-            git push origin HEAD:main
-          fi
       - name: Install MariaDB
         run: |
           sudo apt-get update
