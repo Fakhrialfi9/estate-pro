@@ -230,7 +230,10 @@ export class PrismaPropertyAgentAssignmentAdapter
     });
   }
 
-  async isAssigned(propertyUuid: string, agentUserUuid: string): Promise<boolean> {
+  async isAssigned(
+    propertyUuid: string,
+    agentUserUuid: string,
+  ): Promise<boolean> {
     return Boolean(
       await this.db.propertyAgentAssignment.findFirst({
         where: {
