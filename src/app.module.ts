@@ -1,13 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
-import {
-  configuration,
-  configurationValidationSchema,
-} from './config/configuration.js';
+import { configuration } from './config/configuration.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { LoggingModule } from './infrastructure/logging/logger.module.js';
 import { ObservabilityModule } from './infrastructure/observability/observability.module.js';
@@ -27,18 +24,7 @@ import { PropertyMatchingModule } from './modules/property-matching/property-mat
 import { AutomationModule } from './modules/automation/automation.module.js';
 import { AgentManagementModule } from './modules/agent-management/agent-management.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
-
-const validateEnvironment = (
-  env: Record<string, unknown>,
-): Record<string, unknown> => {
-  const result = configurationValidationSchema.validate(env, {
-    abortEarly: false,
-    allowUnknown: false,
-    stripUnknown: { objects: true },
-  });
-  if (result.error) throw result.error;
-  return result.value as Record<string, unknown>;
-};
+import { configurationValidationSchema } from './config/configuration.js';
 
 @Module({
   imports: [
@@ -46,8 +32,15 @@ const validateEnvironment = (
       isGlobal: true,
       cache: true,
       load: configuration,
-      validate: validateEnvironment,
-      validationOptions: { abortEarly: false, allowUnknown: false },
+      validate: (env: Record<string, unknown>): Record<string, unknown> => {
+        const result = configurationValidationSchema.validate(env, {
+          abortEarly: false,
+          allowUnknown: false,
+          stripUnknown: { objects: true },
+        });
+        if (result.error) throw result.error;
+        return result.value as Record<string, unknown>;
+      },
     }),
     LoggingModule,
     DatabaseModule,
