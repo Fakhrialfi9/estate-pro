@@ -13,7 +13,10 @@ import { PrismaAnalyticsQueryRepository } from './infrastructure/prisma-analytic
     AnalyticsService,
     AnalyticsScopePolicy,
     PrismaAnalyticsQueryRepository,
-    { provide: ANALYTICS_QUERY_PORT, useExisting: PrismaAnalyticsQueryRepository },
+    {
+      provide: ANALYTICS_QUERY_PORT,
+      useExisting: PrismaAnalyticsQueryRepository,
+    },
   ],
   exports: [AnalyticsService],
 })

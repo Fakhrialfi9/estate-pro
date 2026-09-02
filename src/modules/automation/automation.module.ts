@@ -10,12 +10,27 @@ import { WorkflowValidator } from './application/validation/workflow-validator.j
 import { PrismaAutomationRepository } from './infrastructure/persistence/prisma-automation.repository.js';
 import { AUTOMATION_REPOSITORY } from './infrastructure/persistence/automation.repository.token.js';
 import { AUTOMATION_ACTION_PROVIDERS } from './application/actions/automation-actions.js';
-import type { ActionHandler, AutomationRepository } from './domain/automation.ports.js';
+import type {
+  ActionHandler,
+  AutomationRepository,
+} from './domain/automation.ports.js';
 import { AUTOMATION_ACTION_HANDLERS } from './domain/automation.tokens.js';
-import { CRM_AUTOMATION_PORT, type AutomationCrmPort } from '../../common/contracts/automation-crm.port.js';
-import { SALES_AUTOMATION_PORT, type AutomationSalesPort } from '../../common/contracts/automation-sales.port.js';
-import { USER_PUBLIC_PORT, type UserPublicPort } from '../../common/contracts/user-public.port.js';
-import { SECURITY_AUDIT_REPOSITORY, type SecurityAuditRepository } from '../../common/audit/security-audit.port.js';
+import {
+  CRM_AUTOMATION_PORT,
+  type AutomationCrmPort,
+} from '../../common/contracts/automation-crm.port.js';
+import {
+  SALES_AUTOMATION_PORT,
+  type AutomationSalesPort,
+} from '../../common/contracts/automation-sales.port.js';
+import {
+  USER_PUBLIC_PORT,
+  type UserPublicPort,
+} from '../../common/contracts/user-public.port.js';
+import {
+  SECURITY_AUDIT_REPOSITORY,
+  type SecurityAuditRepository,
+} from '../../common/audit/security-audit.port.js';
 import { AutomationScheduler } from './infrastructure/scheduler/automation.scheduler.js';
 
 @Module({
@@ -33,8 +48,33 @@ import { AutomationScheduler } from './infrastructure/scheduler/automation.sched
     },
     {
       provide: AutomationService,
-      inject: [AUTOMATION_REPOSITORY, CRM_AUTOMATION_PORT, SALES_AUTOMATION_PORT, USER_PUBLIC_PORT, SECURITY_AUDIT_REPOSITORY, WorkflowValidator, AUTOMATION_ACTION_HANDLERS],
-      useFactory: (repo: AutomationRepository, crm: AutomationCrmPort, sales: AutomationSalesPort, users: UserPublicPort, audit: SecurityAuditRepository, validator: WorkflowValidator, handlers: readonly ActionHandler[]) => new AutomationService(repo, crm, sales, users, audit, validator, handlers),
+      inject: [
+        AUTOMATION_REPOSITORY,
+        CRM_AUTOMATION_PORT,
+        SALES_AUTOMATION_PORT,
+        USER_PUBLIC_PORT,
+        SECURITY_AUDIT_REPOSITORY,
+        WorkflowValidator,
+        AUTOMATION_ACTION_HANDLERS,
+      ],
+      useFactory: (
+        repo: AutomationRepository,
+        crm: AutomationCrmPort,
+        sales: AutomationSalesPort,
+        users: UserPublicPort,
+        audit: SecurityAuditRepository,
+        validator: WorkflowValidator,
+        handlers: readonly ActionHandler[],
+      ) =>
+        new AutomationService(
+          repo,
+          crm,
+          sales,
+          users,
+          audit,
+          validator,
+          handlers,
+        ),
     },
     AutomationScheduler,
   ],

@@ -1,4 +1,10 @@
-export const WORKFLOW_STATUSES = ['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED', 'INVALID'] as const;
+export const WORKFLOW_STATUSES = [
+  'DRAFT',
+  'ACTIVE',
+  'PAUSED',
+  'ARCHIVED',
+  'INVALID',
+] as const;
 export type WorkflowStatus = (typeof WORKFLOW_STATUSES)[number];
 
 export const EXECUTION_STATES = [
@@ -66,7 +72,13 @@ export type ActionType = (typeof ACTION_TYPES)[number];
 
 export interface TriggerDefinition {
   readonly type: TriggerType;
-  readonly entityType: 'LEAD' | 'CONTACT' | 'OPPORTUNITY' | 'DEAL' | 'ACTIVITY' | 'SLA';
+  readonly entityType:
+    | 'LEAD'
+    | 'CONTACT'
+    | 'OPPORTUNITY'
+    | 'DEAL'
+    | 'ACTIVITY'
+    | 'SLA';
   readonly eventAction?: string;
   readonly field?: string;
   readonly value?: string | number | boolean | null;
@@ -98,7 +110,15 @@ export interface ActionNode {
 
 export interface WorkflowGraph {
   readonly entryNodeId: string;
-  readonly nodes: readonly (ConditionNode | ActionNode | { readonly id: string; readonly type: 'TRIGGER'; readonly trigger: TriggerDefinition; })[];
+  readonly nodes: readonly (
+    | ConditionNode
+    | ActionNode
+    | {
+        readonly id: string;
+        readonly type: 'TRIGGER';
+        readonly trigger: TriggerDefinition;
+      }
+  )[];
   readonly edges: readonly { readonly from: string; readonly to: string }[];
   readonly maxDepth?: number;
 }
@@ -112,7 +132,9 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
 export const isUuid = (value: string): boolean =>
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 
 export const canonicalize = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
@@ -128,7 +150,8 @@ export const canonicalize = (value: unknown): string => {
 };
 
 export const parseDefinition = (value: unknown): WorkflowDefinition => {
-  if (!isObject(value)) throw new Error('Workflow definition must be an object');
+  if (!isObject(value))
+    throw new Error('Workflow definition must be an object');
   if (!isObject(value.trigger) || !isObject(value.graph))
     throw new Error('Workflow definition requires trigger and graph');
   return value as unknown as WorkflowDefinition;
@@ -142,7 +165,9 @@ export class WorkflowAggregate {
     private _status: WorkflowStatus = 'DRAFT',
   ) {}
 
-  get status(): WorkflowStatus { return this._status; }
+  get status(): WorkflowStatus {
+    return this._status;
+  }
 
   transition(next: WorkflowStatus): void {
     if (this._status === next) return;
@@ -167,7 +192,9 @@ export class WorkflowExecutionAggregate {
     private _state: ExecutionState = 'PENDING',
   ) {}
 
-  get state(): ExecutionState { return this._state; }
+  get state(): ExecutionState {
+    return this._state;
+  }
 
   transition(next: ExecutionState): void {
     const allowed: Record<ExecutionState, readonly ExecutionState[]> = {
@@ -193,7 +220,9 @@ export class ActionExecutionAggregate {
     private _state: ActionState = 'PENDING',
   ) {}
 
-  get state(): ActionState { return this._state; }
+  get state(): ActionState {
+    return this._state;
+  }
 
   transition(next: ActionState): void {
     const allowed: Record<ActionState, readonly ActionState[]> = {
@@ -224,8 +253,15 @@ export const decideRetry = (
   maxDelayMs = 300_000,
 ): RetryDecision => {
   if (!retryable || attempt >= maxAttempts)
-    return { retry: false, delayMs: 0, terminalState: attempt >= maxAttempts ? 'DEAD_LETTER' : 'FAILED' };
-  const delayMs = Math.min(maxDelayMs, baseDelayMs * 2 ** Math.max(0, attempt - 1));
+    return {
+      retry: false,
+      delayMs: 0,
+      terminalState: attempt >= maxAttempts ? 'DEAD_LETTER' : 'FAILED',
+    };
+  const delayMs = Math.min(
+    maxDelayMs,
+    baseDelayMs * 2 ** Math.max(0, attempt - 1),
+  );
   return { retry: true, delayMs, terminalState: 'FAILED' };
 };
 

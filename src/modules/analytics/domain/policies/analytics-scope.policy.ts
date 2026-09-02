@@ -11,22 +11,36 @@ export const ANALYTICS_ADMIN_PERMISSION = 'analytics.manage';
 export class AnalyticsScopePolicy {
   resolve(user: AccessTokenClaims): AnalyticsScope {
     const permissions = new Set(user.permissions ?? []);
-    const global = permissions.has(ANALYTICS_GLOBAL_READ_PERMISSION) || permissions.has(ANALYTICS_ADMIN_PERMISSION);
-    return global ? { kind: 'global', userUuid: user.sub } : { kind: 'agent', userUuid: user.sub };
+    const global =
+      permissions.has(ANALYTICS_GLOBAL_READ_PERMISSION) ||
+      permissions.has(ANALYTICS_ADMIN_PERMISSION);
+    return global
+      ? { kind: 'global', userUuid: user.sub }
+      : { kind: 'agent', userUuid: user.sub };
   }
 
   canReadRevenue(user: AccessTokenClaims): boolean {
     const permissions = new Set(user.permissions ?? []);
-    return permissions.has(ANALYTICS_REVENUE_READ_PERMISSION) || permissions.has(ANALYTICS_ADMIN_PERMISSION) || permissions.has(ANALYTICS_GLOBAL_READ_PERMISSION);
+    return (
+      permissions.has(ANALYTICS_REVENUE_READ_PERMISSION) ||
+      permissions.has(ANALYTICS_ADMIN_PERMISSION) ||
+      permissions.has(ANALYTICS_GLOBAL_READ_PERMISSION)
+    );
   }
 
   canExport(user: AccessTokenClaims): boolean {
     const permissions = new Set(user.permissions ?? []);
-    return permissions.has(ANALYTICS_EXPORT_PERMISSION) || permissions.has(ANALYTICS_ADMIN_PERMISSION);
+    return (
+      permissions.has(ANALYTICS_EXPORT_PERMISSION) ||
+      permissions.has(ANALYTICS_ADMIN_PERMISSION)
+    );
   }
 
   canForecast(user: AccessTokenClaims): boolean {
     const permissions = new Set(user.permissions ?? []);
-    return permissions.has(ANALYTICS_FORECAST_PERMISSION) || permissions.has(ANALYTICS_ADMIN_PERMISSION);
+    return (
+      permissions.has(ANALYTICS_FORECAST_PERMISSION) ||
+      permissions.has(ANALYTICS_ADMIN_PERMISSION)
+    );
   }
 }

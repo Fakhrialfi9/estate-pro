@@ -23,8 +23,17 @@ import { PrismaSalesAgentWorkloadAdapter } from './sales-agent-workload.adapter.
     { provide: SALES_REPOSITORY, useExisting: PrismaSalesRepository },
     { provide: SALES_CONVERSION_PORT, useClass: PrismaSalesConversionAdapter },
     { provide: SALES_AUTOMATION_PORT, useExisting: SalesAutomationAdapter },
-    { provide: SALES_AGENT_WORKLOAD_PORT, useClass: PrismaSalesAgentWorkloadAdapter },
+    {
+      provide: SALES_AGENT_WORKLOAD_PORT,
+      useClass: PrismaSalesAgentWorkloadAdapter,
+    },
   ],
-  exports: [SALES_CONVERSION_PORT, SalesService, SALES_REPOSITORY, SALES_AUTOMATION_PORT, SALES_AGENT_WORKLOAD_PORT],
+  exports: [
+    SALES_CONVERSION_PORT,
+    SalesService,
+    SALES_REPOSITORY,
+    SALES_AUTOMATION_PORT,
+    SALES_AGENT_WORKLOAD_PORT,
+  ],
 })
 export class SalesModule {}

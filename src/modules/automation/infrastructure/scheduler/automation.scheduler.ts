@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AutomationService } from '../../application/services/automation.service.js';
 import type { AutomationRepository } from '../../domain/automation.ports.js';
@@ -13,12 +19,16 @@ export class AutomationScheduler implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly automation: AutomationService,
-    @Inject(AUTOMATION_REPOSITORY) private readonly repository: AutomationRepository,
+    @Inject(AUTOMATION_REPOSITORY)
+    private readonly repository: AutomationRepository,
     private readonly config: ConfigService,
   ) {}
 
   onModuleInit(): void {
-    const intervalMs = this.config.get<number>('automation.pollIntervalMs', 1000);
+    const intervalMs = this.config.get<number>(
+      'automation.pollIntervalMs',
+      1000,
+    );
     this.timer = setInterval(() => void this.tick(), intervalMs);
     this.timer.unref();
     void this.tick();
@@ -34,12 +44,19 @@ export class AutomationScheduler implements OnModuleInit, OnModuleDestroy {
     try {
       const leaseMs = this.config.get<number>('automation.leaseMs', 30_000);
       await this.repository.reclaimExpired(this.workerId, new Date());
-      for (let index = 0; index < this.config.get<number>('automation.schedulerBatchSize', 25); index += 1) {
+      for (
+        let index = 0;
+        index < this.config.get<number>('automation.schedulerBatchSize', 25);
+        index += 1
+      ) {
         const result = await this.automation.processDue(this.workerId, leaseMs);
         if (!result) break;
       }
     } catch (error: unknown) {
-      this.logger.error('Automation scheduler iteration failed', error instanceof Error ? error.stack : undefined);
+      this.logger.error(
+        'Automation scheduler iteration failed',
+        error instanceof Error ? error.stack : undefined,
+      );
     } finally {
       this.running = false;
     }

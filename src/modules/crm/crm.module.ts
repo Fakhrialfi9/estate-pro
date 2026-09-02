@@ -25,15 +25,42 @@ import { CRM_AGENT_WORKLOAD_PORT } from '../../common/contracts/crm-agent-worklo
 import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, AuthorizationModule, PropertyModule, UsersModule, SalesModule],
-  controllers: [CrmController, CrmPublicInquiryController, CrmLifecycleController],
+  imports: [
+    DatabaseModule,
+    AuditModule,
+    AuthorizationModule,
+    PropertyModule,
+    UsersModule,
+    SalesModule,
+  ],
+  controllers: [
+    CrmController,
+    CrmPublicInquiryController,
+    CrmLifecycleController,
+  ],
   providers: [
-    CrmService, CrmAutomationAdapter, CrmLifecycleService, PrismaCrmLifecycleRepository, ScoreDomainService, DuplicateDetector,
-    LeadMergePolicy, LeadLifecyclePolicy, QualificationPolicy, ClosurePolicy,
+    CrmService,
+    CrmAutomationAdapter,
+    CrmLifecycleService,
+    PrismaCrmLifecycleRepository,
+    ScoreDomainService,
+    DuplicateDetector,
+    LeadMergePolicy,
+    LeadLifecyclePolicy,
+    QualificationPolicy,
+    ClosurePolicy,
     { provide: CRM_REPOSITORY, useClass: PrismaCrmRepository },
     { provide: CRM_AUTOMATION_PORT, useExisting: CrmAutomationAdapter },
-    { provide: CRM_AGENT_WORKLOAD_PORT, useClass: PrismaCrmAgentWorkloadAdapter },
+    {
+      provide: CRM_AGENT_WORKLOAD_PORT,
+      useClass: PrismaCrmAgentWorkloadAdapter,
+    },
   ],
-  exports: [CRM_REPOSITORY, CrmService, CRM_AUTOMATION_PORT, CRM_AGENT_WORKLOAD_PORT],
+  exports: [
+    CRM_REPOSITORY,
+    CrmService,
+    CRM_AUTOMATION_PORT,
+    CRM_AGENT_WORKLOAD_PORT,
+  ],
 })
 export class CrmModule {}

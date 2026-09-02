@@ -5,7 +5,10 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
-import { configuration, configurationValidationSchema } from './config/configuration.js';
+import {
+  configuration,
+  configurationValidationSchema,
+} from './config/configuration.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { LoggingModule } from './infrastructure/logging/logger.module.js';
 import { ObservabilityModule } from './infrastructure/observability/observability.module.js';

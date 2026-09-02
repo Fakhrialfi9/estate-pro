@@ -13,9 +13,22 @@ import { AgentCandidateAdapter } from './application/agent-candidate.adapter.js'
 import { PrismaAgentRepository } from './infrastructure/persistence/prisma-agent.repository.js';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, AuthorizationModule, UsersModule, PropertyModule, CrmModule, SalesModule],
+  imports: [
+    DatabaseModule,
+    AuditModule,
+    AuthorizationModule,
+    UsersModule,
+    PropertyModule,
+    CrmModule,
+    SalesModule,
+  ],
   controllers: [AgentManagementController],
-  providers: [PrismaAgentRepository, AgentManagementService, AgentCandidateAdapter, { provide: AGENT_CANDIDATE_PORT, useExisting: AgentCandidateAdapter }],
+  providers: [
+    PrismaAgentRepository,
+    AgentManagementService,
+    AgentCandidateAdapter,
+    { provide: AGENT_CANDIDATE_PORT, useExisting: AgentCandidateAdapter },
+  ],
   exports: [AgentManagementService, AGENT_CANDIDATE_PORT],
 })
 export class AgentManagementModule {}

@@ -40,7 +40,9 @@ export class AnalyticsService {
       !Number.isFinite(to.getTime()) ||
       from >= to
     ) {
-      throw new AnalyticsInvalidQueryException('`from` must be earlier than `to`.');
+      throw new AnalyticsInvalidQueryException(
+        '`from` must be earlier than `to`.',
+      );
     }
     const rangeDays = (to.getTime() - from.getTime()) / 86_400_000;
     if (rangeDays > MAX_RANGE_DAYS) {
@@ -51,7 +53,7 @@ export class AnalyticsService {
     return {
       from,
       to,
-      granularity: (dto.granularity ?? 'day') as AnalyticsGranularity,
+      granularity: dto.granularity ?? 'day',
       page: Math.min(Math.max(dto.page ?? 1, 1), 50),
       limit: Math.min(Math.max(dto.limit ?? 50, 1), 100),
       ...(dto.ownerUserUuid ? { ownerUserUuid: dto.ownerUserUuid } : {}),
@@ -68,18 +70,22 @@ export class AnalyticsService {
     return this.scopePolicy.resolve(user);
   }
 
-  async leads(dto: AnalyticsQueryDto, user: AccessTokenClaims): Promise<AnalyticsReport<Record<string, unknown>>> {
+  async leads(
+    dto: AnalyticsQueryDto,
+    user: AccessTokenClaims,
+  ): Promise<AnalyticsReport<Record<string, unknown>>> {
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
-    const [volume, lifecycle, aging, funnel, assignment] = await this.withTimeout(
-      Promise.all([
-        this.queries.leadVolume(query, scope),
-        this.queries.leadLifecycle(query, scope),
-        this.queries.leadAging(query, scope),
-        this.queries.leadFunnel(query, scope),
-        this.queries.leadAssignment(query, scope),
-      ]),
-    );
+    const [volume, lifecycle, aging, funnel, assignment] =
+      await this.withTimeout(
+        Promise.all([
+          this.queries.leadVolume(query, scope),
+          this.queries.leadLifecycle(query, scope),
+          this.queries.leadAging(query, scope),
+          this.queries.leadFunnel(query, scope),
+          this.queries.leadAssignment(query, scope),
+        ]),
+      );
     const funnelRows = this.normalizeRows(funnel);
     const funnelTotal = funnelRows.reduce(
       (sum, row) => sum + this.numberValue(row.count),
@@ -90,7 +96,9 @@ export class AnalyticsService {
       percentage:
         funnelTotal === 0
           ? 0
-          : Number(((this.numberValue(row.count) / funnelTotal) * 100).toFixed(4)),
+          : Number(
+              ((this.numberValue(row.count) / funnelTotal) * 100).toFixed(4),
+            ),
     }));
     return this.report(query, {
       volume: this.normalizeRows(volume),
@@ -142,7 +150,9 @@ export class AnalyticsService {
       opportunityToDeal: {
         opportunities,
         wonDeals,
-        rate: opportunities ? Number(((wonDeals / opportunities) * 100).toFixed(4)) : 0,
+        rate: opportunities
+          ? Number(((wonDeals / opportunities) * 100).toFixed(4))
+          : 0,
       },
       cycleTime: {
         leadToOpportunityDays: this.numberValue(row.leadToOpportunityDays),
@@ -152,7 +162,11 @@ export class AnalyticsService {
         ...item,
         rate: this.numberValue(item.leads)
           ? Number(
-              ((this.numberValue(item.converted) / this.numberValue(item.leads)) * 100).toFixed(4),
+              (
+                (this.numberValue(item.converted) /
+                  this.numberValue(item.leads)) *
+                100
+              ).toFixed(4),
             )
           : 0,
       })),
@@ -181,24 +195,38 @@ export class AnalyticsService {
   async propertyAndAgent(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
-    const [inventory, listings, lifecycle, aging, workload, activity, conversion, agentProperty] =
-      await this.withTimeout(
-        Promise.all([
-          this.queries.propertyInventory(query, scope),
-          this.queries.listingAnalytics(query, scope),
-          this.queries.propertyLifecycle(query, scope),
-          this.queries.propertyAging(query, scope),
-          this.queries.agentWorkload(query, scope),
-          this.queries.agentActivity(query, scope),
-          this.queries.agentConversion(query, scope),
-          this.queries.agentProperty(query, scope),
-        ]),
-      );
+    const [
+      inventory,
+      listings,
+      lifecycle,
+      aging,
+      workload,
+      activity,
+      conversion,
+      agentProperty,
+    ] = await this.withTimeout(
+      Promise.all([
+        this.queries.propertyInventory(query, scope),
+        this.queries.listingAnalytics(query, scope),
+        this.queries.propertyLifecycle(query, scope),
+        this.queries.propertyAging(query, scope),
+        this.queries.agentWorkload(query, scope),
+        this.queries.agentActivity(query, scope),
+        this.queries.agentConversion(query, scope),
+        this.queries.agentProperty(query, scope),
+      ]),
+    );
     const conversions = new Map(
-      this.normalizeRows(conversion).map((row) => [String(row.agentUuid ?? ''), row]),
+      this.normalizeRows(conversion).map((row) => [
+        String(row.agentUuid ?? ''),
+        row,
+      ]),
     );
     const properties = new Map(
-      this.normalizeRows(agentProperty).map((row) => [String(row.agentUuid ?? ''), row]),
+      this.normalizeRows(agentProperty).map((row) => [
+        String(row.agentUuid ?? ''),
+        row,
+      ]),
     );
     const scorecards = this.normalizeRows(workload).map((row) => {
       const id = String(row.agentUuid ?? '');
@@ -235,7 +263,9 @@ export class AnalyticsService {
 
   async salesAndRevenue(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
     if (!this.scopePolicy.canReadRevenue(user)) {
-      throw new AnalyticsScopeException('Revenue analytics permission is required.');
+      throw new AnalyticsScopeException(
+        'Revenue analytics permission is required.',
+      );
     }
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
@@ -282,9 +312,10 @@ export class AnalyticsService {
     }
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
-    const row = this.normalizeRows(
-      await this.withTimeout(this.queries.forecastInput(query, scope)),
-    )[0] ?? {};
+    const row =
+      this.normalizeRows(
+        await this.withTimeout(this.queries.forecastInput(query, scope)),
+      )[0] ?? {};
     const closedRevenue = this.numberValue(row.closedRevenue);
     const closedDeals = this.numberValue(row.closedDeals);
     const weightedPipeline = this.numberValue(row.weightedPipeline);
@@ -312,26 +343,52 @@ export class AnalyticsService {
     const normalized = report.trim().toLowerCase();
     let result: AnalyticsReport<Record<string, unknown>>;
     switch (normalized) {
-      case 'leads': result = await this.leads(dto, user); break;
-      case 'acquisition': result = await this.acquisition(dto, user); break;
-      case 'conversion': result = await this.conversion(dto, user); break;
-      case 'pipeline': result = await this.pipeline(dto, user); break;
-      case 'property-agent': result = await this.propertyAndAgent(dto, user); break;
-      case 'sales-revenue': result = await this.salesAndRevenue(dto, user); break;
-      case 'sla': result = await this.sla(dto, user); break;
-      case 'forecast': result = await this.forecast(dto, user); break;
-      default: throw new AnalyticsInvalidQueryException('Unsupported analytics export report.');
+      case 'leads':
+        result = await this.leads(dto, user);
+        break;
+      case 'acquisition':
+        result = await this.acquisition(dto, user);
+        break;
+      case 'conversion':
+        result = await this.conversion(dto, user);
+        break;
+      case 'pipeline':
+        result = await this.pipeline(dto, user);
+        break;
+      case 'property-agent':
+        result = await this.propertyAndAgent(dto, user);
+        break;
+      case 'sales-revenue':
+        result = await this.salesAndRevenue(dto, user);
+        break;
+      case 'sla':
+        result = await this.sla(dto, user);
+        break;
+      case 'forecast':
+        result = await this.forecast(dto, user);
+        break;
+      default:
+        throw new AnalyticsInvalidQueryException(
+          'Unsupported analytics export report.',
+        );
     }
     const rows = this.flattenReport(result.data).slice(0, 10000);
-    if (rows.length === 0) return { filename: `analytics-${normalized}.csv`, content: '' };
+    if (rows.length === 0)
+      return { filename: `analytics-${normalized}.csv`, content: '' };
     const keys = [...new Set(rows.flatMap((row) => Object.keys(row)))];
-    const csv = [keys, ...rows.map((row) => keys.map((key) => this.csvValue(row[key])))]
+    const csv = [
+      keys,
+      ...rows.map((row) => keys.map((key) => this.csvValue(row[key]))),
+    ]
       .map((row) => row.join(','))
       .join('\n');
     return { filename: `analytics-${normalized}.csv`, content: csv };
   }
 
-  private report<T extends Record<string, unknown>>(query: AnalyticsQuery, data: T): AnalyticsReport<T> {
+  private report<T extends Record<string, unknown>>(
+    query: AnalyticsQuery,
+    data: T,
+  ): AnalyticsReport<T> {
     return {
       data: [data],
       meta: {
@@ -358,24 +415,39 @@ export class AnalyticsService {
       promise.then(
         (value) => {
           clearTimeout(timer);
-          span?.setAttribute('analytics.query.duration_ms', Date.now() - startedAt);
+          span?.setAttribute(
+            'analytics.query.duration_ms',
+            Date.now() - startedAt,
+          );
           resolve(value);
         },
         (error: unknown) => {
           clearTimeout(timer);
-          span?.setAttribute('analytics.query.duration_ms', Date.now() - startedAt);
-          reject(error instanceof Error ? error : new AnalyticsUnavailableException());
+          span?.setAttribute(
+            'analytics.query.duration_ms',
+            Date.now() - startedAt,
+          );
+          reject(
+            error instanceof Error
+              ? error
+              : new AnalyticsUnavailableException(),
+          );
         },
       );
     });
   }
 
-  private normalizeRows(rows: readonly Record<string, unknown>[]): Record<string, unknown>[] {
+  private normalizeRows(
+    rows: readonly Record<string, unknown>[],
+  ): Record<string, unknown>[] {
     return rows
       .slice(0, MAX_BOUNDED_ROWS)
       .map((row) =>
         Object.fromEntries(
-          Object.entries(row).map(([key, value]) => [key, this.normalizeScalar(value)]),
+          Object.entries(row).map(([key, value]) => [
+            key,
+            this.normalizeScalar(value),
+          ]),
         ),
       );
   }
@@ -394,14 +466,18 @@ export class AnalyticsService {
     return value;
   }
 
-  private withConversionRates(row: Record<string, unknown>): Record<string, unknown> {
+  private withConversionRates(
+    row: Record<string, unknown>,
+  ): Record<string, unknown> {
     const leads = this.numberValue(row.leads);
     const qualified = this.numberValue(row.qualified);
     const converted = this.numberValue(row.converted);
     return {
       ...row,
       qualifiedRate: leads ? Number(((qualified / leads) * 100).toFixed(4)) : 0,
-      conversionRate: leads ? Number(((converted / leads) * 100).toFixed(4)) : 0,
+      conversionRate: leads
+        ? Number(((converted / leads) * 100).toFixed(4))
+        : 0,
     };
   }
 
@@ -419,7 +495,9 @@ export class AnalyticsService {
     return 'OTHER';
   }
 
-  private flattenReport(data: readonly Record<string, unknown>[]): Record<string, unknown>[] {
+  private flattenReport(
+    data: readonly Record<string, unknown>[],
+  ): Record<string, unknown>[] {
     return data.flatMap((group) =>
       Object.entries(group).flatMap(([key, value]) =>
         Array.isArray(value)

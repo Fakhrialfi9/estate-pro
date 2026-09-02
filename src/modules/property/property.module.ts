@@ -62,15 +62,36 @@ import { PrismaPropertyRegionAdapter } from './property-region.adapter.js';
     GetPropertyTypeUseCase,
     ListPropertyTypesUseCase,
     UpdatePropertyTypeUseCase,
-    { provide: PROPERTY_TYPE_REPOSITORY, useClass: PrismaPropertyTypeRepository },
+    {
+      provide: PROPERTY_TYPE_REPOSITORY,
+      useClass: PrismaPropertyTypeRepository,
+    },
     PropertyMasterService,
-    { provide: PROPERTY_MASTER_REPOSITORY, useClass: PrismaPropertyMasterStore },
-    { provide: PROPERTY_DETAILS_REPOSITORY, useClass: PrismaPropertyDetailsRepository },
-    { provide: PROPERTY_EXTRAS_REPOSITORY, useClass: PrismaPropertyExtrasRepository },
-    { provide: PROPERTY_LIFECYCLE_REPOSITORY, useClass: PrismaPropertyLifecycleRepository },
+    {
+      provide: PROPERTY_MASTER_REPOSITORY,
+      useClass: PrismaPropertyMasterStore,
+    },
+    {
+      provide: PROPERTY_DETAILS_REPOSITORY,
+      useClass: PrismaPropertyDetailsRepository,
+    },
+    {
+      provide: PROPERTY_EXTRAS_REPOSITORY,
+      useClass: PrismaPropertyExtrasRepository,
+    },
+    {
+      provide: PROPERTY_LIFECYCLE_REPOSITORY,
+      useClass: PrismaPropertyLifecycleRepository,
+    },
     { provide: PROPERTY_PUBLIC_PORT, useExisting: PropertyMasterService },
-    { provide: PROPERTY_AGENT_ASSIGNMENT_PORT, useClass: PrismaPropertyAgentAssignmentAdapter },
-    { provide: PROPERTY_AGENT_CONTEXT_PORT, useClass: PrismaPropertyAgentContextAdapter },
+    {
+      provide: PROPERTY_AGENT_ASSIGNMENT_PORT,
+      useClass: PrismaPropertyAgentAssignmentAdapter,
+    },
+    {
+      provide: PROPERTY_AGENT_CONTEXT_PORT,
+      useClass: PrismaPropertyAgentContextAdapter,
+    },
     { provide: PROPERTY_REGION_PORT, useClass: PrismaPropertyRegionAdapter },
     { provide: APP_INTERCEPTOR, useClass: PropertyMetricsInterceptor },
     PropertyDetailsService,

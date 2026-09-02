@@ -5,8 +5,23 @@ export type AgentCandidate = {
   specializations: string[];
   coverage: string[];
   availability: string;
-  capacity: { max: number; current: number; remaining: number; utilizationPercent: number };
+  capacity: {
+    max: number;
+    current: number;
+    remaining: number;
+    utilizationPercent: number;
+  };
 };
-export type AgentCandidateQuery = { propertyUuid?: string; specializationUuid?: string; regionUuids?: string[]; limit?: number };
-export interface AgentCandidatePort { findCandidates(query: AgentCandidateQuery, requesterUuid?: string): Promise<AgentCandidate[]>; }
+export type AgentCandidateQuery = {
+  propertyUuid?: string;
+  specializationUuid?: string;
+  regionUuids?: string[];
+  limit?: number;
+};
+export interface AgentCandidatePort {
+  findCandidates(
+    query: AgentCandidateQuery,
+    requesterUuid?: string,
+  ): Promise<AgentCandidate[]>;
+}
 export const AGENT_CANDIDATE_PORT = Symbol('AGENT_CANDIDATE_PORT');

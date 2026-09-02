@@ -3,7 +3,10 @@ import {
   SALES_REPOSITORY,
   type SalesRepository,
 } from '../../domain/repositories/sales.repository.js';
-import type { AutomationOpportunityContext, AutomationSalesPort } from '../../../../common/contracts/automation-sales.port.js';
+import type {
+  AutomationOpportunityContext,
+  AutomationSalesPort,
+} from '../../../../common/contracts/automation-sales.port.js';
 
 @Injectable()
 export class SalesAutomationAdapter implements AutomationSalesPort {
@@ -17,7 +20,9 @@ export class SalesAutomationAdapter implements AutomationSalesPort {
     return row;
   }
 
-  async listOpenOpportunities(entityUuid?: string): Promise<readonly AutomationOpportunityContext[]> {
+  async listOpenOpportunities(
+    entityUuid?: string,
+  ): Promise<readonly AutomationOpportunityContext[]> {
     const result = await this.repository.listOpportunities({
       ...(entityUuid ? { leadUuid: entityUuid } : {}),
       page: 1,

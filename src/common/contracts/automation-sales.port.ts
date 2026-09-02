@@ -15,7 +15,9 @@ export interface AutomationOpportunityContext {
 
 export interface AutomationSalesPort {
   getOpportunity(uuid: string): Promise<AutomationOpportunityContext>;
-  listOpenOpportunities(entityUuid?: string): Promise<readonly AutomationOpportunityContext[]>;
+  listOpenOpportunities(
+    entityUuid?: string,
+  ): Promise<readonly AutomationOpportunityContext[]>;
 }
 
 export const SALES_AUTOMATION_PORT = Symbol('SALES_AUTOMATION_PORT');

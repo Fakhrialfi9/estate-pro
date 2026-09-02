@@ -1,8 +1,18 @@
 import { Transform, Type } from 'class-transformer';
-import { IsISO8601, IsIn, IsInt, IsOptional, IsString, Max, Min, IsUUID } from 'class-validator';
+import {
+  IsISO8601,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  IsUUID,
+} from 'class-validator';
 import { ANALYTICS_GRANULARITIES } from '../../domain/analytics.types.js';
 
-const trim = ({ value }: { value: unknown }): unknown => typeof value === 'string' ? value.trim() : value;
+const trim = ({ value }: { value: unknown }): unknown =>
+  typeof value === 'string' ? value.trim() : value;
 
 export class AnalyticsQueryDto {
   @IsOptional()
@@ -61,7 +71,9 @@ export class AnalyticsQueryDto {
   propertyUuid?: string;
 
   @IsOptional()
-  @Transform(({ value }) => typeof value === 'string' ? value.trim().toUpperCase() : value)
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsString()
   currency?: string;
 }
