@@ -24,8 +24,13 @@ const PERMISSIONS = [
   'properties.update',
   'properties.delete',
 ] as const;
-const http = (app: INestApplication) => request(app.getHttpServer());
-const bodyAs = <T>(response: Response): T => response.body;
+type SuperTestApp = Parameters<typeof request>[0];
+const http = (app: INestApplication) => {
+  const server = app.getHttpServer() as unknown as SuperTestApp;
+  return request(server);
+};
+const bodyAs = <T>(response: Response): T =>
+  response.body as unknown as T;
 type Created = {
   data: { uuid: string; status?: string; propertyCategory?: { uuid: string } };
 };
