@@ -21,7 +21,7 @@ import { PropertyController } from './presentation/controllers/property.controll
 import { PropertyCategoryController } from './presentation/controllers/property-category.controller.js';
 import { PropertySubcategoryController } from './presentation/controllers/property-subcategory.controller.js';
 import { PropertyLocationController } from './presentation/controllers/property-location.controller.js';
-import { PropertyFacilityController } from './presentation/property-facility.controller.js';
+import { PropertyFacilityController } from './presentation/controllers/property-facility.controller.js';
 import { PropertyDetailsController } from './presentation/property-details.controller.js';
 import { PropertyExtrasController } from './presentation/property-extras.controller.js';
 import { PropertyLifecycleController } from './presentation/property-lifecycle.controller.js';
