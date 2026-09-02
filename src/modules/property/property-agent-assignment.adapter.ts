@@ -10,18 +10,9 @@ import type {
   PropertyAgentAssignmentRecord,
 } from '../../common/contracts/property-agent-assignment.port.js';
 
-type PropertyCreateArgs = Parameters<PrismaService['property']['findFirst']>[0];
-type AssignmentCreateArgs = Parameters<
-  PrismaService['propertyAgentAssignment']['create']
->[0];
-
 type AssignmentRow = Awaited<
   ReturnType<PrismaService['propertyAgentAssignment']['findFirst']>
 >;
-
-type AssignmentWithProperty = Awaited<
-  ReturnType<PrismaService['propertyAgentAssignment']['findMany']>
->[number];
 
 @Injectable()
 export class PrismaPropertyAgentAssignmentAdapter
