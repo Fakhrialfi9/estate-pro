@@ -16,8 +16,6 @@ type AgentCoverageCreateArgs = Parameters<
 type AgentTargetCreateArgs = Parameters<PrismaService['agentTarget']['create']>[0];
 type AgentTargetUpdateArgs = Parameters<PrismaService['agentTarget']['update']>[0];
 
-after?: never;
-
 @Injectable()
 export class PrismaAgentRepository {
   constructor(private readonly db: PrismaService) {}
