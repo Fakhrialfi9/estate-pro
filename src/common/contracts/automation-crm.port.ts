@@ -1,4 +1,4 @@
-import type { CrmActor } from '../../modules/crm/domain/crm.types.js';
+import type { AutomationActor } from './automation-actor.js';
 
 export interface AutomationLeadContext {
   readonly uuid: string;
@@ -37,11 +37,11 @@ export interface AutomationCrmPort {
   getLead(uuid: string): Promise<AutomationLeadContext>;
   getActivity(uuid: string): Promise<Record<string, unknown>>;
   getLeadPreferences(uuid: string): Promise<Record<string, unknown>>;
-  assignLead(uuid: string, userUuid: string, actor: CrmActor): Promise<Record<string, unknown>>;
-  refreshLeadScore(uuid: string, actor: CrmActor): Promise<Record<string, unknown>>;
-  createActivity(input: AutomationActivityInput, actor: CrmActor): Promise<Record<string, unknown>>;
-  enqueueCommunication(input: AutomationCommunicationInput, actor: CrmActor): Promise<Record<string, unknown>>;
-  changeLeadStatus(uuid: string, statusUuid: string, actor: CrmActor): Promise<Record<string, unknown>>;
+  assignLead(uuid: string, userUuid: string, actor: AutomationActor): Promise<Record<string, unknown>>;
+  refreshLeadScore(uuid: string, actor: AutomationActor): Promise<Record<string, unknown>>;
+  createActivity(input: AutomationActivityInput, actor: AutomationActor): Promise<Record<string, unknown>>;
+  enqueueCommunication(input: AutomationCommunicationInput, actor: AutomationActor): Promise<Record<string, unknown>>;
+  changeLeadStatus(uuid: string, statusUuid: string, actor: AutomationActor): Promise<Record<string, unknown>>;
 }
 
 export const CRM_AUTOMATION_PORT = Symbol('CRM_AUTOMATION_PORT');
