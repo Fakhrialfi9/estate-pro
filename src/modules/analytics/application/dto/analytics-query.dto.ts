@@ -11,8 +11,11 @@ import {
 } from 'class-validator';
 import { ANALYTICS_GRANULARITIES } from '../../domain/analytics.types.js';
 
-const trim = ({ value }: { value: unknown }): unknown =>
-  typeof value === 'string' ? value.trim() : value;
+const trim = ({ value }: { value: unknown }): string | undefined =>
+  typeof value === 'string' ? value.trim() : undefined;
+
+const normalizeCurrency = ({ value }: { value: unknown }): string | undefined =>
+  typeof value === 'string' ? value.trim().toUpperCase() : undefined;
 
 export class AnalyticsQueryDto {
   @IsOptional()
@@ -71,9 +74,7 @@ export class AnalyticsQueryDto {
   propertyUuid?: string;
 
   @IsOptional()
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
+  @Transform(normalizeCurrency)
   @IsString()
   currency?: string;
 }
