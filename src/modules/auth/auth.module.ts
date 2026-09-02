@@ -24,6 +24,7 @@ import {
 } from './presentation/session.controller.js';
 import { JwtAuthGuard } from './security/jwt-auth.guard.js';
 import { SessionAdminGuard } from './security/session-admin.guard.js';
+import { AuthenticatedAccessGuard } from '../../common/security/authenticated-access.guard.js';
 import { AUTHENTICATION_SECURITY_REPOSITORY } from './domain/repositories/authentication-security.repository.js';
 import { PrismaAuthenticationSecurityRepository } from './infrastructure/persistence/prisma-authentication-security.repository.js';
 import { AUTHENTICATION_SESSION_REPOSITORY } from './domain/repositories/authentication-session.repository.js';
@@ -90,6 +91,7 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
     TwoFactorCryptoService,
     TwoFactorService,
     JwtAuthGuard,
+    AuthenticatedAccessGuard,
     SessionAdminGuard,
     {
       provide: AUTHENTICATION_SECURITY_REPOSITORY,
@@ -134,6 +136,7 @@ type RequiredExpiresIn = Exclude<SignOptions['expiresIn'], undefined>;
   exports: [
     JwtTokenService,
     JwtAuthGuard,
+    AuthenticatedAccessGuard,
     SessionService,
     RefreshTokenService,
     REFRESH_TOKEN_SECURITY_PORT,
