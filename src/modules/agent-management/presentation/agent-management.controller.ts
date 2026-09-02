@@ -22,7 +22,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
+import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { AgentManagementService } from '../application/agent-management.service.js';
@@ -50,7 +50,7 @@ const actor = (r: AuthRequest, userAgent?: string, requestId?: string) => ({
 @ApiTags('Agent Management')
 @ApiBearerAuth('bearer')
 @Controller({ path: 'agents', version: '1' })
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
 export class AgentManagementController {
   constructor(private readonly service: AgentManagementService) {}
 
