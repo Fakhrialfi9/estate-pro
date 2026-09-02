@@ -238,7 +238,9 @@ export class PageAutomationQueryDto {
   @Max(100)
   limit?: number;
 
-  @ApiPropertyOptional({ enum: ['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED', 'INVALID'] })
+  @ApiPropertyOptional({
+    enum: ['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED', 'INVALID'],
+  })
   @IsOptional()
   @IsIn(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED', 'INVALID'])
   status?: WorkflowStatus;
