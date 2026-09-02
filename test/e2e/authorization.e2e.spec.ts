@@ -21,6 +21,7 @@ type RoleAssignmentResponse = {
   user: { uuid: string };
   role: { uuid: string };
 };
+type SuperTestApp = Parameters<typeof request>[0];
 
 let app: NestExpressApplication;
 let prisma: PrismaService;
@@ -32,8 +33,12 @@ let roleUuid = '';
 let roleId = 0n;
 let rolePermissionId = 0n;
 
-const httpRequest = () => request(app.getHttpServer());
-const bodyOf = <T>(response: request.Response): T => response.body;
+const httpRequest = () => {
+  const server = app.getHttpServer() as unknown as SuperTestApp;
+  return request(server);
+};
+const bodyOf = <T>(response: request.Response): T =>
+  response.body as unknown as T;
 
 async function createUser(
   email: string,
