@@ -26,7 +26,7 @@ export class PrismaSalesAgentWorkloadAdapter implements SalesAgentWorkloadPort {
     return {
       openOpportunities,
       openDeals,
-      salesValue: amounts._sum.totalAmount?.toString() ?? '0',
+      salesValue: Number(amounts._sum.totalAmount ?? 0),
     };
   }
 }
