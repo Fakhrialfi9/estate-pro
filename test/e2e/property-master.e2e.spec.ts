@@ -29,7 +29,10 @@ const http = (app: INestApplication) => {
   const server = app.getHttpServer() as unknown as SuperTestApp;
   return request(server);
 };
-const bodyAs = <T>(response: Response): T => response.body;
+const bodyAs = <T>(response: Response): T => {
+  const body: unknown = response.body;
+  return body as T;
+};
 type Created = {
   data: { uuid: string; status?: string; propertyCategory?: { uuid: string } };
 };
