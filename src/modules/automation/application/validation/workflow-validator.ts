@@ -64,16 +64,10 @@ const assertDefinitionShape = (definition: unknown): WorkflowDefinition => {
   const trigger = definition.trigger;
   const graph = definition.graph;
 
-  if (
-    !isValueIn(TRIGGER_TYPES, trigger.type) ||
-    !isString(trigger.entityType)
-  )
+  if (!isValueIn(TRIGGER_TYPES, trigger.type) || !isString(trigger.entityType))
     throw new BadRequestException('Workflow trigger is invalid');
 
-  if (
-    !Array.isArray(graph.nodes) ||
-    !graph.nodes.every(isWorkflowNode)
-  )
+  if (!Array.isArray(graph.nodes) || !graph.nodes.every(isWorkflowNode))
     throw new BadRequestException('Workflow nodes are invalid');
 
   if (!Array.isArray(graph.edges))
