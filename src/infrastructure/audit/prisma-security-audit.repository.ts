@@ -18,10 +18,7 @@ import {
   sanitizeAuditRequestId,
   sanitizeAuditUserAgent,
 } from '../../common/audit/audit-redaction.js';
-import type {
-  AuditLogEntity,
-  AuditLogChangeEntityProps,
-} from '../../modules/audit/domain/entities/audit-log.entity.js';
+import type { AuditLogChangeEntityProps } from '../../modules/audit/domain/entities/audit-log.entity.js';
 import type {
   AuditLogListQuery,
   AuditLogListResult,
