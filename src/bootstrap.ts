@@ -21,6 +21,10 @@ import {
   TWO_FACTOR_RECOVERY_REGENERATION_RATE_LIMIT,
   TWO_FACTOR_REAUTH_RATE_LIMIT,
   TWO_FACTOR_VERIFICATION_RATE_LIMIT,
+  PROPERTY_MATCHING_RATE_LIMIT,
+  PROPERTY_RECOMMENDATION_GENERATE_RATE_LIMIT,
+  PROPERTY_RECOMMENDATION_REFRESH_RATE_LIMIT,
+  PROPERTY_MATCHING_FEEDBACK_RATE_LIMIT,
 } from './config/rate-limit.config.js';
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,100}$/;
@@ -112,6 +116,10 @@ export const configureApplication = (app: NestExpressApplication): void => {
   const refreshPath = `${apiBase}/auth/refresh`;
   const sessionBasePath = `${apiBase}/auth/sessions`;
   const adminSessionBasePath = `${apiBase}/admin/session-management`;
+  const propertyMatchingPath = `${apiBase}/property-matching/matches`;
+  const propertyRecommendationGeneratePath = `${apiBase}/property-matching/recommendations/generate`;
+  const propertyRecommendationRefreshPath = `${apiBase}/property-matching/recommendations/refresh`;
+  const propertyMatchingFeedbackPath = `${apiBase}/property-matching/feedback`;
   const specialRateLimitedPaths = [
     loginPath,
     refreshPath,
@@ -120,6 +128,10 @@ export const configureApplication = (app: NestExpressApplication): void => {
     `${apiBase}/auth/2fa/verify`,
     `${apiBase}/auth/2fa/recovery-codes/regenerate`,
     `${apiBase}/auth/2fa/disable`,
+    propertyMatchingPath,
+    propertyRecommendationGeneratePath,
+    propertyRecommendationRefreshPath,
+    propertyMatchingFeedbackPath,
   ];
 
   app.use(loginPath, createRateLimiter(LOGIN_RATE_LIMIT));
@@ -146,6 +158,22 @@ export const configureApplication = (app: NestExpressApplication): void => {
   );
   app.use(sessionBasePath, createRateLimiter(SECURITY_SESSION_RATE_LIMIT));
   app.use(adminSessionBasePath, createRateLimiter(SECURITY_SESSION_RATE_LIMIT));
+  app.use(
+    propertyMatchingPath,
+    createRateLimiter(PROPERTY_MATCHING_RATE_LIMIT),
+  );
+  app.use(
+    propertyRecommendationGeneratePath,
+    createRateLimiter(PROPERTY_RECOMMENDATION_GENERATE_RATE_LIMIT),
+  );
+  app.use(
+    propertyRecommendationRefreshPath,
+    createRateLimiter(PROPERTY_RECOMMENDATION_REFRESH_RATE_LIMIT),
+  );
+  app.use(
+    propertyMatchingFeedbackPath,
+    createRateLimiter(PROPERTY_MATCHING_FEEDBACK_RATE_LIMIT),
+  );
 
   const globalPolicy = {
     ttl: configService.getOrThrow<number>('rateLimit.ttl'),
