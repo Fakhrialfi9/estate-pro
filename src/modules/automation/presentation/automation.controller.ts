@@ -41,23 +41,27 @@ const actor = (req: Request): string =>
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class AutomationController {
   constructor(private readonly automation: AutomationService) {}
+
   @Get('workflows')
   @RequirePermissions('automation.workflows.read')
   @ApiOperation({ summary: 'List automation workflows' })
   list(@Req() req: Request, @Query() query: PageAutomationQueryDto) {
     return this.automation.listWorkflows(query, actor(req));
   }
+
   @Post('workflows')
   @RequirePermissions('automation.workflows.create')
   @ApiOperation({ summary: 'Create an automation workflow' })
   create(@Req() req: Request, @Body() dto: CreateAutomationWorkflowDto) {
     return this.automation.createWorkflow(dto, actor(req));
   }
+
   @Get('workflows/:uuid')
   @RequirePermissions('automation.workflows.read')
   get(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.getWorkflow(uuid, actor(req));
   }
+
   @Patch('workflows/:uuid')
   @RequirePermissions('automation.workflows.update')
   update(
@@ -67,6 +71,7 @@ export class AutomationController {
   ) {
     return this.automation.updateWorkflow(uuid, dto, actor(req));
   }
+
   @Post('workflows/:uuid/versions')
   @RequirePermissions('automation.workflows.update')
   createVersion(
@@ -77,12 +82,13 @@ export class AutomationController {
     return this.automation.createDraftVersion(
       uuid,
       {
-        trigger: { type: dto.triggerType as never, entityType: 'LEAD' },
-        graph: dto.definition as never,
+        trigger: { type: dto.triggerType, entityType: 'LEAD' },
+        graph: dto.definition,
       },
       actor(req),
     );
   }
+
   @Post('workflows/:uuid/versions/:versionUuid/activate')
   @RequirePermissions('automation.workflows.activate')
   activate(
@@ -92,16 +98,19 @@ export class AutomationController {
   ) {
     return this.automation.publishActivate(uuid, versionUuid, actor(req));
   }
+
   @Post('workflows/:uuid/pause')
   @RequirePermissions('automation.workflows.pause')
   pause(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.pauseWorkflow(uuid, actor(req));
   }
+
   @Post('workflows/:uuid/archive')
   @RequirePermissions('automation.workflows.archive')
   archive(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.archiveWorkflow(uuid, actor(req));
   }
+
   @Post('events')
   @RequirePermissions('automation.execute')
   @ApiOperation({ summary: 'Dispatch a normalized automation event' })
@@ -110,33 +119,38 @@ export class AutomationController {
       eventId: dto.eventId,
       occurredAt: new Date(),
       actorUuid: dto.actorUuid,
-      entityType: dto.entityType as never,
+      entityType: dto.entityType,
       entityUuid: dto.entityUuid,
       action: dto.action,
       version: dto.version,
       payload: dto.payload ?? {},
     });
   }
+
   @Get('executions')
   @RequirePermissions('automation.executions.read')
   executions(@Req() req: Request, @Query() query: PageAutomationQueryDto) {
     return this.automation.listExecutions(query, actor(req));
   }
+
   @Get('executions/:uuid')
   @RequirePermissions('automation.executions.read')
   execution(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.getExecution(uuid, actor(req));
   }
+
   @Post('executions/:uuid/retry')
   @RequirePermissions('automation.executions.retry')
   retry(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.retryExecution(uuid, actor(req));
   }
+
   @Post('executions/:uuid/cancel')
   @RequirePermissions('automation.executions.cancel')
   cancel(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.cancelExecution(uuid, actor(req));
   }
+
   @Post('workflows/:uuid/assignment-rules')
   @RequirePermissions('automation.workflows.update')
   assignmentRule(
@@ -146,6 +160,7 @@ export class AutomationController {
   ) {
     return this.automation.createAssignmentRule(uuid, dto, actor(req));
   }
+
   @Post('workflows/:uuid/sla-policies')
   @RequirePermissions('automation.workflows.update')
   slaPolicy(
@@ -155,6 +170,7 @@ export class AutomationController {
   ) {
     return this.automation.createSlaPolicy(uuid, dto, actor(req));
   }
+
   @Post('workflows/:uuid/escalation-policies')
   @RequirePermissions('automation.workflows.update')
   escalationPolicy(
@@ -164,6 +180,7 @@ export class AutomationController {
   ) {
     return this.automation.createEscalationPolicy(uuid, dto, actor(req));
   }
+
   @Get('metrics')
   @RequirePermissions('automation.executions.read')
   @ApiResponse({ status: 200 })
