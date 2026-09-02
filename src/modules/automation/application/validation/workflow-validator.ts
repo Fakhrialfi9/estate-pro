@@ -34,9 +34,7 @@ const isWorkflowNode = (
   )
     return false;
 
-  if (value.type === 'TRIGGER') {
-    return isRecord(value.trigger);
-  }
+  if (value.type === 'TRIGGER') return isRecord(value.trigger);
 
   if (value.type === 'CONDITION') {
     return (
@@ -149,7 +147,10 @@ export class WorkflowValidator {
         edge.from === edge.to
       )
         throw new BadRequestException('Workflow contains an invalid edge');
-      adjacency.set(edge.from, [...(adjacency.get(edge.from) ?? []), edge.to]);
+      adjacency.set(edge.from, [
+        ...(adjacency.get(edge.from) ?? []),
+        edge.to,
+      ]);
     }
 
     this.assertAcyclic(adjacency, ids, definition.graph.entryNodeId);
