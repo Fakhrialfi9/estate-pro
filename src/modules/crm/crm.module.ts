@@ -10,6 +10,7 @@ import { PrismaCrmRepository } from './infrastructure/persistence/prisma-crm.rep
 import { PrismaCrmLifecycleRepository } from './infrastructure/persistence/prisma-crm-lifecycle.repository.js';
 import { CrmService } from './application/crm.service.js';
 import { CrmLifecycleService } from './application/crm-lifecycle.service.js';
+import { CrmAutomationAdapter } from './application/services/crm-automation.adapter.js';
 import { CrmController } from './presentation/crm.controller.js';
 import { CrmPublicInquiryController } from './presentation/crm-public-inquiry.controller.js';
 import { CrmLifecycleController } from './presentation/crm-lifecycle.controller.js';
@@ -19,6 +20,7 @@ import { LeadMergePolicy } from './application/ports/merge.policy.js';
 import { LeadLifecyclePolicy } from './domain/lead-lifecycle.policy.js';
 import { QualificationPolicy } from './domain/qualification.policy.js';
 import { ClosurePolicy } from './domain/closure.policy.js';
+import { CRM_AUTOMATION_PORT } from '../../common/contracts/automation-crm.port.js';
 
 @Module({
   imports: [
@@ -36,6 +38,7 @@ import { ClosurePolicy } from './domain/closure.policy.js';
   ],
   providers: [
     CrmService,
+    CrmAutomationAdapter,
     CrmLifecycleService,
     PrismaCrmLifecycleRepository,
     ScoreDomainService,
@@ -45,7 +48,8 @@ import { ClosurePolicy } from './domain/closure.policy.js';
     QualificationPolicy,
     ClosurePolicy,
     { provide: CRM_REPOSITORY, useClass: PrismaCrmRepository },
+    { provide: CRM_AUTOMATION_PORT, useExisting: CrmAutomationAdapter },
   ],
-  exports: [CRM_REPOSITORY, CrmService],
+  exports: [CRM_REPOSITORY, CrmService, CRM_AUTOMATION_PORT],
 })
 export class CrmModule {}
