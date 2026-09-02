@@ -53,9 +53,7 @@ const recordArray = (value: unknown): readonly Record<string, unknown>[] =>
   );
 
 const stringArray = (value: unknown): readonly string[] =>
-  unknownArray(value).filter(
-    (item): item is string => typeof item === 'string',
-  );
+  unknownArray(value).filter((item): item is string => typeof item === 'string');
 
 const toStringValue = (value: unknown, fallback = ''): string => {
   if (typeof value === 'string') return value;
@@ -99,7 +97,7 @@ const safeJson = (value: unknown): Record<string, unknown> => {
   );
   if (!text) return {};
   try {
-    const parsed = JSON.parse(text) as unknown;
+    const parsed: unknown = JSON.parse(text);
     return record(parsed);
   } catch {
     return {};
@@ -128,7 +126,7 @@ export class AutomationService {
   async createWorkflow(
     input: { name: string; description?: string; ownerUserUuid: string },
     actorUuid: string,
-  ) {
+  ): Promise<Record<string, unknown>> {
     if (!input.name?.trim())
       throw new BadRequestException('Workflow name is required');
     const owner = await this.users.getUser(input.ownerUserUuid);
@@ -157,7 +155,7 @@ export class AutomationService {
     uuid: string,
     input: { name?: string; description?: string },
     actorUuid: string,
-  ) {
+  ): Promise<Record<string, unknown>> {
     const workflow = await this.requireOwnedWorkflow(uuid, actorUuid);
     if (workflow.status !== 'DRAFT')
       throw new ConflictException('Only draft workflows can be edited');
@@ -176,17 +174,17 @@ export class AutomationService {
     workflowUuid: string,
     definition: unknown,
     actorUuid: string,
-  ) {
+  ): Promise<Record<string, unknown>> {
     await this.requireOwnedWorkflow(workflowUuid, actorUuid);
     const parsed = parseDefinition(definition);
     const checksum = this.validator.checksum(parsed);
-    const workflow = record(await this.repo.getWorkflow(workflowUuid));
-    const versions = unknownArray(workflow.versions);
-    const version =
-      versions.reduce(
-        (max, item) => Math.max(max, toFiniteNumber(record(item).version)),
-        0,
-      ) + 1;
+    const workflow = await this.repo.getWorkflow(workflowUuid);
+    if (!workflow) throw new NotFoundException('Workflow not found');
+    let version = 0;
+    for (const item of unknownArray(workflow.versions)) {
+      version = Math.max(version, toFiniteNumber(record(item).version));
+    }
+    version += 1;
     return this.repo.createVersion({
       uuid: randomUUID(),
       workflowUuid,
@@ -280,10 +278,10 @@ export class AutomationService {
     for (const version of active) {
       const trigger = record(version.triggerDefinition);
       if (!this.triggerMatches(trigger, event)) continue;
-      const workflow = record(
-        await this.repo.getWorkflow(toStringValue(version.workflowUuid)),
+      const workflow = await this.repo.getWorkflow(
+        toStringValue(version.workflowUuid),
       );
-      if (workflow.status !== 'ACTIVE') continue;
+      if (!workflow || workflow.status !== 'ACTIVE') continue;
       const context = await this.resolveContext(event);
       const depth = toFiniteNumber(context.chainDepth);
       if (depth >= 20) continue;
@@ -889,7 +887,10 @@ export class AutomationService {
       }
   }
 
-  private async requireOwnedWorkflow(uuid: string, actorUuid: string) {
+  private async requireOwnedWorkflow(
+    uuid: string,
+    actorUuid: string,
+  ): Promise<Record<string, unknown>> {
     const workflow = await this.repo.getWorkflow(uuid);
     if (!workflow) throw new NotFoundException('Workflow not found');
     if (toStringValue(workflow.ownerUserUuid) !== actorUuid)
@@ -897,7 +898,9 @@ export class AutomationService {
     return workflow;
   }
 
-  private async requireExecution(uuid: string) {
+  private async requireExecution(
+    uuid: string,
+  ): Promise<Record<string, unknown>> {
     const execution = await this.repo.getExecution(uuid);
     if (!execution) throw new NotFoundException('Execution not found');
     return execution;
@@ -928,7 +931,7 @@ export class AutomationService {
     entityUuid: string,
     actorUuid?: string,
     reason?: string,
-  ) {
+  ): Promise<void> {
     await this.audit.record({
       action,
       entityType,
