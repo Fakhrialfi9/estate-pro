@@ -91,7 +91,7 @@ describe('PrismaSecurityAuditRepository', () => {
         resourceId: null,
         result: 'SUCCESS',
         requestId: 'refresh-issue-request',
-      }),
+      }) as unknown,
     });
   });
 
@@ -155,7 +155,7 @@ describe('PrismaSecurityAuditRepository', () => {
         entityId: null,
         resourceId: entityUuid,
         result: 'SUCCESS',
-      }),
+      }) as unknown,
     });
     expect(auditLogChangeCreateMany).toHaveBeenCalledWith({
       data: [
