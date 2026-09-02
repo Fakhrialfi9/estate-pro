@@ -49,7 +49,7 @@ import {
   SpecializationCreateDto,
   TargetCreateDto,
   TargetUpdateDto,
-} from './agent-management.dto.js';
+} from './agent-management.request.js';
 
 const AUDIT = {
   CREATED: 'AGENT_CREATED',
