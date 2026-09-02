@@ -9,7 +9,6 @@ import {
 } from '../domain/errors/analytics.errors.js';
 import {
   ANALYTICS_QUERY_PORT,
-  type AnalyticsGranularity,
   type AnalyticsQuery,
   type AnalyticsQueryPort,
   type AnalyticsReport,
@@ -22,6 +21,9 @@ const MAX_RANGE_DAYS = 366;
 const DEFAULT_RANGE_DAYS = 30;
 const MAX_BOUNDED_ROWS = 5000;
 const QUERY_TIMEOUT_MS = 10000;
+
+const stringValue = (value: unknown): string =>
+  typeof value === 'string' ? value : '';
 
 @Injectable()
 export class AnalyticsService {
@@ -218,18 +220,18 @@ export class AnalyticsService {
     );
     const conversions = new Map(
       this.normalizeRows(conversion).map((row) => [
-        String(row.agentUuid ?? ''),
+        stringValue(row.agentUuid),
         row,
       ]),
     );
     const properties = new Map(
       this.normalizeRows(agentProperty).map((row) => [
-        String(row.agentUuid ?? ''),
+        stringValue(row.agentUuid),
         row,
       ]),
     );
     const scorecards = this.normalizeRows(workload).map((row) => {
-      const id = String(row.agentUuid ?? '');
+      const id = stringValue(row.agentUuid);
       const c = conversions.get(id) ?? {};
       const p = properties.get(id) ?? {};
       const opportunities = this.numberValue(c.opportunities);
@@ -253,7 +255,7 @@ export class AnalyticsService {
       workload: this.normalizeRows(workload),
       activity: this.normalizeRows(activity).map((row) => ({
         ...row,
-        category: this.activityCategory(String(row.type ?? '')),
+        category: this.activityCategory(stringValue(row.type)),
       })),
       conversion: this.normalizeRows(conversion),
       propertiesByAgent: this.normalizeRows(agentProperty),
@@ -456,11 +458,16 @@ export class AnalyticsService {
     if (typeof value === 'bigint') return Number(value);
     if (value instanceof Date) return value.toISOString();
     if (
-      value !== null &&
-      typeof value === 'object' &&
-      typeof (value as { toString?: unknown }).toString === 'function'
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
     ) {
-      const asString = String(value);
+      return value;
+    }
+    if (value === null || value === undefined) return value;
+    if (typeof value === 'object') {
+      const decimalLike = value as { toString(): string };
+      const asString = decimalLike.toString();
       if (/^-?\d+(?:\.\d+)?$/.test(asString)) return asString;
     }
     return value;
@@ -511,12 +518,19 @@ export class AnalyticsService {
   }
 
   private csvValue(value: unknown): string {
-    const text =
-      value === null || value === undefined
-        ? ''
-        : typeof value === 'object'
-          ? JSON.stringify(value)
-          : String(value);
+    let text: string;
+    if (value === null || value === undefined) {
+      text = '';
+    } else if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      typeof value === 'bigint'
+    ) {
+      text = value.toString();
+    } else {
+      text = JSON.stringify(value);
+    }
     return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   }
 }
