@@ -12,7 +12,7 @@
           "classValidatorShim": true,
           "introspectComments": true,
           "skipAutoHttpCode": true,
-          "esmCompatible": true
+          "esmCompatible": false
         }
       }
     ]
