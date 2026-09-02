@@ -4,7 +4,10 @@ import type { INestApplication } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from '../../src/infrastructure/database/database.module.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
-import { configuration, configurationValidationSchema } from '../../src/config/configuration.js';
+import {
+  configuration,
+  configurationValidationSchema,
+} from '../../src/config/configuration.js';
 import { PrismaPropertyMatchingRepository } from '../../src/modules/property-matching/infrastructure/prisma-property-matching.repository.js';
 
 describe('Property matching repository integration', () => {
