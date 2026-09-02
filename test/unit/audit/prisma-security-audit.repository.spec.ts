@@ -5,35 +5,62 @@ import { PrismaSecurityAuditRepository } from '../../../src/infrastructure/audit
 import type { SecurityAuditEvent } from '../../../src/common/audit/security-audit.port.js';
 import type { PrismaService } from '../../../src/infrastructure/database/prisma/prisma.service.js';
 
+type AuditTransaction = {
+  authenticationUser: {
+    findFirst: ReturnType<typeof vi.fn>;
+  };
+  authorizationRole: { findFirst: ReturnType<typeof vi.fn> };
+  authorizationPermission: { findFirst: ReturnType<typeof vi.fn> };
+  auditLog: {
+    create: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
+  };
+  auditLogChange: { createMany: ReturnType<typeof vi.fn> };
+};
+
+const createTransaction = (
+  actorUuid: string,
+  auditLogCreate: ReturnType<typeof vi.fn>,
+  auditLogChangeCreateMany?: ReturnType<typeof vi.fn>,
+): AuditTransaction => ({
+  authenticationUser: {
+    findFirst: vi.fn<() => Promise<{ id: bigint; uuid: string } | null>>().mockResolvedValue({
+      id: 7n,
+      uuid: actorUuid,
+    }),
+  },
+  authorizationRole: { findFirst: vi.fn() },
+  authorizationPermission: { findFirst: vi.fn() },
+  auditLog: {
+    create: auditLogCreate,
+    findMany: vi.fn(),
+    count: vi.fn(),
+  },
+  auditLogChange: {
+    createMany:
+      auditLogChangeCreateMany ?? vi.fn().mockResolvedValue(undefined),
+  },
+});
+
+const createRepository = (transaction: ReturnType<typeof vi.fn>) => {
+  const prisma = { $transaction: transaction } as unknown as PrismaService;
+  const configGet = vi.fn<() => number>().mockReturnValue(1024);
+  const config = { get: configGet } as unknown as ConfigService;
+  return new PrismaSecurityAuditRepository(prisma, config);
+};
+
 describe('PrismaSecurityAuditRepository', () => {
   it('accepts authentication refresh-token audit actions and persists the event', async () => {
     const actorUuid = randomUUID();
-    const auditLogCreate = vi.fn().mockResolvedValue({ id: 1n });
-
-    const tx = {
-      authenticationUser: {
-        findFirst: vi.fn().mockResolvedValue({ id: 7n, uuid: actorUuid }),
-      },
-      authorizationRole: { findFirst: vi.fn() },
-      authorizationPermission: { findFirst: vi.fn() },
-      auditLog: {
-        create: auditLogCreate,
-        findMany: vi.fn(),
-        count: vi.fn(),
-      },
-      auditLogChange: { createMany: vi.fn() },
-      $transaction: vi.fn(),
-    };
-
-    const transaction = vi.fn(async (callback) => callback(tx));
-    const prisma = {
-      $transaction: transaction,
-    } as unknown as PrismaService;
-    const config = {
-      get: vi.fn().mockReturnValue(1024),
-    } as unknown as ConfigService;
-
-    const repository = new PrismaSecurityAuditRepository(prisma, config);
+    const auditLogCreate = vi.fn<() => Promise<{ id: bigint }>>().mockResolvedValue({
+      id: 1n,
+    });
+    const tx = createTransaction(actorUuid, auditLogCreate);
+    const transaction = vi
+      .fn<(callback: (value: AuditTransaction) => unknown) => Promise<unknown>>()
+      .mockImplementation((callback) => Promise.resolve(callback(tx)));
+    const repository = createRepository(transaction);
     const event: SecurityAuditEvent = {
       action: 'REFRESH_TOKEN_ISSUED',
       actorUuid,
@@ -59,33 +86,17 @@ describe('PrismaSecurityAuditRepository', () => {
 
   it('accepts property utilities audit events and persists sanitized changes', async () => {
     const actorUuid = randomUUID();
-    const auditLogCreate = vi.fn().mockResolvedValue({ id: 1n });
-    const auditLogChangeCreateMany = vi.fn().mockResolvedValue(undefined);
-
-    const tx = {
-      authenticationUser: {
-        findFirst: vi.fn().mockResolvedValue({ id: 7n, uuid: actorUuid }),
-      },
-      authorizationRole: { findFirst: vi.fn() },
-      authorizationPermission: { findFirst: vi.fn() },
-      auditLog: {
-        create: auditLogCreate,
-        findMany: vi.fn(),
-        count: vi.fn(),
-      },
-      auditLogChange: { createMany: auditLogChangeCreateMany },
-      $transaction: vi.fn(),
-    };
-
-    const transaction = vi.fn(async (callback) => callback(tx));
-    const prisma = {
-      $transaction: transaction,
-    } as unknown as PrismaService;
-    const config = {
-      get: vi.fn().mockReturnValue(1024),
-    } as unknown as ConfigService;
-
-    const repository = new PrismaSecurityAuditRepository(prisma, config);
+    const auditLogCreate = vi.fn<() => Promise<{ id: bigint }>>().mockResolvedValue({
+      id: 1n,
+    });
+    const auditLogChangeCreateMany = vi.fn<() => Promise<void>>().mockResolvedValue(
+      undefined,
+    );
+    const tx = createTransaction(actorUuid, auditLogCreate, auditLogChangeCreateMany);
+    const transaction = vi
+      .fn<(callback: (value: AuditTransaction) => unknown) => Promise<unknown>>()
+      .mockImplementation((callback) => Promise.resolve(callback(tx)));
+    const repository = createRepository(transaction);
     const event: SecurityAuditEvent = {
       action: 'property.utilities.update',
       actorUuid,
@@ -96,11 +107,7 @@ describe('PrismaSecurityAuditRepository', () => {
       requestId: 'request-123',
       result: 'SUCCESS',
       changes: [
-        {
-          field: 'electricityProvider',
-          oldValue: null,
-          newValue: 'PLN',
-        },
+        { field: 'electricityProvider', oldValue: null, newValue: 'PLN' },
         {
           field: 'electricityMeterNumberMasked',
           oldValue: null,
@@ -139,13 +146,8 @@ describe('PrismaSecurityAuditRepository', () => {
   });
 
   it('rejects unknown audit resources', async () => {
-    const prisma = {
-      $transaction: vi.fn(),
-    } as unknown as PrismaService;
-    const config = {
-      get: vi.fn().mockReturnValue(1024),
-    } as unknown as ConfigService;
-    const repository = new PrismaSecurityAuditRepository(prisma, config);
+    const transaction = vi.fn();
+    const repository = createRepository(transaction);
 
     await expect(
       repository.record({
