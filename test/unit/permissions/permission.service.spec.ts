@@ -49,8 +49,8 @@ describe('PermissionService', () => {
   };
 
   const service = new PermissionService(
-    repository as never,
-    audit as never,
+    repository,
+    audit,
     new PermissionAuthorizationPolicy(),
   );
 

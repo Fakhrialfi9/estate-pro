@@ -66,7 +66,7 @@ describe('analytics domain semantics', () => {
         to: '2026-01-01T00:00:00Z',
         page: 1,
         limit: 50,
-      } as never),
+      }),
     ).toThrow('`from` must be earlier than `to`.');
   });
 
@@ -78,13 +78,13 @@ describe('analytics domain semantics', () => {
         to: '2026-09-01T00:00:00Z',
         page: 1,
         limit: 50,
-      } as never),
+      }),
     ).toThrow('cannot exceed 366 days');
   });
 
   it('uses explicit funnel denominator', async () => {
     const service = new AnalyticsService(repo, new AnalyticsScopePolicy());
-    const result = await service.leads({ page: 1, limit: 50 } as never, user());
+    const result = await service.leads({ page: 1, limit: 50 }, user());
     const funnel = (
       result.data[0] as {
         funnel: readonly { status: string; percentage: number }[];
@@ -116,7 +116,7 @@ describe('analytics domain semantics', () => {
       new AnalyticsScopePolicy(),
     );
     const result = await service.forecast(
-      { page: 1, limit: 50 } as never,
+      { page: 1, limit: 50 },
       user(['analytics.forecast']),
     );
     expect((result.data[0] as { confidence: string }).confidence).toBe(

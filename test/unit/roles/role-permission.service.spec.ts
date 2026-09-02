@@ -51,10 +51,10 @@ describe('RolePermissionService', () => {
   const audit = { record: vi.fn().mockResolvedValue(undefined) };
 
   const service = new RolePermissionService(
-    assignments as never,
+    assignments,
     roles as never,
     permissions as never,
-    audit as never,
+    audit,
     new RoleAuthorizationPolicy(),
     new PermissionAuthorizationPolicy(),
   );

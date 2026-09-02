@@ -37,11 +37,7 @@ type Stringifiable = { toString(): string };
 const j = (
   v: JsonValue | null | undefined,
 ): Prisma.InputJsonValue | typeof Prisma.JsonNull | undefined =>
-  v === undefined
-    ? undefined
-    : v === null
-      ? Prisma.JsonNull
-      : (v as Prisma.InputJsonValue);
+  v === undefined ? undefined : v === null ? Prisma.JsonNull : v;
 const sid = (a: PropertyExtrasActor) => a.actorUuid ?? null;
 const s = (v: string | null | undefined) =>
   v === undefined ? undefined : v === null ? null : v.trim();

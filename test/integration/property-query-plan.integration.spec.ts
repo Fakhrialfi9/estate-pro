@@ -28,7 +28,7 @@ const readExplainJson = (
     throw new Error('EXPLAIN FORMAT=JSON returned an invalid JSON document.');
   }
 
-  return parsed as JsonExplainResult;
+  return parsed;
 };
 
 const containsPropertyTable = (value: unknown): boolean => {

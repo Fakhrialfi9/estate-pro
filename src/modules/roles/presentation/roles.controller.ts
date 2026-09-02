@@ -95,7 +95,7 @@ export class RolesController {
     const result = await this.rolePermissions.list(
       this.actor(request),
       uuid,
-      query as RolePermissionListQuery,
+      query,
     );
     return RolePermissionSerializer.list(result.role, result.assignments);
   }

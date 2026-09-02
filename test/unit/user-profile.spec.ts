@@ -51,7 +51,7 @@ const createService = () => {
   };
   const service = new UserProfileService(
     repository as never,
-    users as never,
+    users,
     new UserProfileOwnershipPolicy(),
   );
   return { service, repository, users };

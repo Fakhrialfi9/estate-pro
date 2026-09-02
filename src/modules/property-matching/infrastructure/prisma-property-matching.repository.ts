@@ -114,7 +114,7 @@ const toPreference = (row: PreferenceRow): StoredPreference => ({
           min: decimalString(row.budgetMin) ?? undefined,
           max: decimalString(row.budgetMax) ?? undefined,
           currency: row.budgetCurrency,
-          frequency: row.budgetFrequency as PriceFrequency,
+          frequency: row.budgetFrequency,
           tolerancePercent: decimalNumber(row.tolerancePercent),
         }
       : undefined,
@@ -379,7 +379,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
       listingUuid: row.uuid,
       propertyTypeUuid: row.property.propertyType.uuid,
       propertyCategoryUuid: row.property.propertyCategory.uuid,
-      transactionType: row.transactionType as MatchCandidate['transactionType'],
+      transactionType: row.transactionType,
       listingStatus: 'PUBLISHED',
       visibility: 'PUBLIC',
       publishedAt: row.publishedAt ?? now,

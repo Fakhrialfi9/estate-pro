@@ -55,10 +55,10 @@ describe('UserRoleService', () => {
     };
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
     const service = new UserRoleService(
-      users as never,
+      users,
       roles as never,
-      userRoles as never,
-      audit as never,
+      userRoles,
+      audit,
       new RoleAuthorizationPolicy(),
     );
     return { service, users, roles, userRoles, audit };

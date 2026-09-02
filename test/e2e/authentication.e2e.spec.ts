@@ -40,8 +40,7 @@ let config: ConfigService;
 let userUuid: string;
 
 const httpRequest = () => request(app.getHttpServer());
-const bodyOf = <T>(response: SuperTestResponse): T =>
-  response.body as unknown as T;
+const bodyOf = <T>(response: SuperTestResponse): T => response.body;
 
 async function createActiveUser(
   email = `auth-${randomUUID()}@example.com`,

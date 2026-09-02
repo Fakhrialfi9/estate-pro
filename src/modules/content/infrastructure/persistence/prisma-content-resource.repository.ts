@@ -465,15 +465,9 @@ export class PrismaContentResourceRepository {
         slug: requiredString(input.slug, 'slug'),
         template: stringOrDefault(input.template, 'default'),
         content: jsonValue(input.content),
-        contentFormat: stringOrDefault(
-          input.contentFormat,
-          'RICH_TEXT',
-        ) as ContentFormat,
+        contentFormat: stringOrDefault(input.contentFormat, 'RICH_TEXT'),
         status: 'DRAFT',
-        visibility: stringOrDefault(
-          input.visibility,
-          'PUBLIC',
-        ) as ContentVisibility,
+        visibility: stringOrDefault(input.visibility, 'PUBLIC'),
         language: stringOrDefault(input.language, 'id'),
         createdBy: ctx.actorUuid,
         version: 1,
@@ -530,10 +524,7 @@ export class PrismaContentResourceRepository {
         title: typeof input.title === 'string' ? input.title : null,
         subtitle: typeof input.subtitle === 'string' ? input.subtitle : null,
         linkUrl: typeof input.linkUrl === 'string' ? input.linkUrl : null,
-        placement: stringOrDefault(
-          input.placement,
-          'HOME_HERO',
-        ) as BannerPlacement,
+        placement: stringOrDefault(input.placement, 'HOME_HERO'),
         priority: typeof input.priority === 'number' ? input.priority : 0,
         startAt: optionalDate(input.startAt, 'startAt'),
         endAt: optionalDate(input.endAt, 'endAt'),
@@ -610,22 +601,13 @@ export class PrismaContentResourceRepository {
       }
     }
     if (input.status !== undefined)
-      data.status = requiredString(input.status, 'status') as ContentStatus;
+      data.status = requiredString(input.status, 'status');
     if (input.visibility !== undefined)
-      data.visibility = requiredString(
-        input.visibility,
-        'visibility',
-      ) as ContentVisibility;
+      data.visibility = requiredString(input.visibility, 'visibility');
     if (input.contentFormat !== undefined)
-      data.contentFormat = requiredString(
-        input.contentFormat,
-        'contentFormat',
-      ) as ContentFormat;
+      data.contentFormat = requiredString(input.contentFormat, 'contentFormat');
     if (input.placement !== undefined)
-      data.placement = requiredString(
-        input.placement,
-        'placement',
-      ) as BannerPlacement;
+      data.placement = requiredString(input.placement, 'placement');
     if (input.startAt !== undefined)
       data.startAt = optionalDate(input.startAt, 'startAt');
     if (input.endAt !== undefined)

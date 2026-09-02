@@ -114,12 +114,12 @@ function createHarness() {
   const audit = { record: vi.fn(() => Promise.resolve()) };
   const service = new TwoFactorService(
     repository as never,
-    recovery as never,
-    enrollment as never,
-    challenges as never,
+    recovery,
+    enrollment,
+    challenges,
     users as never,
     credentials as never,
-    audit as never,
+    audit,
     crypto,
     new TotpService(),
     jwt as never,

@@ -87,7 +87,7 @@ describe('UserManagementService', () => {
     const service = new UserManagementService(
       repository,
       sessions as never,
-      audit as never,
+      audit,
       credentials as never,
     );
     const result = await service.create(
@@ -116,7 +116,7 @@ describe('UserManagementService', () => {
     const service = new UserManagementService(
       repository,
       sessions as never,
-      audit as never,
+      audit,
       credentials as never,
     );
     await expect(
@@ -130,7 +130,7 @@ describe('UserManagementService', () => {
     const service = new UserManagementService(
       repository,
       sessions as never,
-      audit as never,
+      audit,
       credentials as never,
     );
     await expect(
@@ -148,7 +148,7 @@ describe('UserManagementService', () => {
     const service = new UserManagementService(
       repository,
       sessions as never,
-      audit as never,
+      audit,
       credentials as never,
     );
     await expect(

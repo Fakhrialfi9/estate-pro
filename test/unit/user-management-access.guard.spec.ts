@@ -48,7 +48,7 @@ function createGuard(scenario: Scenario, accessible = true) {
 
   return {
     guard: new UserManagementAccessGuard(
-      verifier as never,
+      verifier,
       authorization as never,
       users as never,
     ),

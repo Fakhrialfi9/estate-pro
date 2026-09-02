@@ -33,7 +33,7 @@ describe('application health (e2e)', () => {
     await app.init();
 
     const adapterInstance = app.getHttpAdapter().getInstance();
-    httpApplication = adapterInstance as unknown as Application;
+    httpApplication = adapterInstance;
   });
 
   afterAll(async () => {

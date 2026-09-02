@@ -166,6 +166,6 @@ export class PrismaRolePermissionRepository
   }
 
   private get client(): PrismaShape {
-    return this.prisma as unknown as PrismaShape;
+    return this.prisma;
   }
 }

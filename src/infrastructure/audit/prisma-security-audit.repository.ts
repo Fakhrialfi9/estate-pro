@@ -253,44 +253,41 @@ export class PrismaSecurityAuditRepository
     ]);
 
     return {
-      items: records.map(
-        (record) =>
-          ({
-            props: {
-              uuid: record.uuid,
-              actorUuid: record.actor?.uuid ?? null,
-              actorType: record.actorType,
-              subjectUuid: record.user?.uuid ?? null,
-              action: record.action,
-              resourceType: record.entityType,
-              resourceId: record.resourceId,
-              result: record.result === 'FAILURE' ? 'FAILURE' : 'SUCCESS',
-              reason: sanitizeAuditReason(record.reason ?? undefined),
-              ipAddress: record.ipAddress,
-              userAgent: record.userAgent,
-              requestId: record.requestId,
-              createdAt: record.createdAt,
-              changes: record.changes.map(
-                (change): AuditLogChangeEntityProps => ({
-                  id: change.id.toString(),
-                  field: change.field,
-                  oldValue:
-                    typeof change.oldValue === 'string' ||
-                    typeof change.oldValue === 'boolean' ||
-                    typeof change.oldValue === 'number'
-                      ? change.oldValue
-                      : null,
-                  newValue:
-                    typeof change.newValue === 'string' ||
-                    typeof change.newValue === 'boolean' ||
-                    typeof change.newValue === 'number'
-                      ? change.newValue
-                      : null,
-                }),
-              ),
-            },
-          }) as AuditLogEntity,
-      ),
+      items: records.map((record) => ({
+        props: {
+          uuid: record.uuid,
+          actorUuid: record.actor?.uuid ?? null,
+          actorType: record.actorType,
+          subjectUuid: record.user?.uuid ?? null,
+          action: record.action,
+          resourceType: record.entityType,
+          resourceId: record.resourceId,
+          result: record.result === 'FAILURE' ? 'FAILURE' : 'SUCCESS',
+          reason: sanitizeAuditReason(record.reason ?? undefined),
+          ipAddress: record.ipAddress,
+          userAgent: record.userAgent,
+          requestId: record.requestId,
+          createdAt: record.createdAt,
+          changes: record.changes.map(
+            (change): AuditLogChangeEntityProps => ({
+              id: change.id.toString(),
+              field: change.field,
+              oldValue:
+                typeof change.oldValue === 'string' ||
+                typeof change.oldValue === 'boolean' ||
+                typeof change.oldValue === 'number'
+                  ? change.oldValue
+                  : null,
+              newValue:
+                typeof change.newValue === 'string' ||
+                typeof change.newValue === 'boolean' ||
+                typeof change.newValue === 'number'
+                  ? change.newValue
+                  : null,
+            }),
+          ),
+        },
+      })),
       total,
     };
   }

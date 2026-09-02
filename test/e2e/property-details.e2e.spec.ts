@@ -31,8 +31,7 @@ const PERMISSIONS = [
   'property-facilities.detach',
   'property-facilities.bulk-attach',
 ] as const;
-const http = (app: NestExpressApplication) =>
-  request(app.getHttpServer() as SuperTestApp);
+const http = (app: NestExpressApplication) => request(app.getHttpServer());
 
 let app: NestExpressApplication;
 let prisma: PrismaService;

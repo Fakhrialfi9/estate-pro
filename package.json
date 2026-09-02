@@ -43,6 +43,7 @@
     "test:security:baseline": "bash scripts/security-test.sh",
     "test:coverage": "prisma generate && vitest run --coverage",
     "test:coverage:e2e": "prisma generate && vitest run --config vitest.e2e.config.ts --coverage",
+    "check:fix": "npm run lint:fix && npm run format:check && npm run typecheck",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:openapi && npm run test:security",
     "check:health": "npm run lint && npm run typecheck && npm run check:architecture && npm test && npm run format:check && npm run build",
     "check:fresh": "npm run clean && npm ci && npm run check:health"
@@ -72,10 +73,11 @@
     "helmet": "8.3.0",
     "joi": "18.2.3",
     "mariadb": "3.5.3",
-    "nestjs-pino": "4.6.1",
+    "nestjs-pino": "5.1.0",
     "passport": "0.7.0",
     "passport-jwt": "4.0.1",
     "pino": "10.3.1",
+    "pino-http": "11.0.0",
     "rxjs": "7.8.1"
   },
   "devDependencies": {
@@ -96,9 +98,9 @@
     "prisma": "7.10.0",
     "supertest": "7.1.4",
     "tsx": "4.23.12",
-    "ts-loader": "9.5.2",
-    "typescript": "5.9.3",
-    "typescript-eslint": "8.20.0",
+    "ts-loader": "9.6.2",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.69.0",
     "vitest": "4.1.11"
   },
   "overrides": {

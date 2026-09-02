@@ -209,13 +209,13 @@ function createHarness() {
   const crypto = new TwoFactorCryptoService(config);
   const totp = new TotpService();
   const service = new TwoFactorService(
-    repository as unknown as TwoFactorRepository,
-    recovery as unknown as TwoFactorRecoveryCodeRepository,
-    enrollment as unknown as TwoFactorEnrollmentRepository,
-    challenges as unknown as TwoFactorChallengeRepository,
+    repository,
+    recovery,
+    enrollment,
+    challenges,
     users as unknown as UserRepository,
     credentials,
-    audit as unknown as SecurityAuditRepository,
+    audit,
     crypto,
     totp,
     jwt as unknown as JwtTokenService,
@@ -227,7 +227,7 @@ function createHarness() {
     userUuid: string,
     code: string,
   ): Promise<EnrollmentResult> =>
-    (await service.verifyEnrollment(userUuid, code)) as EnrollmentResult;
+    await service.verifyEnrollment(userUuid, code);
 
   return { service, recovery, enrollment, totp, verifyEnrollment };
 }

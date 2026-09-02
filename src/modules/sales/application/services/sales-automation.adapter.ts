@@ -28,6 +28,6 @@ export class SalesAutomationAdapter implements AutomationSalesPort {
       page: 1,
       limit: 100,
     });
-    return result.items as unknown as readonly AutomationOpportunityContext[];
+    return result.items;
   }
 }

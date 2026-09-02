@@ -136,7 +136,7 @@ const isString = (value: unknown): value is string => typeof value === 'string';
 const isOneOf = <const T extends readonly string[]>(
   values: T,
   value: unknown,
-): value is T[number] => isString(value) && values.includes(value as T[number]);
+): value is T[number] => isString(value) && values.includes(value);
 
 const isEntityType = (
   value: unknown,

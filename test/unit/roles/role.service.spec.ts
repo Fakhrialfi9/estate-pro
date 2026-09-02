@@ -46,8 +46,8 @@ describe('RoleService', () => {
       .mockResolvedValue({ userAssignments: 0, permissionAssignments: 0 }),
   };
   const service = new RoleService(
-    repository as never,
-    audit as never,
+    repository,
+    audit,
     new RoleAuthorizationPolicy(),
   );
 

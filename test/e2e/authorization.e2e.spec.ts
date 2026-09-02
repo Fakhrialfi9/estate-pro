@@ -33,8 +33,7 @@ let roleId = 0n;
 let rolePermissionId = 0n;
 
 const httpRequest = () => request(app.getHttpServer());
-const bodyOf = <T>(response: request.Response): T =>
-  response.body as unknown as T;
+const bodyOf = <T>(response: request.Response): T => response.body;
 
 async function createUser(
   email: string,

@@ -42,11 +42,10 @@ const dto = (
     name: '  House  ',
     slug: 'House',
     ...overrides,
-  }) as CreatePropertyTypeDto;
+  });
 const updateDto = (
   overrides: Partial<UpdatePropertyTypeDto> = {},
-): UpdatePropertyTypeDto =>
-  Object.assign(new (class {})(), overrides) as UpdatePropertyTypeDto;
+): UpdatePropertyTypeDto => Object.assign(new (class {})(), overrides);
 type PropertyTypeRepositoryMocks = {
   create: ReturnType<typeof vi.fn>;
   findById: ReturnType<typeof vi.fn>;
@@ -213,7 +212,7 @@ describe('PropertyType domain and application', () => {
     await expect(
       new ListPropertyTypesUseCase(repo).execute({
         ...query,
-        filterValue: 'true' as never,
+        filterValue: 'true',
       }),
     ).rejects.toThrow('isActive filterValue');
   });

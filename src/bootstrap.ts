@@ -145,10 +145,7 @@ export const configureApplication = (app: NestExpressApplication): void => {
     createRateLimiter(TWO_FACTOR_REAUTH_RATE_LIMIT),
   );
   app.use(sessionBasePath, createRateLimiter(SECURITY_SESSION_RATE_LIMIT));
-  app.use(
-    adminSessionBasePath,
-    createRateLimiter(SECURITY_SESSION_RATE_LIMIT),
-  );
+  app.use(adminSessionBasePath, createRateLimiter(SECURITY_SESSION_RATE_LIMIT));
 
   const globalPolicy = {
     ttl: configService.getOrThrow<number>('rateLimit.ttl'),

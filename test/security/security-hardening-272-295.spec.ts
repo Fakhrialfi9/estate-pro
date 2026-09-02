@@ -119,7 +119,7 @@ function createLoginHarness(passwordValid: boolean) {
     users as never,
     credentials as never,
     security as never,
-    audit as never,
+    audit,
     hasher as never,
     jwt as never,
     sessions as never,
@@ -341,7 +341,7 @@ describe('STEP 280', () => {
       Object.assign(
         { identifier: 'member@example.com', password: 'correct' },
         { sessionId: 'attacker-fixed-session' },
-      ) as never,
+      ),
     );
     expect(h.getCreatedSessionId()).toBeDefined();
     expect(h.getCreatedSessionId()).not.toBe('attacker-fixed-session');
