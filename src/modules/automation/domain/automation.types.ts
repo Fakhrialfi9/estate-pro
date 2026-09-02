@@ -131,6 +131,95 @@ export interface WorkflowDefinition {
 const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
+const isString = (value: unknown): value is string => typeof value === 'string';
+
+const isOneOf = <const T extends readonly string[]>(
+  values: T,
+  value: unknown,
+): value is T[number] => isString(value) && values.includes(value as T[number]);
+
+const isEntityType = (
+  value: unknown,
+): value is TriggerDefinition['entityType'] =>
+  isOneOf(
+    ['LEAD', 'CONTACT', 'OPPORTUNITY', 'DEAL', 'ACTIVITY', 'SLA'] as const,
+    value,
+  );
+
+const isConditionOperatorGroup = (
+  value: unknown,
+): value is ConditionNode['operator'] =>
+  isOneOf(['ALL', 'ANY', 'NOT'] as const, value);
+
+const isConditionOperand = (value: unknown): value is ConditionOperand => {
+  if (!isObject(value)) return false;
+  return (
+    isOneOf(['EVENT', 'CRM', 'SALES', 'CONTEXT'] as const, value.source) &&
+    isString(value.field) &&
+    isOneOf(CONDITION_OPERATORS, value.operator)
+  );
+};
+
+const isConditionNode = (value: unknown): value is ConditionNode =>
+  isObject(value) &&
+  isString(value.id) &&
+  value.type === 'CONDITION' &&
+  isConditionOperatorGroup(value.operator) &&
+  Array.isArray(value.operands) &&
+  value.operands.every(isConditionOperand) &&
+  (value.children === undefined ||
+    (Array.isArray(value.children) && value.children.every(isConditionNode)));
+
+const isActionNode = (value: unknown): value is ActionNode =>
+  isObject(value) &&
+  isString(value.id) &&
+  value.type === 'ACTION' &&
+  isOneOf(ACTION_TYPES, value.actionType) &&
+  isObject(value.input) &&
+  (value.maxAttempts === undefined ||
+    (typeof value.maxAttempts === 'number' &&
+      Number.isInteger(value.maxAttempts))) &&
+  (value.timeoutMs === undefined ||
+    (typeof value.timeoutMs === 'number' && Number.isInteger(value.timeoutMs)));
+
+const isTriggerNode = (
+  value: unknown,
+): value is {
+  readonly id: string;
+  readonly type: 'TRIGGER';
+  readonly trigger: TriggerDefinition;
+} => {
+  if (!isObject(value) || !isString(value.id) || value.type !== 'TRIGGER')
+    return false;
+  if (!isObject(value.trigger)) return false;
+  return (
+    isOneOf(TRIGGER_TYPES, value.trigger.type) &&
+    isEntityType(value.trigger.entityType)
+  );
+};
+
+const isWorkflowDefinition = (
+  value: unknown,
+): value is WorkflowDefinition => {
+  if (!isObject(value) || !isObject(value.trigger) || !isObject(value.graph))
+    return false;
+  const graph = value.graph;
+  return (
+    isOneOf(TRIGGER_TYPES, value.trigger.type) &&
+    isEntityType(value.trigger.entityType) &&
+    isString(graph.entryNodeId) &&
+    Array.isArray(graph.nodes) &&
+    graph.nodes.every(
+      (node) => isTriggerNode(node) || isConditionNode(node) || isActionNode(node),
+    ) &&
+    Array.isArray(graph.edges) &&
+    graph.edges.every(
+      (edge) =>
+        isObject(edge) && isString(edge.from) && isString(edge.to),
+    )
+  );
+};
+
 export const isUuid = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value,
@@ -150,11 +239,9 @@ export const canonicalize = (value: unknown): string => {
 };
 
 export const parseDefinition = (value: unknown): WorkflowDefinition => {
-  if (!isObject(value))
-    throw new Error('Workflow definition must be an object');
-  if (!isObject(value.trigger) || !isObject(value.graph))
-    throw new Error('Workflow definition requires trigger and graph');
-  return value as unknown as WorkflowDefinition;
+  if (!isWorkflowDefinition(value))
+    throw new Error('Invalid workflow definition');
+  return value;
 };
 
 export class WorkflowAggregate {
@@ -258,14 +345,7 @@ export const decideRetry = (
       delayMs: 0,
       terminalState: attempt >= maxAttempts ? 'DEAD_LETTER' : 'FAILED',
     };
-  const delayMs = Math.min(
-    maxDelayMs,
-    baseDelayMs * 2 ** Math.max(0, attempt - 1),
-  );
+  const exponent = Math.max(0, attempt - 1);
+  const delayMs = Math.min(maxDelayMs, baseDelayMs * 2 ** exponent);
   return { retry: true, delayMs, terminalState: 'FAILED' };
-};
-
-export const assertSafeDepth = (depth: number, maxDepth = 20): void => {
-  if (!Number.isInteger(depth) || depth < 0 || depth > maxDepth)
-    throw new Error('Workflow execution depth exceeded safety limit');
 };
