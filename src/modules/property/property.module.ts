@@ -37,22 +37,14 @@ import { PropertyMetricsInterceptor } from './observability/property-metrics.int
 import { PROPERTY_PUBLIC_PORT } from '../../common/contracts/property-public.port.js';
 import { PROPERTY_AGENT_ASSIGNMENT_PORT } from '../../common/contracts/property-agent-assignment.port.js';
 import { PROPERTY_AGENT_CONTEXT_PORT } from '../../common/contracts/property-agent-context.port.js';
+import { PROPERTY_REGION_PORT } from '../../common/contracts/property-region.port.js';
 import { PrismaPropertyAgentAssignmentAdapter } from './property-agent-assignment.adapter.js';
 import { PrismaPropertyAgentContextAdapter } from './property-agent-context.adapter.js';
+import { PrismaPropertyRegionAdapter } from './property-region.adapter.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule, ListingModule],
-  controllers: [
-    PropertyTypesController,
-    PropertyController,
-    PropertyCategoryController,
-    PropertySubcategoryController,
-    PropertyLocationController,
-    PropertyFacilityController,
-    PropertyDetailsController,
-    PropertyExtrasController,
-    PropertyLifecycleController,
-  ],
+  controllers: [PropertyTypesController, PropertyController, PropertyCategoryController, PropertySubcategoryController, PropertyLocationController, PropertyFacilityController, PropertyDetailsController, PropertyExtrasController, PropertyLifecycleController],
   providers: [
     AuthorizationGuard,
     CreatePropertyTypeUseCase,
@@ -69,20 +61,12 @@ import { PrismaPropertyAgentContextAdapter } from './property-agent-context.adap
     { provide: PROPERTY_PUBLIC_PORT, useExisting: PropertyMasterService },
     { provide: PROPERTY_AGENT_ASSIGNMENT_PORT, useClass: PrismaPropertyAgentAssignmentAdapter },
     { provide: PROPERTY_AGENT_CONTEXT_PORT, useClass: PrismaPropertyAgentContextAdapter },
+    { provide: PROPERTY_REGION_PORT, useClass: PrismaPropertyRegionAdapter },
     { provide: APP_INTERCEPTOR, useClass: PropertyMetricsInterceptor },
     PropertyDetailsService,
     PropertyExtrasService,
     PropertyLifecycleService,
   ],
-  exports: [
-    PROPERTY_TYPE_REPOSITORY,
-    PROPERTY_MASTER_REPOSITORY,
-    PROPERTY_DETAILS_REPOSITORY,
-    PROPERTY_EXTRAS_REPOSITORY,
-    PROPERTY_LIFECYCLE_REPOSITORY,
-    PROPERTY_PUBLIC_PORT,
-    PROPERTY_AGENT_ASSIGNMENT_PORT,
-    PROPERTY_AGENT_CONTEXT_PORT,
-  ],
+  exports: [PROPERTY_TYPE_REPOSITORY, PROPERTY_MASTER_REPOSITORY, PROPERTY_DETAILS_REPOSITORY, PROPERTY_EXTRAS_REPOSITORY, PROPERTY_LIFECYCLE_REPOSITORY, PROPERTY_PUBLIC_PORT, PROPERTY_AGENT_ASSIGNMENT_PORT, PROPERTY_AGENT_CONTEXT_PORT, PROPERTY_REGION_PORT],
 })
 export class PropertyModule {}
