@@ -2,9 +2,9 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, U
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
-import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
-import { RequirePermissions } from '../../common/security/authorization.decorators.js';
-import { AutomationService } from '../automation/application/services/automation.service.js';
+import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
+import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
+import { AutomationService } from '../application/services/automation.service.js';
 import { CreateAssignmentRuleDto, CreateAutomationVersionDto, CreateAutomationWorkflowDto, CreateEscalationPolicyDto, CreateSlaPolicyDto, DispatchAutomationEventDto, PageAutomationQueryDto, UpdateAutomationWorkflowDto } from './automation.dto.js';
 
 const actor = (req: Request): string => (req.user as { sub?: string } | undefined)?.sub ?? '';
