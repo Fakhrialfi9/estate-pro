@@ -198,9 +198,7 @@ const isTriggerNode = (
   );
 };
 
-const isWorkflowDefinition = (
-  value: unknown,
-): value is WorkflowDefinition => {
+const isWorkflowDefinition = (value: unknown): value is WorkflowDefinition => {
   if (!isObject(value) || !isObject(value.trigger) || !isObject(value.graph))
     return false;
   const graph = value.graph;
@@ -210,12 +208,12 @@ const isWorkflowDefinition = (
     isString(graph.entryNodeId) &&
     Array.isArray(graph.nodes) &&
     graph.nodes.every(
-      (node) => isTriggerNode(node) || isConditionNode(node) || isActionNode(node),
+      (node) =>
+        isTriggerNode(node) || isConditionNode(node) || isActionNode(node),
     ) &&
     Array.isArray(graph.edges) &&
     graph.edges.every(
-      (edge) =>
-        isObject(edge) && isString(edge.from) && isString(edge.to),
+      (edge) => isObject(edge) && isString(edge.from) && isString(edge.to),
     )
   );
 };
