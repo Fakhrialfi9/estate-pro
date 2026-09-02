@@ -10,9 +10,9 @@ export class PrismaPropertyAgentContextAdapter
   implements PropertyAgentContextPort
 {
   constructor(private readonly prisma: PrismaService) {}
+
   async getContext(propertyUuid: string): Promise<PropertyAgentContext | null> {
-    const db = this.prisma as any;
-    const property = await db.property.findFirst({
+    const property = await this.prisma.property.findFirst({
       where: { uuid: propertyUuid, deletedAt: null },
       include: {
         location: {
@@ -27,6 +27,7 @@ export class PrismaPropertyAgentContextAdapter
       },
     });
     if (!property) return null;
+
     const location = property.location;
     return {
       propertyUuid: property.uuid,
