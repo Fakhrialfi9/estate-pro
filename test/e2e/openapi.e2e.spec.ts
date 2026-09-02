@@ -17,9 +17,9 @@ describe('OpenAPI contract (e2e)', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaService)
       .useValue({
-        $queryRaw: async () => [{ 1: 1 }],
-        $connect: async () => undefined,
-        $disconnect: async () => undefined,
+        $queryRaw: () => Promise.resolve([{ 1: 1 }]),
+        $connect: () => Promise.resolve(),
+        $disconnect: () => Promise.resolve(),
       })
       .compile();
 
