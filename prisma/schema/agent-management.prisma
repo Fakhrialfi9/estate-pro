@@ -1,0 +1,178 @@
+enum AgentProfileStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum AgentAvailabilityStatus {
+  ACTIVE
+  UNAVAILABLE
+  LEAVE
+  OFFLINE
+}
+
+enum AgentCoverageLevel {
+  COUNTRY
+  PROVINCE
+  CITY
+  DISTRICT
+  SUBDISTRICT
+}
+
+enum AgentTargetPeriod {
+  MONTH
+  QUARTER
+  YEAR
+  CUSTOM
+}
+
+enum AgentTargetStatus {
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+model AgentProfile {
+  id                    BigInt                       @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid                  String                       @unique @default(uuid()) @db.Char(36)
+  userUuid              String                       @unique @map("user_uuid") @db.Char(36)
+  displayName           String?                      @map("display_name") @db.VarChar(220)
+  bio                   String?                      @db.Text
+  status                AgentProfileStatus           @default(ACTIVE)
+  hireDate              DateTime?                    @map("hire_date") @db.Date
+  licenseNumberMasked   String?                      @map("license_number_masked") @db.VarChar(80)
+  timeZone              String                       @default("UTC") @map("time_zone") @db.VarChar(80)
+  maxActiveAssignments  Int                          @default(10) @map("max_active_assignments") @db.UnsignedInt
+  version               Int                          @default(1)
+  createdBy             String?                      @map("created_by") @db.Char(36)
+  updatedBy             String?                      @map("updated_by") @db.Char(36)
+  deletedAt             DateTime?                    @map("deleted_at")
+  createdAt             DateTime                     @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt             DateTime                     @updatedAt @map("updated_at") @db.DateTime(3)
+  specializations       AgentSpecializationLink[]
+  coverages             AgentCoverage[]
+  availability          AgentAvailability?
+  weeklySchedules       AgentWeeklySchedule[]
+  availabilityExceptions AgentAvailabilityException[]
+  targets               AgentTarget[]
+  @@index([status, deletedAt, updatedAt])
+  @@index([timeZone])
+  @@map("agent_profiles")
+}
+
+model AgentSpecialization {
+  id          BigInt                     @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String                     @unique @default(uuid()) @db.Char(36)
+  code        String                     @unique @db.VarChar(80)
+  name        String                     @db.VarChar(150)
+  description String?                    @db.VarChar(500)
+  isActive    Boolean                    @default(true) @map("is_active")
+  sortOrder   Int                       @default(0) @map("sort_order")
+  createdAt   DateTime                   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime                   @updatedAt @map("updated_at") @db.DateTime(3)
+  agents      AgentSpecializationLink[]
+  @@index([isActive, sortOrder])
+  @@map("agent_specializations")
+}
+
+model AgentSpecializationLink {
+  agentId          BigInt              @map("agent_id") @db.UnsignedBigInt
+  specializationId BigInt              @map("specialization_id") @db.UnsignedBigInt
+  isPrimary        Boolean             @default(false) @map("is_primary")
+  createdAt        DateTime            @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.DateTime(3)
+  agent            AgentProfile        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  specialization   AgentSpecialization @relation(fields: [specializationId], references: [id], onDelete: Restrict)
+  @@id([agentId, specializationId])
+  @@index([specializationId, isPrimary])
+  @@index([agentId, isPrimary])
+  @@map("agent_specialization_links")
+}
+
+model AgentCoverage {
+  id          BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String             @unique @default(uuid()) @db.Char(36)
+  agentId     BigInt             @map("agent_id") @db.UnsignedBigInt
+  level       AgentCoverageLevel
+  regionUuid  String             @map("region_uuid") @db.Char(36)
+  label       String?            @db.VarChar(180)
+  isActive    Boolean            @default(true) @map("is_active")
+  createdBy   String?            @map("created_by") @db.Char(36)
+  updatedBy   String?            @map("updated_by") @db.Char(36)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime           @updatedAt @db.DateTime(3)
+  agent       AgentProfile       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  @@unique([agentId, level, regionUuid], map: "agent_coverages_agent_level_region_key")
+  @@index([level, regionUuid, isActive])
+  @@index([agentId, isActive])
+  @@map("agent_coverages")
+}
+
+model AgentAvailability {
+  id          BigInt                  @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String                  @unique @default(uuid()) @db.Char(36)
+  agentId     BigInt                  @unique @map("agent_id") @db.UnsignedBigInt
+  status      AgentAvailabilityStatus @default(ACTIVE)
+  timeZone    String                  @default("UTC") @map("time_zone") @db.VarChar(80)
+  effectiveAt DateTime                @default(now()) @map("effective_at") @db.DateTime(3)
+  createdAt   DateTime                @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime                @updatedAt @map("updated_at") @db.DateTime(3)
+  agent       AgentProfile            @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  @@index([status, effectiveAt])
+  @@map("agent_availability")
+}
+
+model AgentWeeklySchedule {
+  id        BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid      String       @unique @default(uuid()) @db.Char(36)
+  agentId   BigInt       @map("agent_id") @db.UnsignedBigInt
+  weekday   Int          @db.UnsignedTinyInt
+  startTime String       @map("start_time") @db.Char(5)
+  endTime   String       @map("end_time") @db.Char(5)
+  isActive  Boolean      @default(true) @map("is_active")
+  createdAt DateTime     @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.DateTime(3)
+  agent     AgentProfile @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  @@unique([agentId, weekday, startTime, endTime], map: "agent_weekly_schedule_key")
+  @@index([agentId, weekday, isActive])
+  @@map("agent_weekly_schedules")
+}
+
+model AgentAvailabilityException {
+  id        BigInt                  @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid      String                  @unique @default(uuid()) @db.Char(36)
+  agentId   BigInt                  @map("agent_id") @db.UnsignedBigInt
+  status    AgentAvailabilityStatus
+  startsAt  DateTime                @map("starts_at") @db.DateTime(3)
+  endsAt    DateTime                @map("ends_at") @db.DateTime(3)
+  reason    String?                 @db.VarChar(255)
+  createdBy String?                 @map("created_by") @db.Char(36)
+  createdAt DateTime                @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime                @updatedAt @db.DateTime(3)
+  agent     AgentProfile            @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  @@index([agentId, startsAt, endsAt])
+  @@map("agent_availability_exceptions")
+}
+
+model AgentTarget {
+  id          BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String            @unique @default(uuid()) @db.Char(36)
+  agentId     BigInt            @map("agent_id") @db.UnsignedBigInt
+  metricType  String            @map("metric_type") @db.VarChar(80)
+  periodType  AgentTargetPeriod @map("period_type")
+  periodStart DateTime          @map("period_start") @db.Date
+  periodEnd   DateTime          @map("period_end") @db.Date
+  targetValue Decimal           @map("target_value") @db.Decimal(24, 4)
+  scope       String?           @db.VarChar(120)
+  status      AgentTargetStatus  @default(ACTIVE)
+  createdBy   String?            @map("created_by") @db.Char(36)
+  updatedBy   String?            @map("updated_by") @db.Char(36)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.DateTime(3)
+  agent       AgentProfile       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  @@unique([agentId, metricType, periodStart, periodEnd], map: "agent_targets_agent_metric_period_key")
+  @@index([agentId, status, periodStart, periodEnd])
+  @@index([metricType, status, periodStart, periodEnd])
+  @@map("agent_targets")
+}
