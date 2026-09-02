@@ -27,6 +27,7 @@ type UserResponse = {
 type UserListResponse = { items: Array<{ uuid: string }> };
 type ProfileResponse = { firstName: string; locale: string };
 type LoginResponse = { accessToken: string };
+type SuperTestApp = Parameters<typeof request>[0];
 
 let app: NestExpressApplication;
 let prisma: PrismaService;
@@ -35,8 +36,12 @@ let jwt: JwtService;
 let actorUuid = '';
 let targetUuid = '';
 
-const httpRequest = () => request(app.getHttpServer());
-const bodyOf = <T>(response: SuperTestResponse): T => response.body;
+const httpRequest = () => {
+  const server = app.getHttpServer() as unknown as SuperTestApp;
+  return request(server);
+};
+const bodyOf = <T>(response: SuperTestResponse): T =>
+  response.body as unknown as T;
 
 function digestSessionId(sessionId: string): string {
   return createHash('sha256').update(sessionId, 'utf8').digest('hex');
