@@ -5,16 +5,20 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   Min,
-  IsUUID,
 } from 'class-validator';
 import { ANALYTICS_GRANULARITIES } from '../../domain/analytics.types.js';
 
 const trim = ({ value }: { value: unknown }): string | undefined =>
   typeof value === 'string' ? value.trim() : undefined;
 
-const normalizeCurrency = ({ value }: { value: unknown }): string | undefined =>
+const normalizeCurrency = ({
+  value,
+}: {
+  value: unknown;
+}): string | undefined =>
   typeof value === 'string' ? value.trim().toUpperCase() : undefined;
 
 export class AnalyticsQueryDto {
