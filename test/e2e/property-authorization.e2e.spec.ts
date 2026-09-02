@@ -2,12 +2,12 @@ import { afterAll, beforeAll, describe, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
 import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
 import { SessionService } from '../../src/modules/auth/application/services/session.service.js';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
+import { httpRequest } from './helpers/http.js';
 
 const PERMISSIONS = [
   'properties.create',
@@ -127,7 +127,7 @@ describe('Property object-level authorization', () => {
       },
     });
     categoryId = category.id;
-    const response = await request(app.getHttpServer())
+    const response = await httpRequest(app)
       .post('/api/v1/property/properties')
       .set('Authorization', `Bearer ${owner.token}`)
       .send({
@@ -137,7 +137,8 @@ describe('Property object-level authorization', () => {
         slug: `owner-property-${randomUUID()}`,
       })
       .expect(201);
-    propertyUuid = response.body.data.uuid as string;
+    const body = response.body as { data: { uuid: string } };
+    propertyUuid = body.data.uuid;
   });
 
   afterAll(async () => {
@@ -170,25 +171,25 @@ describe('Property object-level authorization', () => {
   });
 
   it('allows the owner and denies a different authenticated user', async () => {
-    await request(app.getHttpServer())
+    await httpRequest(app)
       .get(`/api/v1/property/properties/${propertyUuid}`)
       .set('Authorization', `Bearer ${owner.token}`)
       .expect(200);
 
-    await request(app.getHttpServer())
+    await httpRequest(app)
       .get(`/api/v1/property/properties/${propertyUuid}`)
       .set('Authorization', `Bearer ${other.token}`)
       .expect(403);
   });
 
   it('blocks IDOR mutations even when the attacker has the CRUD permission', async () => {
-    await request(app.getHttpServer())
+    await httpRequest(app)
       .patch(`/api/v1/property/properties/${propertyUuid}`)
       .set('Authorization', `Bearer ${other.token}`)
       .send({ title: 'Unauthorized update', version: 1 })
       .expect(403);
 
-    await request(app.getHttpServer())
+    await httpRequest(app)
       .delete(`/api/v1/property/properties/${propertyUuid}`)
       .set('Authorization', `Bearer ${other.token}`)
       .expect(403);
@@ -211,14 +212,14 @@ describe('Property object-level authorization', () => {
       },
     });
 
-    await request(app.getHttpServer())
+    await httpRequest(app)
       .get(`/api/v1/property/properties/${propertyUuid}`)
       .set('Authorization', `Bearer ${other.token}`)
       .expect(200);
   });
 
   it('denies anonymous access before object resolution', async () => {
-    await request(app.getHttpServer())
+    await httpRequest(app)
       .get(`/api/v1/property/properties/${propertyUuid}`)
       .expect(401);
   });
