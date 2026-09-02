@@ -15,9 +15,9 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import type { AccessTokenClaims } from '../../../common/security/access-token-verifier.port.js';
+import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
-import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AnalyticsService } from '../application/analytics.service.js';
 import { AnalyticsQueryDto } from '../application/dto/analytics-query.dto.js';
 import {
@@ -32,7 +32,7 @@ type AuthenticatedRequest = Request & { user?: AccessTokenClaims };
 @ApiTags('Analytics')
 @ApiBearerAuth()
 @Controller('analytics')
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
 @RequirePermissions(ANALYTICS_READ_PERMISSION)
 export class AnalyticsController {
   constructor(private readonly analytics: AnalyticsService) {}

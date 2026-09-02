@@ -20,7 +20,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
+import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { RequirePermissionsAny } from '../../../common/security/authorization.decorators.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { SalesService } from '../application/sales.service.js';
@@ -88,7 +88,7 @@ const pageData = (value: {
 @ApiTags('Sales')
 @ApiBearerAuth()
 @Controller({ path: 'sales', version: '1' })
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
 export class SalesController {
   constructor(private readonly sales: SalesService) {}
 

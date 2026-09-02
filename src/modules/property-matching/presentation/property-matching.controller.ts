@@ -14,7 +14,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
+import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import {
   PropertyMatchingService,
   type MatchingActor,
@@ -43,7 +43,7 @@ const actorOf = (
 @ApiTags('Property Matching')
 @ApiBearerAuth()
 @Controller({ path: 'property-matching', version: '1' })
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthenticatedAccessGuard)
 export class PropertyMatchingController {
   constructor(private readonly matching: PropertyMatchingService) {}
 
