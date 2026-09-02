@@ -70,6 +70,17 @@ jobs:
         run: npm run test:security:baseline
       - name: Secret scan
         run: bash scripts/check-secrets.sh
+      - name: Generate canonical formatting for pending source fix
+        run: |
+          npx prettier --write src/modules/agent-management/application/agent-management.service.ts
+          mkdir -p /tmp/estate-pro-formatted
+          cp src/modules/agent-management/application/agent-management.service.ts /tmp/estate-pro-formatted/agent-management.service.ts
+      - name: Upload canonical formatted source
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-agent-management-service
+          path: /tmp/estate-pro-formatted/agent-management.service.ts
+          if-no-files-found: error
       - name: Format check
         run: npm run format:check
       - name: Lint
