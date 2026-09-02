@@ -12,18 +12,22 @@ const actor = {
   requestId: 'req-lifecycle-1',
 };
 
-describe('PropertyLifecycleService', () => {
-  const repository: PropertyLifecycleRepository = {
-    verify: vi.fn(),
-    publish: vi.fn(),
-  };
-  const audit: SecurityAuditRepository = { record: vi.fn() };
-  const service = new PropertyLifecycleService(repository, audit);
+const verifyMock = vi.fn();
+const publishMock = vi.fn();
+const auditRecordMock = vi.fn();
 
+const repository: PropertyLifecycleRepository = {
+  verify: verifyMock,
+  publish: publishMock,
+};
+const audit: SecurityAuditRepository = { record: auditRecordMock };
+const service = new PropertyLifecycleService(repository, audit);
+
+describe('PropertyLifecycleService', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('verifies an IN_REVIEW property and audits the transition', async () => {
-    vi.mocked(repository.verify).mockResolvedValueOnce({
+    verifyMock.mockResolvedValueOnce({
       uuid: '22222222-2222-4222-8222-222222222222',
       status: 'IN_REVIEW',
       verifiedAt: new Date('2026-08-28T00:00:00.000Z'),
@@ -36,12 +40,12 @@ describe('PropertyLifecycleService', () => {
     );
 
     expect(result.status).toBe('IN_REVIEW');
-    expect(repository.verify).toHaveBeenCalledWith(
+    expect(verifyMock).toHaveBeenCalledWith(
       '22222222-2222-4222-8222-222222222222',
       1,
       actor,
     );
-    expect(audit.record).toHaveBeenCalledWith(
+    expect(auditRecordMock).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'PROPERTY_VERIFIED',
         entityType: 'property',
@@ -52,7 +56,7 @@ describe('PropertyLifecycleService', () => {
   });
 
   it('publishes only an already verified IN_REVIEW property', async () => {
-    vi.mocked(repository.publish).mockResolvedValueOnce({
+    publishMock.mockResolvedValueOnce({
       uuid: '33333333-3333-4333-8333-333333333333',
       status: 'ACTIVE',
       publishedAt: new Date('2026-08-28T00:00:00.000Z'),
@@ -62,13 +66,13 @@ describe('PropertyLifecycleService', () => {
       service.publish('33333333-3333-4333-8333-333333333333', 2, actor),
     ).resolves.toMatchObject({ status: 'ACTIVE' });
 
-    expect(audit.record).toHaveBeenCalledWith(
+    expect(auditRecordMock).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'PROPERTY_PUBLISHED' }),
     );
   });
 
   it('rejects a repository result that violates the ACTIVE publication contract', async () => {
-    vi.mocked(repository.publish).mockResolvedValueOnce({
+    publishMock.mockResolvedValueOnce({
       uuid: '44444444-4444-4444-8444-444444444444',
       status: 'DRAFT',
     });
@@ -76,11 +80,11 @@ describe('PropertyLifecycleService', () => {
     await expect(
       service.publish('44444444-4444-4444-8444-444444444444', 1, actor),
     ).rejects.toThrow(BadRequestException);
-    expect(audit.record).not.toHaveBeenCalled();
+    expect(auditRecordMock).not.toHaveBeenCalled();
   });
 
   it('maps optimistic concurrency failures to HTTP 409', async () => {
-    vi.mocked(repository.verify).mockRejectedValueOnce(
+    verifyMock.mockRejectedValueOnce(
       new MasterConcurrencyError('Property version conflict'),
     );
 
