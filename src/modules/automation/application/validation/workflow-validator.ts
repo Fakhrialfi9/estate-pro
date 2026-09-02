@@ -8,6 +8,7 @@ import {
   canonicalize,
   type ActionNode,
   type ConditionNode,
+  type ConditionOperand,
   type TriggerDefinition,
   type WorkflowDefinition,
 } from '../../domain/automation.types.js';
@@ -125,11 +126,6 @@ export class WorkflowValidator {
         continue;
       }
 
-      if (!isValueIn(ACTION_TYPES, node.actionType))
-        throw new BadRequestException(
-          `Unsupported action type: ${node.actionType}`,
-        );
-
       const maxAttempts = node.maxAttempts ?? 3;
       if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10)
         throw new BadRequestException('Invalid action retry limit');
@@ -154,7 +150,10 @@ export class WorkflowValidator {
         edge.from === edge.to
       )
         throw new BadRequestException('Workflow contains an invalid edge');
-      adjacency.set(edge.from, [...(adjacency.get(edge.from) ?? []), edge.to]);
+      adjacency.set(edge.from, [
+        ...(adjacency.get(edge.from) ?? []),
+        edge.to,
+      ]);
     }
 
     this.assertAcyclic(adjacency, ids, validated.graph.entryNodeId);
@@ -162,7 +161,7 @@ export class WorkflowValidator {
     for (const node of nodes)
       if (
         node.id !== validated.graph.entryNodeId &&
-        !edges.some((edge) => isRecord(edge) && edge.to === node.id)
+        !edges.some((edge) => edge.to === node.id)
       )
         throw new BadRequestException(`Orphan node: ${node.id}`);
 
@@ -182,7 +181,7 @@ export class WorkflowValidator {
     if (node.operands.length > 20)
       throw new BadRequestException('Condition operand limit exceeded');
 
-    for (const operand of node.operands) {
+    for (const operand of node.operands as readonly ConditionOperand[]) {
       if (
         !isString(operand.field) ||
         !isValueIn(CONDITION_OPERATORS, operand.operator)
