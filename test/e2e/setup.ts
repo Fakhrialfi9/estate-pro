@@ -25,8 +25,8 @@ setDefault(
 );
 setDefault('AUTH_LOGIN_RATE_LIMIT', '5');
 setDefault('AUTH_LOGIN_RATE_LIMIT_TTL_MS', '60000');
-setDefault('AUTH_REFRESH_RATE_LIMIT', '10');
-setDefault('AUTH_REFRESH_RATE_LIMIT_TTL_MS', '60000');
+process.env.AUTH_REFRESH_RATE_LIMIT = '10';
+process.env.AUTH_REFRESH_RATE_LIMIT_TTL_MS = '60000';
 setDefault('SECURITY_RATE_LIMIT_MAX', '1000');
 setDefault('SECURITY_TRUST_PROXY', 'loopback');
 setDefault('OTEL_TRACING_ENABLED', 'false');
