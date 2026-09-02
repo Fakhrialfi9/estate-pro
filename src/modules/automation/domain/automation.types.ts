@@ -312,7 +312,7 @@ export class ActionExecutionAggregate {
   transition(next: ActionState): void {
     const allowed: Record<ActionState, readonly ActionState[]> = {
       PENDING: ['RUNNING', 'SKIPPED'],
-      RUNNING: ['SUCCEEDED', 'FAILED', 'RETRYABLE', 'SKIPPED'],
+      RUNNING: ['SUCCEEDED', 'FAILED', 'RETRYABLE'],
       RETRYABLE: ['RUNNING', 'FAILED'],
       FAILED: ['RETRYABLE'],
       SUCCEEDED: [],
