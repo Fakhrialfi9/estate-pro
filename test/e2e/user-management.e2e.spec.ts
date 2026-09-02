@@ -40,8 +40,7 @@ const httpRequest = () => {
   const server = app.getHttpServer() as unknown as SuperTestApp;
   return request(server);
 };
-const bodyOf = <T>(response: SuperTestResponse): T =>
-  response.body as unknown as T;
+const bodyOf = <T>(response: SuperTestResponse): T => response.body;
 
 function digestSessionId(sessionId: string): string {
   return createHash('sha256').update(sessionId, 'utf8').digest('hex');

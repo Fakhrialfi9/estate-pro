@@ -29,8 +29,7 @@ const http = (app: INestApplication) => {
   const server = app.getHttpServer() as unknown as SuperTestApp;
   return request(server);
 };
-const bodyAs = <T>(response: Response): T =>
-  response.body as unknown as T;
+const bodyAs = <T>(response: Response): T => response.body;
 type Created = {
   data: { uuid: string; status?: string; propertyCategory?: { uuid: string } };
 };
