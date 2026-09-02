@@ -267,22 +267,8 @@ export class ReassignmentDto {
   fromAgentUuid?: string;
   @ApiPropertyOptional({ maxLength: 255 })
   @IsOptional()
-  @IsUUID('4')
-  fromAgentUuid?: string;
-  @ApiPropertyOptional({ maxLength: 255 })
-  @IsOptional()
   @IsString()
-  reason?: string;
-}
-export class ReassignmentDto {
-  @ApiProperty({ format: 'uuid' }) @IsUUID('4') toAgentUuid!: string;
-  @ApiPropertyOptional({ format: 'uuid' })
-  @IsOptional()
-  @IsUUID('4')
-  fromAgentUuid?: string;
-  @ApiPropertyOptional({ maxLength: 255 })
-  @IsOptional()
-  @IsString()
+  @MaxLength(255)
   reason?: string;
 }
 export class TargetCreateDto {
