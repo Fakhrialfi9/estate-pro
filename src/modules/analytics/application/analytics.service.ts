@@ -1,8 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { trace } from '@opentelemetry/api';
 import type { AccessTokenClaims } from '../../../common/security/access-token-verifier.port.js';
-import { AnalyticsInvalidQueryException, AnalyticsQueryTimeoutException, AnalyticsUnavailableException } from '../domain/errors/analytics.errors.js';
-import { ANALYTICS_QUERY_PORT, type AnalyticsGranularity, type AnalyticsQuery, type AnalyticsQueryPort, type AnalyticsReport, type AnalyticsScope } from '../domain/analytics.types.js';
+import {
+  AnalyticsInvalidQueryException,
+  AnalyticsQueryTimeoutException,
+  AnalyticsScopeException,
+  AnalyticsUnavailableException,
+} from '../domain/errors/analytics.errors.js';
+import {
+  ANALYTICS_QUERY_PORT,
+  type AnalyticsGranularity,
+  type AnalyticsQuery,
+  type AnalyticsQueryPort,
+  type AnalyticsReport,
+  type AnalyticsScope,
+} from '../domain/analytics.types.js';
 import { AnalyticsScopePolicy } from '../domain/policies/analytics-scope.policy.js';
 import type { AnalyticsQueryDto } from './dto/analytics-query.dto.js';
 
@@ -20,13 +32,21 @@ export class AnalyticsService {
 
   normalizeQuery(dto: AnalyticsQueryDto): AnalyticsQuery {
     const to = dto.to ? new Date(dto.to) : new Date();
-    const from = dto.from ? new Date(dto.from) : new Date(to.getTime() - DEFAULT_RANGE_DAYS * 86_400_000);
-    if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime()) || from >= to) {
+    const from = dto.from
+      ? new Date(dto.from)
+      : new Date(to.getTime() - DEFAULT_RANGE_DAYS * 86_400_000);
+    if (
+      !Number.isFinite(from.getTime()) ||
+      !Number.isFinite(to.getTime()) ||
+      from >= to
+    ) {
       throw new AnalyticsInvalidQueryException('`from` must be earlier than `to`.');
     }
     const rangeDays = (to.getTime() - from.getTime()) / 86_400_000;
     if (rangeDays > MAX_RANGE_DAYS) {
-      throw new AnalyticsInvalidQueryException(`The reporting range cannot exceed ${MAX_RANGE_DAYS} days.`);
+      throw new AnalyticsInvalidQueryException(
+        `The reporting range cannot exceed ${MAX_RANGE_DAYS} days.`,
+      );
     }
     return {
       from,
@@ -51,125 +71,244 @@ export class AnalyticsService {
   async leads(dto: AnalyticsQueryDto, user: AccessTokenClaims): Promise<AnalyticsReport<Record<string, unknown>>> {
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
-    const [volume, lifecycle, aging, funnel, assignment] = await this.withTimeout(Promise.all([
-      this.queries.leadVolume(query, scope),
-      this.queries.leadLifecycle(query, scope),
-      this.queries.leadAging(query, scope),
-      this.queries.leadFunnel(query, scope),
-      this.queries.leadAssignment(query, scope),
-    ]));
+    const [volume, lifecycle, aging, funnel, assignment] = await this.withTimeout(
+      Promise.all([
+        this.queries.leadVolume(query, scope),
+        this.queries.leadLifecycle(query, scope),
+        this.queries.leadAging(query, scope),
+        this.queries.leadFunnel(query, scope),
+        this.queries.leadAssignment(query, scope),
+      ]),
+    );
     const funnelRows = this.normalizeRows(funnel);
-    const funnelTotal = funnelRows.reduce((sum, row) => sum + this.numberValue(row.count), 0);
-    const funnelWithRates = funnelRows.map((row) => ({ ...row, percentage: funnelTotal === 0 ? 0 : Number(((this.numberValue(row.count) / funnelTotal) * 100).toFixed(4)) }));
-    return this.report(query, { volume: this.normalizeRows(volume), lifecycle: this.normalizeRows(lifecycle), aging: this.normalizeRows(aging)[0] ?? {}, funnel: funnelWithRates, assignments: this.normalizeRows(assignment) });
+    const funnelTotal = funnelRows.reduce(
+      (sum, row) => sum + this.numberValue(row.count),
+      0,
+    );
+    const funnelWithRates = funnelRows.map((row) => ({
+      ...row,
+      percentage:
+        funnelTotal === 0
+          ? 0
+          : Number(((this.numberValue(row.count) / funnelTotal) * 100).toFixed(4)),
+    }));
+    return this.report(query, {
+      volume: this.normalizeRows(volume),
+      lifecycle: this.normalizeRows(lifecycle)[0] ?? {},
+      aging: this.normalizeRows(aging)[0] ?? {},
+      funnel: funnelWithRates,
+      assignments: this.normalizeRows(assignment),
+    });
   }
 
   async acquisition(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
-    const [sources, campaigns] = await this.withTimeout(Promise.all([
-      this.queries.sourcePerformance(query, scope),
-      this.queries.campaignPerformance(query, scope),
-    ]));
-    const sourceRows = this.normalizeRows(sources).map((row) => this.withConversionRates(row));
-    const campaignRows = this.normalizeRows(campaigns).map((row) => this.withConversionRates(row));
-    return this.report(query, { sources: sourceRows, campaigns: campaignRows });
+    const [sources, campaigns] = await this.withTimeout(
+      Promise.all([
+        this.queries.sourcePerformance(query, scope),
+        this.queries.campaignPerformance(query, scope),
+      ]),
+    );
+    return this.report(query, {
+      sources: this.normalizeRows(sources).map((row) =>
+        this.withConversionRates(row),
+      ),
+      campaigns: this.normalizeRows(campaigns).map((row) =>
+        this.withConversionRates(row),
+      ),
+    });
   }
 
   async conversion(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
-    const [result, cohort] = await this.withTimeout(Promise.all([
-      this.queries.conversion(query, scope),
-      this.queries.cohort(query, scope),
-    ]));
+    const [result, cohort] = await this.withTimeout(
+      Promise.all([
+        this.queries.conversion(query, scope),
+        this.queries.cohort(query, scope),
+      ]),
+    );
     const row = this.normalizeRows(result)[0] ?? {};
     const leads = this.numberValue(row.leads);
     const opportunities = this.numberValue(row.opportunities);
     const wonDeals = this.numberValue(row.wonDeals);
     return this.report(query, {
-      leadToOpportunity: { leads, opportunities, rate: leads ? Number(((opportunities / leads) * 100).toFixed(4)) : 0 },
-      opportunityToDeal: { opportunities, wonDeals, rate: opportunities ? Number(((wonDeals / opportunities) * 100).toFixed(4)) : 0 },
-      cycleTime: { leadToOpportunityDays: this.numberValue(row.leadToOpportunityDays), opportunityToCloseDays: this.numberValue(row.opportunityToCloseDays) },
-      cohorts: this.normalizeRows(cohort).map((item) => ({ ...item, rate: this.numberValue(item.leads) ? Number(((this.numberValue(item.converted) / this.numberValue(item.leads)) * 100).toFixed(4)) : 0 })),
+      leadToOpportunity: {
+        leads,
+        opportunities,
+        rate: leads ? Number(((opportunities / leads) * 100).toFixed(4)) : 0,
+      },
+      opportunityToDeal: {
+        opportunities,
+        wonDeals,
+        rate: opportunities ? Number(((wonDeals / opportunities) * 100).toFixed(4)) : 0,
+      },
+      cycleTime: {
+        leadToOpportunityDays: this.numberValue(row.leadToOpportunityDays),
+        opportunityToCloseDays: this.numberValue(row.opportunityToCloseDays),
+      },
+      cohorts: this.normalizeRows(cohort).map((item) => ({
+        ...item,
+        rate: this.numberValue(item.leads)
+          ? Number(
+              ((this.numberValue(item.converted) / this.numberValue(item.leads)) * 100).toFixed(4),
+            )
+          : 0,
+      })),
     });
   }
 
   async pipeline(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
-    const [pipeline, velocity, aging, value] = await this.withTimeout(Promise.all([
-      this.queries.pipeline(query, scope),
-      this.queries.stageVelocity(query, scope),
-      this.queries.opportunityAging(query, scope),
-      this.queries.opportunityValue(query, scope),
-    ]));
-    return this.report(query, { pipeline: this.normalizeRows(pipeline), stageVelocity: this.normalizeRows(velocity), aging: this.normalizeRows(aging), value: this.normalizeRows(value) });
+    const [pipeline, velocity, aging, value] = await this.withTimeout(
+      Promise.all([
+        this.queries.pipeline(query, scope),
+        this.queries.stageVelocity(query, scope),
+        this.queries.opportunityAging(query, scope),
+        this.queries.opportunityValue(query, scope),
+      ]),
+    );
+    return this.report(query, {
+      pipeline: this.normalizeRows(pipeline),
+      stageVelocity: this.normalizeRows(velocity),
+      aging: this.normalizeRows(aging),
+      value: this.normalizeRows(value),
+    });
   }
 
   async propertyAndAgent(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
-    const [inventory, listings, lifecycle, aging, workload, activity, conversion, agentProperty] = await this.withTimeout(Promise.all([
-      this.queries.propertyInventory(query, scope),
-      this.queries.listingAnalytics(query, scope),
-      this.queries.propertyLifecycle(query, scope),
-      this.queries.propertyAging(query, scope),
-      this.queries.agentWorkload(query, scope),
-      this.queries.agentActivity(query, scope),
-      this.queries.agentConversion(query, scope),
-      this.queries.agentProperty(query, scope),
-    ]));
-    const conversions = new Map(this.normalizeRows(conversion).map((row) => [String(row.agentUuid ?? ''), row]));
-    const properties = new Map(this.normalizeRows(agentProperty).map((row) => [String(row.agentUuid ?? ''), row]));
+    const [inventory, listings, lifecycle, aging, workload, activity, conversion, agentProperty] =
+      await this.withTimeout(
+        Promise.all([
+          this.queries.propertyInventory(query, scope),
+          this.queries.listingAnalytics(query, scope),
+          this.queries.propertyLifecycle(query, scope),
+          this.queries.propertyAging(query, scope),
+          this.queries.agentWorkload(query, scope),
+          this.queries.agentActivity(query, scope),
+          this.queries.agentConversion(query, scope),
+          this.queries.agentProperty(query, scope),
+        ]),
+      );
+    const conversions = new Map(
+      this.normalizeRows(conversion).map((row) => [String(row.agentUuid ?? ''), row]),
+    );
+    const properties = new Map(
+      this.normalizeRows(agentProperty).map((row) => [String(row.agentUuid ?? ''), row]),
+    );
     const scorecards = this.normalizeRows(workload).map((row) => {
       const id = String(row.agentUuid ?? '');
       const c = conversions.get(id) ?? {};
       const p = properties.get(id) ?? {};
       const opportunities = this.numberValue(c.opportunities);
       const won = this.numberValue(c.wonDeals);
-      return { ...row, activeProperties: this.numberValue(p.activeProperties), publishedProperties: this.numberValue(p.publishedProperties), wonDeals: won, revenue: c.revenue ?? '0', conversionRate: opportunities ? Number(((won / opportunities) * 100).toFixed(4)) : 0, scoreComponents: { leads: this.numberValue(row.leads), opportunities, activities: this.numberValue(row.activities) } };
+      return {
+        ...row,
+        activeProperties: this.numberValue(p.activeProperties),
+        publishedProperties: this.numberValue(p.publishedProperties),
+        wonDeals: won,
+        revenue: c.revenue ?? '0',
+        conversionRate: opportunities
+          ? Number(((won / opportunities) * 100).toFixed(4))
+          : 0,
+      };
     });
-    return this.report(query, { inventory: this.normalizeRows(inventory), listings: this.normalizeRows(listings), lifecycle: this.normalizeRows(lifecycle)[0] ?? {}, aging: this.normalizeRows(aging)[0] ?? {}, workload: this.normalizeRows(workload), activity: this.normalizeRows(activity).map((row) => ({ ...row, category: this.activityCategory(String(row.type ?? '')) })), conversion: this.normalizeRows(conversion), propertiesByAgent: this.normalizeRows(agentProperty), scorecards });
+    return this.report(query, {
+      inventory: this.normalizeRows(inventory),
+      listings: this.normalizeRows(listings),
+      lifecycle: this.normalizeRows(lifecycle)[0] ?? {},
+      aging: this.normalizeRows(aging)[0] ?? {},
+      workload: this.normalizeRows(workload),
+      activity: this.normalizeRows(activity).map((row) => ({
+        ...row,
+        category: this.activityCategory(String(row.type ?? '')),
+      })),
+      conversion: this.normalizeRows(conversion),
+      propertiesByAgent: this.normalizeRows(agentProperty),
+      scorecards,
+    });
   }
 
   async salesAndRevenue(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
-    if (!this.scopePolicy.canReadRevenue(user)) throw new AnalyticsInvalidQueryException('Revenue analytics permission is required.');
+    if (!this.scopePolicy.canReadRevenue(user)) {
+      throw new AnalyticsScopeException('Revenue analytics permission is required.');
+    }
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
-    const [sales, cycle, revenue, averageDeal] = await this.withTimeout(Promise.all([
-      this.queries.salesVolume(query, scope),
-      this.queries.salesCycle(query, scope),
-      this.queries.revenue(query, scope),
-      this.queries.averageDeal(query, scope),
-    ]));
-    return this.report(query, { sales: this.normalizeRows(sales), cycle: this.normalizeRows(cycle)[0] ?? {}, revenue: this.normalizeRows(revenue), averageDeal: this.normalizeRows(averageDeal) });
+    const [sales, cycle, revenue, averageDeal] = await this.withTimeout(
+      Promise.all([
+        this.queries.salesVolume(query, scope),
+        this.queries.salesCycle(query, scope),
+        this.queries.revenue(query, scope),
+        this.queries.averageDeal(query, scope),
+      ]),
+    );
+    return this.report(query, {
+      sales: this.normalizeRows(sales),
+      cycle: this.normalizeRows(cycle)[0] ?? {},
+      revenue: this.normalizeRows(revenue),
+      averageDeal: this.normalizeRows(averageDeal),
+    });
   }
 
   async sla(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
-    const rows = this.normalizeRows(await this.withTimeout(this.queries.sla(query, scope)));
+    const rows = this.normalizeRows(
+      await this.withTimeout(this.queries.sla(query, scope)),
+    );
     const row = rows[0] ?? {};
-    return this.report(query, { ...row, qualificationThresholdHours: 48, responseSla: { averageHours: this.numberValue(row.averageResponseHours), thresholdHours: 24 }, qualificationSla: { averageHours: this.numberValue(row.averageQualificationHours), thresholdHours: 48 } });
+    return this.report(query, {
+      ...row,
+      qualificationThresholdHours: 48,
+      responseSla: {
+        averageHours: this.numberValue(row.averageResponseHours),
+        thresholdHours: 24,
+      },
+      qualificationSla: {
+        averageHours: this.numberValue(row.averageQualificationHours),
+        thresholdHours: 48,
+      },
+    });
   }
 
   async forecast(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
-    if (!this.scopePolicy.canForecast(user)) throw new AnalyticsInvalidQueryException('Forecast permission is required.');
+    if (!this.scopePolicy.canForecast(user)) {
+      throw new AnalyticsScopeException('Forecast permission is required.');
+    }
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
-    const row = this.normalizeRows(await this.withTimeout(this.queries.forecastInput(query, scope)))[0] ?? {};
+    const row = this.normalizeRows(
+      await this.withTimeout(this.queries.forecastInput(query, scope)),
+    )[0] ?? {};
     const closedRevenue = this.numberValue(row.closedRevenue);
     const closedDeals = this.numberValue(row.closedDeals);
     const weightedPipeline = this.numberValue(row.weightedPipeline);
     const historicalAverage = closedDeals ? closedRevenue / closedDeals : 0;
     const forecast = weightedPipeline + historicalAverage;
-    const minimumSample = closedDeals >= 5;
-    return this.report(query, { target: 'expected-revenue', forecast: Number(forecast.toFixed(4)), methodology: 'weighted-open-pipeline-plus-historical-average-deal', confidence: minimumSample ? 'NORMAL' : 'INSUFFICIENT_DATA', minimumHistoricalDeals: 5, historicalAverageDeal: Number(historicalAverage.toFixed(4)), weightedPipeline: Number(weightedPipeline.toFixed(4)) });
+    return this.report(query, {
+      target: 'expected-revenue',
+      forecast: Number(forecast.toFixed(4)),
+      methodology: 'weighted-open-pipeline-plus-historical-average-deal',
+      confidence: closedDeals >= 5 ? 'NORMAL' : 'INSUFFICIENT_DATA',
+      minimumHistoricalDeals: 5,
+      historicalAverageDeal: Number(historicalAverage.toFixed(4)),
+      weightedPipeline: Number(weightedPipeline.toFixed(4)),
+    });
   }
 
-  async exportCsv(dto: AnalyticsQueryDto, user: AccessTokenClaims, report: string): Promise<{ filename: string; content: string }> {
-    if (!this.scopePolicy.canExport(user)) throw new AnalyticsInvalidQueryException('Export permission is required.');
+  async exportCsv(
+    dto: AnalyticsQueryDto,
+    user: AccessTokenClaims,
+    report: string,
+  ): Promise<{ filename: string; content: string }> {
+    if (!this.scopePolicy.canExport(user)) {
+      throw new AnalyticsScopeException('Export permission is required.');
+    }
     const normalized = report.trim().toLowerCase();
     let result: AnalyticsReport<Record<string, unknown>>;
     switch (normalized) {
@@ -193,24 +332,62 @@ export class AnalyticsService {
   }
 
   private report<T extends Record<string, unknown>>(query: AnalyticsQuery, data: T): AnalyticsReport<T> {
-    return { data: [data], meta: { generatedAt: new Date().toISOString(), from: query.from.toISOString(), to: query.to.toISOString(), timezone: 'UTC', granularity: query.granularity, page: query.page, limit: query.limit, total: 1 } };
+    return {
+      data: [data],
+      meta: {
+        generatedAt: new Date().toISOString(),
+        from: query.from.toISOString(),
+        to: query.to.toISOString(),
+        timezone: 'UTC',
+        granularity: query.granularity,
+        page: query.page,
+        limit: query.limit,
+        total: 1,
+      },
+    };
   }
 
   private async withTimeout<T>(promise: Promise<T>): Promise<T> {
+    const span = trace.getActiveSpan();
+    const startedAt = Date.now();
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new AnalyticsQueryTimeoutException()), QUERY_TIMEOUT_MS);
-      promise.then((value) => { clearTimeout(timer); resolve(value); }, (error: unknown) => { clearTimeout(timer); reject(error instanceof Error ? error : new AnalyticsUnavailableException()); });
+      const timer = setTimeout(() => {
+        span?.setAttribute('analytics.query.timeout', true);
+        reject(new AnalyticsQueryTimeoutException());
+      }, QUERY_TIMEOUT_MS);
+      promise.then(
+        (value) => {
+          clearTimeout(timer);
+          span?.setAttribute('analytics.query.duration_ms', Date.now() - startedAt);
+          resolve(value);
+        },
+        (error: unknown) => {
+          clearTimeout(timer);
+          span?.setAttribute('analytics.query.duration_ms', Date.now() - startedAt);
+          reject(error instanceof Error ? error : new AnalyticsUnavailableException());
+        },
+      );
     });
   }
 
   private normalizeRows(rows: readonly Record<string, unknown>[]): Record<string, unknown>[] {
-    return rows.slice(0, MAX_BOUNDED_ROWS).map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, this.normalizeScalar(value)])));
+    return rows
+      .slice(0, MAX_BOUNDED_ROWS)
+      .map((row) =>
+        Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [key, this.normalizeScalar(value)]),
+        ),
+      );
   }
 
   private normalizeScalar(value: unknown): unknown {
     if (typeof value === 'bigint') return Number(value);
     if (value instanceof Date) return value.toISOString();
-    if (value !== null && typeof value === 'object' && typeof (value as { toString?: unknown }).toString === 'function') {
+    if (
+      value !== null &&
+      typeof value === 'object' &&
+      typeof (value as { toString?: unknown }).toString === 'function'
+    ) {
       const asString = String(value);
       if (/^-?\d+(?:\.\d+)?$/.test(asString)) return asString;
     }
@@ -221,10 +398,17 @@ export class AnalyticsService {
     const leads = this.numberValue(row.leads);
     const qualified = this.numberValue(row.qualified);
     const converted = this.numberValue(row.converted);
-    return { ...row, qualifiedRate: leads ? Number(((qualified / leads) * 100).toFixed(4)) : 0, conversionRate: leads ? Number(((converted / leads) * 100).toFixed(4)) : 0 };
+    return {
+      ...row,
+      qualifiedRate: leads ? Number(((qualified / leads) * 100).toFixed(4)) : 0,
+      conversionRate: leads ? Number(((converted / leads) * 100).toFixed(4)) : 0,
+    };
   }
 
-  private numberValue(value: unknown): number { const n = Number(value ?? 0); return Number.isFinite(n) ? n : 0; }
+  private numberValue(value: unknown): number {
+    const n = Number(value ?? 0);
+    return Number.isFinite(n) ? n : 0;
+  }
 
   private activityCategory(type: string): string {
     const t = type.trim().toUpperCase();
@@ -236,11 +420,25 @@ export class AnalyticsService {
   }
 
   private flattenReport(data: readonly Record<string, unknown>[]): Record<string, unknown>[] {
-    return data.flatMap((group) => Object.entries(group).flatMap(([key, value]) => Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null) : [{ metric: key, value }]));
+    return data.flatMap((group) =>
+      Object.entries(group).flatMap(([key, value]) =>
+        Array.isArray(value)
+          ? value.filter(
+              (item): item is Record<string, unknown> =>
+                typeof item === 'object' && item !== null,
+            )
+          : [{ metric: key, value }],
+      ),
+    );
   }
 
   private csvValue(value: unknown): string {
-    const text = value === null || value === undefined ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+    const text =
+      value === null || value === undefined
+        ? ''
+        : typeof value === 'object'
+          ? JSON.stringify(value)
+          : String(value);
     return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   }
 }
