@@ -11,7 +11,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { LoginDto } from '../application/dto/login.dto.js';
 import { RefreshTokenDto } from '../application/dto/refresh-token.dto.js';
@@ -20,10 +19,6 @@ import { LoginService } from '../application/services/login.service.js';
 import { LogoutService } from '../application/services/logout.service.js';
 import { RefreshTokenService } from '../application/services/refresh-token.service.js';
 import { JwtAuthGuard } from '../security/jwt-auth.guard.js';
-import {
-  LOGIN_RATE_LIMIT,
-  REFRESH_RATE_LIMIT,
-} from '../../../config/rate-limit.config.js';
 import {
   UserManagementService,
   serializeUser,
@@ -55,7 +50,6 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  @Throttle({ default: LOGIN_RATE_LIMIT })
   @ApiOperation({
     summary: 'Authenticate a user',
     description:
@@ -73,7 +67,6 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(200)
   @Header('Cache-Control', 'no-store')
-  @Throttle({ default: REFRESH_RATE_LIMIT })
   @ApiOperation({
     summary: 'Refresh an expired access token',
     description:
