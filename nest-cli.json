@@ -7,7 +7,7 @@
     "tsConfigPath": "tsconfig.build.json",
     "plugins": [
       {
-        "name": "@nestjs/swagger",
+        "name": "./scripts/nest-swagger-esm-plugin.cjs",
         "options": {
           "classValidatorShim": true,
           "introspectComments": true,
