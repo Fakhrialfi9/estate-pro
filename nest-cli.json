@@ -7,15 +7,14 @@
     "tsConfigPath": "tsconfig.build.json",
     "plugins": [
       {
-        "name": "@nestjs/swagger",
+        "name": "./scripts/swagger-esm-compat-plugin.cjs",
         "options": {
           "classValidatorShim": true,
           "introspectComments": true,
           "skipAutoHttpCode": true,
           "esmCompatible": true
         }
-      },
-      "./scripts/swagger-esm-compat-plugin.cjs"
+      }
     ]
   }
 }
