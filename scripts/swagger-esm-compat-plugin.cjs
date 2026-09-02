@@ -2,11 +2,11 @@ const ts = require('typescript');
 const path = require('path');
 const swaggerPlugin = require('@nestjs/swagger/plugin');
 
-const INVALID_IMPORT_PATTERN = /^\((?:await import)\(["'](.+)["']\)\)\.([A-Za-z_$][\w$]*)$/;
-const INVALID_ARRAY_IMPORT_PATTERN = /^\[\((?:await import)\(["'](.+)["']\)\)\.([A-Za-z_$][\w$]*)\]$/;
+const INVALID_IMPORT_PATTERN = /^\(await import\(["'](.+)["']\)\)\.([A-Za-z_$][\w$]*)$/;
+const INVALID_ARRAY_IMPORT_PATTERN = /^\[\(await import\(["'](.+)["']\)\)\.([A-Za-z_$][\w$]*)\]$/;
 
 function normalizeModulePath(modulePath) {
-  return modulePath.replace(/\\/g, '/').replace(/\.js$/, '');
+  return modulePath.replace(/\\/g, '/').replace(/\.[cm]?js$/, '');
 }
 
 function findExistingImport(sourceFile, modulePath, importedName) {
@@ -45,9 +45,7 @@ function findExistingImport(sourceFile, modulePath, importedName) {
 
 function isSameFileImport(sourceFile, modulePath) {
   const resolved = path.resolve(path.dirname(sourceFile.fileName), modulePath);
-  const normalized = normalizeModulePath(resolved);
-  const source = normalizeModulePath(sourceFile.fileName);
-  return normalized === source;
+  return normalizeModulePath(resolved) === normalizeModulePath(sourceFile.fileName);
 }
 
 function createStaticImport(factory, modulePath, namespaceName) {
@@ -65,21 +63,19 @@ function createStaticImport(factory, modulePath, namespaceName) {
 
 function before(options = {}, program) {
   const swaggerTransformerFactory = swaggerPlugin.before(options, program);
-  const swaggerTransformer = undefined;
 
   return (context) => {
     const applySwagger = swaggerTransformerFactory(context);
-    const hoistedImports = new Map();
 
     return (sourceFile) => {
-      hoistedImports.clear();
-
       const swaggerSourceFile = applySwagger(sourceFile);
       if (!swaggerSourceFile || !ts.isSourceFile(swaggerSourceFile)) {
         return swaggerSourceFile;
       }
 
+      const hoistedImports = new Map();
       const factory = context.factory;
+
       const visitor = (node) => {
         if (!ts.isIdentifier(node)) {
           return ts.visitEachChild(node, visitor, context);
@@ -96,28 +92,34 @@ function before(options = {}, program) {
 
         const modulePath = match[1];
         const importedName = match[2];
+        let reference;
 
         if (isSameFileImport(swaggerSourceFile, modulePath)) {
-          return factory.createIdentifier(array ? `[${importedName}]` : importedName);
+          reference = importedName;
+        } else {
+          reference = findExistingImport(
+            swaggerSourceFile,
+            modulePath,
+            importedName,
+          );
+
+          if (!reference) {
+            let namespaceName = hoistedImports.get(modulePath);
+            if (!namespaceName) {
+              namespaceName = `openapi_import_${hoistedImports.size + 1}`;
+              hoistedImports.set(modulePath, namespaceName);
+            }
+            reference = `${namespaceName}.${importedName}`;
+          }
         }
 
-        const existingImport = findExistingImport(
-          swaggerSourceFile,
-          modulePath,
-          importedName,
-        );
-        if (existingImport) {
-          return factory.createIdentifier(array ? `[${existingImport}]` : existingImport);
+        if (array) {
+          return factory.createArrayLiteralExpression([
+            factory.createIdentifier(reference),
+          ]);
         }
 
-        let namespaceName = hoistedImports.get(modulePath);
-        if (!namespaceName) {
-          namespaceName = `openapi_import_${hoistedImports.size + 1}`;
-          hoistedImports.set(modulePath, namespaceName);
-        }
-
-        const reference = `${namespaceName}.${importedName}`;
-        return factory.createIdentifier(array ? `[${reference}]` : reference);
+        return factory.createIdentifier(reference);
       };
 
       const transformed = ts.visitNode(swaggerSourceFile, visitor);
