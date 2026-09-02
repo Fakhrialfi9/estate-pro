@@ -21,8 +21,8 @@ const contextOf = (request: TestRequest) =>
   }) as never;
 
 describe('PropertyAccessGuard', () => {
-  const findProperty = vi.fn();
-  const findListing = vi.fn();
+  const findProperty = vi.fn<() => Promise<{ id: number } | null>>();
+  const findListing = vi.fn<() => Promise<{ id: number } | null>>();
   const prisma = {
     property: { findFirst: findProperty },
     propertyListing: { findFirst: findListing },
