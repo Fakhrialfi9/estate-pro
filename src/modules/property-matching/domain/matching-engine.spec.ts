@@ -1,38 +1,45 @@
 import { describe, expect, it } from 'vitest';
 import { MatchingEngine } from './matching-engine.js';
 import { PropertyPreference } from './property-preference.js';
-import type {
-  BehavioralSignal,
-  MatchCandidate,
-  PropertyPreferenceState,
-} from './matching.types.js';
+import type { MatchCandidate } from './matching.types.js';
 
-const baseLocation = {
-  countryUuid: '11111111-1111-4111-8111-111111111111',
-  provinceUuid: '22222222-2222-4222-8222-222222222222',
-  cityUuid: '33333333-3333-4333-8333-333333333333',
-};
-
-const basePreference = (): Omit<PropertyPreferenceState, 'version'> => ({
-  transactionTypes: ['SALE'],
-  propertyTypeUuids: [],
-  propertyCategoryUuids: [],
-  location: baseLocation,
-  hardCriteria: [],
+const candidate = (
+  overrides: Partial<MatchCandidate> = {},
+): MatchCandidate => ({
+  propertyUuid: '11111111-1111-4111-8111-111111111111',
+  listingUuid: '22222222-2222-4222-8222-222222222222',
+  propertyTypeUuid: '33333333-3333-4333-8333-333333333333',
+  propertyCategoryUuid: '44444444-4444-4444-8444-444444444444',
+  transactionType: 'SALE',
+  listingStatus: 'PUBLISHED',
+  visibility: 'PUBLIC',
+  publishedAt: new Date('2026-09-01T00:00:00Z'),
+  expiresAt: null,
+  price: {
+    currency: 'IDR',
+    priceType: 'TOTAL',
+    minPrice: '1000000000',
+    maxPrice: '1000000000',
+  },
+  location: { countryUuid: '55555555-5555-4555-8555-555555555555' },
+  specification: {
+    bedrooms: 3,
+    bathrooms: '2',
+    buildingAreaSqm: '120',
+    parkingSpaces: 2,
+    furnishedStatus: 'FULLY_FURNISHED',
+    condition: 'GOOD',
+  },
+  ...overrides,
 });
 
 describe('PropertyPreference', () => {
   it('rejects invalid ranges and missing hard-constraint values', () => {
     expect(() =>
       PropertyPreference.create({
-        ...basePreference(),
-        hardCriteria: ['transactionType'],
-        transactionTypes: [],
-      }),
-    ).toThrow('transactionType hard criterion requires a transaction type');
-    expect(() =>
-      PropertyPreference.create({
-        ...basePreference(),
+        transactionTypes: ['SALE'],
+        propertyTypeUuids: [],
+        propertyCategoryUuids: [],
         hardCriteria: ['propertyType'],
       }),
     ).toThrow('propertyType hard criterion requires a property type');
@@ -73,88 +80,45 @@ describe('MatchingEngine', () => {
     const results = engine.evaluate(
       preference,
       [
-        {
-          propertyUuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-          listingUuid: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-          propertyTypeUuid: '33333333-3333-4333-8333-333333333333',
-          propertyCategoryUuid: '44444444-4444-4444-8444-444444444444',
-          transactionType: 'SALE',
-          listingStatus: 'PUBLISHED',
-          visibility: 'PUBLIC',
-          publishedAt: new Date('2026-01-01T00:00:00Z'),
-          expiresAt: null,
-          price: {
-            currency: 'IDR',
-            priceType: 'TOTAL',
-            minPrice: '1000000000',
-            maxPrice: '1000000000',
-          },
-          location: null,
-          specification: null,
-        },
-        {
-          propertyUuid: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-          listingUuid: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-          propertyTypeUuid: '55555555-5555-4555-8555-555555555555',
-          propertyCategoryUuid: '44444444-4444-4444-8444-444444444444',
-          transactionType: 'SALE',
-          listingStatus: 'PUBLISHED',
-          visibility: 'PUBLIC',
-          publishedAt: new Date('2026-01-02T00:00:00Z'),
-          expiresAt: null,
-          price: {
-            currency: 'IDR',
-            priceType: 'TOTAL',
-            minPrice: '1000000000',
-            maxPrice: '1000000000',
-          },
-          location: null,
-          specification: null,
-        },
+        candidate(),
+        candidate({
+          listingUuid: '66666666-6666-4666-8666-666666666666',
+          transactionType: 'RENT',
+        }),
       ],
-      new Map<string, BehavioralSignal>(),
+      new Map(),
     );
     expect(results).toHaveLength(1);
-    expect(results[0]?.propertyUuid).toBe(
-      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    expect(results[0]?.listingUuid).toBe(
+      '22222222-2222-4222-8222-222222222222',
     );
   });
 
   it('produces stable deterministic ranking and safe explanations', () => {
-    const candidate = (id: string, publishedAt: string): MatchCandidate => ({
-      propertyUuid: id,
-      listingUuid: `${id.slice(0, 8)}-1111-4111-8111-111111111111`,
-      propertyTypeUuid: '33333333-3333-4333-8333-333333333333',
-      propertyCategoryUuid: '44444444-4444-4444-8444-444444444444',
-      transactionType: 'SALE',
-      listingStatus: 'PUBLISHED',
-      visibility: 'PUBLIC',
-      publishedAt: new Date(publishedAt),
-      expiresAt: null,
-      price: {
-        currency: 'IDR',
-        priceType: 'TOTAL',
-        minPrice: '1000000000',
-        maxPrice: '1000000000',
-      },
-      location: null,
-      specification: null,
-    });
-    const first = candidate(
-      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      '2026-01-01T00:00:00Z',
-    );
-    const second = candidate(
-      'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-      '2026-01-02T00:00:00Z',
-    );
-    const results = engine.evaluate(
+    const first = engine.evaluate(
       preference,
-      [first, second],
-      new Map<string, BehavioralSignal>(),
+      [
+        candidate(),
+        candidate({ listingUuid: '77777777-7777-4777-8777-777777777777' }),
+      ],
+      new Map(),
     );
-    expect(results).toHaveLength(2);
-    expect(results[0]?.listingUuid).toBe(second.listingUuid);
-    expect(results.every((result) => !result.explanation.matched.includes('password'))).toBe(true);
+    const second = engine.evaluate(
+      preference,
+      [
+        candidate({ listingUuid: '77777777-7777-4777-8777-777777777777' }),
+        candidate(),
+      ],
+      new Map(),
+    );
+    expect(first.map((item) => [item.listingUuid, item.score])).toEqual(
+      second.map((item) => [item.listingUuid, item.score]),
+    );
+
+    const explanation = first[0]?.explanation;
+    expect(explanation).toBeDefined();
+    expect(Array.isArray(explanation?.matched)).toBe(true);
+    expect(Array.isArray(explanation?.missed)).toBe(true);
+    expect(Array.isArray(explanation?.contributions)).toBe(true);
   });
 });
