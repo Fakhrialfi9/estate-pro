@@ -14,7 +14,8 @@
           "skipAutoHttpCode": true,
           "esmCompatible": true
         }
-      }
+      },
+      "./scripts/swagger-esm-compat-plugin.cjs"
     ]
   }
 }
