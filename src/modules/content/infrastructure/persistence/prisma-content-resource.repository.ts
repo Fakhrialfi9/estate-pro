@@ -1,12 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
-import {
-  BannerPlacement,
-  ContentFormat,
-  ContentStatus,
-  ContentVisibility,
-  RelationType,
-} from '../../../../../prisma/generated/prisma/enums.js';
+import { RelationType } from '../../../../../prisma/generated/prisma/enums.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import {
   ContentConflictError,
