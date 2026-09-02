@@ -19,6 +19,7 @@ const actor = (actorUuid: string): AutomationActor => ({
   actorUuid,
   permissions: ['crm.manage', 'sales.manage'],
 });
+
 const text = (value: unknown, field: string, max = 500): string => {
   if (typeof value !== 'string' || !value.trim())
     throw new BadRequestException(`${field} is required`);
@@ -28,6 +29,7 @@ const text = (value: unknown, field: string, max = 500): string => {
     .trim()
     .slice(0, max);
 };
+
 const uuid = (value: unknown, field: string): string => {
   const result = text(value, field, 80);
   if (
@@ -37,6 +39,20 @@ const uuid = (value: unknown, field: string): string => {
   )
     throw new BadRequestException(`Invalid ${field}`);
   return result;
+};
+
+const resultString = (value: unknown, fallback: string): string =>
+  typeof value === 'string' ? value : fallback;
+
+const isoDate = (value: unknown, field: string): string | undefined => {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    throw new BadRequestException(`Invalid ${field}`);
+  }
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime()))
+    throw new BadRequestException(`Invalid ${field}`);
+  return date.toISOString();
 };
 
 @Injectable()
@@ -69,7 +85,7 @@ export class AssignLeadAction implements ActionHandler {
     return {
       success: true,
       retryable: false,
-      reference: String(result.uuid ?? leadUuid),
+      reference: resultString(result.uuid, leadUuid),
       output: { leadUuid, userUuid },
     };
   }
@@ -91,7 +107,7 @@ export class RefreshLeadScoreAction implements ActionHandler {
     return {
       success: true,
       retryable: false,
-      reference: String(result.uuid ?? leadUuid),
+      reference: resultString(result.uuid, leadUuid),
       output: { score: result.score ?? null },
     };
   }
@@ -123,12 +139,8 @@ export class CreateActivityAction implements ActionHandler {
         description: input.description
           ? text(input.description, 'description', 5000)
           : undefined,
-        dueAt: input.dueAt
-          ? new Date(String(input.dueAt)).toISOString()
-          : undefined,
-        reminderAt: input.reminderAt
-          ? new Date(String(input.reminderAt)).toISOString()
-          : undefined,
+        dueAt: isoDate(input.dueAt, 'dueAt'),
+        reminderAt: isoDate(input.reminderAt, 'reminderAt'),
         assigneeUserUuid: input.assigneeUserUuid
           ? uuid(input.assigneeUserUuid, 'assigneeUserUuid')
           : null,
@@ -138,7 +150,7 @@ export class CreateActivityAction implements ActionHandler {
     return {
       success: true,
       retryable: false,
-      reference: String(result.uuid),
+      reference: resultString(result.uuid, leadUuid ?? ''),
       output: { activityUuid: result.uuid },
     };
   }
@@ -195,7 +207,7 @@ export class EnqueueCommunicationAction implements ActionHandler {
     return {
       success: true,
       retryable: false,
-      reference: String(result.uuid),
+      reference: resultString(result.uuid, ''),
       output: { communicationUuid: result.uuid },
     };
   }
@@ -244,7 +256,7 @@ export class NotifyAction implements ActionHandler {
     return {
       success: true,
       retryable: false,
-      reference: String(result.uuid),
+      reference: resultString(result.uuid, ''),
       output: { notificationUuid: result.uuid },
     };
   }
@@ -302,7 +314,7 @@ export class EscalateAction implements ActionHandler {
     return {
       success: true,
       retryable: false,
-      reference: String(assignment.uuid ?? leadUuid),
+      reference: resultString(assignment.uuid, leadUuid),
       output: { escalatedTo: target, leadUuid },
     };
   }
@@ -329,7 +341,7 @@ export class RequestStatusTransitionAction implements ActionHandler {
     return {
       success: true,
       retryable: false,
-      reference: String(result.uuid ?? leadUuid),
+      reference: resultString(result.uuid, leadUuid),
       output: { leadUuid, statusUuid },
     };
   }
