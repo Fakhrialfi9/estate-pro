@@ -17,8 +17,7 @@ const hasOwn = (obj: object, key: string): boolean =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
-const isString = (value: unknown): value is string =>
-  typeof value === 'string';
+const isString = (value: unknown): value is string => typeof value === 'string';
 
 const isValueIn = <const T extends readonly string[]>(
   values: T,
@@ -28,7 +27,11 @@ const isValueIn = <const T extends readonly string[]>(
 const isWorkflowNode = (
   value: unknown,
 ): value is WorkflowGraph['nodes'][number] => {
-  if (!isRecord(value) || !isString(value.id) || !isValueIn(NODE_TYPES, value.type))
+  if (
+    !isRecord(value) ||
+    !isString(value.id) ||
+    !isValueIn(NODE_TYPES, value.type)
+  )
     return false;
 
   if (value.type === 'TRIGGER') {
@@ -43,10 +46,7 @@ const isWorkflowNode = (
     );
   }
 
-  return (
-    isValueIn(ACTION_TYPES, value.actionType) &&
-    isRecord(value.input)
-  );
+  return isValueIn(ACTION_TYPES, value.actionType) && isRecord(value.input);
 };
 
 const assertDefinitionShape = (
@@ -63,7 +63,10 @@ const assertDefinitionShape = (
   )
     throw new BadRequestException('Workflow trigger is invalid');
 
-  if (!Array.isArray(definition.graph.nodes) || !definition.graph.nodes.every(isWorkflowNode))
+  if (
+    !Array.isArray(definition.graph.nodes) ||
+    !definition.graph.nodes.every(isWorkflowNode)
+  )
     throw new BadRequestException('Workflow nodes are invalid');
 
   if (!Array.isArray(definition.graph.edges))
@@ -123,11 +126,7 @@ export class WorkflowValidator {
         );
 
       const maxAttempts = node.maxAttempts ?? 3;
-      if (
-        !Number.isInteger(maxAttempts) ||
-        maxAttempts < 1 ||
-        maxAttempts > 10
-      )
+      if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10)
         throw new BadRequestException('Invalid action retry limit');
 
       if (
@@ -150,10 +149,7 @@ export class WorkflowValidator {
         edge.from === edge.to
       )
         throw new BadRequestException('Workflow contains an invalid edge');
-      adjacency.set(edge.from, [
-        ...(adjacency.get(edge.from) ?? []),
-        edge.to,
-      ]);
+      adjacency.set(edge.from, [...(adjacency.get(edge.from) ?? []), edge.to]);
     }
 
     this.assertAcyclic(adjacency, ids, definition.graph.entryNodeId);
@@ -161,11 +157,7 @@ export class WorkflowValidator {
     for (const node of nodes)
       if (
         node.id !== definition.graph.entryNodeId &&
-        !edges.some(
-          (edge) =>
-            isRecord(edge) &&
-            edge.to === node.id,
-        )
+        !edges.some((edge) => isRecord(edge) && edge.to === node.id)
       )
         throw new BadRequestException(`Orphan node: ${node.id}`);
   }
@@ -191,7 +183,12 @@ export class WorkflowValidator {
         throw new BadRequestException('Unsupported condition operand');
       if (operand.operator !== 'EXISTS' && !hasOwn(operand, 'expected'))
         throw new BadRequestException('Condition expected value is required');
-      if (!isValueIn(['EVENT', 'CRM', 'SALES', 'CONTEXT'] as const, operand.source))
+      if (
+        !isValueIn(
+          ['EVENT', 'CRM', 'SALES', 'CONTEXT'] as const,
+          operand.source,
+        )
+      )
         throw new BadRequestException('Unsupported condition source');
     }
 
