@@ -16,7 +16,6 @@ import {
   type ConditionNode,
   type WorkflowDefinition,
 } from '../../domain/automation.types.js';
-import type { AutomationActor } from '../../../../common/contracts/automation-actor.js';
 import type {
   AutomationEvent,
   AutomationRepository,
@@ -43,12 +42,55 @@ import { WorkflowValidator } from '../validation/workflow-validator.js';
 
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+
+const toStringValue = (value: unknown, fallback = ''): string => {
+  if (typeof value === 'string') return value;
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  )
+    return String(value);
+  if (value instanceof Date) return value.toISOString();
+  return fallback;
+};
+
+const toFiniteNumber = (value: unknown, fallback = 0): number => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : fallback;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return fallback;
+};
+
+const toDateValue = (value: unknown, field: string): Date | null => {
+  if (value === null || value === undefined || value === '') return null;
+  if (value instanceof Date) {
+    if (!Number.isNaN(value.getTime())) return value;
+    throw new BadRequestException(`Invalid ${field}`);
+  }
+  if (typeof value !== 'string') throw new BadRequestException(`Invalid ${field}`);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new BadRequestException(`Invalid ${field}`);
+  return date;
+};
+
 const safeJson = (value: unknown): Record<string, unknown> => {
   const text = JSON.stringify(value, (key, entry) =>
     /token|secret|password|credential/i.test(key) ? '[REDACTED]' : entry,
   );
-  return text ? record(JSON.parse(text)) : {};
+  if (!text) return {};
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    return record(parsed);
+  } catch {
+    return {};
+  }
 };
+
+const isTriggerType = (value: unknown): value is (typeof TRIGGER_TYPES)[number] =>
+  typeof value === 'string' && TRIGGER_TYPES.includes(value as (typeof TRIGGER_TYPES)[number]);
 
 @Injectable()
 export class AutomationService {
@@ -85,7 +127,7 @@ export class AutomationService {
     await this.auditRecord(
       'AUTOMATION_WORKFLOW_CREATED',
       'automation_workflow',
-      String(workflow.uuid),
+      toStringValue(workflow.uuid),
       actorUuid,
     );
     return workflow;
@@ -122,7 +164,8 @@ export class AutomationService {
     const versions = Array.isArray(workflow.versions) ? workflow.versions : [];
     const version =
       versions.reduce(
-        (max, item) => Math.max(max, Number(record(item).version ?? 0)),
+        (max, item) =>
+          Math.max(max, toFiniteNumber(record(item).version)),
         0,
       ) + 1;
     return this.repo.createVersion({
@@ -145,7 +188,7 @@ export class AutomationService {
   ) {
     const workflow = await this.requireOwnedWorkflow(workflowUuid, actorUuid);
     const version = await this.repo.getVersion(versionUuid);
-    if (!version || String(version.workflowUuid) !== workflowUuid)
+    if (!version || toStringValue(version.workflowUuid) !== workflowUuid)
       throw new NotFoundException('Workflow version not found');
     if (version.status !== 'DRAFT')
       throw new BadRequestException('Only draft versions can be activated');
@@ -158,13 +201,12 @@ export class AutomationService {
     });
     if (
       workflow.activeVersionUuid &&
-      workflow.activeVersionUuid !== versionUuid
+      toStringValue(workflow.activeVersionUuid) !== versionUuid
     ) {
-      const previous = await this.repo.getVersion(
-        String(workflow.activeVersionUuid),
-      );
+      const previousVersionUuid = toStringValue(workflow.activeVersionUuid);
+      const previous = await this.repo.getVersion(previousVersionUuid);
       if (previous?.status === 'ACTIVE')
-        await this.repo.updateVersion(String(workflow.activeVersionUuid), {
+        await this.repo.updateVersion(previousVersionUuid, {
           status: 'PAUSED',
         });
     }
@@ -178,7 +220,7 @@ export class AutomationService {
       'automation_workflow',
       workflowUuid,
       actorUuid,
-      `version=${String(version.version)}`,
+      `version=${toStringValue(version.version)}`,
     );
     return result;
   }
@@ -197,6 +239,7 @@ export class AutomationService {
     );
     return result;
   }
+
   async archiveWorkflow(uuid: string, actorUuid: string) {
     await this.requireOwnedWorkflow(uuid, actorUuid);
     const result = await this.repo.updateWorkflow(uuid, {
@@ -219,14 +262,13 @@ export class AutomationService {
       const trigger = record(version.triggerDefinition);
       if (!this.triggerMatches(trigger, event)) continue;
       const workflow = record(
-        await this.repo.getWorkflow(String(version.workflowUuid)),
+        await this.repo.getWorkflow(toStringValue(version.workflowUuid)),
       );
       if (workflow.status !== 'ACTIVE') continue;
       const context = await this.resolveContext(event);
-      const depth = Number(context.chainDepth ?? 0);
+      const depth = toFiniteNumber(context.chainDepth);
       if (depth >= 20) continue;
-      const graph = record(version.definition).graph;
-      const graphRecord = record(graph);
+      const graphRecord = record(record(version.definition).graph);
       const execution = await this.repo.createExecution({
         uuid: randomUUID(),
         workflowUuid: version.workflowUuid,
@@ -236,7 +278,7 @@ export class AutomationService {
         entityType: event.entityType,
         entityUuid: event.entityUuid,
         state: 'PENDING',
-        currentNodeId: graphRecord.entryNodeId,
+        currentNodeId: toStringValue(graphRecord.entryNodeId),
         contextSnapshot: safeJson({
           ...context,
           entityType: event.entityType,
@@ -251,9 +293,9 @@ export class AutomationService {
       await this.auditRecord(
         'AUTOMATION_EXECUTION_CREATED',
         'automation_execution',
-        String(execution.uuid),
+        toStringValue(execution.uuid),
         event.actorUuid ?? undefined,
-        `workflow=${String(version.workflowUuid)}`,
+        `workflow=${toStringValue(version.workflowUuid)}`,
       );
     }
     return created;
@@ -266,12 +308,12 @@ export class AutomationService {
 
   async retryExecution(uuid: string, actorUuid: string) {
     const execution = await this.requireExecution(uuid);
-    if (!['FAILED', 'DEAD_LETTER'].includes(String(execution.state)))
+    if (!['FAILED', 'DEAD_LETTER'].includes(toStringValue(execution.state)))
       throw new BadRequestException('Execution is not retryable');
     for (const action of (await this.repo.listActions(uuid)).filter((value) =>
-      ['FAILED', 'RETRYABLE'].includes(String(record(value).state)),
+      ['FAILED', 'RETRYABLE'].includes(toStringValue(record(value).state)),
     ))
-      await this.repo.updateAction(String(record(action).uuid), {
+      await this.repo.updateAction(toStringValue(record(action).uuid), {
         state: 'RETRYABLE',
         availableAt: new Date(),
         errorCode: null,
@@ -296,7 +338,11 @@ export class AutomationService {
 
   async cancelExecution(uuid: string, actorUuid: string) {
     const execution = await this.requireExecution(uuid);
-    if (!['PENDING', 'RUNNING', 'WAITING'].includes(String(execution.state)))
+    if (
+      !['PENDING', 'RUNNING', 'WAITING'].includes(
+        toStringValue(execution.state),
+      )
+    )
       throw new BadRequestException('Execution is not cancellable');
     const updated = await this.repo.updateExecution(uuid, {
       state: 'CANCELLED',
@@ -316,18 +362,21 @@ export class AutomationService {
   listWorkflows(query: Record<string, unknown>, actorUuid: string) {
     return this.repo.listWorkflows({ ...query, ownerUserUuid: actorUuid });
   }
+
   getWorkflow(uuid: string, actorUuid: string) {
     return this.requireOwnedWorkflow(uuid, actorUuid);
   }
-  listExecutions(query: Record<string, unknown>, _actorUuid: string) {
-    return this.repo.listExecutions({ ...query });
+
+  listExecutions(query: Record<string, unknown>, actorUuid: string) {
+    return this.repo.listExecutions({ ...query, ownerUserUuid: actorUuid });
   }
+
   async getExecution(uuid: string, actorUuid: string) {
     const execution = await this.requireExecution(uuid);
     const workflow = await this.repo.getWorkflow(
-      String(execution.workflowUuid),
+      toStringValue(execution.workflowUuid),
     );
-    if (!workflow || String(workflow.ownerUserUuid) !== actorUuid)
+    if (!workflow || toStringValue(workflow.ownerUserUuid) !== actorUuid)
       throw new ForbiddenException();
     return execution;
   }
@@ -338,7 +387,7 @@ export class AutomationService {
     actorUuid: string,
   ) {
     await this.requireOwnedWorkflow(workflowUuid, actorUuid);
-    const strategy = String(input.strategy ?? 'FIXED_USER');
+    const strategy = toStringValue(input.strategy, 'FIXED_USER');
     if (
       !['ROUND_ROBIN', 'FIXED_USER', 'FIXED_TEAM', 'LEAST_LOAD'].includes(
         strategy,
@@ -348,14 +397,12 @@ export class AutomationService {
     return this.repo.createAssignmentRule({
       uuid: randomUUID(),
       workflowUuid,
-      name: String(input.name ?? 'Assignment rule').slice(0, 180),
+      name: toStringValue(input.name, 'Assignment rule').slice(0, 180),
       criteria: input.criteria ?? {},
       strategy,
       fallback: input.fallback ?? null,
-      activeFrom: input.activeFrom ? new Date(String(input.activeFrom)) : null,
-      activeUntil: input.activeUntil
-        ? new Date(String(input.activeUntil))
-        : null,
+      activeFrom: toDateValue(input.activeFrom, 'activeFrom'),
+      activeUntil: toDateValue(input.activeUntil, 'activeUntil'),
       isActive: input.isActive !== false,
     });
   }
@@ -366,20 +413,24 @@ export class AutomationService {
     actorUuid: string,
   ) {
     await this.requireOwnedWorkflow(workflowUuid, actorUuid);
-    const duration = Number(input.durationMinutes);
+    const duration = toFiniteNumber(input.durationMinutes, Number.NaN);
     if (!Number.isInteger(duration) || duration <= 0 || duration > 525600)
       throw new BadRequestException('Invalid SLA duration');
+    const targetEntityType = toStringValue(input.targetEntityType);
+    const startEventType = toStringValue(input.startEventType);
+    if (!targetEntityType || !startEventType)
+      throw new BadRequestException('SLA target and start event are required');
     return this.repo.createSlaPolicy({
       uuid: randomUUID(),
       workflowUuid,
-      name: String(input.name ?? 'SLA').slice(0, 180),
-      targetEntityType: String(input.targetEntityType),
-      startEventType: String(input.startEventType),
+      name: toStringValue(input.name, 'SLA').slice(0, 180),
+      targetEntityType,
+      startEventType,
       stopEventTypes: Array.isArray(input.stopEventTypes)
         ? input.stopEventTypes
         : [],
       durationMinutes: duration,
-      timezone: String(input.timezone ?? 'UTC'),
+      timezone: toStringValue(input.timezone, 'UTC'),
       businessHours: input.businessHours ?? { enabled: false },
       isActive: input.isActive !== false,
       version: 1,
@@ -395,13 +446,21 @@ export class AutomationService {
     const levels = Array.isArray(input.levels) ? input.levels : [];
     if (levels.length === 0 || levels.length > 10)
       throw new BadRequestException('Escalation requires 1-10 levels');
+    const maxAttempts = Math.min(
+      10,
+      Math.max(1, toFiniteNumber(input.maxAttempts, 3)),
+    );
+    const cooldownSeconds = Math.max(
+      1,
+      toFiniteNumber(input.cooldownSeconds, 3600),
+    );
     return this.repo.createEscalationPolicy({
       uuid: randomUUID(),
       workflowUuid,
-      name: String(input.name ?? 'Escalation').slice(0, 180),
+      name: toStringValue(input.name, 'Escalation').slice(0, 180),
       levels,
-      maxAttempts: Math.min(10, Math.max(1, Number(input.maxAttempts ?? 3))),
-      cooldownSeconds: Math.max(1, Number(input.cooldownSeconds ?? 3600)),
+      maxAttempts,
+      cooldownSeconds,
       isActive: input.isActive !== false,
     });
   }
@@ -413,11 +472,11 @@ export class AutomationService {
         page: 1,
         limit: 100,
       }),
-      this.repo.listExecutions({ page: 1, limit: 100 }),
+      this.repo.listExecutions({ ownerUserUuid: actorUuid, page: 1, limit: 100 }),
     ]);
     const list = executions.items;
     const count = (state: string) =>
-      list.filter((item) => String(record(item).state) === state).length;
+      list.filter((item) => toStringValue(record(item).state) === state).length;
     return {
       data: {
         workflowCount: workflows.total,
@@ -427,7 +486,7 @@ export class AutomationService {
         succeeded: count('SUCCEEDED'),
         failed: count('FAILED'),
         retried: list.filter(
-          (item) => Number(record(item).attemptCount ?? 0) > 0,
+          (item) => toFiniteNumber(record(item).attemptCount) > 0,
         ).length,
       },
     };
@@ -438,12 +497,12 @@ export class AutomationService {
     event: AutomationEvent,
   ): boolean {
     if (
-      !TRIGGER_TYPES.includes(String(trigger.type) as never) ||
-      String(trigger.entityType) !== event.entityType
+      !isTriggerType(trigger.type) ||
+      toStringValue(trigger.entityType) !== event.entityType
     )
       return false;
-    const type = String(trigger.type);
-    const action = String(event.action ?? '');
+    const type = trigger.type;
+    const action = toStringValue(event.action);
     const mappings: Record<string, string[]> = {
       ENTITY_CREATED: ['created', 'CREATE'],
       ENTITY_UPDATED: ['updated', 'UPDATE'],
@@ -507,11 +566,11 @@ export class AutomationService {
     workerId: string,
   ) {
     const version = await this.repo.getVersion(
-      String(execution.workflowVersionUuid),
+      toStringValue(execution.workflowVersionUuid),
     );
     if (!version)
       return this.failExecution(
-        String(execution.uuid),
+        toStringValue(execution.uuid),
         'VERSION_NOT_FOUND',
         'Workflow version not found',
       );
@@ -519,12 +578,12 @@ export class AutomationService {
     const context = record(execution.contextSnapshot);
     const graph = definition.graph;
     const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
-    let current = String(execution.currentNodeId ?? graph.entryNodeId);
+    let current = toStringValue(execution.currentNodeId, graph.entryNodeId);
     const visited = new Set<string>();
     while (current) {
       if (visited.has(current))
         return this.failExecution(
-          String(execution.uuid),
+          toStringValue(execution.uuid),
           'WORKFLOW_LOOP',
           'Workflow execution loop detected',
         );
@@ -532,7 +591,7 @@ export class AutomationService {
       const node = nodes.get(current);
       if (!node)
         return this.failExecution(
-          String(execution.uuid),
+          toStringValue(execution.uuid),
           'NODE_NOT_FOUND',
           `Workflow node ${current} not found`,
         );
@@ -545,14 +604,14 @@ export class AutomationService {
         current = this.nextNode(graph.edges, current, true);
       } else current = this.nextNode(graph.edges, current, true);
       if (!current)
-        return this.repo.updateExecution(String(execution.uuid), {
+        return this.repo.updateExecution(toStringValue(execution.uuid), {
           state: 'SUCCEEDED',
           completedAt: new Date(),
           leaseUntil: null,
           claimedBy: null,
           currentNodeId: null,
         });
-      await this.repo.updateExecution(String(execution.uuid), {
+      await this.repo.updateExecution(toStringValue(execution.uuid), {
         currentNodeId: current,
       });
     }
@@ -565,8 +624,8 @@ export class AutomationService {
     context: Record<string, unknown>,
     workerId: string,
   ) {
-    const existing = (await this.repo.listActions(String(execution.uuid))).find(
-      (value) => String(record(value).nodeId) === node.id,
+    const existing = (await this.repo.listActions(toStringValue(execution.uuid))).find(
+      (value) => toStringValue(record(value).nodeId) === node.id,
     );
     const action =
       existing ??
@@ -580,7 +639,7 @@ export class AutomationService {
         attempt: 0,
         maxAttempts: node.maxAttempts ?? 3,
       }));
-    if (String(record(action).state) === 'SUCCEEDED')
+    if (toStringValue(record(action).state) === 'SUCCEEDED')
       return { success: true, execution };
     const handler = this.handlers.find(
       (item) => item.actionType === node.actionType,
@@ -589,13 +648,13 @@ export class AutomationService {
       return {
         success: false,
         execution: await this.failExecution(
-          String(execution.uuid),
+          toStringValue(execution.uuid),
           'ACTION_UNAVAILABLE',
           `Unsupported action ${node.actionType}`,
         ),
       };
-    const attempt = Number(record(action).attempt ?? 0) + 1;
-    await this.repo.updateAction(String(record(action).uuid), {
+    const attempt = toFiniteNumber(record(action).attempt) + 1;
+    await this.repo.updateAction(toStringValue(record(action).uuid), {
       state: 'RUNNING',
       attempt,
       claimedBy: workerId,
@@ -610,7 +669,7 @@ export class AutomationService {
           : 'SYSTEM',
       );
       if (result.success) {
-        await this.repo.updateAction(String(record(action).uuid), {
+        await this.repo.updateAction(toStringValue(record(action).uuid), {
           state: 'SUCCEEDED',
           output: safeJson(result.output ?? {}),
           resultReference: result.reference ?? null,
@@ -623,10 +682,10 @@ export class AutomationService {
       const decision = decideRetry(
         result.retryable,
         attempt,
-        Number(record(action).maxAttempts ?? 3),
+        toFiniteNumber(record(action).maxAttempts, 3),
       );
       if (decision.retry) {
-        await this.repo.updateAction(String(record(action).uuid), {
+        await this.repo.updateAction(toStringValue(record(action).uuid), {
           state: 'RETRYABLE',
           availableAt: new Date(Date.now() + decision.delayMs),
           errorCode: result.errorCode ?? 'ACTION_RETRYABLE',
@@ -636,7 +695,7 @@ export class AutomationService {
         });
         return {
           success: false,
-          execution: await this.repo.updateExecution(String(execution.uuid), {
+          execution: await this.repo.updateExecution(toStringValue(execution.uuid), {
             state: 'WAITING',
             retryAt: new Date(Date.now() + decision.delayMs),
             leaseUntil: null,
@@ -646,7 +705,7 @@ export class AutomationService {
           }),
         };
       }
-      await this.repo.updateAction(String(record(action).uuid), {
+      await this.repo.updateAction(toStringValue(record(action).uuid), {
         state: 'FAILED',
         errorCode: result.errorCode ?? 'ACTION_FAILED',
         errorMessage: result.errorMessage ?? 'Action failed',
@@ -657,7 +716,7 @@ export class AutomationService {
       return {
         success: false,
         execution: await this.failExecution(
-          String(execution.uuid),
+          toStringValue(execution.uuid),
           result.errorCode ?? 'ACTION_FAILED',
           result.errorMessage ?? 'Action failed',
         ),
@@ -668,10 +727,10 @@ export class AutomationService {
       const decision = decideRetry(
         true,
         attempt,
-        Number(record(action).maxAttempts ?? 3),
+        toFiniteNumber(record(action).maxAttempts, 3),
       );
       if (decision.retry) {
-        await this.repo.updateAction(String(record(action).uuid), {
+        await this.repo.updateAction(toStringValue(record(action).uuid), {
           state: 'RETRYABLE',
           availableAt: new Date(Date.now() + decision.delayMs),
           errorCode: 'ACTION_EXCEPTION',
@@ -681,7 +740,7 @@ export class AutomationService {
         });
         return {
           success: false,
-          execution: await this.repo.updateExecution(String(execution.uuid), {
+          execution: await this.repo.updateExecution(toStringValue(execution.uuid), {
             state: 'WAITING',
             retryAt: new Date(Date.now() + decision.delayMs),
             leaseUntil: null,
@@ -694,7 +753,7 @@ export class AutomationService {
       return {
         success: false,
         execution: await this.failExecution(
-          String(execution.uuid),
+          toStringValue(execution.uuid),
           'ACTION_EXCEPTION',
           message,
         ),
@@ -707,7 +766,7 @@ export class AutomationService {
     context: Record<string, unknown>,
   ): boolean {
     const values = node.operands.map((operand) => {
-      const actual = String(operand.field)
+      const actual = operand.field
         .split('.')
         .reduce<unknown>((value, key) => record(value)[key], context);
       switch (operand.operator) {
@@ -716,21 +775,23 @@ export class AutomationService {
         case 'NEQ':
           return actual !== operand.expected;
         case 'CONTAINS':
-          return String(actual ?? '').includes(String(operand.expected ?? ''));
+          return toStringValue(actual).includes(toStringValue(operand.expected));
         case 'GT':
-          return Number(actual) > Number(operand.expected);
+          return toFiniteNumber(actual, Number.NaN) > toFiniteNumber(operand.expected, Number.NaN);
         case 'GTE':
-          return Number(actual) >= Number(operand.expected);
+          return toFiniteNumber(actual, Number.NaN) >= toFiniteNumber(operand.expected, Number.NaN);
         case 'LT':
-          return Number(actual) < Number(operand.expected);
+          return toFiniteNumber(actual, Number.NaN) < toFiniteNumber(operand.expected, Number.NaN);
         case 'LTE':
-          return Number(actual) <= Number(operand.expected);
+          return toFiniteNumber(actual, Number.NaN) <= toFiniteNumber(operand.expected, Number.NaN);
         case 'EXISTS':
           return actual !== null && actual !== undefined;
         case 'IN':
           return (
             Array.isArray(operand.expected) &&
-            operand.expected.map(String).includes(String(actual))
+            operand.expected.some(
+              (expected) => toStringValue(expected) === toStringValue(actual),
+            )
           );
         case 'TRUE':
           return actual === true;
@@ -769,25 +830,28 @@ export class AutomationService {
           throw new BadRequestException(
             `Unsupported action: ${node.actionType}`,
           );
-        if (node.input.userUuid) {
-          const user = await this.users.getUser(String(node.input.userUuid));
+        if (typeof node.input.userUuid === 'string' && node.input.userUuid) {
+          const user = await this.users.getUser(node.input.userUuid);
           if (!user.isActive || user.deletedAt)
             throw new BadRequestException('Action target user is unavailable');
         }
       }
   }
+
   private async requireOwnedWorkflow(uuid: string, actorUuid: string) {
     const workflow = await this.repo.getWorkflow(uuid);
     if (!workflow) throw new NotFoundException('Workflow not found');
-    if (String(workflow.ownerUserUuid) !== actorUuid)
+    if (toStringValue(workflow.ownerUserUuid) !== actorUuid)
       throw new ForbiddenException();
     return workflow;
   }
+
   private async requireExecution(uuid: string) {
     const execution = await this.repo.getExecution(uuid);
     if (!execution) throw new NotFoundException('Execution not found');
     return execution;
   }
+
   private async failExecution(uuid: string, code: string, message: string) {
     const result = await this.repo.updateExecution(uuid, {
       state: 'FAILED',
@@ -806,6 +870,7 @@ export class AutomationService {
     );
     return result;
   }
+
   private async auditRecord(
     action: string,
     entityType: string,
