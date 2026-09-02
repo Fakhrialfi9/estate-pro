@@ -13,8 +13,12 @@ type AgentSpecializationCreateArgs = Parameters<
 type AgentCoverageCreateArgs = Parameters<
   PrismaService['agentCoverage']['create']
 >[0];
-type AgentTargetCreateArgs = Parameters<PrismaService['agentTarget']['create']>[0];
-type AgentTargetUpdateArgs = Parameters<PrismaService['agentTarget']['update']>[0];
+type AgentTargetCreateArgs = Parameters<
+  PrismaService['agentTarget']['create']
+>[0];
+type AgentTargetUpdateArgs = Parameters<
+  PrismaService['agentTarget']['update']
+>[0];
 
 @Injectable()
 export class PrismaAgentRepository {
@@ -50,7 +54,9 @@ export class PrismaAgentRepository {
     specializationUuid?: string;
     regionUuids?: string[];
   }) {
-    const where: Parameters<PrismaService['agentProfile']['findMany']>[0]['where'] = {
+    const where: Parameters<
+      PrismaService['agentProfile']['findMany']
+    >[0]['where'] = {
       deletedAt: null,
       ...(query.status ? { status: query.status } : {}),
       ...(query.specializationUuid
@@ -68,7 +74,10 @@ export class PrismaAgentRepository {
       ...(query.regionUuids?.length
         ? {
             coverages: {
-              some: { regionUuid: { in: query.regionUuids }, isActive: true },
+              some: {
+                regionUuid: { in: query.regionUuids },
+                isActive: true,
+              },
             },
           }
         : {}),
@@ -167,12 +176,20 @@ export class PrismaAgentRepository {
 
   async saveAvailability(input: {
     agentId: bigint;
-    status: Parameters<PrismaService['agentAvailability']['create']>[0]['data']['status'];
+    status: Parameters<
+      PrismaService['agentAvailability']['create']
+    >[0]['data']['status'];
     timeZone: string;
     effectiveAt: Date;
-    schedule: Array<{ weekday: number; startTime: string; endTime: string }>;
+    schedule: Array<{
+      weekday: number;
+      startTime: string;
+      endTime: string;
+    }>;
     exceptions: Array<{
-      status: Parameters<PrismaService['agentAvailabilityException']['create']>[0]['data']['status'];
+      status: Parameters<
+        PrismaService['agentAvailabilityException']['create']
+      >[0]['data']['status'];
       startsAt: Date;
       endsAt: Date;
       reason?: string;
