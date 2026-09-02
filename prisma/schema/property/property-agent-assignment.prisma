@@ -1,0 +1,34 @@
+model PropertyAgentAssignment {
+  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid             String    @unique @default(uuid()) @db.Char(36)
+  propertyId       BigInt    @map("property_id") @db.UnsignedBigInt
+  agentUserUuid    String    @map("agent_user_uuid") @db.Char(36)
+  assignedByUuid   String    @map("assigned_by_uuid") @db.Char(36)
+  assignedAt       DateTime  @default(now()) @map("assigned_at") @db.DateTime(3)
+  unassignedAt     DateTime? @map("unassigned_at") @db.DateTime(3)
+  unassignedByUuid String?   @map("unassigned_by_uuid") @db.Char(36)
+  reason           String?   @db.VarChar(255)
+  version          Int       @default(1)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  property         Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  @@unique([propertyId, agentUserUuid], map: "property_agent_assignments_property_agent_key")
+  @@index([agentUserUuid, unassignedAt, updatedAt], map: "property_agent_assignments_agent_active_idx")
+  @@index([propertyId, unassignedAt, updatedAt], map: "property_agent_assignments_property_active_idx")
+  @@map("property_agent_assignments")
+}
+
+model PropertyAgentAssignmentHistory {
+  id            BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid          String   @unique @default(uuid()) @db.Char(36)
+  propertyId    BigInt   @map("property_id") @db.UnsignedBigInt
+  propertyUuid  String   @map("property_uuid") @db.Char(36)
+  agentUserUuid String   @map("agent_user_uuid") @db.Char(36)
+  actorUserUuid String   @map("actor_user_uuid") @db.Char(36)
+  action        String   @db.VarChar(20)
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.DateTime(3)
+  reason        String?  @db.VarChar(255)
+  @@index([agentUserUuid, occurredAt, id], map: "property_agent_assignment_history_agent_idx")
+  @@index([propertyUuid, occurredAt, id], map: "property_agent_assignment_history_property_idx")
+  @@map("property_agent_assignment_history")
+}
