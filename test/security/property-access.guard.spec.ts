@@ -76,11 +76,13 @@ describe('PropertyAccessGuard', () => {
     );
     expect(result).toBe(true);
     expect(findProperty).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
+      expect.objectContaining<Record<string, unknown>>({
+        where: expect.objectContaining<Record<string, unknown>>({
           uuid: PROPERTY_UUID,
           deletedAt: null,
-          OR: expect.arrayContaining([{ createdBy: USER_UUID }]),
+          OR: expect.arrayContaining<{ createdBy: string }>([
+            { createdBy: USER_UUID },
+          ]),
         }),
       }),
     );
@@ -123,12 +125,14 @@ describe('PropertyAccessGuard', () => {
       ),
     ).rejects.toThrow(ForbiddenException);
     expect(findListing).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
+      expect.objectContaining<Record<string, unknown>>({
+        where: expect.objectContaining<Record<string, unknown>>({
           uuid: LISTING_UUID,
-          property: expect.objectContaining({
+          property: expect.objectContaining<Record<string, unknown>>({
             deletedAt: null,
-            OR: expect.arrayContaining([{ createdBy: OTHER_UUID }]),
+            OR: expect.arrayContaining<{ createdBy: string }>([
+              { createdBy: OTHER_UUID },
+            ]),
           }),
         }),
       }),
