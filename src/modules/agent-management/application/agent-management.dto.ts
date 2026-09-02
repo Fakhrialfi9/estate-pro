@@ -93,6 +93,7 @@ export class AgentUpdateDto {
   @MaxLength(5000)
   bio?: string;
   @ApiPropertyOptional({
+    type: String,
     enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'ARCHIVED'],
   })
   @IsOptional()
@@ -146,6 +147,7 @@ export class SpecializationCreateDto {
 }
 export class CoverageCreateDto {
   @ApiProperty({
+    type: String,
     enum: ['COUNTRY', 'PROVINCE', 'CITY', 'DISTRICT', 'SUBDISTRICT'],
   })
   @IsEnum(CoverageLevelDto)
@@ -177,6 +179,7 @@ export class ScheduleItemDto {
 }
 export class AvailabilityExceptionDto {
   @ApiProperty({
+    type: String,
     enum: ['ACTIVE', 'UNAVAILABLE', 'LEAVE', 'OFFLINE'],
   })
   @IsEnum(AvailabilityStatusDto)
@@ -197,6 +200,7 @@ export class AvailabilityExceptionDto {
 }
 export class AvailabilityUpdateDto {
   @ApiProperty({
+    type: String,
     enum: ['ACTIVE', 'UNAVAILABLE', 'LEAVE', 'OFFLINE'],
   })
   @IsEnum(AvailabilityStatusDto)
@@ -247,6 +251,7 @@ export class TargetCreateDto {
   @MaxLength(80)
   metricType!: string;
   @ApiProperty({
+    type: String,
     enum: ['MONTH', 'QUARTER', 'YEAR', 'CUSTOM'],
   })
   @IsEnum(TargetPeriodDto)
@@ -281,6 +286,7 @@ export class TargetUpdateDto {
   @MaxLength(120)
   scope?: string;
   @ApiPropertyOptional({
+    type: String,
     enum: ['ACTIVE', 'CLOSED', 'ARCHIVED'],
   })
   @IsOptional()
