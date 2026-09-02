@@ -54,9 +54,7 @@ const isWorkflowNode = (value: unknown): value is WorkflowNode => {
   return isValueIn(ACTION_TYPES, value.actionType) && isRecord(value.input);
 };
 
-const assertDefinitionShape = (
-  definition: unknown,
-): WorkflowDefinition => {
+const assertDefinitionShape = (definition: unknown): WorkflowDefinition => {
   if (!isRecord(definition))
     throw new BadRequestException('Workflow definition must be an object');
   if (!isRecord(definition.trigger) || !isRecord(definition.graph))
@@ -133,11 +131,7 @@ export class WorkflowValidator {
         );
 
       const maxAttempts = node.maxAttempts ?? 3;
-      if (
-        !Number.isInteger(maxAttempts) ||
-        maxAttempts < 1 ||
-        maxAttempts > 10
-      )
+      if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10)
         throw new BadRequestException('Invalid action retry limit');
 
       if (
@@ -160,10 +154,7 @@ export class WorkflowValidator {
         edge.from === edge.to
       )
         throw new BadRequestException('Workflow contains an invalid edge');
-      adjacency.set(edge.from, [
-        ...(adjacency.get(edge.from) ?? []),
-        edge.to,
-      ]);
+      adjacency.set(edge.from, [...(adjacency.get(edge.from) ?? []), edge.to]);
     }
 
     this.assertAcyclic(adjacency, ids, validated.graph.entryNodeId);
