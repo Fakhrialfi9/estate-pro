@@ -43,7 +43,10 @@ const httpRequest = () => {
   const server = app.getHttpServer() as unknown as SuperTestApp;
   return request(server);
 };
-const bodyOf = <T>(response: SuperTestResponse): T => response.body;
+const bodyOf = <T>(response: SuperTestResponse): T => {
+  const body: unknown = response.body;
+  return body as T;
+};
 
 async function cleanup(): Promise<void> {
   await prisma.auditLogChange.deleteMany();
