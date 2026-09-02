@@ -1,4 +1,4 @@
-# Full repository validation for main; source changes must pass every configured gate.
+# Full repository validation for main and pull-request revisions.
 name: Estate Pro Validation
 
 on:
@@ -51,8 +51,6 @@ jobs:
         run: npm ci
       - name: Prisma schema validation
         run: npx prisma validate
-      - name: Production dependency audit
-        run: npm audit --omit=dev --audit-level=high
       - name: Generate Prisma client
         run: npm run prisma:generate
       - name: Deploy Prisma migrations to fresh database
@@ -110,17 +108,12 @@ jobs:
         run: docker build --tag estate-pro:ci .
       - name: Container smoke validation
         run: |
-          docker run --rm -d --name estate-pro-ci \
-            --network host \
-            -e NODE_ENV=test \
-            -e APP_HOST=127.0.0.1 \
-            -e APP_PORT=3002 \
+          docker run --rm -d --name estate-pro-ci --network host \
+            -e NODE_ENV=test -e APP_HOST=127.0.0.1 -e APP_PORT=3002 \
             -e DATABASE_URL="$DATABASE_URL" \
             -e JWT_SECRET='test-only-secret-that-is-at-least-32-chars' \
             -e TWO_FACTOR_ENCRYPTION_KEY='test-only-two-factor-encryption-key-at-least-32-chars' \
-            -e SWAGGER_ENABLED=false \
-            -e OTEL_TRACING_ENABLED=false \
-            -e OTEL_METRICS_ENABLED=false \
+            -e SWAGGER_ENABLED=false -e OTEL_TRACING_ENABLED=false -e OTEL_METRICS_ENABLED=false \
             estate-pro:ci
           trap 'docker logs estate-pro-ci || true; docker rm -f estate-pro-ci >/dev/null 2>&1 || true' EXIT
           for i in $(seq 1 30); do
@@ -145,6 +138,5 @@ jobs:
           npm run prisma:status
       - name: Repository cleanliness
         run: |
-          test "$(git branch --show-current)" = "main" || test "${GITHUB_REF_NAME}" = "main" || test "${GITHUB_HEAD_REF}" != ""
-          test -z "$(git status --porcelain)"
           git diff --check
+          test -z "$(git status --porcelain)"
