@@ -1,0 +1,16 @@
+model PropertyAgentAssignmentHistory {
+  id            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid          String    @unique @default(uuid()) @db.Char(36)
+  propertyId    BigInt    @map("property_id") @db.UnsignedBigInt
+  propertyUuid  String    @map("property_uuid") @db.Char(36)
+  agentUserUuid String    @map("agent_user_uuid") @db.Char(36)
+  actorUserUuid String    @map("actor_user_uuid") @db.Char(36)
+  action        String    @db.VarChar(20)
+  occurredAt    DateTime  @default(now()) @map("occurred_at") @db.DateTime(3)
+  reason        String?   @db.VarChar(255)
+  property      Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([agentUserUuid, occurredAt, id], map: "property_agent_assignment_history_agent_idx")
+  @@index([propertyUuid, occurredAt, id], map: "property_agent_assignment_history_property_idx")
+  @@map("property_agent_assignment_history")
+}
