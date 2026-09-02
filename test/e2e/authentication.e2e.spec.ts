@@ -32,6 +32,8 @@ type ErrorResponse = {
   message: string;
 };
 
+type SuperTestApp = Parameters<typeof request>[0];
+
 let app: NestExpressApplication;
 let prisma: PrismaService;
 let hasher: PasswordHasherService;
@@ -39,8 +41,12 @@ let jwt: JwtService;
 let config: ConfigService;
 let userUuid: string;
 
-const httpRequest = () => request(app.getHttpServer());
-const bodyOf = <T>(response: SuperTestResponse): T => response.body;
+const httpRequest = () => {
+  const server = app.getHttpServer() as unknown as SuperTestApp;
+  return request(server);
+};
+const bodyOf = <T>(response: SuperTestResponse): T =>
+  response.body as unknown as T;
 
 async function createActiveUser(
   email = `auth-${randomUUID()}@example.com`,
