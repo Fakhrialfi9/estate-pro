@@ -4,6 +4,8 @@ import { AuditModule } from '../audit/audit.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { CrmModule } from '../crm/crm.module.js';
 import { SalesModule } from '../sales/sales.module.js';
+import { AuthorizationModule } from '../../common/security/authorization.module.js';
+import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
 import { AutomationController } from './presentation/automation.controller.js';
 import { AutomationService } from './application/services/automation.service.js';
 import { WorkflowValidator } from './application/validation/workflow-validator.js';
@@ -34,9 +36,17 @@ import {
 import { AutomationScheduler } from './infrastructure/scheduler/automation.scheduler.js';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, UsersModule, CrmModule, SalesModule],
+  imports: [
+    DatabaseModule,
+    AuditModule,
+    UsersModule,
+    CrmModule,
+    SalesModule,
+    AuthorizationModule,
+  ],
   controllers: [AutomationController],
   providers: [
+    AuthorizationGuard,
     WorkflowValidator,
     PrismaAutomationRepository,
     { provide: AUTOMATION_REPOSITORY, useExisting: PrismaAutomationRepository },
