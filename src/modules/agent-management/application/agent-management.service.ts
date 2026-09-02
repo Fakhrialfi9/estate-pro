@@ -383,6 +383,7 @@ export class AgentManagementService {
     const result = await this.propertyAssignments.assign({
       propertyUuid,
       agentUserUuid: target.userUuid,
+      agentDisplayName: target.displayName ?? target.userUuid,
       actorUuid: actor.uuid,
     });
     await this.record(actor, AUDIT.ASSIGNED, result.uuid, {
@@ -409,6 +410,7 @@ export class AgentManagementService {
         ? (await this.requireAgent(fromAgentUuid)).userUuid
         : undefined,
       toAgentUserUuid: target.userUuid,
+      toAgentDisplayName: target.displayName ?? target.userUuid,
       actorUuid: actor.uuid,
     });
     await this.record(actor, AUDIT.REASSIGNED, result.uuid, {
@@ -682,7 +684,7 @@ export class AgentManagementService {
 
   private effectiveAvailability(agent: AgentProfileDetails | null): string {
     const state = agent?.availability?.status ?? 'OFFLINE';
-    if (state !== 'ACTIVE') return state;
+    if (!agent || state !== 'ACTIVE') return state;
     const now = new Date();
     const exception = (agent.availabilityExceptions ?? []).find(
       (x) => x.startsAt <= now && x.endsAt >= now,
