@@ -47,11 +47,6 @@ describe('application health (e2e)', () => {
 
     const response = await request(httpApplication!).get('/api/v1/health/live');
 
-    console.log('STATUS:', response.status);
-    console.log('BODY:', JSON.stringify(response.body, null, 2));
-    console.log('TEXT:', response.text);
-    console.log('HEADERS:', response.headers);
-
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       status: 'ok',
