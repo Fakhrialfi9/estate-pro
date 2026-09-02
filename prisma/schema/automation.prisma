@@ -13,6 +13,7 @@ model AutomationWorkflow {
   versions AutomationWorkflowVersion[]
   assignmentRules AutomationAssignmentRule[]
   slaPolicies AutomationSlaPolicy[]
+  escalationPolicies AutomationEscalationPolicy[]
   executions AutomationWorkflowExecution[]
   @@index([status, ownerUserUuid])
   @@index([activeVersionUuid])
