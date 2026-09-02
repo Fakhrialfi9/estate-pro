@@ -43,6 +43,18 @@ import { WorkflowValidator } from '../validation/workflow-validator.js';
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 
+const unknownArray = (value: unknown): readonly unknown[] =>
+  Array.isArray(value) ? value : [];
+
+const recordArray = (value: unknown): readonly Record<string, unknown>[] =>
+  unknownArray(value).filter(
+    (item): item is Record<string, unknown> =>
+      item !== null && typeof item === 'object' && !Array.isArray(item),
+  );
+
+const stringArray = (value: unknown): readonly string[] =>
+  unknownArray(value).filter((item): item is string => typeof item === 'string');
+
 const toStringValue = (value: unknown, fallback = ''): string => {
   if (typeof value === 'string') return value;
   if (
@@ -160,14 +172,14 @@ export class AutomationService {
 
   async createDraftVersion(
     workflowUuid: string,
-    definition: WorkflowDefinition,
+    definition: unknown,
     actorUuid: string,
   ) {
     await this.requireOwnedWorkflow(workflowUuid, actorUuid);
     const parsed = parseDefinition(definition);
     const checksum = this.validator.checksum(parsed);
     const workflow = record(await this.repo.getWorkflow(workflowUuid));
-    const versions = Array.isArray(workflow.versions) ? workflow.versions : [];
+    const versions = unknownArray(workflow.versions);
     const version =
       versions.reduce(
         (max, item) => Math.max(max, toFiniteNumber(record(item).version)),
@@ -364,16 +376,16 @@ export class AutomationService {
     return updated;
   }
 
-  listWorkflows(query: Record<string, unknown>, actorUuid: string) {
-    return this.repo.listWorkflows({ ...query, ownerUserUuid: actorUuid });
+  listWorkflows(query: unknown, actorUuid: string) {
+    return this.repo.listWorkflows({ ...record(query), ownerUserUuid: actorUuid });
   }
 
   getWorkflow(uuid: string, actorUuid: string) {
     return this.requireOwnedWorkflow(uuid, actorUuid);
   }
 
-  listExecutions(query: Record<string, unknown>, actorUuid: string) {
-    return this.repo.listExecutions({ ...query, ownerUserUuid: actorUuid });
+  listExecutions(query: unknown, actorUuid: string) {
+    return this.repo.listExecutions({ ...record(query), ownerUserUuid: actorUuid });
   }
 
   async getExecution(uuid: string, actorUuid: string) {
@@ -388,11 +400,12 @@ export class AutomationService {
 
   async createAssignmentRule(
     workflowUuid: string,
-    input: Record<string, unknown>,
+    input: unknown,
     actorUuid: string,
   ) {
     await this.requireOwnedWorkflow(workflowUuid, actorUuid);
-    const strategy = toStringValue(input.strategy, 'FIXED_USER');
+    const data = record(input);
+    const strategy = toStringValue(data.strategy, 'FIXED_USER');
     if (
       !['ROUND_ROBIN', 'FIXED_USER', 'FIXED_TEAM', 'LEAST_LOAD'].includes(
         strategy,
@@ -402,71 +415,71 @@ export class AutomationService {
     return this.repo.createAssignmentRule({
       uuid: randomUUID(),
       workflowUuid,
-      name: toStringValue(input.name, 'Assignment rule').slice(0, 180),
-      criteria: input.criteria ?? {},
+      name: toStringValue(data.name, 'Assignment rule').slice(0, 180),
+      criteria: record(data.criteria),
       strategy,
-      fallback: input.fallback ?? null,
-      activeFrom: toDateValue(input.activeFrom, 'activeFrom'),
-      activeUntil: toDateValue(input.activeUntil, 'activeUntil'),
-      isActive: input.isActive !== false,
+      fallback: data.fallback === undefined ? null : record(data.fallback),
+      activeFrom: toDateValue(data.activeFrom, 'activeFrom'),
+      activeUntil: toDateValue(data.activeUntil, 'activeUntil'),
+      isActive: data.isActive !== false,
     });
   }
 
   async createSlaPolicy(
     workflowUuid: string,
-    input: Record<string, unknown>,
+    input: unknown,
     actorUuid: string,
   ) {
     await this.requireOwnedWorkflow(workflowUuid, actorUuid);
-    const duration = toFiniteNumber(input.durationMinutes, Number.NaN);
+    const data = record(input);
+    const duration = toFiniteNumber(data.durationMinutes, Number.NaN);
     if (!Number.isInteger(duration) || duration <= 0 || duration > 525600)
       throw new BadRequestException('Invalid SLA duration');
-    const targetEntityType = toStringValue(input.targetEntityType);
-    const startEventType = toStringValue(input.startEventType);
+    const targetEntityType = toStringValue(data.targetEntityType);
+    const startEventType = toStringValue(data.startEventType);
     if (!targetEntityType || !startEventType)
       throw new BadRequestException('SLA target and start event are required');
     return this.repo.createSlaPolicy({
       uuid: randomUUID(),
       workflowUuid,
-      name: toStringValue(input.name, 'SLA').slice(0, 180),
+      name: toStringValue(data.name, 'SLA').slice(0, 180),
       targetEntityType,
       startEventType,
-      stopEventTypes: Array.isArray(input.stopEventTypes)
-        ? input.stopEventTypes
-        : [],
+      stopEventTypes: stringArray(data.stopEventTypes),
       durationMinutes: duration,
-      timezone: toStringValue(input.timezone, 'UTC'),
-      businessHours: input.businessHours ?? { enabled: false },
-      isActive: input.isActive !== false,
+      timezone: toStringValue(data.timezone, 'UTC'),
+      businessHours: record(data.businessHours ?? { enabled: false }),
+      isActive: data.isActive !== false,
       version: 1,
     });
   }
 
   async createEscalationPolicy(
     workflowUuid: string,
-    input: Record<string, unknown>,
+    input: unknown,
     actorUuid: string,
   ) {
     await this.requireOwnedWorkflow(workflowUuid, actorUuid);
-    const levels = Array.isArray(input.levels) ? input.levels : [];
+    const data = record(input);
+    const levels = recordArray(data.levels);
     if (levels.length === 0 || levels.length > 10)
       throw new BadRequestException('Escalation requires 1-10 levels');
     const maxAttempts = Math.min(
       10,
-      Math.max(1, toFiniteNumber(input.maxAttempts, 3)),
+      Math.max(1, toFiniteNumber(data.maxAttempts, 3)),
     );
     const cooldownSeconds = Math.max(
       1,
-      toFiniteNumber(input.cooldownSeconds, 3600),
+      toFiniteNumber(data.cooldownSeconds, 3600),
     );
     return this.repo.createEscalationPolicy({
       uuid: randomUUID(),
       workflowUuid,
-      name: toStringValue(input.name, 'Escalation').slice(0, 180),
+      name: toStringValue(data.name, 'Escalation').slice(0, 180),
       levels,
       maxAttempts,
       cooldownSeconds,
-      isActive: input.isActive !== false,
+      isActive: data.isActive !== false,
     });
   }
 
