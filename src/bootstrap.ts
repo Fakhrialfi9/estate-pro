@@ -5,6 +5,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import compression from 'compression';
 import type { NextFunction, Request, Response } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import type { HelmetOptions } from 'helmet';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
@@ -12,8 +13,30 @@ import { Logger } from 'nestjs-pino';
 import { SecureValidationPipe } from './common/pipes/secure-validation.pipe.js';
 import { applyContentOpenApiContract } from './common/swagger/content-openapi-contract.js';
 import { applyOpenApiContract } from './common/swagger/openapi-contract.js';
+import {
+  LOGIN_RATE_LIMIT,
+  REFRESH_RATE_LIMIT,
+  SECURITY_SESSION_RATE_LIMIT,
+  TWO_FACTOR_ENROLLMENT_RATE_LIMIT,
+  TWO_FACTOR_RECOVERY_REGENERATION_RATE_LIMIT,
+  TWO_FACTOR_REAUTH_RATE_LIMIT,
+  TWO_FACTOR_VERIFICATION_RATE_LIMIT,
+} from './config/rate-limit.config.js';
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,100}$/;
+
+type RateLimitPolicy = Readonly<{
+  ttl: number;
+  limit: number;
+}>;
+
+const createRateLimiter = (policy: RateLimitPolicy) =>
+  rateLimit({
+    windowMs: policy.ttl,
+    limit: policy.limit,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+  });
 
 export const configureApplication = (app: NestExpressApplication): void => {
   const configService = app.get(ConfigService);
@@ -83,6 +106,67 @@ export const configureApplication = (app: NestExpressApplication): void => {
       ),
     }),
   );
+
+  const apiBase = `/${configService.getOrThrow<string>('api.prefix')}/${apiVersion}`;
+  const loginPath = `${apiBase}/auth/login`;
+  const refreshPath = `${apiBase}/auth/refresh`;
+  const twoFactorBasePath = `${apiBase}/auth/2fa`;
+  const sessionBasePath = `${apiBase}/auth/sessions`;
+  const adminSessionBasePath = `${apiBase}/admin/session-management`;
+
+  app.use(loginPath, createRateLimiter(LOGIN_RATE_LIMIT));
+  app.use(refreshPath, createRateLimiter(REFRESH_RATE_LIMIT));
+  app.use(
+    `${twoFactorBasePath}/enrollment`,
+    createRateLimiter(TWO_FACTOR_ENROLLMENT_RATE_LIMIT),
+  );
+  app.use(
+    `${twoFactorBasePath}/enrollment/verify`,
+    createRateLimiter(TWO_FACTOR_ENROLLMENT_RATE_LIMIT),
+  );
+  app.use(
+    `${twoFactorBasePath}/verify`,
+    createRateLimiter(TWO_FACTOR_VERIFICATION_RATE_LIMIT),
+  );
+  app.use(
+    `${twoFactorBasePath}/recovery-codes/regenerate`,
+    createRateLimiter(TWO_FACTOR_RECOVERY_REGENERATION_RATE_LIMIT),
+  );
+  app.use(
+    `${twoFactorBasePath}/disable`,
+    createRateLimiter(TWO_FACTOR_REAUTH_RATE_LIMIT),
+  );
+  app.use(sessionBasePath, createRateLimiter(SECURITY_SESSION_RATE_LIMIT));
+  app.use(
+    adminSessionBasePath,
+    createRateLimiter(SECURITY_SESSION_RATE_LIMIT),
+  );
+
+  const globalPolicy = {
+    ttl: configService.getOrThrow<number>('rateLimit.ttl'),
+    limit: configService.getOrThrow<number>('rateLimit.limit'),
+  } satisfies RateLimitPolicy;
+  const excludedPrefix = [
+    loginPath,
+    refreshPath,
+    twoFactorBasePath,
+    sessionBasePath,
+    adminSessionBasePath,
+  ];
+  const globalRateLimiter = rateLimit({
+    windowMs: globalPolicy.ttl,
+    limit: globalPolicy.limit,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    skip: (request) =>
+      request.path === `${apiBase}/health/live` ||
+      request.path === `${apiBase}/health/ready` ||
+      excludedPrefix.some(
+        (prefix) =>
+          request.path === prefix || request.path.startsWith(`${prefix}/`),
+      ),
+  });
+  app.use(globalRateLimiter);
 };
 
 export const configureSwagger = (app: NestExpressApplication): void => {
