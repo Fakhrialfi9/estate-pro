@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from '../../src/infrastructure/database/database.module.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
+import { configuration, configurationValidationSchema } from '../../src/config/configuration.js';
 import { PrismaPropertyMatchingRepository } from '../../src/modules/property-matching/infrastructure/prisma-property-matching.repository.js';
 
 describe('Property matching repository integration', () => {
@@ -13,7 +15,24 @@ describe('Property matching repository integration', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [DatabaseModule],
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          cache: true,
+          load: configuration,
+          validate: (env: Record<string, unknown>) => {
+            const result = configurationValidationSchema.validate(env, {
+              abortEarly: false,
+              allowUnknown: false,
+              stripUnknown: { objects: true },
+            });
+            if (result.error) throw result.error;
+            return result.value as Record<string, unknown>;
+          },
+          validationOptions: { abortEarly: false, allowUnknown: false },
+        }),
+        DatabaseModule,
+      ],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
