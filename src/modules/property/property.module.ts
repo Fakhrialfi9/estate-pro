@@ -35,6 +35,10 @@ import { PROPERTY_LIFECYCLE_REPOSITORY } from './domain/repositories/property-li
 import { PrismaPropertyLifecycleRepository } from './infrastructure/persistence/prisma-property-lifecycle.repository.js';
 import { PropertyMetricsInterceptor } from './observability/property-metrics.interceptor.js';
 import { PROPERTY_PUBLIC_PORT } from '../../common/contracts/property-public.port.js';
+import { PROPERTY_AGENT_ASSIGNMENT_PORT } from '../../common/contracts/property-agent-assignment.port.js';
+import { PROPERTY_AGENT_CONTEXT_PORT } from '../../common/contracts/property-agent-context.port.js';
+import { PrismaPropertyAgentAssignmentAdapter } from './property-agent-assignment.adapter.js';
+import { PrismaPropertyAgentContextAdapter } from './property-agent-context.adapter.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule, ListingModule],
@@ -56,28 +60,15 @@ import { PROPERTY_PUBLIC_PORT } from '../../common/contracts/property-public.por
     GetPropertyTypeUseCase,
     ListPropertyTypesUseCase,
     UpdatePropertyTypeUseCase,
-    {
-      provide: PROPERTY_TYPE_REPOSITORY,
-      useClass: PrismaPropertyTypeRepository,
-    },
+    { provide: PROPERTY_TYPE_REPOSITORY, useClass: PrismaPropertyTypeRepository },
     PropertyMasterService,
-    {
-      provide: PROPERTY_MASTER_REPOSITORY,
-      useClass: PrismaPropertyMasterStore,
-    },
-    {
-      provide: PROPERTY_DETAILS_REPOSITORY,
-      useClass: PrismaPropertyDetailsRepository,
-    },
-    {
-      provide: PROPERTY_EXTRAS_REPOSITORY,
-      useClass: PrismaPropertyExtrasRepository,
-    },
-    {
-      provide: PROPERTY_LIFECYCLE_REPOSITORY,
-      useClass: PrismaPropertyLifecycleRepository,
-    },
+    { provide: PROPERTY_MASTER_REPOSITORY, useClass: PrismaPropertyMasterStore },
+    { provide: PROPERTY_DETAILS_REPOSITORY, useClass: PrismaPropertyDetailsRepository },
+    { provide: PROPERTY_EXTRAS_REPOSITORY, useClass: PrismaPropertyExtrasRepository },
+    { provide: PROPERTY_LIFECYCLE_REPOSITORY, useClass: PrismaPropertyLifecycleRepository },
     { provide: PROPERTY_PUBLIC_PORT, useExisting: PropertyMasterService },
+    { provide: PROPERTY_AGENT_ASSIGNMENT_PORT, useClass: PrismaPropertyAgentAssignmentAdapter },
+    { provide: PROPERTY_AGENT_CONTEXT_PORT, useClass: PrismaPropertyAgentContextAdapter },
     { provide: APP_INTERCEPTOR, useClass: PropertyMetricsInterceptor },
     PropertyDetailsService,
     PropertyExtrasService,
@@ -90,6 +81,8 @@ import { PROPERTY_PUBLIC_PORT } from '../../common/contracts/property-public.por
     PROPERTY_EXTRAS_REPOSITORY,
     PROPERTY_LIFECYCLE_REPOSITORY,
     PROPERTY_PUBLIC_PORT,
+    PROPERTY_AGENT_ASSIGNMENT_PORT,
+    PROPERTY_AGENT_CONTEXT_PORT,
   ],
 })
 export class PropertyModule {}
