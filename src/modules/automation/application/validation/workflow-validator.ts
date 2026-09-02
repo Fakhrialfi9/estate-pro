@@ -6,10 +6,19 @@ import {
   NODE_TYPES,
   TRIGGER_TYPES,
   canonicalize,
+  type ActionNode,
   type ConditionNode,
+  type TriggerDefinition,
   type WorkflowDefinition,
-  type WorkflowGraph,
 } from '../../domain/automation.types.js';
+
+type TriggerNode = {
+  readonly id: string;
+  readonly type: 'TRIGGER';
+  readonly trigger: TriggerDefinition;
+};
+
+type WorkflowNode = ConditionNode | ActionNode | TriggerNode;
 
 const hasOwn = (obj: object, key: string): boolean =>
   Object.prototype.hasOwnProperty.call(obj, key);
@@ -24,9 +33,7 @@ const isValueIn = <const T extends readonly string[]>(
   value: unknown,
 ): value is T[number] => isString(value) && values.includes(value);
 
-const isWorkflowNode = (
-  value: unknown,
-): value is WorkflowGraph['nodes'][number] => {
+const isWorkflowNode = (value: unknown): value is WorkflowNode => {
   if (
     !isRecord(value) ||
     !isString(value.id) ||
@@ -49,7 +56,7 @@ const isWorkflowNode = (
 
 const assertDefinitionShape = (
   definition: unknown,
-): asserts definition is WorkflowDefinition => {
+): WorkflowDefinition => {
   if (!isRecord(definition))
     throw new BadRequestException('Workflow definition must be an object');
   if (!isRecord(definition.trigger) || !isRecord(definition.graph))
@@ -77,23 +84,25 @@ const assertDefinitionShape = (
     )
   )
     throw new BadRequestException('Workflow entry node does not exist');
+
+  return definition as unknown as WorkflowDefinition;
 };
 
 @Injectable()
 export class WorkflowValidator {
-  validate(definition: unknown): asserts definition is WorkflowDefinition {
-    assertDefinitionShape(definition);
+  validate(definition: unknown): WorkflowDefinition {
+    const validated = assertDefinitionShape(definition);
 
     if (
       !isValueIn(
         ['LEAD', 'CONTACT', 'OPPORTUNITY', 'DEAL', 'ACTIVITY', 'SLA'] as const,
-        definition.trigger.entityType,
+        validated.trigger.entityType,
       )
     )
       throw new BadRequestException('Unsupported trigger entity type');
 
-    const nodes = definition.graph.nodes;
-    const edges = definition.graph.edges;
+    const nodes = validated.graph.nodes;
+    const edges = validated.graph.edges;
     if (nodes.length === 0)
       throw new BadRequestException('Workflow must contain nodes');
     if (nodes.length > 100)
@@ -108,7 +117,7 @@ export class WorkflowValidator {
       ids.add(node.id);
 
       if (node.type === 'TRIGGER') {
-        if (node.id !== definition.graph.entryNodeId)
+        if (node.id !== validated.graph.entryNodeId)
           throw new BadRequestException('Trigger node must be the entry node');
         continue;
       }
@@ -150,19 +159,21 @@ export class WorkflowValidator {
       adjacency.set(edge.from, [...(adjacency.get(edge.from) ?? []), edge.to]);
     }
 
-    this.assertAcyclic(adjacency, ids, definition.graph.entryNodeId);
+    this.assertAcyclic(adjacency, ids, validated.graph.entryNodeId);
 
     for (const node of nodes)
       if (
-        node.id !== definition.graph.entryNodeId &&
+        node.id !== validated.graph.entryNodeId &&
         !edges.some((edge) => isRecord(edge) && edge.to === node.id)
       )
         throw new BadRequestException(`Orphan node: ${node.id}`);
+
+    return validated;
   }
 
   checksum(definition: unknown): string {
-    this.validate(definition);
-    return createHash('sha256').update(canonicalize(definition)).digest('hex');
+    const validated = this.validate(definition);
+    return createHash('sha256').update(canonicalize(validated)).digest('hex');
   }
 
   private validateCondition(node: ConditionNode): void {
