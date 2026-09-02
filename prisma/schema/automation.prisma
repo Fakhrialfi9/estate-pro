@@ -13,7 +13,6 @@ model AutomationWorkflow {
   versions AutomationWorkflowVersion[]
   assignmentRules AutomationAssignmentRule[]
   slaPolicies AutomationSlaPolicy[]
-  escalationPolicies AutomationEscalationPolicy[]
   executions AutomationWorkflowExecution[]
   @@index([status, ownerUserUuid])
   @@index([activeVersionUuid])
@@ -180,4 +179,21 @@ model AutomationEscalationPolicy {
   workflow AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
   @@index([workflowUuid, isActive])
   @@map("automation_escalation_policies")
+}
+
+model AutomationNotification {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  userUuid String @db.Char(36)
+  type String @db.VarChar(50)
+  title String @db.VarChar(180)
+  body String @db.Text
+  entityType String? @db.VarChar(60)
+  entityUuid String? @db.Char(36)
+  status String @default("UNREAD") @db.VarChar(20)
+  readAt DateTime? @db.DateTime(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  @@index([userUuid, status, createdAt])
+  @@index([entityType, entityUuid, createdAt])
+  @@map("automation_notifications")
 }
