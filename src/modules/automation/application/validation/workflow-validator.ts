@@ -31,7 +31,7 @@ const isString = (value: unknown): value is string => typeof value === 'string';
 const isValueIn = <const T extends readonly string[]>(
   values: T,
   value: unknown,
-): value is T[number] => isString(value) && values.includes(value);
+): value is T[number] => isString(value) && values.includes(value as T[number]);
 
 const isWorkflowNode = (value: unknown): value is WorkflowNode => {
   if (
@@ -133,7 +133,11 @@ export class WorkflowValidator {
         );
 
       const maxAttempts = node.maxAttempts ?? 3;
-      if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10)
+      if (
+        !Number.isInteger(maxAttempts) ||
+        maxAttempts < 1 ||
+        maxAttempts > 10
+      )
         throw new BadRequestException('Invalid action retry limit');
 
       if (
@@ -156,7 +160,10 @@ export class WorkflowValidator {
         edge.from === edge.to
       )
         throw new BadRequestException('Workflow contains an invalid edge');
-      adjacency.set(edge.from, [...(adjacency.get(edge.from) ?? []), edge.to]);
+      adjacency.set(edge.from, [
+        ...(adjacency.get(edge.from) ?? []),
+        edge.to,
+      ]);
     }
 
     this.assertAcyclic(adjacency, ids, validated.graph.entryNodeId);
