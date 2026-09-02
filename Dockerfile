@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS build
+FROM node:22.23.2-bookworm-slim AS build
 
 WORKDIR /app
 ENV NODE_ENV=development
@@ -11,7 +11,7 @@ RUN npm run build \
   && mkdir -p dist/prisma \
   && cp -R prisma/generated dist/prisma
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:22.23.2-bookworm-slim AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
