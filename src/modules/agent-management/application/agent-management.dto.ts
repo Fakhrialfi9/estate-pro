@@ -92,7 +92,9 @@ export class AgentUpdateDto {
   @IsString()
   @MaxLength(5000)
   bio?: string;
-  @ApiPropertyOptional({ enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'ARCHIVED'] })
+  @ApiPropertyOptional({
+    enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'ARCHIVED'],
+  })
   @IsOptional()
   @IsEnum(AgentStatusDto)
   status?: AgentStatusDto;
@@ -143,7 +145,9 @@ export class SpecializationCreateDto {
   isActive?: boolean;
 }
 export class CoverageCreateDto {
-  @ApiProperty({ enum: ['COUNTRY', 'PROVINCE', 'CITY', 'DISTRICT', 'SUBDISTRICT'] })
+  @ApiProperty({
+    enum: ['COUNTRY', 'PROVINCE', 'CITY', 'DISTRICT', 'SUBDISTRICT'],
+  })
   @IsEnum(CoverageLevelDto)
   level!: CoverageLevelDto;
   @ApiProperty({ format: 'uuid' }) @IsUUID('4') regionUuid!: string;
@@ -172,7 +176,9 @@ export class ScheduleItemDto {
   endTime!: string;
 }
 export class AvailabilityExceptionDto {
-  @ApiProperty({ enum: ['ACTIVE', 'UNAVAILABLE', 'LEAVE', 'OFFLINE'] })
+  @ApiProperty({
+    enum: ['ACTIVE', 'UNAVAILABLE', 'LEAVE', 'OFFLINE'],
+  })
   @IsEnum(AvailabilityStatusDto)
   status!: AvailabilityStatusDto;
   @ApiProperty({ format: 'date-time' })
@@ -190,7 +196,9 @@ export class AvailabilityExceptionDto {
   reason?: string;
 }
 export class AvailabilityUpdateDto {
-  @ApiProperty({ enum: ['ACTIVE', 'UNAVAILABLE', 'LEAVE', 'OFFLINE'] })
+  @ApiProperty({
+    enum: ['ACTIVE', 'UNAVAILABLE', 'LEAVE', 'OFFLINE'],
+  })
   @IsEnum(AvailabilityStatusDto)
   status!: AvailabilityStatusDto;
   @ApiPropertyOptional({ default: 'UTC' })
@@ -238,7 +246,9 @@ export class TargetCreateDto {
   @IsString()
   @MaxLength(80)
   metricType!: string;
-  @ApiProperty({ enum: ['MONTH', 'QUARTER', 'YEAR', 'CUSTOM'] })
+  @ApiProperty({
+    enum: ['MONTH', 'QUARTER', 'YEAR', 'CUSTOM'],
+  })
   @IsEnum(TargetPeriodDto)
   periodType!: TargetPeriodDto;
   @ApiProperty({ format: 'date' })
@@ -270,7 +280,9 @@ export class TargetUpdateDto {
   @IsString()
   @MaxLength(120)
   scope?: string;
-  @ApiPropertyOptional({ enum: ['ACTIVE', 'CLOSED', 'ARCHIVED'] })
+  @ApiPropertyOptional({
+    enum: ['ACTIVE', 'CLOSED', 'ARCHIVED'],
+  })
   @IsOptional()
   @IsEnum(TargetStatusDto)
   status?: TargetStatusDto;
