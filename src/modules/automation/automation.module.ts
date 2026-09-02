@@ -16,6 +16,7 @@ import { CRM_AUTOMATION_PORT, type AutomationCrmPort } from '../../common/contra
 import { SALES_AUTOMATION_PORT, type AutomationSalesPort } from '../../common/contracts/automation-sales.port.js';
 import { USER_PUBLIC_PORT, type UserPublicPort } from '../../common/contracts/user-public.port.js';
 import { SECURITY_AUDIT_REPOSITORY, type SecurityAuditRepository } from '../../common/audit/security-audit.port.js';
+import { AutomationScheduler } from './infrastructure/scheduler/automation.scheduler.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, UsersModule, CrmModule, SalesModule],
@@ -32,25 +33,10 @@ import { SECURITY_AUDIT_REPOSITORY, type SecurityAuditRepository } from '../../c
     },
     {
       provide: AutomationService,
-      inject: [
-        AUTOMATION_REPOSITORY,
-        CRM_AUTOMATION_PORT,
-        SALES_AUTOMATION_PORT,
-        USER_PUBLIC_PORT,
-        SECURITY_AUDIT_REPOSITORY,
-        WorkflowValidator,
-        AUTOMATION_ACTION_HANDLERS,
-      ],
-      useFactory: (
-        repo: AutomationRepository,
-        crm: AutomationCrmPort,
-        sales: AutomationSalesPort,
-        users: UserPublicPort,
-        audit: SecurityAuditRepository,
-        validator: WorkflowValidator,
-        handlers: readonly ActionHandler[],
-      ) => new AutomationService(repo, crm, sales, users, audit, validator, handlers),
+      inject: [AUTOMATION_REPOSITORY, CRM_AUTOMATION_PORT, SALES_AUTOMATION_PORT, USER_PUBLIC_PORT, SECURITY_AUDIT_REPOSITORY, WorkflowValidator, AUTOMATION_ACTION_HANDLERS],
+      useFactory: (repo: AutomationRepository, crm: AutomationCrmPort, sales: AutomationSalesPort, users: UserPublicPort, audit: SecurityAuditRepository, validator: WorkflowValidator, handlers: readonly ActionHandler[]) => new AutomationService(repo, crm, sales, users, audit, validator, handlers),
     },
+    AutomationScheduler,
   ],
   exports: [AutomationService],
 })
