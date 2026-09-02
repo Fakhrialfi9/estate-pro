@@ -17,4 +17,4 @@ process.env.AUTH_ARGON2_PARALLELISM ??= '1';
 process.env.TWO_FACTOR_ENCRYPTION_KEY ??=
   'estate-pro-two-factor-integration-key-32-chars-minimum';
 
-await prepareTestDatabase();
+prepareTestDatabase();
