@@ -10,25 +10,24 @@ import type {
   PropertyAgentAssignmentRecord,
 } from '../../common/contracts/property-agent-assignment.port.js';
 
-type Db = {
-  property: any;
-  propertyAgentAssignment: any;
-  propertyAgentAssignmentHistory: any;
-  $queryRaw<T = unknown>(
-    query: TemplateStringsArray,
-    ...values: unknown[]
-  ): Promise<T>;
-  $transaction<T>(fn: (tx: Db) => Promise<T>): Promise<T>;
-};
+type PropertyCreateArgs = Parameters<PrismaService['property']['findFirst']>[0];
+type AssignmentCreateArgs = Parameters<
+  PrismaService['propertyAgentAssignment']['create']
+>[0];
+
+type AssignmentRow = Awaited<
+  ReturnType<PrismaService['propertyAgentAssignment']['findFirst']>
+>;
+
+type AssignmentWithProperty = Awaited<
+  ReturnType<PrismaService['propertyAgentAssignment']['findMany']>
+>[number];
 
 @Injectable()
 export class PrismaPropertyAgentAssignmentAdapter
   implements PropertyAgentAssignmentPort
 {
-  private readonly db: Db;
-  constructor(prisma: PrismaService) {
-    this.db = prisma as unknown as Db;
-  }
+  constructor(private readonly db: PrismaService) {}
 
   async assign(input: {
     propertyUuid: string;
@@ -41,12 +40,18 @@ export class PrismaPropertyAgentAssignmentAdapter
         where: { uuid: input.propertyUuid, deletedAt: null },
       });
       if (!property) throw new NotFoundException('Property not found');
-      await tx.$queryRaw`SELECT id FROM properties WHERE id = ${property.id} FOR UPDATE`;
+
+      await tx.$queryRaw<readonly { id: bigint }[]>`
+        SELECT id FROM properties WHERE id = ${property.id} FOR UPDATE
+      `;
+
       const current = await tx.propertyAgentAssignment.findFirst({
         where: { propertyId: property.id, agentUserUuid: input.agentUserUuid },
       });
-      if (current?.unassignedAt === null)
+      if (current?.unassignedAt === null) {
         throw new ConflictException('Agent is already assigned to property');
+      }
+
       const assignment = current
         ? await tx.propertyAgentAssignment.update({
             where: { uuid: current.uuid },
@@ -69,6 +74,7 @@ export class PrismaPropertyAgentAssignmentAdapter
               createdBy: input.actorUuid,
             },
           });
+
       await tx.propertyAgentAssignmentHistory.create({
         data: {
           uuid: randomUUID(),
@@ -79,6 +85,7 @@ export class PrismaPropertyAgentAssignmentAdapter
           action: 'ASSIGN',
         },
       });
+
       return this.map(property.uuid, assignment);
     });
   }
@@ -93,7 +100,11 @@ export class PrismaPropertyAgentAssignmentAdapter
         where: { uuid: input.propertyUuid, deletedAt: null },
       });
       if (!property) throw new NotFoundException('Property not found');
-      await tx.$queryRaw`SELECT id FROM properties WHERE id = ${property.id} FOR UPDATE`;
+
+      await tx.$queryRaw<readonly { id: bigint }[]>`
+        SELECT id FROM properties WHERE id = ${property.id} FOR UPDATE
+      `;
+
       const current = await tx.propertyAgentAssignment.findFirst({
         where: {
           propertyId: property.id,
@@ -101,8 +112,10 @@ export class PrismaPropertyAgentAssignmentAdapter
           unassignedAt: null,
         },
       });
-      if (!current)
+      if (!current) {
         throw new NotFoundException('Active property assignment not found');
+      }
+
       const assignment = await tx.propertyAgentAssignment.update({
         where: { uuid: current.uuid },
         data: {
@@ -111,6 +124,7 @@ export class PrismaPropertyAgentAssignmentAdapter
           isPrimary: false,
         },
       });
+
       await tx.propertyAgentAssignmentHistory.create({
         data: {
           uuid: randomUUID(),
@@ -121,6 +135,7 @@ export class PrismaPropertyAgentAssignmentAdapter
           action: 'UNASSIGN',
         },
       });
+
       return this.map(property.uuid, assignment);
     });
   }
@@ -137,7 +152,11 @@ export class PrismaPropertyAgentAssignmentAdapter
         where: { uuid: input.propertyUuid, deletedAt: null },
       });
       if (!property) throw new NotFoundException('Property not found');
-      await tx.$queryRaw`SELECT id FROM properties WHERE id = ${property.id} FOR UPDATE`;
+
+      await tx.$queryRaw<readonly { id: bigint }[]>`
+        SELECT id FROM properties WHERE id = ${property.id} FOR UPDATE
+      `;
+
       if (
         input.fromAgentUserUuid &&
         input.fromAgentUserUuid !== input.toAgentUserUuid
@@ -170,16 +189,19 @@ export class PrismaPropertyAgentAssignmentAdapter
           });
         }
       }
+
       const existing = await tx.propertyAgentAssignment.findFirst({
         where: {
           propertyId: property.id,
           agentUserUuid: input.toAgentUserUuid,
         },
       });
-      if (existing?.unassignedAt === null)
+      if (existing?.unassignedAt === null) {
         throw new ConflictException(
           'Target agent is already assigned to property',
         );
+      }
+
       const assignment = existing
         ? await tx.propertyAgentAssignment.update({
             where: { uuid: existing.uuid },
@@ -201,6 +223,7 @@ export class PrismaPropertyAgentAssignmentAdapter
               createdBy: input.actorUuid,
             },
           });
+
       await tx.propertyAgentAssignmentHistory.create({
         data: {
           uuid: randomUUID(),
@@ -211,11 +234,12 @@ export class PrismaPropertyAgentAssignmentAdapter
           action: 'REASSIGN',
         },
       });
+
       return this.map(property.uuid, assignment);
     });
   }
 
-  async isAssigned(propertyUuid: string, agentUserUuid: string) {
+  async isAssigned(propertyUuid: string, agentUserUuid: string): Promise<boolean> {
     return Boolean(
       await this.db.propertyAgentAssignment.findFirst({
         where: {
@@ -226,7 +250,12 @@ export class PrismaPropertyAgentAssignmentAdapter
       }),
     );
   }
-  async listCurrent(agentUserUuid: string, limit: number, cursor?: string) {
+
+  async listCurrent(
+    agentUserUuid: string,
+    limit: number,
+    cursor?: string,
+  ): Promise<PropertyAgentAssignmentRecord[]> {
     const rows = await this.db.propertyAgentAssignment.findMany({
       where: {
         agentUserUuid,
@@ -237,38 +266,47 @@ export class PrismaPropertyAgentAssignmentAdapter
       take: Math.min(100, Math.max(1, limit)),
       include: { property: true },
     });
-    return rows.map((x: any) => this.map(x.property.uuid, x));
+    return rows.map((row) => this.map(row.property.uuid, row));
   }
-  async listHistory(agentUserUuid: string, limit: number) {
+
+  async listHistory(
+    agentUserUuid: string,
+    limit: number,
+  ): Promise<PropertyAgentAssignmentRecord[]> {
     const rows = await this.db.propertyAgentAssignmentHistory.findMany({
       where: { agentUserUuid },
       orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
       take: Math.min(100, Math.max(1, limit)),
     });
-    return rows.map((x: any) => ({
-      uuid: x.uuid,
-      propertyUuid: x.propertyUuid,
-      agentUserUuid: x.agentUserUuid,
+    return rows.map((row) => ({
+      uuid: row.uuid,
+      propertyUuid: row.propertyUuid,
+      agentUserUuid: row.agentUserUuid,
       agentDisplayName: '',
       isPrimary: false,
-      assignedAt: x.occurredAt,
-      unassignedAt: x.action === 'UNASSIGN' ? x.occurredAt : null,
+      assignedAt: row.occurredAt,
+      unassignedAt: row.action === 'UNASSIGN' ? row.occurredAt : null,
     }));
   }
-  countCurrent(agentUserUuid: string) {
+
+  countCurrent(agentUserUuid: string): Promise<number> {
     return this.db.propertyAgentAssignment.count({
       where: { agentUserUuid, unassignedAt: null },
     });
   }
-  private map(propertyUuid: string, row: any): PropertyAgentAssignmentRecord {
+
+  private map(
+    propertyUuid: string,
+    row: Exclude<AssignmentRow, null>,
+  ): PropertyAgentAssignmentRecord {
     return {
       uuid: row.uuid,
       propertyUuid,
       agentUserUuid: row.agentUserUuid,
       agentDisplayName: row.agentDisplayName,
-      isPrimary: Boolean(row.isPrimary),
+      isPrimary: row.isPrimary,
       assignedAt: row.assignedAt,
-      unassignedAt: row.unassignedAt ?? null,
+      unassignedAt: row.unassignedAt,
     };
   }
 }
