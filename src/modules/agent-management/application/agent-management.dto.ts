@@ -26,7 +26,8 @@ export const AgentStatusDto = {
   SUSPENDED: 'SUSPENDED',
   ARCHIVED: 'ARCHIVED',
 } as const;
-export type AgentStatusDto = (typeof AgentStatusDto)[keyof typeof AgentStatusDto];
+export type AgentStatusDto =
+  (typeof AgentStatusDto)[keyof typeof AgentStatusDto];
 
 export const AvailabilityStatusDto = {
   ACTIVE: 'ACTIVE',
@@ -44,7 +45,8 @@ export const CoverageLevelDto = {
   DISTRICT: 'DISTRICT',
   SUBDISTRICT: 'SUBDISTRICT',
 } as const;
-export type CoverageLevelDto = (typeof CoverageLevelDto)[keyof typeof CoverageLevelDto];
+export type CoverageLevelDto =
+  (typeof CoverageLevelDto)[keyof typeof CoverageLevelDto];
 
 export const TargetPeriodDto = {
   MONTH: 'MONTH',
@@ -52,14 +54,16 @@ export const TargetPeriodDto = {
   YEAR: 'YEAR',
   CUSTOM: 'CUSTOM',
 } as const;
-export type TargetPeriodDto = (typeof TargetPeriodDto)[keyof typeof TargetPeriodDto];
+export type TargetPeriodDto =
+  (typeof TargetPeriodDto)[keyof typeof TargetPeriodDto];
 
 export const TargetStatusDto = {
   ACTIVE: 'ACTIVE',
   CLOSED: 'CLOSED',
   ARCHIVED: 'ARCHIVED',
 } as const;
-export type TargetStatusDto = (typeof TargetStatusDto)[keyof typeof TargetStatusDto];
+export type TargetStatusDto =
+  (typeof TargetStatusDto)[keyof typeof TargetStatusDto];
 
 export class AgentCreateDto {
   @ApiProperty({ format: 'uuid' }) @IsUUID('4') userUuid!: string;
@@ -263,8 +267,22 @@ export class ReassignmentDto {
   fromAgentUuid?: string;
   @ApiPropertyOptional({ maxLength: 255 })
   @IsOptional()
+  @IsUUID('4')
+  fromAgentUuid?: string;
+  @ApiPropertyOptional({ maxLength: 255 })
+  @IsOptional()
   @IsString()
-  @MaxLength(255)
+  reason?: string;
+}
+export class ReassignmentDto {
+  @ApiProperty({ format: 'uuid' }) @IsUUID('4') toAgentUuid!: string;
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID('4')
+  fromAgentUuid?: string;
+  @ApiPropertyOptional({ maxLength: 255 })
+  @IsOptional()
+  @IsString()
   reason?: string;
 }
 export class TargetCreateDto {
