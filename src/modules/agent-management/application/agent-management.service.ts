@@ -70,9 +70,7 @@ type Actor = {
   userAgent?: string;
   requestId?: string;
 };
-type AgentRecord = Awaited<
-  ReturnType<PrismaAgentRepository['createProfile']>
->;
+type AgentRecord = Awaited<ReturnType<PrismaAgentRepository['createProfile']>>;
 type AgentProfileDetails = NonNullable<
   Awaited<ReturnType<PrismaAgentRepository['findProfile']>>
 >;
