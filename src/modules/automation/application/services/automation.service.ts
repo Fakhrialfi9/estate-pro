@@ -53,7 +53,9 @@ const recordArray = (value: unknown): readonly Record<string, unknown>[] =>
   );
 
 const stringArray = (value: unknown): readonly string[] =>
-  unknownArray(value).filter((item): item is string => typeof item === 'string');
+  unknownArray(value).filter(
+    (item): item is string => typeof item === 'string',
+  );
 
 const toStringValue = (value: unknown, fallback = ''): string => {
   if (typeof value === 'string') return value;

@@ -150,10 +150,7 @@ export class WorkflowValidator {
         edge.from === edge.to
       )
         throw new BadRequestException('Workflow contains an invalid edge');
-      adjacency.set(edge.from, [
-        ...(adjacency.get(edge.from) ?? []),
-        edge.to,
-      ]);
+      adjacency.set(edge.from, [...(adjacency.get(edge.from) ?? []), edge.to]);
     }
 
     this.assertAcyclic(adjacency, ids, validated.graph.entryNodeId);
