@@ -61,26 +61,27 @@ const assertDefinitionShape = (definition: unknown): WorkflowDefinition => {
   if (!isRecord(definition.trigger) || !isRecord(definition.graph))
     throw new BadRequestException('Workflow requires trigger and graph');
 
+  const trigger = definition.trigger;
+  const graph = definition.graph;
+
   if (
-    !isValueIn(TRIGGER_TYPES, definition.trigger.type) ||
-    !isString(definition.trigger.entityType)
+    !isValueIn(TRIGGER_TYPES, trigger.type) ||
+    !isString(trigger.entityType)
   )
     throw new BadRequestException('Workflow trigger is invalid');
 
   if (
-    !Array.isArray(definition.graph.nodes) ||
-    !definition.graph.nodes.every(isWorkflowNode)
+    !Array.isArray(graph.nodes) ||
+    !graph.nodes.every(isWorkflowNode)
   )
     throw new BadRequestException('Workflow nodes are invalid');
 
-  if (!Array.isArray(definition.graph.edges))
+  if (!Array.isArray(graph.edges))
     throw new BadRequestException('Workflow edges must be an array');
 
   if (
-    !isString(definition.graph.entryNodeId) ||
-    !definition.graph.nodes.some(
-      (node) => node.id === definition.graph.entryNodeId,
-    )
+    !isString(graph.entryNodeId) ||
+    !graph.nodes.some((node) => node.id === graph.entryNodeId)
   )
     throw new BadRequestException('Workflow entry node does not exist');
 
