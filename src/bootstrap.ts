@@ -110,30 +110,38 @@ export const configureApplication = (app: NestExpressApplication): void => {
   const apiBase = `/${configService.getOrThrow<string>('api.prefix')}/${apiVersion}`;
   const loginPath = `${apiBase}/auth/login`;
   const refreshPath = `${apiBase}/auth/refresh`;
-  const twoFactorBasePath = `${apiBase}/auth/2fa`;
   const sessionBasePath = `${apiBase}/auth/sessions`;
   const adminSessionBasePath = `${apiBase}/admin/session-management`;
+  const specialRateLimitedPaths = [
+    loginPath,
+    refreshPath,
+    `${apiBase}/auth/2fa/enrollment`,
+    `${apiBase}/auth/2fa/enrollment/verify`,
+    `${apiBase}/auth/2fa/verify`,
+    `${apiBase}/auth/2fa/recovery-codes/regenerate`,
+    `${apiBase}/auth/2fa/disable`,
+  ];
 
   app.use(loginPath, createRateLimiter(LOGIN_RATE_LIMIT));
   app.use(refreshPath, createRateLimiter(REFRESH_RATE_LIMIT));
   app.use(
-    `${twoFactorBasePath}/enrollment`,
+    `${apiBase}/auth/2fa/enrollment`,
     createRateLimiter(TWO_FACTOR_ENROLLMENT_RATE_LIMIT),
   );
   app.use(
-    `${twoFactorBasePath}/enrollment/verify`,
+    `${apiBase}/auth/2fa/enrollment/verify`,
     createRateLimiter(TWO_FACTOR_ENROLLMENT_RATE_LIMIT),
   );
   app.use(
-    `${twoFactorBasePath}/verify`,
+    `${apiBase}/auth/2fa/verify`,
     createRateLimiter(TWO_FACTOR_VERIFICATION_RATE_LIMIT),
   );
   app.use(
-    `${twoFactorBasePath}/recovery-codes/regenerate`,
+    `${apiBase}/auth/2fa/recovery-codes/regenerate`,
     createRateLimiter(TWO_FACTOR_RECOVERY_REGENERATION_RATE_LIMIT),
   );
   app.use(
-    `${twoFactorBasePath}/disable`,
+    `${apiBase}/auth/2fa/disable`,
     createRateLimiter(TWO_FACTOR_REAUTH_RATE_LIMIT),
   );
   app.use(sessionBasePath, createRateLimiter(SECURITY_SESSION_RATE_LIMIT));
@@ -146,13 +154,6 @@ export const configureApplication = (app: NestExpressApplication): void => {
     ttl: configService.getOrThrow<number>('rateLimit.ttl'),
     limit: configService.getOrThrow<number>('rateLimit.limit'),
   } satisfies RateLimitPolicy;
-  const excludedPrefix = [
-    loginPath,
-    refreshPath,
-    twoFactorBasePath,
-    sessionBasePath,
-    adminSessionBasePath,
-  ];
   const globalRateLimiter = rateLimit({
     windowMs: globalPolicy.ttl,
     limit: globalPolicy.limit,
@@ -161,9 +162,12 @@ export const configureApplication = (app: NestExpressApplication): void => {
     skip: (request) =>
       request.path === `${apiBase}/health/live` ||
       request.path === `${apiBase}/health/ready` ||
-      excludedPrefix.some(
-        (prefix) =>
-          request.path === prefix || request.path.startsWith(`${prefix}/`),
+      request.path === sessionBasePath ||
+      request.path.startsWith(`${sessionBasePath}/`) ||
+      request.path === adminSessionBasePath ||
+      request.path.startsWith(`${adminSessionBasePath}/`) ||
+      specialRateLimitedPaths.some(
+        (path) => request.path === path || request.path.startsWith(`${path}/`),
       ),
   });
   app.use(globalRateLimiter);
