@@ -34,19 +34,19 @@ model Property {
   building              PropertyBuilding?
   certificates          PropertyCertificate[]
   environment           PropertyEnvironment?
-  facilities             PropertyFacility[]
-  features               PropertyFeatures?
-  financial              PropertyFinancial?
-  legal                   PropertyLegal?
-  listing                 PropertyListing?
-  location                PropertyLocation?
-  media                   PropertyMedia[]
-  owner                   PropertyOwner?
-  rooms                   PropertyRoom[]
-  security                PropertySecurity?
-  seo                     PropertySeo?
-  specification           PropertySpecification?
-  utilities               PropertyUtility?
+  facilities            PropertyFacility[]
+  features              PropertyFeatures?
+  financial             PropertyFinancial?
+  legal                 PropertyLegal?
+  listing               PropertyListing?
+  location              PropertyLocation?
+  media                 PropertyMedia[]
+  owner                 PropertyOwner?
+  rooms                 PropertyRoom[]
+  security              PropertySecurity?
+  seo                   PropertySeo?
+  specification         PropertySpecification?
+  utilities             PropertyUtility?
 
   @@index([availabilityStatus, availableFrom, availableTo])
   @@index([propertyCategoryId], map: "properties_property_category_id_fkey")
@@ -75,5 +75,16 @@ model PropertyFacility {
   @@map("property_facilities")
 }
 
-enum PropertyStatus { DRAFT IN_REVIEW ACTIVE ARCHIVED SOLD RENTED }
-enum AvailabilityStatus { AVAILABLE UNAVAILABLE }
+enum PropertyStatus {
+  DRAFT
+  IN_REVIEW
+  ACTIVE
+  ARCHIVED
+  SOLD
+  RENTED
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  UNAVAILABLE
+}
