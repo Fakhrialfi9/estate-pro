@@ -1,12 +1,7 @@
 import type { UserPublicPort } from '../../../common/contracts/user-public.port.js';
 import type { AutomationOpportunityContext } from '../../../common/contracts/automation-sales.port.js';
 import type { AutomationLeadContext } from '../../../common/contracts/automation-crm.port.js';
-import type {
-  ActionState,
-  ExecutionState,
-  TriggerDefinition,
-  WorkflowDefinition,
-} from './automation.types.js';
+import type { ActionState, ExecutionState, TriggerDefinition, WorkflowDefinition } from './automation.types.js';
 
 export interface AutomationEvent {
   readonly eventId: string;
@@ -47,6 +42,7 @@ export interface AutomationRepository {
   updateSlaInstance(uuid: string, input: Record<string, unknown>): Promise<Record<string, unknown>>;
   createEscalationPolicy(input: Record<string, unknown>): Promise<Record<string, unknown>>;
   getEscalationPolicy(uuid: string): Promise<Record<string, unknown> | null>;
+  createNotification(input: Record<string, unknown>): Promise<Record<string, unknown>>;
 }
 
 export interface WorkflowContextProvider {
