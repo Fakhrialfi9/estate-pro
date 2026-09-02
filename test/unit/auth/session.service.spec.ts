@@ -132,17 +132,21 @@ class FakeSessionRepository implements AuthenticationSessionRepository {
 }
 
 function makeService(repo: FakeSessionRepository) {
-  const audit: SecurityAuditRepository = {
-    record: vi.fn().mockResolvedValue(undefined),
-  };
+  const auditRecord = vi.fn().mockResolvedValue(undefined);
+  const revokeForSession = vi.fn().mockResolvedValue(1);
+  const revokeAllForUser = vi.fn().mockResolvedValue(1);
+  const audit: SecurityAuditRepository = { record: auditRecord };
   const refreshTokens: RefreshTokenSecurityPort = {
-    revokeForSession: vi.fn().mockResolvedValue(1),
-    revokeAllForUser: vi.fn().mockResolvedValue(1),
+    revokeForSession,
+    revokeAllForUser,
   };
   return {
     service: new SessionService(repo, audit, refreshTokens),
     audit,
+    auditRecord,
     refreshTokens,
+    revokeForSession,
+    revokeAllForUser,
   };
 }
 
@@ -187,7 +191,7 @@ describe('Session lifecycle', () => {
 
   it('rejects revoked sessions and cannot revive them', async () => {
     const repo = new FakeSessionRepository();
-    const { service, refreshTokens } = makeService(repo);
+    const { service, revokeForSession } = makeService(repo);
     const secret = SessionService.generateSecret();
     await service.create(USER_A, {
       sessionId: secret,
@@ -196,14 +200,14 @@ describe('Session lifecycle', () => {
 
     await service.logoutCurrent(USER_A, secret);
     expect(repo.rows[0]?.revokedAt).not.toBeNull();
-    expect(refreshTokens.revokeForSession).toHaveBeenCalledOnce();
+    expect(revokeForSession).toHaveBeenCalledOnce();
     expect(await service.isActive(USER_A, secret, BASE)).toBe(false);
     expect(await repo.revokeBySecret(USER_A, secret, BASE)).toBe(false);
   });
 
   it('enforces ownership for selected revoke and leaves another user untouched', async () => {
     const repo = new FakeSessionRepository();
-    const { service, refreshTokens } = makeService(repo);
+    const { service, revokeForSession } = makeService(repo);
     const secretA = SessionService.generateSecret();
     const secretB = SessionService.generateSecret();
     await service.create(USER_A, {
@@ -217,7 +221,7 @@ describe('Session lifecycle', () => {
 
     await service.revokeOwnSession(USER_A, '2');
     expect(repo.rows[1]?.revokedAt).toBeNull();
-    expect(refreshTokens.revokeForSession).toHaveBeenCalledWith(
+    expect(revokeForSession).toHaveBeenCalledWith(
       USER_A,
       '2',
       'SESSION_REVOKED',
@@ -228,7 +232,7 @@ describe('Session lifecycle', () => {
 
   it('logout-all revokes only the current user and is idempotent', async () => {
     const repo = new FakeSessionRepository();
-    const { service, refreshTokens } = makeService(repo);
+    const { service, revokeAllForUser } = makeService(repo);
     const secrets = [
       SessionService.generateSecret(),
       SessionService.generateSecret(),
@@ -249,7 +253,7 @@ describe('Session lifecycle', () => {
 
     expect(await service.logoutAll(USER_A)).toBe(2);
     expect(await service.logoutAll(USER_A)).toBe(0);
-    expect(refreshTokens.revokeAllForUser).toHaveBeenCalledTimes(2);
+    expect(revokeAllForUser).toHaveBeenCalledTimes(2);
     expect(await service.isActive(USER_B, secrets[2], BASE)).toBe(true);
   });
 
