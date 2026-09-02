@@ -13,7 +13,6 @@ import { LoggingModule } from './infrastructure/logging/logger.module.js';
 import { ObservabilityModule } from './infrastructure/observability/observability.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
-import { HealthController } from './modules/health/health.controller.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { PermissionsModule } from './modules/permissions/permissions.module.js';
 import { PropertyModule } from './modules/property/property.module.js';
