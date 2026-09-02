@@ -41,6 +41,7 @@ export interface AutomationCrmPort {
   refreshLeadScore(uuid: string, actor: CrmActor): Promise<Record<string, unknown>>;
   createActivity(input: AutomationActivityInput, actor: CrmActor): Promise<Record<string, unknown>>;
   enqueueCommunication(input: AutomationCommunicationInput, actor: CrmActor): Promise<Record<string, unknown>>;
+  changeLeadStatus(uuid: string, statusUuid: string, actor: CrmActor): Promise<Record<string, unknown>>;
 }
 
 export const CRM_AUTOMATION_PORT = Symbol('CRM_AUTOMATION_PORT');
