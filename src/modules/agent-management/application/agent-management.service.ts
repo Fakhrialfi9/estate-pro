@@ -70,6 +70,20 @@ type Actor = {
   userAgent?: string;
   requestId?: string;
 };
+type AgentRecord = Awaited<
+  ReturnType<PrismaAgentRepository['createProfile']>
+>;
+type AgentProfileDetails = NonNullable<
+  Awaited<ReturnType<PrismaAgentRepository['findProfile']>>
+>;
+type AgentTarget = Awaited<
+  ReturnType<PrismaAgentRepository['listTargets']>
+>[number];
+type AgentAuthorizationSnapshot = Awaited<
+  ReturnType<AuthorizationService['resolve']>
+>;
+
+type AgentProfileStatus = AgentRecord['status'];
 
 @Injectable()
 export class AgentManagementService {
@@ -134,11 +148,12 @@ export class AgentManagementService {
     );
     return this.serialize(agent);
   }
+
   async list(
     query: {
       limit?: number;
       cursor?: string;
-      status?: string;
+      status?: AgentProfileStatus;
       specializationUuid?: string;
       regionUuid?: string;
     },
@@ -185,6 +200,7 @@ export class AgentManagementService {
     await this.record(actor, AUDIT.UPDATED, uuid);
     return this.serialize(result);
   }
+
   async archive(uuid: string, actor: Actor) {
     await this.requirePermission(actor.uuid, 'agents.manage');
     await this.requireAgent(uuid);
@@ -205,9 +221,11 @@ export class AgentManagementService {
     await this.record(actor, AUDIT.SPECIALIZATION_CHANGED, item.uuid);
     return item;
   }
+
   listSpecializations() {
     return this.repo.listSpecializations();
   }
+
   async specializations(uuid: string, actor: Actor) {
     const agent = await this.requireAgent(uuid);
     await this.requireSelfOrPermission(
@@ -215,13 +233,14 @@ export class AgentManagementService {
       actor.uuid,
       'agents.read',
     );
-    return (agent.specializations ?? []).map((x: any) => ({
+    return (agent.specializations ?? []).map((x) => ({
       uuid: x.specialization.uuid,
       code: x.specialization.code,
       name: x.specialization.name,
       isPrimary: x.isPrimary,
     }));
   }
+
   async addSpecialization(
     agentUuid: string,
     specializationUuid: string,
@@ -244,6 +263,7 @@ export class AgentManagementService {
     });
     return result;
   }
+
   async removeSpecialization(
     agentUuid: string,
     specializationUuid: string,
@@ -281,6 +301,7 @@ export class AgentManagementService {
     });
     return item;
   }
+
   async listCoverage(agentUuid: string, actor: Actor) {
     const agent = await this.requireAgent(agentUuid);
     await this.requireSelfOrPermission(
@@ -290,6 +311,7 @@ export class AgentManagementService {
     );
     return this.repo.listCoverages(agent.id);
   }
+
   async removeCoverage(coverageUuid: string, actor: Actor) {
     await this.requirePermission(actor.uuid, 'agents.location.manage');
     await this.repo.removeCoverage(coverageUuid);
@@ -329,6 +351,7 @@ export class AgentManagementService {
     await this.record(actor, AUDIT.AVAILABILITY_CHANGED, agentUuid);
     return this.getAvailability(agentUuid);
   }
+
   async getAvailability(agentUuid: string) {
     const agent = await this.requireAgent(agentUuid);
     const full = await this.repo.findProfile(agentUuid);
@@ -349,6 +372,7 @@ export class AgentManagementService {
     );
     return this.capacityForAgent(agent);
   }
+
   async assign(
     propertyUuid: string,
     agentUuid: string,
@@ -362,14 +386,15 @@ export class AgentManagementService {
       propertyUuid,
       agentUserUuid: target.userUuid,
       actorUuid: actor.uuid,
-      reason,
     });
     await this.record(actor, AUDIT.ASSIGNED, result.uuid, {
       propertyUuid,
       agentUserUuid: target.userUuid,
+      ...(reason ? { reason } : {}),
     });
     return result;
   }
+
   async reassign(
     propertyUuid: string,
     toAgentUuid: string,
@@ -387,14 +412,15 @@ export class AgentManagementService {
         : undefined,
       toAgentUserUuid: target.userUuid,
       actorUuid: actor.uuid,
-      reason,
     });
     await this.record(actor, AUDIT.REASSIGNED, result.uuid, {
       propertyUuid,
       toAgentUserUuid: target.userUuid,
+      ...(reason ? { reason } : {}),
     });
     return result;
   }
+
   async unassign(
     propertyUuid: string,
     agentUuid: string,
@@ -407,14 +433,15 @@ export class AgentManagementService {
       propertyUuid,
       agentUserUuid: target.userUuid,
       actorUuid: actor.uuid,
-      reason,
     });
     await this.record(actor, AUDIT.UNASSIGNED, result.uuid, {
       propertyUuid,
       agentUserUuid: target.userUuid,
+      ...(reason ? { reason } : {}),
     });
     return result;
   }
+
   async assignments(agentUuid: string, history: boolean, actor: Actor) {
     const agent = await this.requireAgent(agentUuid);
     await this.requireSelfOrPermission(
@@ -448,6 +475,7 @@ export class AgentManagementService {
     await this.record(actor, AUDIT.TARGET_CHANGED, item.uuid);
     return item;
   }
+
   async listTargets(agentUuid: string, actor: Actor) {
     const agent = await this.requireAgent(agentUuid);
     await this.requireSelfOrPermission(
@@ -457,6 +485,7 @@ export class AgentManagementService {
     );
     return this.repo.listTargets(agent.id);
   }
+
   async updateTarget(uuid: string, input: TargetUpdateDto, actor: Actor) {
     await this.requirePermission(actor.uuid, 'agents.target.manage');
     const current = await this.repo.findTarget(uuid);
@@ -476,6 +505,7 @@ export class AgentManagementService {
     });
     return item;
   }
+
   async closeTarget(uuid: string, actor: Actor) {
     await this.requirePermission(actor.uuid, 'agents.target.manage');
     await this.repo.closeTarget(uuid);
@@ -506,7 +536,7 @@ export class AgentManagementService {
       salesValue: sales.salesValue,
       totalWorkload: capacity.current,
     };
-    const kpis = targets.map((target: any) => {
+    const kpis = targets.map((target: AgentTarget) => {
       const actual = Number(
         (metrics as Record<string, unknown>)[target.metricType] ?? 0,
       );
@@ -553,7 +583,20 @@ export class AgentManagementService {
       specializationUuid: query.specializationUuid,
       regionUuids: regions,
     });
-    const results = [];
+    const results: Array<{
+      uuid: string;
+      userUuid: string;
+      displayName: string | null;
+      specializations: string[];
+      coverage: string[];
+      availability: string;
+      capacity: {
+        max: number;
+        current: number;
+        remaining: number;
+        utilizationPercent: number;
+      };
+    }> = [];
     for (const agent of rows) {
       const cap = await this.capacityForAgent(agent);
       const availability = this.effectiveAvailability(agent);
@@ -580,9 +623,9 @@ export class AgentManagementService {
         userUuid: agent.userUuid,
         displayName: agent.displayName,
         specializations: (agent.specializations ?? []).map(
-          (x: any) => x.specialization.uuid,
+          (x) => x.specialization.uuid,
         ),
-        coverage: (agent.coverages ?? []).map((x: any) => x.regionUuid),
+        coverage: (agent.coverages ?? []).map((x) => x.regionUuid),
         availability,
         capacity: cap,
       });
@@ -590,7 +633,7 @@ export class AgentManagementService {
     return results;
   }
 
-  private async capacityForAgent(agent: any) {
+  private async capacityForAgent(agent: AgentRecord) {
     const [property, crm, sales] = await Promise.all([
       this.propertyAssignments.countCurrent(agent.userUuid),
       this.crmWorkload.getWorkload(agent.userUuid),
@@ -608,7 +651,8 @@ export class AgentManagementService {
         : 100,
     };
   }
-  private async ensureAssignable(agent: any) {
+
+  private async ensureAssignable(agent: AgentRecord) {
     const user = await this.users.getUser(agent.userUuid).catch(() => null);
     const auth = await this.authorization
       .resolve(agent.userUuid)
@@ -623,7 +667,7 @@ export class AgentManagementService {
           ),
           agentStatus: agent.status,
         },
-        this.effectiveAvailability(agent),
+        this.effectiveAvailability(agent as AgentProfileDetails),
         cap.remaining,
       )
     )
@@ -631,17 +675,19 @@ export class AgentManagementService {
         'Agent is not eligible, available, or within capacity for assignment',
       );
   }
+
   private assignmentPermission(agentUserUuid: string, actorUuid: string) {
     return agentUserUuid === actorUuid
       ? this.requirePermission(actorUuid, 'agents.assignment.self')
       : this.requirePermission(actorUuid, 'agents.assignment.manage');
   }
-  private effectiveAvailability(agent: any): string {
+
+  private effectiveAvailability(agent: AgentProfileDetails | null): string {
     const state = agent?.availability?.status ?? 'OFFLINE';
     if (state !== 'ACTIVE') return state;
     const now = new Date();
     const exception = (agent.availabilityExceptions ?? []).find(
-      (x: any) => x.startsAt <= now && x.endsAt >= now,
+      (x) => x.startsAt <= now && x.endsAt >= now,
     );
     if (exception) return exception.status;
     const tz = agent?.availability?.timeZone ?? agent?.timeZone ?? 'UTC';
@@ -663,7 +709,7 @@ export class AgentManagementService {
     const hour = Number(parts.find((x) => x.type === 'hour')?.value ?? 0);
     const minute = Number(parts.find((x) => x.type === 'minute')?.value ?? 0);
     const current = hour * 60 + minute;
-    const active = (agent.weeklySchedules ?? []).some((x: any) => {
+    const active = (agent.weeklySchedules ?? []).some((x) => {
       const start =
         Number(x.startTime.slice(0, 2)) * 60 + Number(x.startTime.slice(3));
       const end =
@@ -677,15 +723,20 @@ export class AgentManagementService {
     });
     return active ? 'ACTIVE' : 'UNAVAILABLE';
   }
-  private async requireAgent(uuid: string) {
+
+  private async requireAgent(uuid: string): Promise<AgentProfileDetails> {
     const agent = await this.repo.findProfile(uuid);
     if (!agent) throw new NotFoundException('Agent not found');
     return agent;
   }
-  private hasPermission(snapshot: any, permission: string) {
-    const values = snapshot?.permissions ?? snapshot?.permissionCodes ?? [];
-    return values.includes(permission);
+
+  private hasPermission(
+    snapshot: AgentAuthorizationSnapshot,
+    permission: string,
+  ): boolean {
+    return snapshot.permissionCodes.includes(permission);
   }
+
   private async requirePermission(actorUuid: string, permission: string) {
     const snapshot = await this.authorization.resolve(actorUuid);
     try {
@@ -694,6 +745,7 @@ export class AgentManagementService {
       throw new ForbiddenException(`Missing permission: ${permission}`);
     }
   }
+
   private async requireSelfOrPermission(
     userUuid: string,
     actorUuid: string,
@@ -702,7 +754,8 @@ export class AgentManagementService {
     if (userUuid !== actorUuid)
       await this.requirePermission(actorUuid, permission);
   }
-  private serialize(agent: any) {
+
+  private serialize(agent: AgentRecord) {
     return {
       uuid: agent.uuid,
       userUuid: agent.userUuid,
@@ -718,6 +771,7 @@ export class AgentManagementService {
       updatedAt: agent.updatedAt,
     };
   }
+
   private async record(
     actor: Actor,
     action: string,
