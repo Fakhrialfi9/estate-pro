@@ -9,10 +9,9 @@ import {
   Max,
   MaxLength,
   Min,
-  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ACTION_TYPES, TRIGGER_TYPES } from '../domain/automation.types.js';
+import { TRIGGER_TYPES } from '../domain/automation.types.js';
 
 export class CreateAutomationWorkflowDto {
   @ApiProperty({ maxLength: 180 }) @IsString() @MaxLength(180) name!: string;
@@ -76,56 +75,4 @@ export class CreateAssignmentRuleDto {
   @ApiPropertyOptional() @IsOptional() @IsString() activeFrom?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() activeUntil?: string;
   @ApiPropertyOptional() @IsOptional() isActive?: boolean;
-}
-
-export class CreateSlaPolicyDto {
-  @ApiProperty() @IsString() @MaxLength(180) name!: string;
-  @ApiProperty() @IsString() targetEntityType!: string;
-  @ApiProperty() @IsString() startEventType!: string;
-  @ApiProperty({ type: [String] }) @IsArray() stopEventTypes!: string[];
-  @ApiProperty() @IsInt() @Min(1) @Max(525600) durationMinutes!: number;
-  @ApiPropertyOptional({ default: 'UTC' })
-  @IsOptional()
-  @IsString()
-  timezone?: string;
-  @ApiProperty({ type: Object }) businessHours!: Record<string, unknown>;
-}
-
-export class CreateEscalationPolicyDto {
-  @ApiProperty() @IsString() @MaxLength(180) name!: string;
-  @ApiProperty({ type: [Object] }) @IsArray() levels!: Record<
-    string,
-    unknown
-  >[];
-  @ApiPropertyOptional({ default: 3 })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(10)
-  maxAttempts?: number;
-  @ApiPropertyOptional({ default: 3600 })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(604800)
-  cooldownSeconds?: number;
-}
-
-export class PageAutomationQueryDto {
-  @ApiPropertyOptional({ default: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number;
-  @ApiPropertyOptional({ default: 20 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number;
-  @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() entityType?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() entityUuid?: string;
 }
