@@ -10,15 +10,23 @@ describe('PropertyMasterService audit lifecycle', () => {
     ipAddress: '127.0.0.1',
     userAgent: 'test-agent',
   };
-  const audit: SecurityAuditRepository = { record: vi.fn() };
+  const auditRecordMock = vi.fn();
+  const createPropertyMock = vi.fn();
+  const getPropertyMock = vi.fn();
+  const updatePropertyMock = vi.fn();
+  const deletePropertyMock = vi.fn();
+  const restorePropertyMock = vi.fn();
+  const duplicatePropertyMock = vi.fn();
+
+  const audit: SecurityAuditRepository = { record: auditRecordMock };
 
   const repository = {
-    createProperty: vi.fn(),
-    getProperty: vi.fn(),
-    updateProperty: vi.fn(),
-    deleteProperty: vi.fn(),
-    restoreProperty: vi.fn(),
-    duplicateProperty: vi.fn(),
+    createProperty: createPropertyMock,
+    getProperty: getPropertyMock,
+    updateProperty: updatePropertyMock,
+    deleteProperty: deletePropertyMock,
+    restoreProperty: restorePropertyMock,
+    duplicateProperty: duplicatePropertyMock,
   } as unknown as PropertyMasterRepository;
 
   const service = new PropertyMasterService(repository, audit);
@@ -28,7 +36,7 @@ describe('PropertyMasterService audit lifecycle', () => {
   });
 
   it('records property creation with actor and safe lifecycle fields', async () => {
-    vi.mocked(repository.createProperty).mockResolvedValueOnce({
+    createPropertyMock.mockResolvedValueOnce({
       uuid: '22222222-2222-4222-8222-222222222222',
       title: 'Villa',
       status: 'DRAFT',
@@ -37,7 +45,7 @@ describe('PropertyMasterService audit lifecycle', () => {
 
     await service.createProperty({ title: 'Villa' }, actor);
 
-    expect(audit.record).toHaveBeenCalledWith(
+    expect(auditRecordMock).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'PROPERTY_CREATED',
         entityType: 'property',
@@ -55,7 +63,7 @@ describe('PropertyMasterService audit lifecycle', () => {
 
   it('records update plus verification and publication transitions', async () => {
     const uuid = '33333333-3333-4333-8333-333333333333';
-    vi.mocked(repository.getProperty)
+    getPropertyMock
       .mockResolvedValueOnce({
         uuid,
         title: 'Villa',
@@ -75,7 +83,7 @@ describe('PropertyMasterService audit lifecycle', () => {
         version: 3,
         verifiedAt: new Date('2026-08-27T01:00:00.000Z'),
       });
-    vi.mocked(repository.updateProperty)
+    updatePropertyMock
       .mockResolvedValueOnce({
         uuid,
         title: 'Villa Prime',
@@ -100,9 +108,9 @@ describe('PropertyMasterService audit lifecycle', () => {
     await service.verifyProperty(uuid, 2, actor);
     await service.publishProperty(uuid, 3, actor);
 
-    const actions = vi
-      .mocked(audit.record)
-      .mock.calls.map(([event]) => event.action);
+    const actions = auditRecordMock.mock.calls.map(
+      ([event]: [{ action: string }]) => event.action,
+    );
     expect(actions).toEqual([
       'PROPERTY_UPDATED',
       'PROPERTY_VERIFIED',
@@ -112,18 +120,18 @@ describe('PropertyMasterService audit lifecycle', () => {
 
   it('records delete, restore, archive, and duplicate lifecycle events', async () => {
     const uuid = '44444444-4444-4444-8444-444444444444';
-    vi.mocked(repository.deleteProperty).mockResolvedValueOnce();
-    vi.mocked(repository.restoreProperty).mockResolvedValueOnce({ uuid });
-    vi.mocked(repository.duplicateProperty).mockResolvedValueOnce({
+    deletePropertyMock.mockResolvedValueOnce();
+    restorePropertyMock.mockResolvedValueOnce({ uuid });
+    duplicatePropertyMock.mockResolvedValueOnce({
       uuid: '55555555-5555-4555-8555-555555555555',
     });
-    vi.mocked(repository.getProperty).mockResolvedValueOnce({
+    getPropertyMock.mockResolvedValueOnce({
       uuid,
       status: 'ACTIVE',
       title: 'Villa',
       version: 1,
     });
-    vi.mocked(repository.updateProperty).mockResolvedValueOnce({
+    updatePropertyMock.mockResolvedValueOnce({
       uuid,
       title: 'Villa',
       status: 'ARCHIVED',
@@ -135,9 +143,9 @@ describe('PropertyMasterService audit lifecycle', () => {
     await service.restoreProperty(uuid, actor);
     await service.duplicateProperty(uuid, actor);
 
-    const actions = vi
-      .mocked(audit.record)
-      .mock.calls.map(([event]) => event.action);
+    const actions = auditRecordMock.mock.calls.map(
+      ([event]: [{ action: string }]) => event.action,
+    );
     expect(actions).toContain('PROPERTY_ARCHIVED');
     expect(actions).toContain('PROPERTY_DELETED');
     expect(actions).toContain('PROPERTY_RESTORED');
