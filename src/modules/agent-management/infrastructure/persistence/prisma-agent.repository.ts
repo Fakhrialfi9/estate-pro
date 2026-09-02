@@ -54,9 +54,7 @@ export class PrismaAgentRepository {
     specializationUuid?: string;
     regionUuids?: string[];
   }) {
-    const where: Parameters<
-      PrismaService['agentProfile']['findMany']
-    >[0]['where'] = {
+    const where = {
       deletedAt: null,
       ...(query.status ? { status: query.status } : {}),
       ...(query.specializationUuid
@@ -96,7 +94,7 @@ export class PrismaAgentRepository {
         coverages: { where: { isActive: true } },
         availability: true,
         weeklySchedules: { where: { isActive: true } },
-        availabilityExceptions: true,
+        availabilityExceptions: { where: { endsAt: { gte: new Date() } } },
       },
     });
   }
