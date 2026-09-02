@@ -10,17 +10,17 @@ const user = (
 });
 
 const repo = {
-  leadVolume: async () => [],
-  leadLifecycle: async () => [],
-  leadAging: async () => [],
-  leadFunnel: async () => [
+  leadVolume: () => [],
+  leadLifecycle: () => [],
+  leadAging: () => [],
+  leadFunnel: () => [
     { status: 'NEW', count: 2 },
     { status: 'QUALIFIED', count: 1 },
   ],
-  leadAssignment: async () => [],
-  sourcePerformance: async () => [{ leads: 4, qualified: 2, converted: 1 }],
-  campaignPerformance: async () => [],
-  conversion: async () => [
+  leadAssignment: () => [],
+  sourcePerformance: () => [{ leads: 4, qualified: 2, converted: 1 }],
+  campaignPerformance: () => [],
+  conversion: () => [
     {
       leads: 10,
       opportunities: 4,
@@ -29,25 +29,25 @@ const repo = {
       opportunityToCloseDays: 8,
     },
   ],
-  cohort: async () => [],
-  pipeline: async () => [],
-  stageVelocity: async () => [],
-  opportunityAging: async () => [],
-  opportunityValue: async () => [],
-  propertyInventory: async () => [],
-  listingAnalytics: async () => [],
-  propertyLifecycle: async () => [],
-  propertyAging: async () => [],
-  agentWorkload: async () => [],
-  agentActivity: async () => [],
-  agentConversion: async () => [],
-  agentProperty: async () => [],
-  salesVolume: async () => [],
-  salesCycle: async () => [],
-  revenue: async () => [],
-  averageDeal: async () => [],
-  sla: async () => [],
-  forecastInput: async () => [
+  cohort: () => [],
+  pipeline: () => [],
+  stageVelocity: () => [],
+  opportunityAging: () => [],
+  opportunityValue: () => [],
+  propertyInventory: () => [],
+  listingAnalytics: () => [],
+  propertyLifecycle: () => [],
+  propertyAging: () => [],
+  agentWorkload: () => [],
+  agentActivity: () => [],
+  agentConversion: () => [],
+  agentProperty: () => [],
+  salesVolume: () => [],
+  salesCycle: () => [],
+  revenue: () => [],
+  averageDeal: () => [],
+  sla: () => [],
+  forecastInput: () => [
     {
       closedRevenue: 500,
       closedDeals: 5,
@@ -101,7 +101,7 @@ describe('analytics domain semantics', () => {
   it('marks forecast confidence insufficient below minimum sample', async () => {
     const forecastRepo = {
       ...repo,
-      forecastInput: async () => [
+      forecastInput: () => [
         {
           closedRevenue: 100,
           closedDeals: 2,
