@@ -1,7 +1,8 @@
+import type { UserPublicPort } from '../../../common/contracts/user-public.port.js';
+import type { AutomationOpportunityContext } from '../../../common/contracts/automation-sales.port.js';
+import type { AutomationLeadContext } from '../../../common/contracts/automation-crm.port.js';
 import type {
   ActionState,
-  AutomationOpportunityContext,
-  AutomationLeadContext,
   ExecutionState,
   TriggerDefinition,
   WorkflowDefinition,
@@ -19,28 +20,11 @@ export interface AutomationEvent {
 }
 
 export interface AutomationRepository {
-  createWorkflow(input: {
-    uuid: string;
-    name: string;
-    description?: string | null;
-    ownerUserUuid: string;
-    createdBy: string;
-    updatedBy: string;
-  }): Promise<Record<string, unknown>>;
+  createWorkflow(input: { uuid: string; name: string; description?: string | null; ownerUserUuid: string; createdBy: string; updatedBy: string }): Promise<Record<string, unknown>>;
   updateWorkflow(uuid: string, input: Record<string, unknown>): Promise<Record<string, unknown>>;
   getWorkflow(uuid: string): Promise<Record<string, unknown> | null>;
   listWorkflows(input: Record<string, unknown>): Promise<{ items: readonly Record<string, unknown>[]; total: number; page: number; limit: number }>;
-  createVersion(input: {
-    uuid: string;
-    workflowUuid: string;
-    version: number;
-    status: string;
-    triggerDefinition: TriggerDefinition;
-    definition: WorkflowDefinition;
-    checksum: string;
-    createdBy: string;
-    activatedAt?: Date | null;
-  }): Promise<Record<string, unknown>>;
+  createVersion(input: { uuid: string; workflowUuid: string; version: number; status: string; triggerDefinition: TriggerDefinition; definition: WorkflowDefinition; checksum: string; createdBy: string; activatedAt?: Date | null }): Promise<Record<string, unknown>>;
   getVersion(uuid: string): Promise<Record<string, unknown> | null>;
   listActiveVersions(): Promise<readonly Record<string, unknown>[]>;
   updateVersion(uuid: string, input: Record<string, unknown>): Promise<Record<string, unknown>>;
@@ -69,7 +53,7 @@ export interface WorkflowContextProvider {
   getLead(uuid: string): Promise<AutomationLeadContext>;
   getActivity(uuid: string): Promise<Record<string, unknown>>;
   getOpportunity(uuid: string): Promise<AutomationOpportunityContext>;
-  getUser(uuid: string): Promise<{ uuid: string; status: string; isActive: boolean; deletedAt: Date | null }>;
+  getUser: UserPublicPort['getUser'];
 }
 
 export interface AuditPort {
