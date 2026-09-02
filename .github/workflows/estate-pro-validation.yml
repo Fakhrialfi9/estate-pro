@@ -76,19 +76,28 @@ jobs:
             src/modules/agent-management/application/agent-management.service.ts \
             src/modules/automation/application/services/automation.service.ts \
             src/modules/automation/application/validation/workflow-validator.ts \
-            src/modules/automation/presentation/automation.dto.ts
+            src/modules/automation/presentation/automation.dto.ts \
+            src/modules/automation/domain/automation.types.ts \
+            test/security/property-access.guard.spec.ts \
+            test/unit/audit/prisma-security-audit.repository.spec.ts
           if ! git diff --quiet -- \
             src/modules/agent-management/application/agent-management.service.ts \
             src/modules/automation/application/services/automation.service.ts \
             src/modules/automation/application/validation/workflow-validator.ts \
-            src/modules/automation/presentation/automation.dto.ts; then
+            src/modules/automation/presentation/automation.dto.ts \
+            src/modules/automation/domain/automation.types.ts \
+            test/security/property-access.guard.spec.ts \
+            test/unit/audit/prisma-security-audit.repository.spec.ts; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add \
               src/modules/agent-management/application/agent-management.service.ts \
               src/modules/automation/application/services/automation.service.ts \
               src/modules/automation/application/validation/workflow-validator.ts \
-              src/modules/automation/presentation/automation.dto.ts
+              src/modules/automation/presentation/automation.dto.ts \
+              src/modules/automation/domain/automation.types.ts \
+              test/security/property-access.guard.spec.ts \
+              test/unit/audit/prisma-security-audit.repository.spec.ts
             git commit -m "style(automation): apply canonical formatting [skip ci]"
             git push origin HEAD:main
           fi
