@@ -4,7 +4,10 @@ import { APP_FILTER } from '@nestjs/core';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
-import { configuration } from './config/configuration.js';
+import {
+  configuration,
+  configurationValidationSchema,
+} from './config/configuration.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { LoggingModule } from './infrastructure/logging/logger.module.js';
 import { ObservabilityModule } from './infrastructure/observability/observability.module.js';
@@ -24,7 +27,6 @@ import { PropertyMatchingModule } from './modules/property-matching/property-mat
 import { AutomationModule } from './modules/automation/automation.module.js';
 import { AgentManagementModule } from './modules/agent-management/agent-management.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
-import { configurationValidationSchema } from './config/configuration.js';
 
 @Module({
   imports: [
