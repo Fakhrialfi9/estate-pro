@@ -120,9 +120,7 @@ describe('Property Types HTTP API', () => {
     denied = await makeActor(prisma, tokens, false);
   });
 
-  afterAll(async () => {
-    await app.close();
-  });
+  afterAll(() => app.close());
 
   const auth = async (actor: { uuid: string; sessionId: string }) =>
     `Bearer ${await tokens.issueAccessToken(actor.uuid, actor.sessionId)}`;
