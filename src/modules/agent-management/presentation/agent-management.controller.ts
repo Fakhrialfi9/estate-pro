@@ -27,6 +27,7 @@ import { RequirePermissions } from '../../../common/security/authorization.decor
 import { AgentManagementService } from '../application/agent-management.service.js';
 import {
   AgentCreateDto,
+  AgentStatusDto,
   AgentUpdateDto,
   AssignmentCreateDto,
   AvailabilityUpdateDto,
@@ -60,7 +61,7 @@ export class AgentManagementController {
     @Req() r: AuthRequest,
     @Query('limit') limit?: string,
     @Query('cursor') cursor?: string,
-    @Query('status') status?: string,
+    @Query('status') status?: AgentStatusDto,
     @Query('specializationUuid') specializationUuid?: string,
     @Query('regionUuid') regionUuid?: string,
   ) {
@@ -108,63 +109,33 @@ export class AgentManagementController {
 
   @Get('candidates/search')
   @RequirePermissions('agents.read')
-  @ApiOperation({ summary: 'Find eligible assignment candidates' })
+  @ApiOperation({ summary: 'Find eligible agent candidates' })
   candidates(
-    @Req() r: AuthRequest,
     @Query('propertyUuid') propertyUuid?: string,
     @Query('specializationUuid') specializationUuid?: string,
-    @Query('regionUuid') regionUuid?: string,
+    @Query('regionUuids') regionUuids?: string | string[],
     @Query('limit') limit?: string,
+    @Req() r?: AuthRequest,
   ) {
+    const regions = Array.isArray(regionUuids)
+      ? regionUuids
+      : regionUuids
+        ? regionUuids.split(',').map((value) => value.trim())
+        : undefined;
     return this.service.findCandidates(
       {
         propertyUuid,
         specializationUuid,
-        regionUuids: regionUuid ? [regionUuid] : undefined,
+        regionUuids: regions,
         limit: limit ? Number(limit) : undefined,
       },
-      actor(r),
-    );
-  }
-
-  @Post('assignments')
-  @RequirePermissions('agents.assignment.manage')
-  @ApiOperation({ summary: 'Assign a property to an eligible agent' })
-  assignments(
-    @Req() r: AuthRequest,
-    @Body() dto: AssignmentCreateDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
-  ) {
-    return this.service.assign(
-      dto.propertyUuid,
-      dto.agentUuid,
-      actor(r, ua, requestId),
-      dto.reason,
-    );
-  }
-
-  @Post('assignments/:propertyUuid/reassign')
-  @RequirePermissions('agents.assignment.manage')
-  reassign(
-    @Req() r: AuthRequest,
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
-    propertyUuid: string,
-    @Body() dto: ReassignmentDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
-  ) {
-    return this.service.reassign(
-      propertyUuid,
-      dto.toAgentUuid,
-      actor(r, ua, requestId),
-      dto.fromAgentUuid,
-      dto.reason,
+      r?.user?.sub ? actor(r) : undefined,
     );
   }
 
   @Get(':uuid')
   @RequirePermissions('agents.read')
+  @ApiOperation({ summary: 'Get an agent profile' })
   get(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -174,6 +145,7 @@ export class AgentManagementController {
 
   @Patch(':uuid')
   @RequirePermissions('agents.manage')
+  @ApiOperation({ summary: 'Update an agent profile' })
   update(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -187,17 +159,17 @@ export class AgentManagementController {
   @Delete(':uuid')
   @HttpCode(204)
   @RequirePermissions('agents.manage')
-  archive(
+  @ApiOperation({ summary: 'Archive an agent' })
+  async archive(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
   ) {
-    return this.service.archive(uuid, actor(r, ua, requestId));
+    await this.service.archive(uuid, actor(r));
   }
 
   @Get(':uuid/specializations')
   @RequirePermissions('agents.read')
+  @ApiOperation({ summary: 'List agent specializations' })
   specializationsForAgent(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -207,43 +179,38 @@ export class AgentManagementController {
 
   @Post(':uuid/specializations/:specializationUuid')
   @RequirePermissions('agents.specialization.manage')
+  @ApiOperation({ summary: 'Assign an agent specialization' })
   addSpecialization(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
     @Param('specializationUuid', new ParseUUIDPipe({ version: '4' }))
     specializationUuid: string,
     @Query('primary') primary = 'false',
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
   ) {
     return this.service.addSpecialization(
       uuid,
       specializationUuid,
       primary === 'true',
-      actor(r, ua, requestId),
+      actor(r),
     );
   }
 
   @Delete(':uuid/specializations/:specializationUuid')
   @HttpCode(204)
   @RequirePermissions('agents.specialization.manage')
-  removeSpecialization(
+  @ApiOperation({ summary: 'Remove an agent specialization' })
+  async removeSpecialization(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
     @Param('specializationUuid', new ParseUUIDPipe({ version: '4' }))
     specializationUuid: string,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
   ) {
-    return this.service.removeSpecialization(
-      uuid,
-      specializationUuid,
-      actor(r, ua, requestId),
-    );
+    await this.service.removeSpecialization(uuid, specializationUuid, actor(r));
   }
 
   @Get(':uuid/coverage')
   @RequirePermissions('agents.read')
+  @ApiOperation({ summary: 'List agent geographic coverage' })
   coverage(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -253,52 +220,50 @@ export class AgentManagementController {
 
   @Post(':uuid/coverage')
   @RequirePermissions('agents.location.manage')
+  @ApiOperation({ summary: 'Add agent geographic coverage' })
   addCoverage(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
     @Body() dto: CoverageCreateDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
   ) {
-    return this.service.addCoverage(uuid, dto, actor(r, ua, requestId));
+    return this.service.addCoverage(uuid, dto, actor(r));
   }
 
-  @Delete('coverage/:coverageUuid')
+  @Delete(':uuid/coverage/:coverageUuid')
   @HttpCode(204)
   @RequirePermissions('agents.location.manage')
-  removeCoverage(
+  @ApiOperation({ summary: 'Remove agent geographic coverage' })
+  async removeCoverage(
     @Req() r: AuthRequest,
-    @Param('coverageUuid', new ParseUUIDPipe({ version: '4' }))
-    coverageUuid: string,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
+    @Param('coverageUuid', new ParseUUIDPipe({ version: '4' })) coverageUuid: string,
   ) {
-    return this.service.removeCoverage(coverageUuid, actor(r, ua, requestId));
+    await this.service.removeCoverage(coverageUuid, actor(r));
+  }
+
+  @Put(':uuid/availability')
+  @RequirePermissions('agents.availability.manage')
+  @ApiOperation({ summary: 'Update agent availability' })
+  updateAvailability(
+    @Req() r: AuthRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Body() dto: AvailabilityUpdateDto,
+  ) {
+    return this.service.updateAvailability(uuid, dto, actor(r));
   }
 
   @Get(':uuid/availability')
   @RequirePermissions('agents.read')
+  @ApiOperation({ summary: 'Get agent availability' })
   availability(
+    @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
   ) {
     return this.service.getAvailability(uuid);
   }
 
-  @Put(':uuid/availability')
-  @ApiOperation({ summary: 'Update self or managed availability' })
-  @RequirePermissions('agents.availability.manage')
-  updateAvailability(
-    @Req() r: AuthRequest,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Body() dto: AvailabilityUpdateDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
-  ) {
-    return this.service.updateAvailability(uuid, dto, actor(r, ua, requestId));
-  }
-
   @Get(':uuid/capacity')
   @RequirePermissions('agents.read')
+  @ApiOperation({ summary: 'Get agent capacity' })
   capacity(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -306,9 +271,51 @@ export class AgentManagementController {
     return this.service.capacity(uuid, actor(r));
   }
 
+  @Post(':uuid/assignments')
+  @RequirePermissions('agents.assignment.manage')
+  @ApiOperation({ summary: 'Assign property to an agent' })
+  assign(
+    @Req() r: AuthRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Body() dto: AssignmentCreateDto,
+  ) {
+    return this.service.assign(dto.propertyUuid, uuid, actor(r), dto.reason);
+  }
+
+  @Post(':uuid/assignments/reassign')
+  @RequirePermissions('agents.assignment.manage')
+  @ApiOperation({ summary: 'Reassign property to an agent' })
+  reassign(
+    @Req() r: AuthRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Body() dto: ReassignmentDto,
+  ) {
+    return this.service.reassign(
+      dto.propertyUuid,
+      uuid,
+      actor(r),
+      dto.fromAgentUuid,
+      dto.reason,
+    );
+  }
+
+  @Delete(':uuid/assignments')
+  @HttpCode(204)
+  @RequirePermissions('agents.assignment.manage')
+  @ApiOperation({ summary: 'Unassign property from an agent' })
+  async unassign(
+    @Req() r: AuthRequest,
+    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
+    @Query('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
+  ) {
+    await this.service.unassign(propertyUuid, uuid, actor(r));
+  }
+
   @Get(':uuid/assignments')
   @RequirePermissions('agents.read')
-  assignmentList(
+  @ApiOperation({ summary: 'List agent property assignments' })
+  assignments(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
     @Query('history') history = 'false',
@@ -316,22 +323,9 @@ export class AgentManagementController {
     return this.service.assignments(uuid, history === 'true', actor(r));
   }
 
-  @Delete(':uuid/assignments/:propertyUuid')
-  @HttpCode(204)
-  @RequirePermissions('agents.assignment.manage')
-  unassign(
-    @Req() r: AuthRequest,
-    @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
-    propertyUuid: string,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
-  ) {
-    return this.service.unassign(propertyUuid, uuid, actor(r, ua, requestId));
-  }
-
   @Get(':uuid/targets')
   @RequirePermissions('agents.target.read')
+  @ApiOperation({ summary: 'List agent targets' })
   targets(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -341,44 +335,39 @@ export class AgentManagementController {
 
   @Post(':uuid/targets')
   @RequirePermissions('agents.target.manage')
+  @ApiOperation({ summary: 'Create agent target' })
   createTarget(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
     @Body() dto: TargetCreateDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
   ) {
-    return this.service.createTarget(uuid, dto, actor(r, ua, requestId));
+    return this.service.createTarget(uuid, dto, actor(r));
   }
 
   @Patch('targets/:targetUuid')
   @RequirePermissions('agents.target.manage')
+  @ApiOperation({ summary: 'Update agent target' })
   updateTarget(
     @Req() r: AuthRequest,
-    @Param('targetUuid', new ParseUUIDPipe({ version: '4' }))
-    targetUuid: string,
+    @Param('targetUuid', new ParseUUIDPipe({ version: '4' })) targetUuid: string,
     @Body() dto: TargetUpdateDto,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
   ) {
-    return this.service.updateTarget(targetUuid, dto, actor(r, ua, requestId));
+    return this.service.updateTarget(targetUuid, dto, actor(r));
   }
 
-  @Delete('targets/:targetUuid')
-  @HttpCode(204)
+  @Post('targets/:targetUuid/close')
   @RequirePermissions('agents.target.manage')
+  @ApiOperation({ summary: 'Close agent target' })
   closeTarget(
     @Req() r: AuthRequest,
-    @Param('targetUuid', new ParseUUIDPipe({ version: '4' }))
-    targetUuid: string,
-    @Headers('user-agent') ua?: string,
-    @Headers('x-request-id') requestId?: string,
+    @Param('targetUuid', new ParseUUIDPipe({ version: '4' })) targetUuid: string,
   ) {
-    return this.service.closeTarget(targetUuid, actor(r, ua, requestId));
+    return this.service.closeTarget(targetUuid, actor(r));
   }
 
   @Get(':uuid/performance')
   @RequirePermissions('agents.performance.read')
+  @ApiOperation({ summary: 'Get agent performance metrics' })
   performance(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
