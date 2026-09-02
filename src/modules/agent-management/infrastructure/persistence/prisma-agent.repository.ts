@@ -94,7 +94,7 @@ export class PrismaAgentRepository {
         coverages: { where: { isActive: true } },
         availability: true,
         weeklySchedules: { where: { isActive: true } },
-        availabilityExceptions: { where: { endsAt: { gte: new Date() } } },
+        availabilityExceptions: { where: { startsAt: { lte: new Date() } } },
       },
     });
   }
