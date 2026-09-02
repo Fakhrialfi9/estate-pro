@@ -1,71 +1,81 @@
 import { describe, expect, it } from 'vitest';
-import { AnalyticsScopePolicy } from '../../../src/modules/analytics/domain/policies/analytics-scope.policy.js';
 import { AnalyticsService } from '../../../src/modules/analytics/application/analytics.service.js';
-import type { AnalyticsQueryPort } from '../../../src/modules/analytics/domain/analytics.types.js';
-import type { AccessTokenClaims } from '../../../src/common/security/access-token-verifier.port.js';
+import { AnalyticsScopePolicy } from '../../../src/modules/analytics/domain/policies/analytics-scope.policy.js';
 
 const user = (
-  permissions: string[] = ['analytics.read', 'analytics.forecast'],
-): AccessTokenClaims => ({
-  sub: '11111111-1111-4111-8111-111111111111',
-  sid: '22222222-2222-4222-8222-222222222222',
-  jti: '33333333-3333-4333-8333-333333333333',
-  iat: Math.floor(Date.now() / 1000),
-  exp: Math.floor(Date.now() / 1000) + 900,
+  permissions: string[] = ['analytics.read'],
+): { sub: string; permissions: string[] } => ({
+  sub: '00000000-0000-0000-0000-000000000001',
   permissions,
 });
 
-const repo: AnalyticsQueryPort = {
-  async leads() {
-    return [
-      {
-        total: 3,
-        items: [
-          { status: 'NEW', count: 2, percentage: 66.6666666667 },
-          { status: 'QUALIFIED', count: 1, percentage: 33.3333333333 },
-        ],
-      },
-    ];
-  },
-  async pipeline() {
-    return [
-      {
-        totalValue: 1000,
-        weightedValue: 500,
-        currency: 'IDR',
-        stages: [],
-      },
-    ];
-  },
-  async sales() {
-    return [
-      {
-        totalRevenue: 1000,
-        totalDeals: 2,
-        currency: 'IDR',
-        series: [],
-      },
-    ];
-  },
-  async forecastInput() {
-    return [
-      {
-        closedRevenue: 100,
-        closedDeals: 5,
-        weightedPipeline: 500,
-        openOpportunities: 4,
-      },
-    ];
-  },
-};
+const repo = {
+  leadVolume: () => [],
+  leadLifecycle: () => [],
+  leadAging: () => [],
+  leadFunnel: () => [
+    { status: 'NEW', count: 2 },
+    { status: 'QUALIFIED', count: 1 },
+  ],
+  leadAssignment: () => [],
+  sourcePerformance: () => [{ leads: 4, qualified: 2, converted: 1 }],
+  campaignPerformance: () => [],
+  conversion: () => [
+    {
+      leads: 10,
+      opportunities: 4,
+      wonDeals: 2,
+      leadToOpportunityDays: 3,
+      opportunityToCloseDays: 8,
+    },
+  ],
+  cohort: () => [],
+  pipeline: () => [],
+  stageVelocity: () => [],
+  opportunityAging: () => [],
+  opportunityValue: () => [],
+  propertyInventory: () => [],
+  listingAnalytics: () => [],
+  propertyLifecycle: () => [],
+  propertyAging: () => [],
+  agentWorkload: () => [],
+  agentActivity: () => [],
+  agentConversion: () => [],
+  agentProperty: () => [],
+  salesVolume: () => [],
+  salesCycle: () => [],
+  revenue: () => [],
+  averageDeal: () => [],
+  sla: () => [],
+  forecastInput: () => [
+    {
+      closedRevenue: 500,
+      closedDeals: 5,
+      weightedPipeline: 1500,
+      openOpportunities: 3,
+    },
+  ],
+} as never;
 
-describe('AnalyticsService metric semantics', () => {
-  it('rejects a reporting range over 366 days', () => {
+describe('analytics domain semantics', () => {
+  it('rejects reversed ranges', () => {
     const service = new AnalyticsService(repo, new AnalyticsScopePolicy());
     expect(() =>
       service.normalizeQuery({
-        from: '2024-01-01T00:00:00.000Z',
-        to: '2025-01-03T00:00:00.000Z',
+        from: '2026-01-02T00:00:00Z',
+        to: '2026-01-01T00:00:00Z',
+        page: 1,
+        limit: 50,
+      } as never),
+    ).toThrow('`from` must be earlier than `to`.');
+  });
+
+  it('rejects ranges larger than one year', () => {
+    const service = new AnalyticsService(repo, new AnalyticsScopePolicy());
+    expect(() =>
+      service.normalizeQuery({
+        from: '2025-01-01T00:00:00Z',
+        to: '2026-09-01T00:00:00Z',
         page: 1,
         limit: 50,
       } as never),
@@ -100,7 +110,7 @@ describe('AnalyticsService metric semantics', () => {
             openOpportunities: 3,
           },
         ]),
-    } satisfies AnalyticsQueryPort;
+    } as never;
     const service = new AnalyticsService(
       forecastRepo,
       new AnalyticsScopePolicy(),
