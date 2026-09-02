@@ -56,7 +56,8 @@ const toStringValue = (value: unknown, fallback = ''): string => {
 };
 
 const toFiniteNumber = (value: unknown, fallback = 0): number => {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : fallback;
+  if (typeof value === 'number')
+    return Number.isFinite(value) ? value : fallback;
   if (typeof value === 'string' && value.trim() !== '') {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -70,9 +71,11 @@ const toDateValue = (value: unknown, field: string): Date | null => {
     if (!Number.isNaN(value.getTime())) return value;
     throw new BadRequestException(`Invalid ${field}`);
   }
-  if (typeof value !== 'string') throw new BadRequestException(`Invalid ${field}`);
+  if (typeof value !== 'string')
+    throw new BadRequestException(`Invalid ${field}`);
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) throw new BadRequestException(`Invalid ${field}`);
+  if (Number.isNaN(date.getTime()))
+    throw new BadRequestException(`Invalid ${field}`);
   return date;
 };
 
@@ -89,8 +92,11 @@ const safeJson = (value: unknown): Record<string, unknown> => {
   }
 };
 
-const isTriggerType = (value: unknown): value is (typeof TRIGGER_TYPES)[number] =>
-  typeof value === 'string' && TRIGGER_TYPES.includes(value as (typeof TRIGGER_TYPES)[number]);
+const isTriggerType = (
+  value: unknown,
+): value is (typeof TRIGGER_TYPES)[number] =>
+  typeof value === 'string' &&
+  TRIGGER_TYPES.includes(value as (typeof TRIGGER_TYPES)[number]);
 
 @Injectable()
 export class AutomationService {
@@ -164,8 +170,7 @@ export class AutomationService {
     const versions = Array.isArray(workflow.versions) ? workflow.versions : [];
     const version =
       versions.reduce(
-        (max, item) =>
-          Math.max(max, toFiniteNumber(record(item).version)),
+        (max, item) => Math.max(max, toFiniteNumber(record(item).version)),
         0,
       ) + 1;
     return this.repo.createVersion({
@@ -472,7 +477,11 @@ export class AutomationService {
         page: 1,
         limit: 100,
       }),
-      this.repo.listExecutions({ ownerUserUuid: actorUuid, page: 1, limit: 100 }),
+      this.repo.listExecutions({
+        ownerUserUuid: actorUuid,
+        page: 1,
+        limit: 100,
+      }),
     ]);
     const list = executions.items;
     const count = (state: string) =>
@@ -624,9 +633,9 @@ export class AutomationService {
     context: Record<string, unknown>,
     workerId: string,
   ) {
-    const existing = (await this.repo.listActions(toStringValue(execution.uuid))).find(
-      (value) => toStringValue(record(value).nodeId) === node.id,
-    );
+    const existing = (
+      await this.repo.listActions(toStringValue(execution.uuid))
+    ).find((value) => toStringValue(record(value).nodeId) === node.id);
     const action =
       existing ??
       (await this.repo.createAction({
@@ -695,14 +704,18 @@ export class AutomationService {
         });
         return {
           success: false,
-          execution: await this.repo.updateExecution(toStringValue(execution.uuid), {
-            state: 'WAITING',
-            retryAt: new Date(Date.now() + decision.delayMs),
-            leaseUntil: null,
-            claimedBy: null,
-            lastErrorCode: result.errorCode ?? 'ACTION_RETRYABLE',
-            lastErrorMessage: result.errorMessage ?? 'Retryable action failure',
-          }),
+          execution: await this.repo.updateExecution(
+            toStringValue(execution.uuid),
+            {
+              state: 'WAITING',
+              retryAt: new Date(Date.now() + decision.delayMs),
+              leaseUntil: null,
+              claimedBy: null,
+              lastErrorCode: result.errorCode ?? 'ACTION_RETRYABLE',
+              lastErrorMessage:
+                result.errorMessage ?? 'Retryable action failure',
+            },
+          ),
         };
       }
       await this.repo.updateAction(toStringValue(record(action).uuid), {
@@ -740,14 +753,17 @@ export class AutomationService {
         });
         return {
           success: false,
-          execution: await this.repo.updateExecution(toStringValue(execution.uuid), {
-            state: 'WAITING',
-            retryAt: new Date(Date.now() + decision.delayMs),
-            leaseUntil: null,
-            claimedBy: null,
-            lastErrorCode: 'ACTION_EXCEPTION',
-            lastErrorMessage: message,
-          }),
+          execution: await this.repo.updateExecution(
+            toStringValue(execution.uuid),
+            {
+              state: 'WAITING',
+              retryAt: new Date(Date.now() + decision.delayMs),
+              leaseUntil: null,
+              claimedBy: null,
+              lastErrorCode: 'ACTION_EXCEPTION',
+              lastErrorMessage: message,
+            },
+          ),
         };
       }
       return {
@@ -775,15 +791,29 @@ export class AutomationService {
         case 'NEQ':
           return actual !== operand.expected;
         case 'CONTAINS':
-          return toStringValue(actual).includes(toStringValue(operand.expected));
+          return toStringValue(actual).includes(
+            toStringValue(operand.expected),
+          );
         case 'GT':
-          return toFiniteNumber(actual, Number.NaN) > toFiniteNumber(operand.expected, Number.NaN);
+          return (
+            toFiniteNumber(actual, Number.NaN) >
+            toFiniteNumber(operand.expected, Number.NaN)
+          );
         case 'GTE':
-          return toFiniteNumber(actual, Number.NaN) >= toFiniteNumber(operand.expected, Number.NaN);
+          return (
+            toFiniteNumber(actual, Number.NaN) >=
+            toFiniteNumber(operand.expected, Number.NaN)
+          );
         case 'LT':
-          return toFiniteNumber(actual, Number.NaN) < toFiniteNumber(operand.expected, Number.NaN);
+          return (
+            toFiniteNumber(actual, Number.NaN) <
+            toFiniteNumber(operand.expected, Number.NaN)
+          );
         case 'LTE':
-          return toFiniteNumber(actual, Number.NaN) <= toFiniteNumber(operand.expected, Number.NaN);
+          return (
+            toFiniteNumber(actual, Number.NaN) <=
+            toFiniteNumber(operand.expected, Number.NaN)
+          );
         case 'EXISTS':
           return actual !== null && actual !== undefined;
         case 'IN':

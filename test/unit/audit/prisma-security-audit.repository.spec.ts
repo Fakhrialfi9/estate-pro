@@ -25,10 +25,12 @@ const createTransaction = (
   auditLogChangeCreateMany?: ReturnType<typeof vi.fn>,
 ): AuditTransaction => ({
   authenticationUser: {
-    findFirst: vi.fn<() => Promise<{ id: bigint; uuid: string } | null>>().mockResolvedValue({
-      id: 7n,
-      uuid: actorUuid,
-    }),
+    findFirst: vi
+      .fn<() => Promise<{ id: bigint; uuid: string } | null>>()
+      .mockResolvedValue({
+        id: 7n,
+        uuid: actorUuid,
+      }),
   },
   authorizationRole: { findFirst: vi.fn() },
   authorizationPermission: { findFirst: vi.fn() },
@@ -53,12 +55,16 @@ const createRepository = (transaction: ReturnType<typeof vi.fn>) => {
 describe('PrismaSecurityAuditRepository', () => {
   it('accepts authentication refresh-token audit actions and persists the event', async () => {
     const actorUuid = randomUUID();
-    const auditLogCreate = vi.fn<() => Promise<{ id: bigint }>>().mockResolvedValue({
-      id: 1n,
-    });
+    const auditLogCreate = vi
+      .fn<() => Promise<{ id: bigint }>>()
+      .mockResolvedValue({
+        id: 1n,
+      });
     const tx = createTransaction(actorUuid, auditLogCreate);
     const transaction = vi
-      .fn<(callback: (value: AuditTransaction) => unknown) => Promise<unknown>>()
+      .fn<
+        (callback: (value: AuditTransaction) => unknown) => Promise<unknown>
+      >()
       .mockImplementation((callback) => Promise.resolve(callback(tx)));
     const repository = createRepository(transaction);
     const event: SecurityAuditEvent = {
@@ -86,15 +92,23 @@ describe('PrismaSecurityAuditRepository', () => {
 
   it('accepts property utilities audit events and persists sanitized changes', async () => {
     const actorUuid = randomUUID();
-    const auditLogCreate = vi.fn<() => Promise<{ id: bigint }>>().mockResolvedValue({
-      id: 1n,
-    });
-    const auditLogChangeCreateMany = vi.fn<() => Promise<void>>().mockResolvedValue(
-      undefined,
+    const auditLogCreate = vi
+      .fn<() => Promise<{ id: bigint }>>()
+      .mockResolvedValue({
+        id: 1n,
+      });
+    const auditLogChangeCreateMany = vi
+      .fn<() => Promise<void>>()
+      .mockResolvedValue(undefined);
+    const tx = createTransaction(
+      actorUuid,
+      auditLogCreate,
+      auditLogChangeCreateMany,
     );
-    const tx = createTransaction(actorUuid, auditLogCreate, auditLogChangeCreateMany);
     const transaction = vi
-      .fn<(callback: (value: AuditTransaction) => unknown) => Promise<unknown>>()
+      .fn<
+        (callback: (value: AuditTransaction) => unknown) => Promise<unknown>
+      >()
       .mockImplementation((callback) => Promise.resolve(callback(tx)));
     const repository = createRepository(transaction);
     const event: SecurityAuditEvent = {
