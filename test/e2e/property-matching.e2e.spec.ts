@@ -2,12 +2,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
 import { SessionService } from '../../src/modules/auth/application/services/session.service.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
+import { httpRequest } from './helpers/http.js';
 
 async function createActor(prisma: PrismaService, tokens: JwtTokenService) {
   const user = await prisma.authenticationUser.create({
@@ -93,13 +93,15 @@ describe('Property Matching E2E', () => {
         frequency: 'TOTAL',
       },
     };
-    const created = await request(app.getHttpServer())
+    const created = await httpRequest(app)
       .post('/api/v1/property-matching/preferences')
       .set('Authorization', `Bearer ${owner.token}`)
       .send(payload)
       .expect(201);
-    expect(created.body.version).toBe(1);
-    await request(app.getHttpServer())
+    const createdBody = created.body as { version: number };
+    expect(createdBody.version).toBe(1);
+
+    await httpRequest(app)
       .patch(`/api/v1/property-matching/preferences/USER/${owner.uuid}`)
       .set('Authorization', `Bearer ${owner.token}`)
       .send({
@@ -108,19 +110,21 @@ describe('Property Matching E2E', () => {
         budget: { ...payload.budget, max: '1200000000' },
       })
       .expect(200);
-    await request(app.getHttpServer())
+
+    await httpRequest(app)
       .patch(`/api/v1/property-matching/preferences/USER/${owner.uuid}`)
       .set('Authorization', `Bearer ${owner.token}`)
       .send({ ...payload, version: 1 })
       .expect(409);
-    await request(app.getHttpServer())
+
+    await httpRequest(app)
       .get(`/api/v1/property-matching/preferences/USER/${owner.uuid}`)
       .set('Authorization', `Bearer ${other.token}`)
       .expect(403);
   });
 
   it('generates a traceable recommendation snapshot and history', async () => {
-    const generated = await request(app.getHttpServer())
+    const generated = await httpRequest(app)
       .post('/api/v1/property-matching/recommendations/generate')
       .set('Authorization', `Bearer ${owner.token}`)
       .send({
@@ -130,30 +134,38 @@ describe('Property Matching E2E', () => {
         limit: 20,
       })
       .expect(200);
-    expect(generated.body.algorithmVersion).toBe(1);
-    const latest = await request(app.getHttpServer())
+    const generatedBody = generated.body as { algorithmVersion: number };
+    expect(generatedBody.algorithmVersion).toBe(1);
+
+    const latest = await httpRequest(app)
       .get(`/api/v1/property-matching/recommendations/USER/${owner.uuid}`)
       .set('Authorization', `Bearer ${owner.token}`)
       .expect(200);
-    expect(latest.body.preferenceVersion).toBeDefined();
-    const history = await request(app.getHttpServer())
+    const latestBody = latest.body as { preferenceVersion: unknown };
+    expect(latestBody.preferenceVersion).toBeDefined();
+
+    const history = await httpRequest(app)
       .get(
         `/api/v1/property-matching/recommendations/USER/${owner.uuid}/history`,
       )
       .set('Authorization', `Bearer ${owner.token}`)
       .expect(200);
-    expect(history.body.meta.total).toBeGreaterThan(0);
+    const historyBody = history.body as { meta: { total: number } };
+    expect(historyBody.meta.total).toBeGreaterThan(0);
   });
 
   it('protects the matching endpoints behind session authentication', async () => {
-    await request(app.getHttpServer())
+    await httpRequest(app)
       .post('/api/v1/property-matching/recommendations/refresh')
       .send({ subjectType: 'USER', subjectUuid: owner.uuid })
       .expect(401);
-    await request(app.getHttpServer())
+    await httpRequest(app)
       .get('/api/v1/property-matching/saved-properties')
       .set('Authorization', `Bearer ${other.token}`)
       .expect(200)
-      .expect((response) => expect(response.body.data).toBeInstanceOf(Array));
+      .expect((response) => {
+        const body = response.body as { data: unknown };
+        expect(body.data).toBeInstanceOf(Array);
+      });
   });
 });
