@@ -30,6 +30,7 @@ type MfaChallengeResponse = {
 };
 type MfaCompletedResponse = { accessToken: string };
 type TwoFactorStatusResponse = { enabled: boolean };
+type SuperTestApp = Parameters<typeof request>[0];
 
 let app: NestExpressApplication;
 let prisma: PrismaService;
@@ -38,8 +39,12 @@ let totp: TotpService;
 let jwt: JwtService;
 let userUuid = '';
 
-const httpRequest = () => request(app.getHttpServer());
-const bodyOf = <T>(response: SuperTestResponse): T => response.body;
+const httpRequest = () => {
+  const server = app.getHttpServer() as unknown as SuperTestApp;
+  return request(server);
+};
+const bodyOf = <T>(response: SuperTestResponse): T =>
+  response.body as unknown as T;
 
 async function cleanup(): Promise<void> {
   await prisma.auditLogChange.deleteMany();
