@@ -12,7 +12,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import {
@@ -125,7 +124,6 @@ export class PropertyMatchingController {
 
   @Post('matches')
   @HttpCode(200)
-  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({
     summary: 'Evaluate property matches from the stored preference',
   })
@@ -140,7 +138,6 @@ export class PropertyMatchingController {
 
   @Post('recommendations/generate')
   @HttpCode(200)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Generate a new property recommendation snapshot' })
   async generate(
     @Body() dto: GenerateRecommendationDto,
@@ -157,7 +154,6 @@ export class PropertyMatchingController {
 
   @Post('recommendations/refresh')
   @HttpCode(200)
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Refresh a property recommendation snapshot' })
   async refresh(
     @Body() dto: GenerateRecommendationDto,
@@ -208,7 +204,6 @@ export class PropertyMatchingController {
 
   @Post('feedback')
   @HttpCode(200)
-  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @ApiOperation({ summary: 'Record recommendation feedback' })
   async feedback(@Body() dto: FeedbackDto, @Req() request: Request) {
     return this.matching.submitFeedback(dto, actorOf(request));
