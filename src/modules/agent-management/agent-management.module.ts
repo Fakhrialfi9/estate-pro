@@ -9,16 +9,13 @@ import { SalesModule } from '../sales/sales.module.js';
 import { AGENT_CANDIDATE_PORT } from '../../common/contracts/agent-candidate.port.js';
 import { AgentManagementController } from './presentation/agent-management.controller.js';
 import { AgentManagementService } from './application/agent-management.service.js';
+import { AgentCandidateAdapter } from './application/agent-candidate.adapter.js';
 import { PrismaAgentRepository } from './infrastructure/persistence/prisma-agent.repository.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule, UsersModule, PropertyModule, CrmModule, SalesModule],
   controllers: [AgentManagementController],
-  providers: [
-    PrismaAgentRepository,
-    AgentManagementService,
-    { provide: AGENT_CANDIDATE_PORT, useExisting: AgentManagementService },
-  ],
+  providers: [PrismaAgentRepository, AgentManagementService, AgentCandidateAdapter, { provide: AGENT_CANDIDATE_PORT, useExisting: AgentCandidateAdapter }],
   exports: [AgentManagementService, AGENT_CANDIDATE_PORT],
 })
 export class AgentManagementModule {}
