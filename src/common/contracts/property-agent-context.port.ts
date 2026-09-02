@@ -11,4 +11,6 @@ export interface PropertyAgentContextPort {
   getContext(propertyUuid: string): Promise<PropertyAgentContext | null>;
 }
 
-export const PROPERTY_AGENT_CONTEXT_PORT = Symbol('PROPERTY_AGENT_CONTEXT_PORT');
+export const PROPERTY_AGENT_CONTEXT_PORT = Symbol(
+  'PROPERTY_AGENT_CONTEXT_PORT',
+);
