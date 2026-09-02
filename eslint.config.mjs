@@ -6,11 +6,12 @@ import tseslint from 'typescript-eslint';
 
 const typescriptFiles = ['src/**/*.ts'];
 const testTypescriptFiles = ['test/**/*.ts'];
+const eslintProject = './tsconfig.eslint.json';
 
 const typeCheckedConfigs = tseslint.configs.recommendedTypeChecked.map(
   (config) => ({
     ...config,
-    files: typescriptFiles,
+    files: [...typescriptFiles, ...testTypescriptFiles],
   }),
 );
 
@@ -67,7 +68,8 @@ export default tseslint.config(
       },
 
       parserOptions: {
-        projectService: true,
+        project: eslintProject,
+        tsconfigRootDir: import.meta.dirname,
       },
     },
 
@@ -96,7 +98,7 @@ export default tseslint.config(
       },
 
       parserOptions: {
-        project: './tsconfig.eslint.json',
+        project: eslintProject,
         tsconfigRootDir: import.meta.dirname,
       },
     },
