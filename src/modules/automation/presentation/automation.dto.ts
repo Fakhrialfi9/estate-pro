@@ -1,16 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsArray,
   IsIn,
   IsInt,
   IsOptional,
   IsString,
   IsUUID,
-  Max,
   MaxLength,
   Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import { TRIGGER_TYPES } from '../domain/automation.types.js';
 
 export class CreateAutomationWorkflowDto {
