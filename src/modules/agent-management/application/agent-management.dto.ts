@@ -21,8 +21,7 @@ export const AgentStatusDto = {
   SUSPENDED: 'SUSPENDED',
   ARCHIVED: 'ARCHIVED',
 } as const;
-export type AgentStatusDto =
-  (typeof AgentStatusDto)[keyof typeof AgentStatusDto];
+export type AgentStatusDto = (typeof AgentStatusDto)[keyof typeof AgentStatusDto];
 
 export const AvailabilityStatusDto = {
   ACTIVE: 'ACTIVE',
@@ -40,8 +39,7 @@ export const CoverageLevelDto = {
   DISTRICT: 'DISTRICT',
   SUBDISTRICT: 'SUBDISTRICT',
 } as const;
-export type CoverageLevelDto =
-  (typeof CoverageLevelDto)[keyof typeof CoverageLevelDto];
+export type CoverageLevelDto = (typeof CoverageLevelDto)[keyof typeof CoverageLevelDto];
 
 export const TargetPeriodDto = {
   MONTH: 'MONTH',
@@ -49,16 +47,14 @@ export const TargetPeriodDto = {
   YEAR: 'YEAR',
   CUSTOM: 'CUSTOM',
 } as const;
-export type TargetPeriodDto =
-  (typeof TargetPeriodDto)[keyof typeof TargetPeriodDto];
+export type TargetPeriodDto = (typeof TargetPeriodDto)[keyof typeof TargetPeriodDto];
 
 export const TargetStatusDto = {
   ACTIVE: 'ACTIVE',
   CLOSED: 'CLOSED',
   ARCHIVED: 'ARCHIVED',
 } as const;
-export type TargetStatusDto =
-  (typeof TargetStatusDto)[keyof typeof TargetStatusDto];
+export type TargetStatusDto = (typeof TargetStatusDto)[keyof typeof TargetStatusDto];
 
 export class AgentCreateDto {
   @ApiProperty({ format: 'uuid' }) @IsUUID('4') userUuid!: string;
@@ -123,7 +119,7 @@ export class AgentUpdateDto {
   @IsString()
   @MaxLength(80)
   licenseNumberMasked?: string;
-  @ApiPropertyOptional({ maxLength: 80 })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MaxLength(80)
@@ -137,16 +133,27 @@ export class AgentUpdateDto {
   maxActiveAssignments?: number;
 }
 export class SpecializationCreateDto {
-  @ApiProperty({ maxLength: 120 })
+  @ApiProperty({ minLength: 2, maxLength: 80 })
   @IsString()
   @MinLength(2)
-  @MaxLength(120)
-  name!: string;
+  @MaxLength(80)
+  code!: string;
+  @ApiProperty({ maxLength: 150 }) @IsString() @MaxLength(150) name!: string;
   @ApiPropertyOptional({ maxLength: 500 })
   @IsOptional()
   @IsString()
   @MaxLength(500)
   description?: string;
+  @ApiPropertyOptional({ minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 export class CoverageCreateDto {
   @ApiProperty({
@@ -162,29 +169,22 @@ export class CoverageCreateDto {
   @MaxLength(180)
   label?: string;
 }
-export class AssignmentCreateDto {
-  @ApiProperty({ format: 'uuid' }) @IsUUID('4') userUuid!: string;
-  @ApiPropertyOptional({ format: 'uuid' })
-  @IsOptional()
-  @IsUUID('4')
-  teamUuid?: string;
-  @ApiPropertyOptional({ format: 'date-time' })
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  startsAt?: Date;
-}
 export class ScheduleItemDto {
   @ApiProperty({ minimum: 0, maximum: 6 })
+  @Type(() => Number)
   @IsInt()
   @Min(0)
   @Max(6)
-  dayOfWeek!: number;
-  @ApiProperty({ pattern: '^\\d{2}:\\d{2}$' })
+  weekday!: number;
+  @ApiProperty({ example: '09:00' })
   @IsString()
+  @MinLength(5)
+  @MaxLength(5)
   startTime!: string;
-  @ApiProperty({ pattern: '^\\d{2}:\\d{2}$' })
+  @ApiProperty({ example: '17:00' })
   @IsString()
+  @MinLength(5)
+  @MaxLength(5)
   endTime!: string;
 }
 export class AvailabilityExceptionDto {
@@ -215,7 +215,7 @@ export class AvailabilityUpdateDto {
   })
   @IsEnum(AvailabilityStatusDto)
   status!: AvailabilityStatusDto;
-  @ApiPropertyOptional({ maxLength: 80 })
+  @ApiPropertyOptional({ default: 'UTC' })
   @IsOptional()
   @IsString()
   @MaxLength(80)
@@ -225,14 +225,23 @@ export class AvailabilityUpdateDto {
   @Type(() => Date)
   @IsDate()
   effectiveAt?: Date;
-  @ApiProperty({ type: () => [ScheduleItemDto] })
+  @ApiProperty({ type: [ScheduleItemDto] })
   @ValidateNested({ each: true })
   @Type(() => ScheduleItemDto)
   schedule!: ScheduleItemDto[];
-  @ApiProperty({ type: () => [AvailabilityExceptionDto] })
+  @ApiProperty({ type: [AvailabilityExceptionDto] })
   @ValidateNested({ each: true })
   @Type(() => AvailabilityExceptionDto)
   exceptions!: AvailabilityExceptionDto[];
+}
+export class AssignmentCreateDto {
+  @ApiProperty({ format: 'uuid' }) @IsUUID('4') propertyUuid!: string;
+  @ApiProperty({ format: 'uuid' }) @IsUUID('4') agentUuid!: string;
+  @ApiPropertyOptional({ maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  reason?: string;
 }
 export class ReassignmentDto {
   @ApiProperty({ format: 'uuid' }) @IsUUID('4') toAgentUuid!: string;
@@ -261,11 +270,8 @@ export class TargetCreateDto {
   @Type(() => Date)
   @IsDate()
   periodStart!: Date;
-  @ApiProperty({ format: 'date' })
-  @Type(() => Date)
-  @IsDate()
-  periodEnd!: Date;
-  @ApiProperty({ minimum: 1, maximum: 1000000000 })
+  @ApiProperty({ format: 'date' }) @Type(() => Date) @IsDate() periodEnd!: Date;
+  @ApiProperty({ example: 100 })
   @Type(() => Number)
   @IsInt()
   @Min(1)
