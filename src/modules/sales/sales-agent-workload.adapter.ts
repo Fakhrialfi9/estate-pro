@@ -10,23 +10,23 @@ export class PrismaSalesAgentWorkloadAdapter implements SalesAgentWorkloadPort {
   constructor(private readonly prisma: PrismaService) {}
 
   async getWorkload(agentUserUuid: string): Promise<SalesAgentWorkload> {
-    const db = this.prisma as any;
     const [openOpportunities, openDeals, amounts] = await Promise.all([
-      db.salesOpportunity.count({
+      this.prisma.salesOpportunity.count({
         where: { ownerUserUuid: agentUserUuid, status: 'OPEN' },
       }),
-      db.salesDeal.count({
+      this.prisma.salesDeal.count({
         where: { ownerUserUuid: agentUserUuid, status: 'OPEN' },
       }),
-      db.salesDeal.aggregate({
+      this.prisma.salesDeal.aggregate({
         where: { ownerUserUuid: agentUserUuid },
         _sum: { totalAmount: true },
       }),
     ]);
+
     return {
       openOpportunities,
       openDeals,
-      salesValue: Number(amounts._sum.totalAmount ?? 0),
+      salesValue: amounts._sum.totalAmount?.toString() ?? '0',
     };
   }
 }
