@@ -80,7 +80,13 @@ describe('PrismaSecurityAuditRepository', () => {
 
     expect(transaction).toHaveBeenCalledOnce();
     expect(auditLogCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+      data: expect.objectContaining<{
+        action: string;
+        entityType: string;
+        resourceId: string | null;
+        result: string;
+        requestId: string;
+      }>({
         action: 'REFRESH_TOKEN_ISSUED',
         entityType: 'authentication_refresh_token',
         resourceId: null,
@@ -139,11 +145,17 @@ describe('PrismaSecurityAuditRepository', () => {
 
     expect(transaction).toHaveBeenCalledOnce();
     expect(auditLogCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+      data: expect.objectContaining<{
+        action: string;
+        entityType: string;
+        entityId: bigint | null;
+        resourceId: string | null;
+        result: string;
+      }>({
         action: 'property.utilities.update',
         entityType: 'property_utilities',
         entityId: null,
-        resourceId: event.entityUuid,
+        resourceId: event.entityUuid ?? null,
         result: 'SUCCESS',
       }),
     });
