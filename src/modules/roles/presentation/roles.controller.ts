@@ -26,7 +26,6 @@ import {
 } from '../application/services/role-permission.service.js';
 import { RoleService } from '../application/services/role.service.js';
 import type { RoleActor } from '../application/policies/role-authorization.policy.js';
-import type { RolePermissionListQuery } from '../domain/repositories/role-permission.repository.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { CreateRoleDto } from './dto/create-role.dto.js';
