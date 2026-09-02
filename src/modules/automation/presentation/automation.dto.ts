@@ -8,7 +8,15 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { TRIGGER_TYPES } from '../domain/automation.types.js';
+import { TRIGGER_TYPES, type TriggerType } from '../domain/automation.types.js';
+import type { AutomationEvent } from '../domain/automation.ports.js';
+
+type AutomationEntityType = AutomationEvent['entityType'];
+type AssignmentStrategy =
+  | 'ROUND_ROBIN'
+  | 'FIXED_USER'
+  | 'FIXED_TEAM'
+  | 'LEAST_LOAD';
 
 export class CreateAutomationWorkflowDto {
   @ApiProperty({ maxLength: 180 }) @IsString() @MaxLength(180) name!: string;
@@ -37,8 +45,8 @@ export class CreateAutomationVersionDto {
   @ApiProperty({ enum: [...TRIGGER_TYPES] })
   @IsString()
   @IsIn([...TRIGGER_TYPES])
-  triggerType!: string;
-  @ApiProperty({ type: Object }) definition!: Record<string, unknown>;
+  triggerType!: TriggerType;
+  @ApiProperty({ type: Object }) definition!: import('../domain/automation.types.js').WorkflowGraph;
 }
 
 export class DispatchAutomationEventDto {
@@ -47,7 +55,7 @@ export class DispatchAutomationEventDto {
     enum: ['LEAD', 'CONTACT', 'OPPORTUNITY', 'DEAL', 'ACTIVITY', 'SLA'],
   })
   @IsString()
-  entityType!: string;
+  entityType!: AutomationEntityType;
   @ApiProperty() @IsUUID() entityUuid!: string;
   @ApiProperty() @IsInt() @Min(1) version!: number;
   @ApiPropertyOptional() @IsOptional() @IsString() action?: string;
@@ -64,7 +72,7 @@ export class CreateAssignmentRuleDto {
   @ApiProperty({
     enum: ['ROUND_ROBIN', 'FIXED_USER', 'FIXED_TEAM', 'LEAST_LOAD'],
   })
-  strategy!: string;
+  strategy!: AssignmentStrategy;
   @ApiPropertyOptional({ type: Object }) @IsOptional() fallback?: Record<
     string,
     unknown
