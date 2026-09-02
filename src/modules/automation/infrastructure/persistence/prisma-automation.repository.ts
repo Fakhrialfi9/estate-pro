@@ -16,6 +16,7 @@ const clean = (value: unknown): Record<string, unknown> => {
 @Injectable()
 export class PrismaAutomationRepository implements AutomationRepository {
   constructor(private readonly prisma: PrismaService) {}
+
   async createWorkflow(input: {
     uuid: string;
     name: string;
@@ -26,6 +27,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
   }) {
     return clean(await this.prisma.automationWorkflow.create({ data: input }));
   }
+
   async updateWorkflow(uuid: string, input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationWorkflow.update({
@@ -34,6 +36,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
       }),
     );
   }
+
   async getWorkflow(uuid: string) {
     const result = await this.prisma.automationWorkflow.findUnique({
       where: { uuid },
@@ -41,6 +44,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
     });
     return result ? clean(result) : null;
   }
+
   async listWorkflows(input: Record<string, unknown>) {
     const page = Math.max(1, Number(input.page ?? 1));
     const limit = Math.min(100, Math.max(1, Number(input.limit ?? 20)));
@@ -59,6 +63,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
     ]);
     return { items: items.map(clean), total, page, limit };
   }
+
   async createVersion(input: {
     uuid: string;
     workflowUuid: string;
@@ -76,6 +81,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
       }),
     );
   }
+
   async getVersion(uuid: string) {
     const result = await this.prisma.automationWorkflowVersion.findUnique({
       where: { uuid },
@@ -83,12 +89,14 @@ export class PrismaAutomationRepository implements AutomationRepository {
     });
     return result ? clean(result) : null;
   }
+
   async listActiveVersions() {
     const rows = await this.prisma.automationWorkflowVersion.findMany({
       where: { status: 'ACTIVE', workflow: { status: 'ACTIVE' } },
     });
     return rows.map(clean);
   }
+
   async updateVersion(uuid: string, input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationWorkflowVersion.update({
@@ -97,6 +105,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
       }),
     );
   }
+
   async createExecution(input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationWorkflowExecution.create({
@@ -104,6 +113,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
       }),
     );
   }
+
   async getExecution(uuid: string) {
     const result = await this.prisma.automationWorkflowExecution.findUnique({
       where: { uuid },
@@ -111,6 +121,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
     });
     return result ? clean(result) : null;
   }
+
   async listExecutions(input: Record<string, unknown>) {
     const page = Math.max(1, Number(input.page ?? 1));
     const limit = Math.min(100, Math.max(1, Number(input.limit ?? 20)));
@@ -123,6 +134,8 @@ export class PrismaAutomationRepository implements AutomationRepository {
       'entityUuid',
     ])
       if (typeof input[key] === 'string') where[key] = input[key];
+    if (typeof input.ownerUserUuid === 'string')
+      where.workflow = { ownerUserUuid: input.ownerUserUuid };
     const [items, total] = await Promise.all([
       this.prisma.automationWorkflowExecution.findMany({
         where,
@@ -134,6 +147,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
     ]);
     return { items: items.map(clean), total, page, limit };
   }
+
   async updateExecution(uuid: string, input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationWorkflowExecution.update({
@@ -142,6 +156,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
       }),
     );
   }
+
   async createAction(input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationActionExecution.create({
@@ -149,12 +164,14 @@ export class PrismaAutomationRepository implements AutomationRepository {
       }),
     );
   }
+
   async getAction(uuid: string) {
     const result = await this.prisma.automationActionExecution.findUnique({
       where: { uuid },
     });
     return result ? clean(result) : null;
   }
+
   async listActions(executionUuid: string) {
     const rows = await this.prisma.automationActionExecution.findMany({
       where: { executionUuid },
@@ -162,6 +179,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
     });
     return rows.map(clean);
   }
+
   async updateAction(uuid: string, input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationActionExecution.update({
@@ -170,6 +188,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
       }),
     );
   }
+
   async claimDueExecution(workerId: string, leaseMs: number) {
     const now = new Date();
     const leaseUntil = new Date(now.getTime() + leaseMs);
@@ -201,6 +220,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
     });
     return result ? clean(result) : null;
   }
+
   async claimDueAction(workerId: string, leaseMs: number) {
     const now = new Date();
     const candidate = await this.prisma.automationActionExecution.findFirst({
@@ -232,6 +252,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
     });
     return result ? clean(result) : null;
   }
+
   async reclaimExpired(workerId: string, now: Date) {
     const result = await this.prisma.automationWorkflowExecution.updateMany({
       where: { state: 'RUNNING', leaseUntil: { lt: now } },
@@ -243,6 +264,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
     });
     return result.count;
   }
+
   async countRecentActionExecutions(
     workflowUuid: string,
     entityUuid: string,
@@ -252,6 +274,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
       where: { workflowUuid, entityUuid, createdAt: { gte: since } },
     });
   }
+
   async createAssignmentRule(input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationAssignmentRule.create({
@@ -259,16 +282,19 @@ export class PrismaAutomationRepository implements AutomationRepository {
       }),
     );
   }
+
   async createSlaPolicy(input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationSlaPolicy.create({ data: input as never }),
     );
   }
+
   async createSlaInstance(input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationSlaInstance.create({ data: input as never }),
     );
   }
+
   async claimDueSla(workerId: string, leaseMs: number) {
     const now = new Date();
     const candidate = await this.prisma.automationSlaInstance.findFirst({
@@ -300,6 +326,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
       }),
     );
   }
+
   async updateSlaInstance(uuid: string, input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationSlaInstance.update({
@@ -308,6 +335,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
       }),
     );
   }
+
   async createEscalationPolicy(input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationEscalationPolicy.create({
@@ -315,12 +343,14 @@ export class PrismaAutomationRepository implements AutomationRepository {
       }),
     );
   }
+
   async getEscalationPolicy(uuid: string) {
     const row = await this.prisma.automationEscalationPolicy.findUnique({
       where: { uuid },
     });
     return row ? clean(row) : null;
   }
+
   async createNotification(input: Record<string, unknown>) {
     return clean(
       await this.prisma.automationNotification.create({ data: input as never }),
