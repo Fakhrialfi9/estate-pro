@@ -229,7 +229,8 @@ export class ReassignmentDto {
   fromAgentUuid?: string;
   @ApiPropertyOptional({ maxLength: 255 })
   @IsOptional()
-  @IsUUID('4')
+  @IsString()
+  @MaxLength(255)
   reason?: string;
 }
 export class TargetCreateDto {
