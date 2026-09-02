@@ -377,7 +377,10 @@ export class AutomationService {
   }
 
   listWorkflows(query: unknown, actorUuid: string) {
-    return this.repo.listWorkflows({ ...record(query), ownerUserUuid: actorUuid });
+    return this.repo.listWorkflows({
+      ...record(query),
+      ownerUserUuid: actorUuid,
+    });
   }
 
   getWorkflow(uuid: string, actorUuid: string) {
@@ -385,7 +388,10 @@ export class AutomationService {
   }
 
   listExecutions(query: unknown, actorUuid: string) {
-    return this.repo.listExecutions({ ...record(query), ownerUserUuid: actorUuid });
+    return this.repo.listExecutions({
+      ...record(query),
+      ownerUserUuid: actorUuid,
+    });
   }
 
   async getExecution(uuid: string, actorUuid: string) {
