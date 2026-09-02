@@ -1,0 +1,14 @@
+{
+  "name": "@estate-pro/nest-swagger-esm-plugin",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "../nest-swagger-esm-plugin.cjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "peerDependencies": {
+    "@nestjs/swagger": "11.4.7",
+    "typescript": "5.7.3"
+  }
+}
