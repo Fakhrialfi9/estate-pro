@@ -5,9 +5,11 @@ import { AuthorizationModule } from '../../common/security/authorization.module.
 import { SALES_REPOSITORY } from './domain/repositories/sales.repository.js';
 import { PrismaSalesRepository } from './infrastructure/persistence/prisma-sales.repository.js';
 import { SalesService } from './application/sales.service.js';
+import { SalesAutomationAdapter } from './application/services/sales-automation.adapter.js';
 import { SalesController } from './presentation/sales.controller.js';
 import { SALES_CONVERSION_PORT } from '../../common/contracts/sales-conversion.port.js';
 import { PrismaSalesConversionAdapter } from './sales-conversion.adapter.js';
+import { SALES_AUTOMATION_PORT } from '../../common/contracts/automation-sales.port.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule],
@@ -15,12 +17,19 @@ import { PrismaSalesConversionAdapter } from './sales-conversion.adapter.js';
   providers: [
     SalesService,
     PrismaSalesRepository,
+    SalesAutomationAdapter,
     { provide: SALES_REPOSITORY, useExisting: PrismaSalesRepository },
     {
       provide: SALES_CONVERSION_PORT,
       useClass: PrismaSalesConversionAdapter,
     },
+    { provide: SALES_AUTOMATION_PORT, useExisting: SalesAutomationAdapter },
   ],
-  exports: [SALES_CONVERSION_PORT, SalesService, SALES_REPOSITORY],
+  exports: [
+    SALES_CONVERSION_PORT,
+    SalesService,
+    SALES_REPOSITORY,
+    SALES_AUTOMATION_PORT,
+  ],
 })
 export class SalesModule {}
