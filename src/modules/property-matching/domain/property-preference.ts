@@ -150,6 +150,8 @@ export class PropertyPreference {
         !UUID_V4.test(String(value))
       )
         throw new Error(`${field} must be a UUID`);
+    if ((location.latitude == null) !== (location.longitude == null))
+      throw new Error('latitude and longitude must be supplied together');
     if (
       location.radiusKm != null &&
       (!Number.isFinite(location.radiusKm) ||
@@ -162,8 +164,6 @@ export class PropertyPreference {
       (location.latitude == null || location.longitude == null)
     )
       throw new Error('radiusKm requires latitude and longitude');
-    if ((location.latitude == null) !== (location.longitude == null))
-      throw new Error('latitude and longitude must be supplied together');
     if (
       location.latitude != null &&
       (location.latitude < -90 || location.latitude > 90)
