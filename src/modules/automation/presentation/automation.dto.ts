@@ -8,7 +8,11 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { TRIGGER_TYPES, type TriggerType } from '../domain/automation.types.js';
+import {
+  TRIGGER_TYPES,
+  type TriggerType,
+  type WorkflowGraph,
+} from '../domain/automation.types.js';
 import type { AutomationEvent } from '../domain/automation.ports.js';
 
 type AutomationEntityType = AutomationEvent['entityType'];
@@ -46,7 +50,7 @@ export class CreateAutomationVersionDto {
   @IsString()
   @IsIn([...TRIGGER_TYPES])
   triggerType!: TriggerType;
-  @ApiProperty({ type: Object }) definition!: import('../domain/automation.types.js').WorkflowGraph;
+  @ApiProperty({ type: Object }) definition!: WorkflowGraph;
 }
 
 export class DispatchAutomationEventDto {
