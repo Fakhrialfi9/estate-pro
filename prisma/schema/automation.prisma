@@ -1,0 +1,183 @@
+model AutomationWorkflow {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  name String @db.VarChar(180)
+  description String? @db.Text
+  status String @default("DRAFT") @db.VarChar(20)
+  ownerUserUuid String @db.Char(36)
+  activeVersionUuid String? @db.Char(36)
+  createdBy String @db.Char(36)
+  updatedBy String @db.Char(36)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  versions AutomationWorkflowVersion[]
+  assignmentRules AutomationAssignmentRule[]
+  slaPolicies AutomationSlaPolicy[]
+  escalationPolicies AutomationEscalationPolicy[]
+  executions AutomationWorkflowExecution[]
+  @@index([status, ownerUserUuid])
+  @@index([activeVersionUuid])
+  @@map("automation_workflows")
+}
+
+model AutomationWorkflowVersion {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  workflowUuid String @db.Char(36)
+  version Int
+  status String @default("DRAFT") @db.VarChar(20)
+  triggerDefinition Json
+  definition Json
+  checksum String @db.Char(64)
+  createdBy String @db.Char(36)
+  activatedAt DateTime? @db.DateTime(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  workflow AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
+  executions AutomationWorkflowExecution[]
+  @@unique([workflowUuid, version])
+  @@unique([workflowUuid, checksum])
+  @@index([workflowUuid, status])
+  @@map("automation_workflow_versions")
+}
+
+model AutomationWorkflowExecution {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  workflowUuid String @db.Char(36)
+  workflowVersionUuid String @db.Char(36)
+  eventId String @db.Char(36)
+  eventType String @db.VarChar(80)
+  entityType String @db.VarChar(60)
+  entityUuid String @db.Char(36)
+  state String @default("PENDING") @db.VarChar(20)
+  currentNodeId String? @db.VarChar(120)
+  contextSnapshot Json
+  chainDepth Int @default(0)
+  visitedWorkflowUuids Json
+  attemptCount Int @default(0)
+  maxAttempts Int @default(3)
+  retryAt DateTime? @db.DateTime(3)
+  leaseUntil DateTime? @db.DateTime(3)
+  claimedBy String? @db.VarChar(120)
+  startedAt DateTime? @db.DateTime(3)
+  completedAt DateTime? @db.DateTime(3)
+  lastErrorCode String? @db.VarChar(80)
+  lastErrorMessage String? @db.VarChar(500)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  workflow AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onUpdate: Cascade, onDelete: Restrict)
+  version AutomationWorkflowVersion @relation(fields: [workflowVersionUuid], references: [uuid], onUpdate: Cascade, onDelete: Restrict)
+  actions AutomationActionExecution[]
+  @@unique([workflowVersionUuid, eventId])
+  @@index([state, retryAt, createdAt])
+  @@index([leaseUntil, state])
+  @@index([workflowUuid, state, createdAt])
+  @@index([entityType, entityUuid, createdAt])
+  @@map("automation_workflow_executions")
+}
+
+model AutomationActionExecution {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  executionUuid String @db.Char(36)
+  nodeId String @db.VarChar(120)
+  actionType String @db.VarChar(60)
+  state String @default("PENDING") @db.VarChar(20)
+  input Json
+  output Json?
+  resultReference String? @db.VarChar(180)
+  attempt Int @default(0)
+  maxAttempts Int @default(3)
+  availableAt DateTime? @db.DateTime(3)
+  startedAt DateTime? @db.DateTime(3)
+  completedAt DateTime? @db.DateTime(3)
+  leaseUntil DateTime? @db.DateTime(3)
+  claimedBy String? @db.VarChar(120)
+  errorCode String? @db.VarChar(80)
+  errorMessage String? @db.VarChar(500)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  execution AutomationWorkflowExecution @relation(fields: [executionUuid], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
+  @@unique([executionUuid, nodeId])
+  @@index([state, availableAt, createdAt])
+  @@index([leaseUntil, state])
+  @@map("automation_action_executions")
+}
+
+model AutomationAssignmentRule {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  workflowUuid String @db.Char(36)
+  name String @db.VarChar(180)
+  criteria Json
+  strategy String @db.VarChar(40)
+  fallback Json?
+  activeFrom DateTime? @db.DateTime(3)
+  activeUntil DateTime? @db.DateTime(3)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  workflow AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
+  @@index([workflowUuid, isActive])
+  @@map("automation_assignment_rules")
+}
+
+model AutomationSlaPolicy {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  workflowUuid String @db.Char(36)
+  name String @db.VarChar(180)
+  targetEntityType String @db.VarChar(60)
+  startEventType String @db.VarChar(80)
+  stopEventTypes Json
+  durationMinutes Int
+  timezone String @db.VarChar(80)
+  businessHours Json
+  isActive Boolean @default(true)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  workflow AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
+  instances AutomationSlaInstance[]
+  @@index([workflowUuid, isActive])
+  @@map("automation_sla_policies")
+}
+
+model AutomationSlaInstance {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  policyUuid String @db.Char(36)
+  entityType String @db.VarChar(60)
+  entityUuid String @db.Char(36)
+  policyVersion Int
+  startedAt DateTime @db.DateTime(3)
+  deadlineAt DateTime @db.DateTime(3)
+  completedAt DateTime? @db.DateTime(3)
+  breachedAt DateTime? @db.DateTime(3)
+  state String @default("RUNNING") @db.VarChar(20)
+  leaseUntil DateTime? @db.DateTime(3)
+  claimedBy String? @db.VarChar(120)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  policy AutomationSlaPolicy @relation(fields: [policyUuid], references: [uuid], onUpdate: Cascade, onDelete: Restrict)
+  @@index([state, deadlineAt])
+  @@index([entityType, entityUuid, state])
+  @@unique([policyUuid, entityUuid, startedAt])
+  @@map("automation_sla_instances")
+}
+
+model AutomationEscalationPolicy {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  workflowUuid String @db.Char(36)
+  name String @db.VarChar(180)
+  levels Json
+  maxAttempts Int @default(3)
+  cooldownSeconds Int @default(3600)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  workflow AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
+  @@index([workflowUuid, isActive])
+  @@map("automation_escalation_policies")
+}
