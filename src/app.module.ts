@@ -1,7 +1,6 @@
-import { Module, type ExecutionContext } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER } from '@nestjs/core';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
@@ -29,9 +28,6 @@ import { AutomationModule } from './modules/automation/automation.module.js';
 import { AgentManagementModule } from './modules/agent-management/agent-management.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 
-const shouldSkipThrottling = (context: ExecutionContext): boolean =>
-  context.getClass() === HealthController;
-
 const validateEnvironment = (
   env: Record<string, unknown>,
 ): Record<string, unknown> => {
@@ -54,20 +50,6 @@ const validateEnvironment = (
       validationOptions: { abortEarly: false, allowUnknown: false },
     }),
     LoggingModule,
-    ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        skipIf: shouldSkipThrottling,
-        throttlers: [
-          {
-            name: 'default',
-            ttl: configService.getOrThrow<number>('rateLimit.ttl'),
-            limit: configService.getOrThrow<number>('rateLimit.limit'),
-          },
-        ],
-      }),
-    }),
     DatabaseModule,
     ObservabilityModule,
     AuditModule,
@@ -91,7 +73,6 @@ const validateEnvironment = (
     AppService,
     GlobalExceptionFilter,
     { provide: APP_FILTER, useExisting: GlobalExceptionFilter },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}
