@@ -30,7 +30,7 @@ export function configureTestEnvironment(): void {
   process.env.AUTH_REFRESH_RATE_LIMIT = '10';
   process.env.AUTH_REFRESH_RATE_LIMIT_TTL_MS = '60000';
   setDefault('SECURITY_RATE_LIMIT_MAX', '1000');
-  setDefault('SECURITY_TRUST_PROXY', 'loopback');
+  process.env.SECURITY_TRUST_PROXY = 'loopback';
   process.env.OTEL_TRACING_ENABLED = 'false';
   process.env.OTEL_METRICS_ENABLED = 'false';
   process.env.OTEL_TRACES_EXPORTER = 'none';
