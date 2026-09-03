@@ -3,7 +3,10 @@ import type { OpenAPIObject } from '@nestjs/swagger';
 type Schema = Record<string, unknown>;
 type ResponseObject = Record<string, unknown>;
 type Operation = Record<string, unknown> & {
-  responses?: Record<string, ResponseObject | { $ref: string } | undefined>;
+  responses?: Record<
+    string,
+    ResponseObject | { $ref: string } | undefined
+  >;
 };
 type MutableDocument = OpenAPIObject & {
   components?: OpenAPIObject['components'] & {
@@ -114,17 +117,23 @@ const agentSpecializationResponse = objectSchema(
 );
 
 const agentSpecializationListResponse = arrayOf(agentSpecializationResponse);
+
 const agentGenericObjectResponse = objectSchema({}, [], {
   additionalProperties: true,
 });
+
 const agentGenericArrayResponse = arrayOf(
   objectSchema({}, [], { additionalProperties: true }),
 );
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const applyAgentOpenApiContract = (
   document: OpenAPIObject,
 ): OpenAPIObject => {
   const mutable = document as MutableDocument;
+
   addSchema(mutable, 'AgentResponse', agentResponse);
   addSchema(mutable, 'AgentListResponse', agentListResponse);
   addSchema(
@@ -145,7 +154,7 @@ export const applyAgentOpenApiContract = (
 
     for (const method of METHODS) {
       const candidate = item[method];
-      if (!candidate || typeof candidate !== 'object') continue;
+      if (!isObject(candidate)) continue;
 
       const operation = candidate as Operation;
       if (!operation.responses) continue;
@@ -154,17 +163,14 @@ export const applyAgentOpenApiContract = (
         if (
           !/^2\d\d$/.test(status) ||
           status === '204' ||
-          !rawResponse ||
-          typeof rawResponse !== 'object' ||
+          !isObject(rawResponse) ||
           '$ref' in rawResponse
         ) {
           continue;
         }
 
         if (
-          'content' in rawResponse &&
-          typeof rawResponse.content === 'object' &&
-          rawResponse.content !== null &&
+          isObject(rawResponse.content) &&
           Object.keys(rawResponse.content).length > 0
         ) {
           continue;
