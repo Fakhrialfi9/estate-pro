@@ -1,4 +1,7 @@
+import { randomBytes } from 'node:crypto';
 import { prepareTestDatabase } from '../database/setup.js';
+
+const testSecret = (): string => randomBytes(32).toString('hex');
 
 process.env.NODE_ENV = 'test';
 process.env.SECURITY_CORS_ORIGINS ??= 'http://localhost:3000';
@@ -16,5 +19,7 @@ process.env.AUTH_ARGON2_TIME_COST ??= '2';
 process.env.AUTH_ARGON2_PARALLELISM ??= '1';
 process.env.TWO_FACTOR_ENCRYPTION_KEY ??=
   'estate-pro-two-factor-integration-key-32-chars-minimum';
+process.env.SEED_ADMIN_PASSWORD ??= testSecret();
+process.env.SEED_DEVELOPMENT_USER_PASSWORD ??= testSecret();
 
 prepareTestDatabase();
