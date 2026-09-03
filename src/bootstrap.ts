@@ -5,7 +5,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import compression from 'compression';
 import type { NextFunction, Request, Response } from 'express';
-import { rateLimit } from 'express-rate-limit';
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import type { HelmetOptions } from 'helmet';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
@@ -37,6 +37,8 @@ const createRateLimiter = (policy: RateLimitPolicy) =>
   rateLimit({
     windowMs: policy.ttl,
     limit: policy.limit,
+    keyGenerator: (request) => ipKeyGenerator(request.ip),
+    skipFailedRequests: false,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
   });
@@ -184,6 +186,8 @@ export const configureApplication = (app: NestExpressApplication): void => {
   const globalRateLimiter = rateLimit({
     windowMs: globalPolicy.ttl,
     limit: globalPolicy.limit,
+    keyGenerator: (request) => ipKeyGenerator(request.ip),
+    skipFailedRequests: false,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     skip: (request) =>
