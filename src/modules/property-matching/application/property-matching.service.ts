@@ -46,6 +46,19 @@ export type MatchingActor = {
 };
 export type PreferenceInput = Omit<PropertyPreferenceState, 'version'>;
 
+type SavedProperty = {
+  uuid: string;
+  transactionType: string;
+  publishedAt: Date | null;
+  property: { uuid: string; title: string };
+  price: {
+    currency: string;
+    priceType: string;
+    minPrice: unknown;
+    maxPrice: unknown;
+  } | null;
+};
+
 @Injectable()
 export class PropertyMatchingService {
   constructor(
@@ -388,7 +401,13 @@ export class PropertyMatchingService {
   }
 
   async savedProperties(actor: MatchingActor) {
-    return this.repository.listSavedListings(actor.actorUuid);
+    const properties = await this.repository.listSavedListings(actor.actorUuid);
+    return {
+      data: properties as readonly SavedProperty[],
+      meta: {
+        total: properties.length,
+      },
+    };
   }
 
   private async requireActivePreference(
