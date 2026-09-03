@@ -9,8 +9,8 @@ import {
 import { getApplicationMetadata } from '../../config/app.config.js';
 
 const metadata = getApplicationMetadata();
-const tracingEnabled = process.env.OTEL_TRACING_ENABLED !== 'false';
-const metricsEnabled = process.env.OTEL_METRICS_ENABLED !== 'false';
+const tracingEnabled = process.env.OTEL_TRACING_ENABLED === 'true';
+const metricsEnabled = process.env.OTEL_METRICS_ENABLED === 'true';
 
 const configuredSamplingRatio = Number(
   process.env.OTEL_TRACES_SAMPLER_ARG ?? 0.1,
