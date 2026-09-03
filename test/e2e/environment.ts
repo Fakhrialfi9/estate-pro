@@ -19,6 +19,7 @@ export function configureTestEnvironment(): void {
   setDefault('DATABASE_POOL_CONNECTION_LIMIT', '2');
   setDefault('DATABASE_CONNECT_TIMEOUT_MS', '5000');
   setDefault('DATABASE_ACQUIRE_TIMEOUT_MS', '10000');
+  setDefault('DATABASE_IDLE_TIMEOUT_SEC', '30');
   setDefault('DATABASE_POOL_IDLE_TIMEOUT_SEC', '30');
   setDefault('JWT_SECRET', 'test-only-secret-that-is-at-least-32-chars');
   setDefault(
@@ -27,8 +28,8 @@ export function configureTestEnvironment(): void {
   );
   setDefault('AUTH_LOGIN_RATE_LIMIT', '5');
   setDefault('AUTH_LOGIN_RATE_LIMIT_TTL_MS', '60000');
-  setDefault('AUTH_REFRESH_RATE_LIMIT', '10');
-  setDefault('AUTH_REFRESH_RATE_LIMIT_TTL_MS', '60000');
+  process.env.AUTH_REFRESH_RATE_LIMIT = '10';
+  process.env.AUTH_REFRESH_RATE_LIMIT_TTL_MS = '60000';
   setDefault('SECURITY_RATE_LIMIT_MAX', '1000');
   setDefault('SECURITY_TRUST_PROXY', 'loopback');
   setDefault('OTEL_TRACING_ENABLED', 'false');
