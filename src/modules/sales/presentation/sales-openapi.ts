@@ -18,55 +18,65 @@ const createPipelineResponseSchema = {
   required: ['data'],
 };
 
-const listPipelineResponseSchema = {
+const pipelineSchema = {
   type: 'object',
   properties: {
-    data: {
+    uuid: { type: 'string', format: 'uuid' },
+    name: { type: 'string' },
+    description: { type: 'string', nullable: true },
+    status: { type: 'string' },
+    sortOrder: { type: 'integer' },
+    stages: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
           uuid: { type: 'string', format: 'uuid' },
+          pipelineUuid: { type: 'string', format: 'uuid' },
+          code: { type: 'string' },
           name: { type: 'string' },
-          description: { type: 'string', nullable: true },
-          status: { type: 'string' },
           sortOrder: { type: 'integer' },
-          stages: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                uuid: { type: 'string', format: 'uuid' },
-                pipelineUuid: { type: 'string', format: 'uuid' },
-                code: { type: 'string' },
-                name: { type: 'string' },
-                sortOrder: { type: 'integer' },
-                probability: { type: 'integer' },
-                isTerminal: { type: 'boolean' },
-                isActive: { type: 'boolean' },
-              },
-              required: [
-                'uuid',
-                'pipelineUuid',
-                'code',
-                'name',
-                'sortOrder',
-                'probability',
-                'isTerminal',
-                'isActive',
-              ],
-            },
-          },
+          probability: { type: 'integer' },
+          isTerminal: { type: 'boolean' },
+          isActive: { type: 'boolean' },
         },
         required: [
           'uuid',
+          'pipelineUuid',
+          'code',
           'name',
-          'description',
-          'status',
           'sortOrder',
-          'stages',
+          'probability',
+          'isTerminal',
+          'isActive',
         ],
       },
+    },
+  },
+  required: [
+    'uuid',
+    'name',
+    'description',
+    'status',
+    'sortOrder',
+    'stages',
+  ],
+};
+
+const getPipelineResponseSchema = {
+  type: 'object',
+  properties: {
+    data: pipelineSchema,
+  },
+  required: ['data'],
+};
+
+const listPipelineResponseSchema = {
+  type: 'object',
+  properties: {
+    data: {
+      type: 'array',
+      items: pipelineSchema,
     },
     meta: {
       type: 'object',
@@ -106,4 +116,17 @@ if (listPipelineDescriptor) {
     description: 'Sales pipelines returned.',
     schema: listPipelineResponseSchema,
   })(SalesController.prototype, 'listPipelines', listPipelineDescriptor);
+}
+
+const getPipelineDescriptor = Object.getOwnPropertyDescriptor(
+  SalesController.prototype,
+  'getPipeline',
+);
+
+if (getPipelineDescriptor) {
+  ApiResponse({
+    status: 200,
+    description: 'Sales pipeline returned.',
+    schema: getPipelineResponseSchema,
+  })(SalesController.prototype, 'getPipeline', getPipelineDescriptor);
 }
