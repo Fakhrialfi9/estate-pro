@@ -58,7 +58,14 @@ const listPipelineResponseSchema = {
             },
           },
         },
-        required: ['uuid', 'name', 'description', 'status', 'sortOrder', 'stages'],
+        required: [
+          'uuid',
+          'name',
+          'description',
+          'status',
+          'sortOrder',
+          'stages',
+        ],
       },
     },
     meta: {

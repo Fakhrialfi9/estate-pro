@@ -43,10 +43,13 @@ function getDatabaseName(databaseUrl: URL): string {
   return decodeURIComponent(databaseUrl.pathname.replace(/^\//, ''));
 }
 
-function getSafeTestDatabaseUrl(databaseUrl: string | undefined): string | undefined {
+function getSafeTestDatabaseUrl(
+  databaseUrl: string | undefined,
+): string | undefined {
   const url = parseDatabaseUrl(databaseUrl);
   if (!url) return undefined;
-  if (url.protocol !== 'mysql:' || !TEST_DATABASE_HOSTS.has(url.hostname)) return undefined;
+  if (url.protocol !== 'mysql:' || !TEST_DATABASE_HOSTS.has(url.hostname))
+    return undefined;
 
   const databaseName = getDatabaseName(url);
   if (!databaseName) return undefined;
@@ -91,11 +94,15 @@ export function resolveTestDatabaseUrl(): string {
   if (safeProjectDatabaseUrl) return safeProjectDatabaseUrl;
 
   const processDatabaseFromParts = buildDatabaseUrl(processEnvironment);
-  const safeProcessDatabaseFromParts = getSafeTestDatabaseUrl(processDatabaseFromParts);
+  const safeProcessDatabaseFromParts = getSafeTestDatabaseUrl(
+    processDatabaseFromParts,
+  );
   if (safeProcessDatabaseFromParts) return safeProcessDatabaseFromParts;
 
   const projectDatabaseFromParts = buildDatabaseUrl(projectEnvironment);
-  const safeProjectDatabaseFromParts = getSafeTestDatabaseUrl(projectDatabaseFromParts);
+  const safeProjectDatabaseFromParts = getSafeTestDatabaseUrl(
+    projectDatabaseFromParts,
+  );
   if (safeProjectDatabaseFromParts) return safeProjectDatabaseFromParts;
 
   const unsafeDatabaseUrl = processDatabaseUrl ?? projectDatabaseUrl;
@@ -134,15 +141,11 @@ export function prepareTestDatabase(): void {
   const databaseUrl = resolveTestDatabaseUrl();
   synchronizeDatabaseEnvironment(databaseUrl);
 
-  execFileSync(
-    PRISMA_COMMAND,
-    ['migrate', 'reset', '--force', '--skip-seed'],
-    {
-      cwd: process.cwd(),
-      env: process.env,
-      stdio: 'inherit',
-    },
-  );
+  execFileSync(PRISMA_COMMAND, ['migrate', 'reset', '--force', '--skip-seed'], {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: 'inherit',
+  });
 
   execFileSync(PRISMA_COMMAND, ['db', 'seed'], {
     cwd: process.cwd(),
