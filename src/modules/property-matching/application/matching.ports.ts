@@ -32,8 +32,32 @@ export type StoredRecommendation = {
   }[];
 };
 
+export type RecommendationHistoryItem = {
+  readonly uuid: string;
+  readonly recommendationId: string;
+  readonly source: string;
+  readonly preferenceVersion: number;
+  readonly algorithmVersion: number;
+  readonly candidateCount: number;
+  readonly generatedAt: Date;
+  readonly actorUuid: string | null;
+};
+
+export type SavedProperty = {
+  readonly uuid: string;
+  readonly transactionType: string;
+  readonly publishedAt: Date | null;
+  readonly property: { readonly uuid: string; readonly title: string };
+  readonly price: {
+    readonly currency: string;
+    readonly priceType: string;
+    readonly minPrice: unknown;
+    readonly maxPrice: unknown;
+  } | null;
+};
+
 export interface SavedPropertyPort {
-  listSavedListings(subjectUuid: string): Promise<readonly unknown[]>;
+  listSavedListings(subjectUuid: string): Promise<readonly SavedProperty[]>;
 }
 
 export interface MatchingRepository extends SavedPropertyPort {
@@ -97,7 +121,7 @@ export interface MatchingRepository extends SavedPropertyPort {
     subjectUuid: string,
     page: number,
     limit: number,
-  ): Promise<{ items: readonly unknown[]; total: number }>;
+  ): Promise<{ items: readonly RecommendationHistoryItem[]; total: number }>;
   recordFeedback(input: {
     recommendationItemUuid: string;
     subjectType: MatchingSubjectType;
