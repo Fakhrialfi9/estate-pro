@@ -56,6 +56,49 @@ const pipelineSchema = {
   required: ['uuid', 'name', 'description', 'status', 'sortOrder', 'stages'],
 };
 
+const stageSchema = {
+  type: 'object',
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    pipelineUuid: { type: 'string', format: 'uuid' },
+    code: { type: 'string' },
+    name: { type: 'string' },
+    sortOrder: { type: 'integer' },
+    probability: { type: 'integer' },
+    isTerminal: { type: 'boolean' },
+    isActive: { type: 'boolean' },
+  },
+  required: [
+    'uuid',
+    'pipelineUuid',
+    'code',
+    'name',
+    'sortOrder',
+    'probability',
+    'isTerminal',
+    'isActive',
+  ],
+};
+
+const stageResponseSchema = {
+  type: 'object',
+  properties: {
+    data: stageSchema,
+  },
+  required: ['data'],
+};
+
+const stageListResponseSchema = {
+  type: 'object',
+  properties: {
+    data: {
+      type: 'array',
+      items: stageSchema,
+    },
+  },
+  required: ['data'],
+};
+
 const getPipelineResponseSchema = {
   type: 'object',
   properties: {
@@ -148,4 +191,69 @@ if (archivePipelineDescriptor) {
     description: 'Sales pipeline archived.',
     schema: getPipelineResponseSchema,
   })(SalesController.prototype, 'archivePipeline', archivePipelineDescriptor);
+}
+
+const createStageDescriptor = Object.getOwnPropertyDescriptor(
+  SalesController.prototype,
+  'createStage',
+);
+
+if (createStageDescriptor) {
+  ApiResponse({
+    status: 201,
+    description: 'Pipeline stage created.',
+    schema: stageResponseSchema,
+  })(SalesController.prototype, 'createStage', createStageDescriptor);
+}
+
+const listStagesDescriptor = Object.getOwnPropertyDescriptor(
+  SalesController.prototype,
+  'listStages',
+);
+
+if (listStagesDescriptor) {
+  ApiResponse({
+    status: 200,
+    description: 'Pipeline stages returned.',
+    schema: stageListResponseSchema,
+  })(SalesController.prototype, 'listStages', listStagesDescriptor);
+}
+
+const reorderStagesDescriptor = Object.getOwnPropertyDescriptor(
+  SalesController.prototype,
+  'reorderStages',
+);
+
+if (reorderStagesDescriptor) {
+  ApiResponse({
+    status: 200,
+    description: 'Pipeline stages reordered.',
+    schema: stageListResponseSchema,
+  })(SalesController.prototype, 'reorderStages', reorderStagesDescriptor);
+}
+
+const updateStageDescriptor = Object.getOwnPropertyDescriptor(
+  SalesController.prototype,
+  'updateStage',
+);
+
+if (updateStageDescriptor) {
+  ApiResponse({
+    status: 200,
+    description: 'Pipeline stage updated.',
+    schema: stageResponseSchema,
+  })(SalesController.prototype, 'updateStage', updateStageDescriptor);
+}
+
+const archiveStageDescriptor = Object.getOwnPropertyDescriptor(
+  SalesController.prototype,
+  'archiveStage',
+);
+
+if (archiveStageDescriptor) {
+  ApiResponse({
+    status: 200,
+    description: 'Pipeline stage archived.',
+    schema: stageResponseSchema,
+  })(SalesController.prototype, 'archiveStage', archiveStageDescriptor);
 }
