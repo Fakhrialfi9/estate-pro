@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication, configureSwagger } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
+import { AutomationScheduler } from '../../src/modules/automation/infrastructure/scheduler/automation.scheduler.js';
 import { validateOpenApiDocument } from '../../scripts/validate-openapi.mjs';
 
 describe('OpenAPI contract (e2e)', () => {
@@ -21,6 +22,8 @@ describe('OpenAPI contract (e2e)', () => {
         $connect: () => Promise.resolve(),
         $disconnect: () => Promise.resolve(),
       })
+      .overrideProvider(AutomationScheduler)
+      .useValue({})
       .compile();
 
     app = moduleRef.createNestApplication<NestExpressApplication>({

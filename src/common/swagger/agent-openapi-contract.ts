@@ -3,10 +3,7 @@ import type { OpenAPIObject } from '@nestjs/swagger';
 type Schema = Record<string, unknown>;
 type ResponseObject = Record<string, unknown>;
 type Operation = Record<string, unknown> & {
-  responses?: Record<
-    string,
-    ResponseObject | { $ref: string } | undefined
-  >;
+  responses?: Record<string, ResponseObject | { $ref: string } | undefined>;
 };
 type MutableDocument = OpenAPIObject & {
   components?: OpenAPIObject['components'] & {
@@ -185,8 +182,7 @@ export const applyAgentOpenApiContract = (
           (method === 'get' && path === '/api/v1/agents/candidates/search') ||
           isSpecializationList;
         const isAgentEntity =
-          path === '/api/v1/agents' ||
-          /^\/api\/v1\/agents\/[^/]+$/.test(path);
+          path === '/api/v1/agents' || /^\/api\/v1\/agents\/[^/]+$/.test(path);
 
         if (isAgentsList) {
           setResponse(

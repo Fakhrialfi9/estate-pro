@@ -1,7 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-const PRISMA_COMMAND = process.platform === 'win32' ? 'prisma.cmd' : 'prisma';
+const PRISMA_COMMAND =
+  process.platform === 'win32'
+    ? `${process.cwd()}/node_modules/.bin/prisma.cmd`
+    : `${process.cwd()}/node_modules/.bin/prisma`;
 const TEST_DATABASE_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 const TEST_DATABASE_NAME_PATTERN = /test/i;
 const DEFAULT_TEST_DATABASE_NAME = 'estate_pro_test';

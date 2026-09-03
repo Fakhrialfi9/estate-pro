@@ -15,7 +15,6 @@ import { applyAgentOpenApiContract } from './common/swagger/agent-openapi-contra
 import { applyContentOpenApiContract } from './common/swagger/content-openapi-contract.js';
 import { applyOpenApiContract } from './common/swagger/openapi-contract.js';
 import {
-  LOGIN_RATE_LIMIT,
   SECURITY_SESSION_RATE_LIMIT,
   TWO_FACTOR_ENROLLMENT_RATE_LIMIT,
   TWO_FACTOR_RECOVERY_REGENERATION_RATE_LIMIT,
@@ -142,7 +141,10 @@ export const configureApplication = (app: NestExpressApplication): void => {
   const refreshRateLimit =
     configService.getOrThrow<RateLimitPolicy>('rateLimit.refresh');
 
-  app.use(loginPath, createRateLimiter(LOGIN_RATE_LIMIT));
+  const loginRateLimit =
+    configService.getOrThrow<RateLimitPolicy>('rateLimit.login');
+
+  app.use(loginPath, createRateLimiter(loginRateLimit));
   app.use(refreshPath, createRateLimiter(refreshRateLimit));
   app.use(
     `${apiBase}/auth/2fa/enrollment`,

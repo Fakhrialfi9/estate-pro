@@ -15,12 +15,7 @@ const fromEnv = (
   limit: Number(process.env[limitKey] ?? defaultLimit),
 });
 
-export const LOGIN_RATE_LIMIT = fromEnv(
-  'AUTH_LOGIN_RATE_LIMIT_TTL_MS',
-  'AUTH_LOGIN_RATE_LIMIT',
-  60000,
-  5,
-);
+export const LOGIN_RATE_LIMIT = { ttl: 60000, limit: 5 } as const;
 export const REFRESH_RATE_LIMIT = fromEnv(
   'AUTH_REFRESH_RATE_LIMIT_TTL_MS',
   'AUTH_REFRESH_RATE_LIMIT',

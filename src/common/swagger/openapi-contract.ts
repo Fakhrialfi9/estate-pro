@@ -23,6 +23,9 @@ type MutableDocument = {
 type Method = 'get' | 'post' | 'patch' | 'delete' | 'put';
 const METHODS: Method[] = ['get', 'post', 'patch', 'delete', 'put'];
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 const ref = (name: string): Schema => ({
   $ref: `#/components/schemas/${name}`,
 });
@@ -42,6 +45,10 @@ const arrayOf = (items: Schema): Schema => ({ type: 'array', items });
 const apiResponse = (description: string, body?: Schema): ResponseObject => ({
   description,
   ...(body ? { content: { 'application/json': { schema: body } } } : {}),
+});
+const csvResponse = (description: string): ResponseObject => ({
+  description,
+  content: { 'text/csv': { schema: schema('string') } },
 });
 const wrapped = (data: Schema): Schema => objectSchema({ data }, ['data']);
 
@@ -64,6 +71,14 @@ const paginationMeta = objectSchema(
   },
   ['page', 'limit', 'total', 'totalPages'],
 );
+const automationGenericObjectResponse = {
+  ...objectSchema({}, []),
+  additionalProperties: true,
+};
+const analyticsGenericObjectResponse = {
+  ...objectSchema({}, []),
+  additionalProperties: true,
+};
 const userResponse = objectSchema(
   {
     uuid: schema('string', { format: 'uuid' }),
@@ -828,6 +843,16 @@ export const applyOpenApiContract = (
   addSchema(mutable, 'ApiErrorResponse', errorResponse);
   addSchema(mutable, 'ValidationErrorResponse', errorResponse);
   addSchema(mutable, 'PaginationMeta', paginationMeta);
+  addSchema(
+    mutable,
+    'AutomationGenericObjectResponse',
+    automationGenericObjectResponse,
+  );
+  addSchema(
+    mutable,
+    'AnalyticsGenericObjectResponse',
+    analyticsGenericObjectResponse,
+  );
   addSchema(mutable, 'UserResponse', userResponse);
   addSchema(
     mutable,
@@ -917,7 +942,55 @@ export const applyOpenApiContract = (
         normalized === '/health/ready';
       operation.security = publicEndpoint ? [] : [{ bearer: [] }];
 
-      if (normalized === '/auth/login' && method === 'post') {
+      if (
+        normalized === '/automation' ||
+        normalized.startsWith('/automation/')
+      ) {
+        for (const status of Object.keys(operation.responses ?? {})) {
+          if (!/^2\d\d$/.test(status) || status === '204') continue;
+          const current = operation.responses?.[status];
+          if (
+            current &&
+            isObject(current) &&
+            isObject(current.content) &&
+            Object.keys(current.content).length > 0
+          )
+            continue;
+          setResponse(
+            operation,
+            Number(status),
+            ref('AutomationGenericObjectResponse'),
+            'Automation operation succeeded.',
+          );
+        }
+      } else if (
+        normalized.startsWith('/analytics/') &&
+        normalized !== '/analytics/export'
+      ) {
+        for (const status of Object.keys(operation.responses ?? {})) {
+          if (!/^2\d\d$/.test(status) || status === '204') continue;
+          const current = operation.responses?.[status];
+          if (
+            current &&
+            isObject(current) &&
+            isObject(current.content) &&
+            Object.keys(current.content).length > 0
+          )
+            continue;
+          setResponse(
+            operation,
+            Number(status),
+            ref('AnalyticsGenericObjectResponse'),
+            'Analytics report returned.',
+          );
+        }
+      } else if (normalized === '/analytics/export' && method === 'get') {
+        operation.responses ??= {};
+        for (const status of Object.keys(operation.responses)) {
+          if (!/^2\d\d$/.test(status) || status === '204') continue;
+          operation.responses[status] = csvResponse('CSV analytics export.');
+        }
+      } else if (normalized === '/auth/login' && method === 'post') {
         setResponse(
           operation,
           201,
