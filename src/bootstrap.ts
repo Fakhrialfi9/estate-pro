@@ -115,7 +115,7 @@ export const configureApplication = (app: NestExpressApplication): void => {
     }),
   );
 
-  const apiBase = `/${configService.getOrThrow<string>('api.prefix')}/${apiVersion}`;
+  const apiBase = `/${configService.getOrThrow<string>('api.prefix')}/v${apiVersion}`;
   const loginPath = `${apiBase}/auth/login`;
   const refreshPath = `${apiBase}/auth/refresh`;
   const sessionBasePath = `${apiBase}/auth/sessions`;
@@ -258,7 +258,6 @@ export const getApplicationAddress = (
   app: NestExpressApplication,
 ): { host: string; port: number } => {
   const configService = app.get(ConfigService);
-
   return {
     host: configService.getOrThrow<string>('app.host'),
     port: configService.getOrThrow<number>('app.port'),
