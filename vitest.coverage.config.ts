@@ -63,6 +63,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
+      include: [
+        'src/common/**/*.ts',
+        'src/modules/**/domain/**/*.ts',
+        'src/modules/**/application/**/*.ts',
+        'src/modules/**/security/**/*.ts',
+      ],
       thresholds: {
         lines: 70,
         functions: 70,
@@ -77,6 +83,11 @@ export default defineConfig({
         '**/*.d.ts',
         '**/generated/**',
         '**/*.config.ts',
+        'src/config/**',
+        'src/**/presentation/**',
+        'src/**/infrastructure/**',
+        'src/**/application/dto/**',
+        'src/**/application/serializers/**',
       ],
     },
   },
