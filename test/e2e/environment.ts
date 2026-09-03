@@ -19,7 +19,6 @@ export function configureTestEnvironment(): void {
   setDefault('DATABASE_POOL_CONNECTION_LIMIT', '2');
   setDefault('DATABASE_CONNECT_TIMEOUT_MS', '5000');
   setDefault('DATABASE_ACQUIRE_TIMEOUT_MS', '10000');
-  setDefault('DATABASE_IDLE_TIMEOUT_SEC', '30');
   setDefault('DATABASE_POOL_IDLE_TIMEOUT_SEC', '30');
   setDefault('JWT_SECRET', 'test-only-secret-that-is-at-least-32-chars');
   setDefault(
