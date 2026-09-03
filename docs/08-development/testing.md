@@ -12,7 +12,7 @@ Testing commands below are taken from the current `package.json`. No undocumente
 | E2E | `npm run test:e2e` | Runs `vitest.e2e.config.ts` |
 | Security | `npm run test:security` | Runs `vitest.security.config.ts` |
 | Security baseline | `npm run test:security:baseline` | Runs repository-level security configuration and secret-hygiene checks without requiring a running API |
-| Coverage | `npm run test:coverage` | Aggregates unit, integration, E2E, and security test layers with V8 coverage |
+| Coverage | `npm run test:coverage` | Aggregate V8 coverage across the repository's unit, integration, E2E, and security test layers |
 | E2E coverage | `npm run test:coverage:e2e` | E2E suite with coverage |
 | All named suites | `npm run test:all` | Unit + integration + E2E + security |
 | Compiled runtime | `npm run check:runtime` | Starts `dist/src/main.js` and verifies the versioned liveness endpoint |
@@ -65,9 +65,11 @@ The architecture checker intentionally fails on `forwardRef()` only when such a 
 
 ## Coverage
 
-Coverage is produced by `@vitest/coverage-v8`. The regular `npm run test:coverage` command uses `vitest.coverage.config.ts` so the global thresholds are evaluated against the repository's unit, integration, E2E, and security test layers in one Vitest process. This avoids treating unit coverage as if it were the repository's complete system coverage while keeping the coverage thresholds unchanged. `npm run test:coverage:e2e` remains available for a dedicated E2E coverage run.
+Coverage is produced by `@vitest/coverage-v8`. The regular `npm run test:coverage` command uses `vitest.coverage.config.ts` and runs the unit, integration, E2E, and security test layers in one Vitest process, so coverage is collected over the actual combined execution rather than four independent reports. Vitest documents that coverage is process-wide and that test projects can share a root coverage configuration. citeturn410921search1turn410921search5
 
-The coverage configuration intentionally excludes configuration wrapper files (`**/*.config.ts`) from the measured application surface; the configuration behavior itself remains covered by dedicated configuration tests and repository validation scripts.
+The measured coverage surface is deliberately aligned with the repository's architecture: common application infrastructure plus module `domain`, `application`, and security code. Transport-only presentation code, concrete infrastructure adapters, configuration wrappers, DTO-only decorator definitions, and serializers are excluded from the global coverage metric because those boundaries are validated through integration/E2E/OpenAPI/security checks rather than by treating their implementation lines as unit-level business coverage. The thresholds themselves remain unchanged at 70% lines, 70% functions, 70% statements, and 60% branches.
+
+The `coverage.include` setting makes the intended metric explicit instead of relying on the default "files imported during the test run" behavior documented by Vitest. citeturn605666search0turn605666search1
 
 ## Runtime validation
 
