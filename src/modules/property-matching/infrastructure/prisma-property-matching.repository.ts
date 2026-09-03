@@ -5,6 +5,8 @@ import type {
   MatchingRepository,
   StoredPreference,
   StoredRecommendation,
+  RecommendationHistoryItem,
+  SavedProperty,
 } from '../application/matching.ports.js';
 import type {
   BehavioralSignal,
@@ -618,7 +620,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
     subjectUuid: string,
     page: number,
     limit: number,
-  ) {
+  ): Promise<{ items: readonly RecommendationHistoryItem[]; total: number }> {
     const [items, total] = await Promise.all([
       this.prisma.recommendationHistory.findMany({
         where: { subjectType, subjectUuid },
@@ -640,7 +642,13 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
         where: { subjectType, subjectUuid },
       }),
     ]);
-    return { items, total };
+    return {
+      items: items.map((item) => ({
+        ...item,
+        recommendationId: item.recommendationId.toString(),
+      })),
+      total,
+    };
   }
 
   async recordFeedback(input: {
@@ -712,7 +720,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
     });
   }
 
-  async listSavedListings(subjectUuid: string): Promise<readonly unknown[]> {
+  async listSavedListings(subjectUuid: string): Promise<readonly SavedProperty[]> {
     const rows = await this.prisma.propertyListingEngagement.findMany({
       where: {
         userUuid: subjectUuid,
