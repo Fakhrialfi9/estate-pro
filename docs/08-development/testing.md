@@ -65,11 +65,11 @@ The architecture checker intentionally fails on `forwardRef()` only when such a 
 
 ## Coverage
 
-Coverage is produced by `@vitest/coverage-v8`. The regular `npm run test:coverage` command uses `vitest.coverage.config.ts` and runs the unit, integration, E2E, and security test layers in one Vitest process, so coverage is collected over the actual combined execution rather than four independent reports. Vitest documents that coverage is process-wide and that test projects can share a root coverage configuration. citeturn410921search1turn410921search5
+Coverage is produced by `@vitest/coverage-v8`. The regular `npm run test:coverage` command uses `vitest.coverage.config.ts` and runs the unit, integration, E2E, and security test layers in one Vitest process, so coverage is collected over the actual combined execution rather than four independent reports. In Vitest 4, coverage is a root/process-level option for test projects.
 
 The measured coverage surface is deliberately aligned with the repository's architecture: common application infrastructure plus module `domain`, `application`, and security code. Transport-only presentation code, concrete infrastructure adapters, configuration wrappers, DTO-only decorator definitions, and serializers are excluded from the global coverage metric because those boundaries are validated through integration/E2E/OpenAPI/security checks rather than by treating their implementation lines as unit-level business coverage. The thresholds themselves remain unchanged at 70% lines, 70% functions, 70% statements, and 60% branches.
 
-The `coverage.include` setting makes the intended metric explicit instead of relying on the default "files imported during the test run" behavior documented by Vitest. citeturn605666search0turn605666search1
+The `coverage.include` setting makes the intended metric explicit instead of relying on the default behavior where Vitest reports only files imported during the test run.
 
 ## Runtime validation
 
