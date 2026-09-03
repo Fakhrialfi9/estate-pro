@@ -11,7 +11,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import {
@@ -39,6 +44,75 @@ const actorOf = (
   userAgent: request.get('user-agent') ?? undefined,
 });
 
+const preferenceResponseSchema = {
+  type: 'object',
+  required: [
+    'version',
+    'status',
+    'transactionTypes',
+    'propertyTypeUuids',
+    'propertyCategoryUuids',
+    'hardCriteria',
+  ],
+  properties: {
+    version: { type: 'integer', minimum: 1 },
+    status: { type: 'string', enum: ['ACTIVE', 'ARCHIVED'] },
+    transactionTypes: {
+      type: 'array',
+      items: {
+        type: 'string',
+        enum: ['SALE', 'RENT', 'LEASE', 'AUCTION', 'JOINT_VENTURE', 'OTHER'],
+      },
+    },
+    propertyTypeUuids: {
+      type: 'array',
+      items: { type: 'string', format: 'uuid' },
+    },
+    propertyCategoryUuids: {
+      type: 'array',
+      items: { type: 'string', format: 'uuid' },
+    },
+    location: {
+      type: 'object',
+      nullable: true,
+      additionalProperties: true,
+    },
+    budget: {
+      type: 'object',
+      nullable: true,
+      additionalProperties: true,
+    },
+    specification: {
+      type: 'object',
+      nullable: true,
+      additionalProperties: true,
+    },
+    hardCriteria: {
+      type: 'array',
+      items: {
+        type: 'string',
+        enum: [
+          'transactionType',
+          'propertyType',
+          'propertyCategory',
+          'location',
+          'budget',
+        ],
+      },
+    },
+  },
+};
+
+const objectResponseSchema = {
+  type: 'object',
+  additionalProperties: true,
+};
+
+const arrayResponseSchema = {
+  type: 'array',
+  items: objectResponseSchema,
+};
+
 @ApiTags('Property Matching')
 @ApiBearerAuth()
 @Controller({ path: 'property-matching', version: '1' })
@@ -49,6 +123,11 @@ export class PropertyMatchingController {
   @Post('preferences')
   @ApiOperation({
     summary: 'Create or reactivate a property matching preference',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Property matching preference created or reactivated.',
+    schema: preferenceResponseSchema,
   })
   async createPreference(@Body() dto: PreferenceDto, @Req() request: Request) {
     return this.matching.createPreference(
@@ -61,6 +140,11 @@ export class PropertyMatchingController {
 
   @Get('preferences/:subjectType/:subjectUuid')
   @ApiOperation({ summary: 'Get a property matching preference' })
+  @ApiResponse({
+    status: 200,
+    description: 'Property matching preference returned.',
+    schema: preferenceResponseSchema,
+  })
   async getPreference(
     @Param() params: SubjectParamsDto,
     @Req() request: Request,
@@ -75,6 +159,11 @@ export class PropertyMatchingController {
   @Patch('preferences/:subjectType/:subjectUuid')
   @ApiOperation({
     summary: 'Update a property matching preference with optimistic versioning',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Property matching preference updated.',
+    schema: preferenceResponseSchema,
   })
   async updatePreference(
     @Param() params: SubjectParamsDto,
@@ -93,6 +182,11 @@ export class PropertyMatchingController {
   @Post('preferences/:subjectType/:subjectUuid/archive')
   @HttpCode(200)
   @ApiOperation({ summary: 'Archive a property matching preference' })
+  @ApiResponse({
+    status: 200,
+    description: 'Property matching preference archived.',
+    schema: preferenceResponseSchema,
+  })
   async archivePreference(
     @Param() params: SubjectParamsDto,
     @Query('version') version: string,
@@ -109,6 +203,11 @@ export class PropertyMatchingController {
   @Post('preferences/:subjectType/:subjectUuid/restore')
   @HttpCode(200)
   @ApiOperation({ summary: 'Restore an archived property matching preference' })
+  @ApiResponse({
+    status: 200,
+    description: 'Property matching preference restored.',
+    schema: preferenceResponseSchema,
+  })
   async restorePreference(
     @Param() params: SubjectParamsDto,
     @Query('version') version: string,
@@ -127,6 +226,18 @@ export class PropertyMatchingController {
   @ApiOperation({
     summary: 'Evaluate property matches from the stored preference',
   })
+  @ApiResponse({
+    status: 200,
+    description: 'Property matches evaluated and ranked.',
+    schema: {
+      type: 'object',
+      required: ['data', 'meta'],
+      properties: {
+        data: arrayResponseSchema,
+        meta: objectResponseSchema,
+      },
+    },
+  })
   async match(@Body() dto: GenerateRecommendationDto, @Req() request: Request) {
     return this.matching.match(
       dto.subjectType,
@@ -139,6 +250,11 @@ export class PropertyMatchingController {
   @Post('recommendations/generate')
   @HttpCode(200)
   @ApiOperation({ summary: 'Generate a new property recommendation snapshot' })
+  @ApiResponse({
+    status: 200,
+    description: 'Property recommendation snapshot generated.',
+    schema: objectResponseSchema,
+  })
   async generate(
     @Body() dto: GenerateRecommendationDto,
     @Req() request: Request,
@@ -155,6 +271,11 @@ export class PropertyMatchingController {
   @Post('recommendations/refresh')
   @HttpCode(200)
   @ApiOperation({ summary: 'Refresh a property recommendation snapshot' })
+  @ApiResponse({
+    status: 200,
+    description: 'Property recommendation snapshot refreshed.',
+    schema: objectResponseSchema,
+  })
   async refresh(
     @Body() dto: GenerateRecommendationDto,
     @Req() request: Request,
@@ -170,6 +291,18 @@ export class PropertyMatchingController {
 
   @Get('recommendations/:subjectType/:subjectUuid/history')
   @ApiOperation({ summary: 'Read recommendation history' })
+  @ApiResponse({
+    status: 200,
+    description: 'Recommendation history returned.',
+    schema: {
+      type: 'object',
+      required: ['data', 'meta'],
+      properties: {
+        data: arrayResponseSchema,
+        meta: objectResponseSchema,
+      },
+    },
+  })
   async history(
     @Param() params: SubjectParamsDto,
     @Query() query: RecommendationQueryDto,
@@ -186,6 +319,11 @@ export class PropertyMatchingController {
 
   @Get('recommendations/:subjectType/:subjectUuid')
   @ApiOperation({ summary: 'Read the latest property recommendation snapshot' })
+  @ApiResponse({
+    status: 200,
+    description: 'Latest property recommendation snapshot returned.',
+    schema: objectResponseSchema,
+  })
   async latest(@Param() params: SubjectParamsDto, @Req() request: Request) {
     return this.matching.getLatest(
       params.subjectType,
@@ -198,6 +336,18 @@ export class PropertyMatchingController {
   @ApiOperation({
     summary: 'Read the current user saved active public listings',
   })
+  @ApiResponse({
+    status: 200,
+    description: 'Saved active public listings returned.',
+    schema: {
+      type: 'object',
+      required: ['data', 'meta'],
+      properties: {
+        data: arrayResponseSchema,
+        meta: objectResponseSchema,
+      },
+    },
+  })
   async saved(@Req() request: Request) {
     return this.matching.savedProperties(actorOf(request));
   }
@@ -205,6 +355,11 @@ export class PropertyMatchingController {
   @Post('feedback')
   @HttpCode(200)
   @ApiOperation({ summary: 'Record recommendation feedback' })
+  @ApiResponse({
+    status: 200,
+    description: 'Recommendation feedback recorded.',
+    schema: objectResponseSchema,
+  })
   async feedback(@Body() dto: FeedbackDto, @Req() request: Request) {
     return this.matching.submitFeedback(dto, actorOf(request));
   }
