@@ -12,7 +12,7 @@ Testing commands below are taken from the current `package.json`. No undocumente
 | E2E | `npm run test:e2e` | Runs `vitest.e2e.config.ts` |
 | Security | `npm run test:security` | Runs `vitest.security.config.ts` |
 | Security baseline | `npm run test:security:baseline` | Runs repository-level security configuration and secret-hygiene checks without requiring a running API |
-| Coverage | `npm run test:coverage` | Default Vitest suite with V8 coverage |
+| Coverage | `npm run test:coverage` | Aggregates unit, integration, E2E, and security test layers with V8 coverage |
 | E2E coverage | `npm run test:coverage:e2e` | E2E suite with coverage |
 | All named suites | `npm run test:all` | Unit + integration + E2E + security |
 | Compiled runtime | `npm run check:runtime` | Starts `dist/src/main.js` and verifies the versioned liveness endpoint |
@@ -65,7 +65,9 @@ The architecture checker intentionally fails on `forwardRef()` only when such a 
 
 ## Coverage
 
-Coverage is produced by `@vitest/coverage-v8`. Use `npm run test:coverage` for the default suite and `npm run test:coverage:e2e` for E2E coverage.
+Coverage is produced by `@vitest/coverage-v8`. The regular `npm run test:coverage` command uses `vitest.coverage.config.ts` so the global thresholds are evaluated against the repository's unit, integration, E2E, and security test layers in one Vitest process. This avoids treating unit coverage as if it were the repository's complete system coverage while keeping the coverage thresholds unchanged. `npm run test:coverage:e2e` remains available for a dedicated E2E coverage run.
+
+The coverage configuration intentionally excludes configuration wrapper files (`**/*.config.ts`) from the measured application surface; the configuration behavior itself remains covered by dedicated configuration tests and repository validation scripts.
 
 ## Runtime validation
 
