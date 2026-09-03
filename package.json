@@ -41,7 +41,7 @@
     "openapi:validate": "node scripts/validate-openapi.mjs",
     "test:security": "prisma generate && vitest run --config vitest.security.config.ts",
     "test:security:baseline": "bash scripts/security-test.sh",
-    "test:coverage": "prisma generate && vitest run --coverage",
+    "test:coverage": "prisma generate && vitest run --coverage --config vitest.coverage.config.ts",
     "test:coverage:e2e": "prisma generate && vitest run --config vitest.e2e.config.ts --coverage",
     "check:fix": "npm run lint:fix && npm run format:check && npm run typecheck",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:openapi && npm run test:security",
