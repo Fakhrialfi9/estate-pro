@@ -99,6 +99,55 @@ const stageListResponseSchema = {
   required: ['data'],
 };
 
+const salesRecordSchema = {
+  type: 'object',
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+  },
+  required: ['uuid'],
+  additionalProperties: true,
+};
+
+const salesResponseSchema = {
+  type: 'object',
+  properties: {
+    data: salesRecordSchema,
+  },
+  required: ['data'],
+};
+
+const salesArrayResponseSchema = {
+  type: 'object',
+  properties: {
+    data: {
+      type: 'array',
+      items: salesRecordSchema,
+    },
+  },
+  required: ['data'],
+};
+
+const salesPageResponseSchema = {
+  type: 'object',
+  properties: {
+    data: {
+      type: 'array',
+      items: salesRecordSchema,
+    },
+    meta: {
+      type: 'object',
+      properties: {
+        page: { type: 'integer', minimum: 1 },
+        limit: { type: 'integer', minimum: 1 },
+        total: { type: 'integer', minimum: 0 },
+        totalPages: { type: 'integer', minimum: 0 },
+      },
+      required: ['page', 'limit', 'total', 'totalPages'],
+    },
+  },
+  required: ['data', 'meta'],
+};
+
 const getPipelineResponseSchema = {
   type: 'object',
   properties: {
@@ -256,4 +305,96 @@ if (archiveStageDescriptor) {
     description: 'Pipeline stage archived.',
     schema: stageResponseSchema,
   })(SalesController.prototype, 'archiveStage', archiveStageDescriptor);
+}
+
+const salesResponseDescriptors: ReadonlyArray<readonly [
+  keyof SalesController,
+  number,
+  string,
+  typeof salesResponseSchema | typeof salesArrayResponseSchema | typeof salesPageResponseSchema,
+]> = [
+  [
+    'createOpportunity',
+    201,
+    'Sales opportunity created.',
+    salesResponseSchema,
+  ],
+  [
+    'listOpportunities',
+    200,
+    'Sales opportunities returned.',
+    salesPageResponseSchema,
+  ],
+  ['getOpportunity', 200, 'Sales opportunity returned.', salesResponseSchema],
+  ['updateOpportunity', 200, 'Sales opportunity updated.', salesResponseSchema],
+  ['assignOpportunity', 200, 'Sales opportunity assigned.', salesResponseSchema],
+  [
+    'transitionOpportunity',
+    200,
+    'Sales opportunity transitioned.',
+    salesResponseSchema,
+  ],
+  ['attachProperty', 200, 'Property attached to opportunity.', salesResponseSchema],
+  ['detachProperty', 200, 'Property detached from opportunity.', salesResponseSchema],
+  ['lostOpportunity', 200, 'Sales opportunity marked lost.', salesResponseSchema],
+  [
+    'stageHistory',
+    200,
+    'Opportunity stage history returned.',
+    salesPageResponseSchema,
+  ],
+  ['createActivity', 201, 'Sales activity created.', salesResponseSchema],
+  ['listActivities', 200, 'Sales activities returned.', salesPageResponseSchema],
+  ['activityStatus', 200, 'Sales activity status updated.', salesResponseSchema],
+  ['createViewing', 201, 'Viewing schedule created.', salesResponseSchema],
+  ['listViewings', 200, 'Viewing schedules returned.', salesPageResponseSchema],
+  ['viewingStatus', 200, 'Viewing status updated.', salesResponseSchema],
+  ['createNegotiation', 201, 'Negotiation created.', salesResponseSchema],
+  ['negotiationStatus', 200, 'Negotiation status updated.', salesResponseSchema],
+  [
+    'negotiationHistory',
+    200,
+    'Negotiation history returned.',
+    salesArrayResponseSchema,
+  ],
+  ['createOffer', 201, 'Offer created.', salesResponseSchema],
+  ['offers', 200, 'Offer history returned.', salesArrayResponseSchema],
+  ['offerStatus', 200, 'Offer status updated.', salesResponseSchema],
+  ['createDeal', 201, 'Sales deal created.', salesResponseSchema],
+  ['listDeals', 200, 'Sales deals returned.', salesPageResponseSchema],
+  ['getDeal', 200, 'Sales deal returned.', salesResponseSchema],
+  ['addDealItem', 201, 'Deal line item added.', salesResponseSchema],
+  ['updateDealItem', 200, 'Deal line item updated.', salesResponseSchema],
+  ['dealStatus', 200, 'Deal status updated.', salesResponseSchema],
+  ['closeDeal', 201, 'Sales deal closed.', salesResponseSchema],
+  ['lostDeal', 200, 'Sales deal marked lost.', salesResponseSchema],
+  ['lostReasons', 200, 'Lost reasons returned.', salesArrayResponseSchema],
+  ['createLostReason', 201, 'Lost reason created.', salesResponseSchema],
+  ['updateLostReason', 200, 'Lost reason updated.', salesResponseSchema],
+  ['createCommissionRule', 201, 'Commission rule created.', salesResponseSchema],
+  [
+    'calculateCommission',
+    201,
+    'Commission calculated.',
+    salesResponseSchema,
+  ],
+  ['approveCommission', 200, 'Commission approved.', salesResponseSchema],
+  ['settleCommission', 200, 'Commission settled.', salesResponseSchema],
+  ['commissionReport', 200, 'Commission report returned.', salesResponseSchema],
+  ['forecast', 200, 'Sales forecast returned.', salesResponseSchema],
+];
+
+for (const [methodName, status, description, schema] of salesResponseDescriptors) {
+  const descriptor = Object.getOwnPropertyDescriptor(
+    SalesController.prototype,
+    methodName,
+  );
+
+  if (descriptor) {
+    ApiResponse({ status, description, schema })(
+      SalesController.prototype,
+      methodName,
+      descriptor,
+    );
+  }
 }
