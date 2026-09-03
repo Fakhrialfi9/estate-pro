@@ -720,7 +720,9 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
     });
   }
 
-  async listSavedListings(subjectUuid: string): Promise<readonly SavedProperty[]> {
+  async listSavedListings(
+    subjectUuid: string,
+  ): Promise<readonly SavedProperty[]> {
     const rows = await this.prisma.propertyListingEngagement.findMany({
       where: {
         userUuid: subjectUuid,

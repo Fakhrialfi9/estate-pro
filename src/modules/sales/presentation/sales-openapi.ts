@@ -134,9 +134,5 @@ if (updatePipelineDescriptor) {
     status: 200,
     description: 'Sales pipeline updated.',
     schema: getPipelineResponseSchema,
-  })(
-    SalesController.prototype,
-    'updatePipeline',
-    updatePipelineDescriptor,
-  );
+  })(SalesController.prototype, 'updatePipeline', updatePipelineDescriptor);
 }
