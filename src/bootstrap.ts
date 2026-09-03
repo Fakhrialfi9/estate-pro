@@ -133,9 +133,8 @@ export const configureApplication = (app: NestExpressApplication): void => {
     propertyMatchingFeedbackPath,
   ];
 
-  const refreshRateLimit = configService.getOrThrow<RateLimitPolicy>(
-    'rateLimit.refresh',
-  );
+  const refreshRateLimit =
+    configService.getOrThrow<RateLimitPolicy>('rateLimit.refresh');
 
   app.use(loginPath, createRateLimiter(LOGIN_RATE_LIMIT));
   app.use(refreshPath, createRateLimiter(refreshRateLimit));
