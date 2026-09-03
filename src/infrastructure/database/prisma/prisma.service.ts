@@ -30,7 +30,12 @@ export class PrismaService
       ),
     });
 
-    super({ adapter });
+    super({
+      adapter,
+      transactionOptions: {
+        timeout: 30_000,
+      },
+    });
   }
 
   async onModuleInit(): Promise<void> {

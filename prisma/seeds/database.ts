@@ -19,5 +19,10 @@ export function createDatabaseClient(): PrismaClient {
     connectTimeout: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS ?? 5000),
   });
 
-  return new PrismaClient({ adapter });
+  return new PrismaClient({
+    adapter,
+    transactionOptions: {
+      timeout: 30_000,
+    },
+  });
 }
