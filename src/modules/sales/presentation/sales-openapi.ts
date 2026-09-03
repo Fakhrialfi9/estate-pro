@@ -53,14 +53,7 @@ const pipelineSchema = {
       },
     },
   },
-  required: [
-    'uuid',
-    'name',
-    'description',
-    'status',
-    'sortOrder',
-    'stages',
-  ],
+  required: ['uuid', 'name', 'description', 'status', 'sortOrder', 'stages'],
 };
 
 const getPipelineResponseSchema = {
