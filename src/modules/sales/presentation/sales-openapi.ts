@@ -136,3 +136,16 @@ if (updatePipelineDescriptor) {
     schema: getPipelineResponseSchema,
   })(SalesController.prototype, 'updatePipeline', updatePipelineDescriptor);
 }
+
+const archivePipelineDescriptor = Object.getOwnPropertyDescriptor(
+  SalesController.prototype,
+  'archivePipeline',
+);
+
+if (archivePipelineDescriptor) {
+  ApiResponse({
+    status: 200,
+    description: 'Sales pipeline archived.',
+    schema: getPipelineResponseSchema,
+  })(SalesController.prototype, 'archivePipeline', archivePipelineDescriptor);
+}
