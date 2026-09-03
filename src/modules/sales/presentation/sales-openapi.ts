@@ -123,3 +123,20 @@ if (getPipelineDescriptor) {
     schema: getPipelineResponseSchema,
   })(SalesController.prototype, 'getPipeline', getPipelineDescriptor);
 }
+
+const updatePipelineDescriptor = Object.getOwnPropertyDescriptor(
+  SalesController.prototype,
+  'updatePipeline',
+);
+
+if (updatePipelineDescriptor) {
+  ApiResponse({
+    status: 200,
+    description: 'Sales pipeline updated.',
+    schema: getPipelineResponseSchema,
+  })(
+    SalesController.prototype,
+    'updatePipeline',
+    updatePipelineDescriptor,
+  );
+}
