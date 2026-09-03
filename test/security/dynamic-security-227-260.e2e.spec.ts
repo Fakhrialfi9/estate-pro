@@ -47,11 +47,17 @@ async function createUser(): Promise<{ uuid: string; email: string }> {
 async function cleanup(): Promise<void> {
   await prisma.auditLogChange.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.authorizationUserRole.deleteMany();
   await prisma.authenticationRefreshToken.deleteMany();
   await prisma.authenticationRefreshTokenFamily.deleteMany();
+  await prisma.authenticationUserTwoFactorRecoveryCode.deleteMany();
+  await prisma.authenticationUserTwoFactorChallenge.deleteMany();
+  await prisma.authenticationUserTwoFactor.deleteMany();
+  await prisma.authenticationPasswordResetToken.deleteMany();
   await prisma.authenticationUserSession.deleteMany();
   await prisma.authenticationUserCredential.deleteMany();
   await prisma.authenticationUserSecurity.deleteMany();
+  await prisma.authenticationUserProfile.deleteMany();
   await prisma.authenticationUser.deleteMany();
 }
 
