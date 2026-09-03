@@ -630,7 +630,9 @@ export class SalesController {
 
   @Post('deals/:uuid/reopen')
   @RequirePermissionsAny('sales.deals.reopen')
+  @HttpCode(204)
   @ApiOperation({ summary: 'Reopen a deal according to policy' })
+  @ApiResponse({ status: 204 })
   @ApiResponse({ status: 409 })
   reopenDeal(
     @Req() request: Request,
