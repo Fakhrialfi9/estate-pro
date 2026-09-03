@@ -15,10 +15,7 @@ function readProjectEnvironment(): Environment {
 
     for (const line of content.split(/\r?\n/)) {
       const match = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*?)\s*$/);
-      if (!match) {
-        continue;
-      }
-
+      if (!match) continue;
       const key = match[1];
       const value = match[2];
       environment[key] = value.replace(/^['"]|['"]$/g, '');
@@ -29,16 +26,12 @@ function readProjectEnvironment(): Environment {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       return {};
     }
-
     throw error;
   }
 }
 
 function parseDatabaseUrl(databaseUrl: string | undefined): URL | undefined {
-  if (!databaseUrl) {
-    return undefined;
-  }
-
+  if (!databaseUrl) return undefined;
   try {
     return new URL(databaseUrl);
   } catch {
@@ -50,26 +43,14 @@ function getDatabaseName(databaseUrl: URL): string {
   return decodeURIComponent(databaseUrl.pathname.replace(/^\//, ''));
 }
 
-function getSafeTestDatabaseUrl(
-  databaseUrl: string | undefined,
-): string | undefined {
+function getSafeTestDatabaseUrl(databaseUrl: string | undefined): string | undefined {
   const url = parseDatabaseUrl(databaseUrl);
-  if (!url) {
-    return undefined;
-  }
-
-  if (url.protocol !== 'mysql:' || !TEST_DATABASE_HOSTS.has(url.hostname)) {
-    return undefined;
-  }
+  if (!url) return undefined;
+  if (url.protocol !== 'mysql:' || !TEST_DATABASE_HOSTS.has(url.hostname)) return undefined;
 
   const databaseName = getDatabaseName(url);
-  if (!databaseName) {
-    return undefined;
-  }
-
-  if (TEST_DATABASE_NAME_PATTERN.test(databaseName)) {
-    return databaseUrl;
-  }
+  if (!databaseName) return undefined;
+  if (TEST_DATABASE_NAME_PATTERN.test(databaseName)) return databaseUrl;
 
   const testDatabaseUrl = new URL(url.toString());
   testDatabaseUrl.pathname = `/${encodeURIComponent(`${databaseName}_test`)}`;
@@ -83,9 +64,7 @@ function buildDatabaseUrl(environment: Environment): string | undefined {
   const password = environment.DATABASE_PASSWORD;
   const configuredName = environment.DATABASE_NAME;
 
-  if (!host || !user || password === undefined) {
-    return undefined;
-  }
+  if (!host || !user || password === undefined) return undefined;
 
   const databaseName =
     configuredName && TEST_DATABASE_NAME_PATTERN.test(configuredName)
@@ -96,41 +75,28 @@ function buildDatabaseUrl(environment: Environment): string | undefined {
     `mysql://${encodeURIComponent(user)}@${host}:${port}/${encodeURIComponent(databaseName)}`,
   );
   url.password = password;
-
   return url.toString();
 }
 
-function resolveTestDatabaseUrl(): string {
+export function resolveTestDatabaseUrl(): string {
   const projectEnvironment = readProjectEnvironment();
   const processEnvironment: Environment = process.env;
   const processDatabaseUrl = processEnvironment.DATABASE_URL;
   const projectDatabaseUrl = projectEnvironment.DATABASE_URL;
 
   const safeProcessDatabaseUrl = getSafeTestDatabaseUrl(processDatabaseUrl);
-  if (safeProcessDatabaseUrl) {
-    return safeProcessDatabaseUrl;
-  }
+  if (safeProcessDatabaseUrl) return safeProcessDatabaseUrl;
 
   const safeProjectDatabaseUrl = getSafeTestDatabaseUrl(projectDatabaseUrl);
-  if (safeProjectDatabaseUrl) {
-    return safeProjectDatabaseUrl;
-  }
+  if (safeProjectDatabaseUrl) return safeProjectDatabaseUrl;
 
   const processDatabaseFromParts = buildDatabaseUrl(processEnvironment);
-  const safeProcessDatabaseFromParts = getSafeTestDatabaseUrl(
-    processDatabaseFromParts,
-  );
-  if (safeProcessDatabaseFromParts) {
-    return safeProcessDatabaseFromParts;
-  }
+  const safeProcessDatabaseFromParts = getSafeTestDatabaseUrl(processDatabaseFromParts);
+  if (safeProcessDatabaseFromParts) return safeProcessDatabaseFromParts;
 
   const projectDatabaseFromParts = buildDatabaseUrl(projectEnvironment);
-  const safeProjectDatabaseFromParts = getSafeTestDatabaseUrl(
-    projectDatabaseFromParts,
-  );
-  if (safeProjectDatabaseFromParts) {
-    return safeProjectDatabaseFromParts;
-  }
+  const safeProjectDatabaseFromParts = getSafeTestDatabaseUrl(projectDatabaseFromParts);
+  if (safeProjectDatabaseFromParts) return safeProjectDatabaseFromParts;
 
   const unsafeDatabaseUrl = processDatabaseUrl ?? projectDatabaseUrl;
   if (unsafeDatabaseUrl) {
@@ -144,11 +110,9 @@ function resolveTestDatabaseUrl(): string {
   );
 }
 
-function synchronizeDatabaseEnvironment(databaseUrl: string): void {
+export function synchronizeDatabaseEnvironment(databaseUrl: string): void {
   const url = parseDatabaseUrl(databaseUrl);
-  if (!url) {
-    throw new Error('Resolved test database URL is invalid.');
-  }
+  if (!url) throw new Error('Resolved test database URL is invalid.');
 
   process.env.DATABASE_URL = databaseUrl;
   process.env.DATABASE_HOST = url.hostname;
@@ -170,9 +134,17 @@ export function prepareTestDatabase(): void {
   const databaseUrl = resolveTestDatabaseUrl();
   synchronizeDatabaseEnvironment(databaseUrl);
 
-  // Prisma ORM 7 does not support --skip-seed on migrate reset. Seed execution
-  // is handled explicitly by the test workflow after the schema reset.
-  execFileSync(PRISMA_COMMAND, ['migrate', 'reset', '--force'], {
+  execFileSync(
+    PRISMA_COMMAND,
+    ['migrate', 'reset', '--force', '--skip-seed'],
+    {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: 'inherit',
+    },
+  );
+
+  execFileSync(PRISMA_COMMAND, ['db', 'seed'], {
     cwd: process.cwd(),
     env: process.env,
     stdio: 'inherit',
