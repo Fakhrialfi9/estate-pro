@@ -33,11 +33,14 @@ type RateLimitPolicy = Readonly<{
   limit: number;
 }>;
 
+const clientRateLimitKey = (request: Request): string =>
+  ipKeyGenerator(request.ip ?? request.socket.remoteAddress ?? 'unknown');
+
 const createRateLimiter = (policy: RateLimitPolicy) =>
   rateLimit({
     windowMs: policy.ttl,
     limit: policy.limit,
-    keyGenerator: (request) => ipKeyGenerator(request.ip),
+    keyGenerator: clientRateLimitKey,
     skipFailedRequests: false,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
@@ -186,7 +189,7 @@ export const configureApplication = (app: NestExpressApplication): void => {
   const globalRateLimiter = rateLimit({
     windowMs: globalPolicy.ttl,
     limit: globalPolicy.limit,
-    keyGenerator: (request) => ipKeyGenerator(request.ip),
+    keyGenerator: clientRateLimitKey,
     skipFailedRequests: false,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
