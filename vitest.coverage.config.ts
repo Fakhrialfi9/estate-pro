@@ -13,6 +13,7 @@ export default defineConfig({
       {
         test: {
           name: 'unit',
+          globals: true,
           environment: 'node',
           include: ['src/**/*.spec.ts', 'test/unit/**/*.spec.ts'],
           exclude: [
@@ -29,6 +30,7 @@ export default defineConfig({
       {
         test: {
           name: 'integration',
+          globals: true,
           environment: 'node',
           include: ['test/integration/**/*.spec.ts'],
           setupFiles: ['./test/integration/setup.ts'],
@@ -40,6 +42,7 @@ export default defineConfig({
       {
         test: {
           name: 'e2e',
+          globals: true,
           environment: 'node',
           include: ['test/e2e/**/*.spec.ts'],
           setupFiles: ['./test/e2e/environment.ts'],
@@ -52,6 +55,7 @@ export default defineConfig({
       {
         test: {
           name: 'security',
+          globals: true,
           environment: 'node',
           include: ['test/security/**/*.spec.ts'],
           testTimeout: 30_000,
