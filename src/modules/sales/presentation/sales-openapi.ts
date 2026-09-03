@@ -307,18 +307,19 @@ if (archiveStageDescriptor) {
   })(SalesController.prototype, 'archiveStage', archiveStageDescriptor);
 }
 
-const salesResponseDescriptors: ReadonlyArray<readonly [
-  keyof SalesController,
-  number,
-  string,
-  typeof salesResponseSchema | typeof salesArrayResponseSchema | typeof salesPageResponseSchema,
-]> = [
-  [
-    'createOpportunity',
-    201,
-    'Sales opportunity created.',
-    salesResponseSchema,
-  ],
+const salesResponseDescriptors: ReadonlyArray<
+  readonly [
+    keyof SalesController,
+    number,
+    string,
+    (
+      | typeof salesResponseSchema
+      | typeof salesArrayResponseSchema
+      | typeof salesPageResponseSchema
+    ),
+  ]
+> = [
+  ['createOpportunity', 201, 'Sales opportunity created.', salesResponseSchema],
   [
     'listOpportunities',
     200,
@@ -327,16 +328,36 @@ const salesResponseDescriptors: ReadonlyArray<readonly [
   ],
   ['getOpportunity', 200, 'Sales opportunity returned.', salesResponseSchema],
   ['updateOpportunity', 200, 'Sales opportunity updated.', salesResponseSchema],
-  ['assignOpportunity', 200, 'Sales opportunity assigned.', salesResponseSchema],
+  [
+    'assignOpportunity',
+    200,
+    'Sales opportunity assigned.',
+    salesResponseSchema,
+  ],
   [
     'transitionOpportunity',
     200,
     'Sales opportunity transitioned.',
     salesResponseSchema,
   ],
-  ['attachProperty', 200, 'Property attached to opportunity.', salesResponseSchema],
-  ['detachProperty', 200, 'Property detached from opportunity.', salesResponseSchema],
-  ['lostOpportunity', 200, 'Sales opportunity marked lost.', salesResponseSchema],
+  [
+    'attachProperty',
+    200,
+    'Property attached to opportunity.',
+    salesResponseSchema,
+  ],
+  [
+    'detachProperty',
+    200,
+    'Property detached from opportunity.',
+    salesResponseSchema,
+  ],
+  [
+    'lostOpportunity',
+    200,
+    'Sales opportunity marked lost.',
+    salesResponseSchema,
+  ],
   [
     'stageHistory',
     200,
@@ -344,13 +365,28 @@ const salesResponseDescriptors: ReadonlyArray<readonly [
     salesPageResponseSchema,
   ],
   ['createActivity', 201, 'Sales activity created.', salesResponseSchema],
-  ['listActivities', 200, 'Sales activities returned.', salesPageResponseSchema],
-  ['activityStatus', 200, 'Sales activity status updated.', salesResponseSchema],
+  [
+    'listActivities',
+    200,
+    'Sales activities returned.',
+    salesPageResponseSchema,
+  ],
+  [
+    'activityStatus',
+    200,
+    'Sales activity status updated.',
+    salesResponseSchema,
+  ],
   ['createViewing', 201, 'Viewing schedule created.', salesResponseSchema],
   ['listViewings', 200, 'Viewing schedules returned.', salesPageResponseSchema],
   ['viewingStatus', 200, 'Viewing status updated.', salesResponseSchema],
   ['createNegotiation', 201, 'Negotiation created.', salesResponseSchema],
-  ['negotiationStatus', 200, 'Negotiation status updated.', salesResponseSchema],
+  [
+    'negotiationStatus',
+    200,
+    'Negotiation status updated.',
+    salesResponseSchema,
+  ],
   [
     'negotiationHistory',
     200,
@@ -371,20 +407,25 @@ const salesResponseDescriptors: ReadonlyArray<readonly [
   ['lostReasons', 200, 'Lost reasons returned.', salesArrayResponseSchema],
   ['createLostReason', 201, 'Lost reason created.', salesResponseSchema],
   ['updateLostReason', 200, 'Lost reason updated.', salesResponseSchema],
-  ['createCommissionRule', 201, 'Commission rule created.', salesResponseSchema],
   [
-    'calculateCommission',
+    'createCommissionRule',
     201,
-    'Commission calculated.',
+    'Commission rule created.',
     salesResponseSchema,
   ],
+  ['calculateCommission', 201, 'Commission calculated.', salesResponseSchema],
   ['approveCommission', 200, 'Commission approved.', salesResponseSchema],
   ['settleCommission', 200, 'Commission settled.', salesResponseSchema],
   ['commissionReport', 200, 'Commission report returned.', salesResponseSchema],
   ['forecast', 200, 'Sales forecast returned.', salesResponseSchema],
 ];
 
-for (const [methodName, status, description, schema] of salesResponseDescriptors) {
+for (const [
+  methodName,
+  status,
+  description,
+  schema,
+] of salesResponseDescriptors) {
   const descriptor = Object.getOwnPropertyDescriptor(
     SalesController.prototype,
     methodName,
