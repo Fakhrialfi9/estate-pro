@@ -2,6 +2,7 @@ import type {
   SystemWebhookEventName,
   WebhookDeliveryRecord,
   WebhookDeliveryState,
+  WebhookEventFilter,
   WebhookSubscriptionRecord,
   WebhookSubscriptionStatus,
 } from '../webhook/webhook.contracts.js';
@@ -13,6 +14,7 @@ export interface SystemWebhookRepository {
     uuid: string;
     endpoint: string;
     events: readonly SystemWebhookEventName[];
+    filters: readonly WebhookEventFilter[];
     status: WebhookSubscriptionStatus;
     secretCiphertext: string;
     secretVersion: number;
@@ -37,6 +39,7 @@ export interface SystemWebhookRepository {
         WebhookSubscriptionRecord,
         | 'endpoint'
         | 'events'
+        | 'filters'
         | 'status'
         | 'secretCiphertext'
         | 'secretVersion'
