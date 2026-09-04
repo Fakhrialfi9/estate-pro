@@ -100,7 +100,7 @@ export class PrismaSystemImportRepository implements SystemImportRepository {
   ) {
     const row = await this.prisma.systemImportJob.update({
       where: { uuid },
-      data: input as never,
+      data: input,
     });
     return toRecord(row);
   }
@@ -118,12 +118,31 @@ export class PrismaSystemImportRepository implements SystemImportRepository {
     const [items, total] = await Promise.all([
       this.prisma.systemImportJob.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (input.page - 1) * input.limit,
         take: input.limit,
       }),
       this.prisma.systemImportJob.count({ where }),
     ]);
     return { items: items.map(toRecord), total };
+  }
+
+  async listExpired(now: Date, limit: number) {
+    const rows = await this.prisma.systemImportJob.findMany({
+      where: {
+        expiresAt: { lte: now },
+        state: { in: ['SUCCEEDED', 'FAILED', 'CANCELLED', 'RETRYABLE'] },
+      },
+      orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
+      take: limit,
+    });
+    return rows.map(toRecord);
+  }
+
+  async deleteMany(uuids: readonly string[]): Promise<void> {
+    if (uuids.length === 0) return;
+    await this.prisma.systemImportJob.deleteMany({
+      where: { uuid: { in: [...uuids] } },
+    });
   }
 }
