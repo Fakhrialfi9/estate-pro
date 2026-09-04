@@ -8,9 +8,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Validation jobs must never mutate repository contents.
 permissions:
   contents: read
 
+# Test-only values. Production secrets are never stored in the workflow.
 env:
   DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test
   DATABASE_POOL_CONNECTION_LIMIT: 2
@@ -28,13 +30,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22.23.2
           cache: npm
+
       - name: Pin npm
         run: npm install --global npm@11.18.0
+
       - name: Install MariaDB
         run: |
           sudo apt-get update
@@ -47,16 +52,22 @@ jobs:
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_test.* TO 'test'@'127.0.0.1';"
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_seed_test.* TO 'test'@'127.0.0.1';"
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_rehearsal.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
+
       - name: Install dependencies
         run: npm ci
+
       - name: Prisma schema validation
         run: npx prisma validate
+
       - name: Generate Prisma client
         run: npm run prisma:generate
+
       - name: Deploy Prisma migrations to fresh database
         run: npm run prisma:deploy
+
       - name: Migration status
         run: npm run prisma:status
+
       - name: Validate seed reproducibility on isolated fresh database
         env:
           DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_seed_test
@@ -66,86 +77,67 @@ jobs:
           npm run prisma:deploy
           npm run prisma:seed
           npm run prisma:seed
+
       - name: Security baseline
         run: npm run test:security:baseline
+
       - name: Secret scan
         run: bash scripts/check-secrets.sh
-      - name: Canonicalize pending source formatting
-        run: |
-          npx prettier --write \
-            src/bootstrap.ts \
-            src/modules/property-matching/infrastructure/prisma-property-matching.repository.ts \
-            src/modules/sales/presentation/sales-openapi.ts \
-            src/modules/agent-management/application/agent-management.service.ts \
-            src/modules/automation/application/services/automation.service.ts \
-            src/modules/automation/application/validation/workflow-validator.ts \
-            src/modules/automation/presentation/automation.dto.ts \
-            src/modules/automation/domain/automation.types.ts \
-            test/e2e/environment.ts \
-            test/security/property-access.guard.spec.ts \
-            test/unit/audit/prisma-security-audit.repository.spec.ts
-          git diff -- \
-            src/bootstrap.ts \
-            src/modules/property-matching/infrastructure/prisma-property-matching.repository.ts \
-            src/modules/sales/presentation/sales-openapi.ts \
-            test/e2e/environment.ts
-          if ! git diff --quiet -- \
-            src/modules/agent-management/application/agent-management.service.ts \
-            src/modules/automation/application/services/automation.service.ts \
-            src/modules/automation/application/validation/workflow-validator.ts \
-            src/modules/automation/presentation/automation.dto.ts \
-            src/modules/automation/domain/automation.types.ts \
-            test/security/property-access.guard.spec.ts \
-            test/unit/audit/prisma-security-audit.repository.spec.ts; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add \
-              src/modules/agent-management/application/agent-management.service.ts \
-              src/modules/automation/application/services/automation.service.ts \
-              src/modules/automation/application/validation/workflow-validator.ts \
-              src/modules/automation/presentation/automation.dto.ts \
-              src/modules/automation/domain/automation.types.ts \
-              test/security/property-access.guard.spec.ts \
-              test/unit/audit/prisma-security-audit.repository.spec.ts
-            git commit -m "style(automation): apply canonical formatting [skip ci]"
-            git push origin HEAD:main
-          fi
+
       - name: Format check
         run: npm run format:check
+
       - name: Lint
         run: npm run lint
+
       - name: Typecheck
         run: npm run typecheck
+
       - name: Architecture validation
         run: npm run check:architecture
+
       - name: Complete test suite
         run: npm run test
+
       - name: Unit tests
         run: npm run test:unit
+
       - name: Integration tests
         run: npm run test:integration
+
       - name: E2E tests
         run: npm run test:e2e
+
       - name: OpenAPI contract tests
         run: npm run test:openapi
+
       - name: OpenAPI specification validation
         run: npm run openapi:validate
+
       - name: Security tests
         run: npm run test:security
+
       - name: Coverage
         run: npm run test:coverage
+
       - name: E2E coverage
         run: npm run test:coverage:e2e
+
       - name: Aggregate test suite
         run: npm run test:all
+
       - name: Production build
         run: npm run build
+
       - name: Compiled runtime validation
         run: npm run check:runtime
+
       - name: Fresh installation validation
         run: npm run check:fresh
+
       - name: Docker image validation
         run: docker build --tag estate-pro:ci .
+
       - name: Container smoke validation
         run: |
           docker run --rm -d --name estate-pro-ci --network host \
@@ -162,12 +154,14 @@ jobs:
           done
           docker logs estate-pro-ci
           exit 1
+
       - name: Recovery rehearsal
         run: |
           sudo mysqldump --single-transaction --routines --events estate_pro_test > /tmp/estate_pro.sql
           sudo mysql -e "DROP DATABASE IF EXISTS estate_pro_recovery; CREATE DATABASE estate_pro_recovery;"
           sudo mysql estate_pro_recovery < /tmp/estate_pro.sql
           test "$(sudo mysql -N -B -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='estate_pro_recovery';")" -gt 0
+
       - name: Migration rehearsal
         env:
           DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_rehearsal
@@ -176,7 +170,8 @@ jobs:
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_rehearsal.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
           npm run prisma:deploy
           npm run prisma:status
-      - name: Repository cleanliness
+
+      - name: Repository immutability
         run: |
           git diff --check
           test -z "$(git status --porcelain)"

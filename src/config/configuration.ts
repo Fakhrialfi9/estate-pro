@@ -107,6 +107,31 @@ export const configurationValidationSchema = Joi.object({
     .max(200)
     .default('estate-pro-client'),
   JWT_ALGORITHM: Joi.string().valid('HS256', 'HS384', 'HS512').default('HS256'),
+  AUTH_LOCKOUT_THRESHOLD: Joi.number().integer().min(1).max(100).default(5),
+  AUTH_LOCKOUT_WINDOW_MS: Joi.number()
+    .integer()
+    .min(1000)
+    .max(86400000)
+    .default(900000),
+  AUTH_LOCKOUT_DURATION_MS: Joi.number()
+    .integer()
+    .min(1000)
+    .max(86400000)
+    .default(900000),
+  AUTH_ARGON2_MEMORY_COST: Joi.number()
+    .integer()
+    .min(8192)
+    .max(262144)
+    .default(19456),
+  AUTH_ARGON2_TIME_COST: Joi.number().integer().min(1).max(10).default(2),
+  AUTH_ARGON2_PARALLELISM: Joi.number().integer().min(1).max(8).default(1),
+  AUTH_ARGON2_HASH_LENGTH: Joi.number().integer().min(16).max(128).default(32),
+  AUTH_PASSWORD_RESET_TTL_MINUTES: Joi.number()
+    .integer()
+    .min(5)
+    .max(60)
+    .default(15),
+  AUTH_PASSWORD_RESET_DELIVERY_URL: Joi.string().trim().uri().optional(),
   TWO_FACTOR_ENCRYPTION_KEY: Joi.alternatives().conditional('NODE_ENV', {
     is: Joi.valid('staging', 'production'),
     then: optionalSecret.required(),
