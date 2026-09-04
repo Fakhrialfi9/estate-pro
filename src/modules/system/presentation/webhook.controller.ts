@@ -49,7 +49,12 @@ export class WebhookController {
   @RequirePermissions('system.webhook.create')
   @ApiOperation({ summary: 'Create an outbound webhook subscription' })
   create(@Req() request: Request, @Body() dto: CreateWebhookDto) {
-    return this.webhooks.create(this.actor(request), dto.endpoint, dto.events);
+    return this.webhooks.create(
+      this.actor(request),
+      dto.endpoint,
+      dto.events,
+      dto.filters,
+    );
   }
 
   @Get(':uuid')
