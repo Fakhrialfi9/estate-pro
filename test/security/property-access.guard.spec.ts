@@ -22,9 +22,7 @@ const contextOf = (request: TestRequest) =>
   }) as never;
 
 describe('PropertyAccessGuard', () => {
-  const canAccessProperty = vi.fn<
-    PropertyAccessQuery['canAccessProperty']
-  >();
+  const canAccessProperty = vi.fn<PropertyAccessQuery['canAccessProperty']>();
   const canAccessListing = vi.fn<PropertyAccessQuery['canAccessListing']>();
   const propertyAccess: PropertyAccessQuery = {
     canAccessProperty,
