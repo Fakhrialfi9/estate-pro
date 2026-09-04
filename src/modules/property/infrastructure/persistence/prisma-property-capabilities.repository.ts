@@ -2,9 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import type {
   PropertyAmenityCategory,
-  PropertyDocumentClassification,
   PropertyDocumentStatus,
-  PropertyDocumentVisibility,
   PropertyHistoryEvent,
   Prisma,
 } from '../../../../../prisma/generated/prisma/client.js';
@@ -99,12 +97,13 @@ const safeChanges = (value: Prisma.JsonValue | null): readonly SafeChange[] => {
       typeof item === 'string' ||
       typeof item === 'number' ||
       typeof item === 'boolean';
-    if (valid(change.oldValue) && valid(change.newValue))
+    if (valid(change.oldValue) && valid(change.newValue)) {
       result.push({
         field,
         oldValue: change.oldValue,
         newValue: change.newValue,
       });
+    }
   }
   return result;
 };
@@ -500,7 +499,7 @@ export class PrismaPropertyCapabilitiesRepository
     const propertyId = await this.propertyId(propertyUuid);
     const where = {
       propertyId,
-      ...(event ? { event: event } : {}),
+      ...(event ? { event } : {}),
     };
     const skip = (page - 1) * limit;
     const [rows, total] = await Promise.all([
