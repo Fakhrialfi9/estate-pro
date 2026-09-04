@@ -44,14 +44,15 @@ export class PrismaSystemSettingsRepository implements SystemSettingsRepository 
   }
 
   async list(scope: string, scopeKey: string, page: number, limit: number) {
+    const where = { scope, scopeKey };
     const [items, total] = await Promise.all([
       this.prisma.systemSetting.findMany({
-        where: { scope, scopeKey },
+        where,
         orderBy: { key: 'asc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      this.prisma.systemSetting.count({ where: { scope, scopeKey } }),
+      this.prisma.systemSetting.count({ where }),
     ]);
     return { items: items.map(toRecord), total };
   }
@@ -79,7 +80,6 @@ export class PrismaSystemSettingsRepository implements SystemSettingsRepository 
       if (current && current.mutable === false) {
         throw new SystemSettingImmutableError(input.key);
       }
-
       if (
         current &&
         input.expectedVersion !== undefined &&
