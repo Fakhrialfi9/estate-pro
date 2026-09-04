@@ -6,4 +6,11 @@ export const SYSTEM_PERMISSIONS = [
   { name: 'Read System Jobs', code: 'system.jobs.read', module: 'system', domain: 'jobs', action: 'read' },
   { name: 'Retry System Jobs', code: 'system.jobs.retry', module: 'system', domain: 'jobs', action: 'retry' },
   { name: 'Cancel System Jobs', code: 'system.jobs.cancel', module: 'system', domain: 'jobs', action: 'cancel' },
+  { name: 'Create System Import', code: 'system.import.create', module: 'system', domain: 'import', action: 'create' },
+  { name: 'Read System Import', code: 'system.import.read', module: 'system', domain: 'import', action: 'read' },
+  { name: 'Retry System Import', code: 'system.import.retry', module: 'system', domain: 'import', action: 'retry' },
+  { name: 'Cancel System Import', code: 'system.import.cancel', module: 'system', domain: 'import', action: 'cancel' },
+  { name: 'Create System Export', code: 'system.export.create', module: 'system', domain: 'export', action: 'create' },
+  { name: 'Read System Export', code: 'system.export.read', module: 'system', domain: 'export', action: 'read' },
+  { name: 'Download System Export', code: 'system.export.download', module: 'system', domain: 'export', action: 'download' },
 ] as const;
