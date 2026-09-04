@@ -52,6 +52,7 @@ export interface SystemWebhookRepository {
     uuid: string;
     subscriptionId: bigint;
     eventId: string;
+    deliveryKey: string;
     eventName: SystemWebhookEventName;
     eventVersion: number;
     payloadHash: string;
