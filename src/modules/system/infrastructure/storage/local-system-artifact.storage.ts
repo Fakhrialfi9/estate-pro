@@ -26,6 +26,11 @@ export class LocalSystemArtifactStorage implements SystemArtifactStorage {
     return fs.readFile(file);
   }
 
+  async size(file: string) {
+    const stat = await fs.stat(file);
+    return stat.size;
+  }
+
   remove(file: string) {
     return fs.rm(file, { force: true });
   }
