@@ -11,7 +11,7 @@ import {
 
 export class ExportDto {
   @IsIn(['system_activity'])
-  entity: 'system_activity' = 'system_activity';
+  entity = 'system_activity' as const;
 
   @IsIn(['csv', 'json'])
   format!: 'csv' | 'json';
@@ -45,6 +45,7 @@ export class ExportQueryDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(100)
   page = 1;
 
   @IsOptional()
@@ -54,6 +55,6 @@ export class ExportQueryDto {
   limit = 20;
 
   @IsOptional()
-  @IsIn(['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED'])
-  state?: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+  @IsIn(['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED'])
+  state?: string;
 }
