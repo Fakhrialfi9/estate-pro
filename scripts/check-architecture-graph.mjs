@@ -16,6 +16,7 @@ const ALLOWED_CROSS_MODULE_DEPENDENCIES = new Set([
   'src/modules/property/presentation/controllers/property-subcategory.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
   'src/modules/property/presentation/controllers/property-location.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
   'src/modules/property/presentation/controllers/property-facility.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/property/presentation/property-capabilities.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
   'src/modules/roles/application/services/role-permission.service.ts->src/modules/permissions/domain/repositories/permission.repository.ts',
   'src/modules/roles/application/services/role-permission.service.ts->src/modules/permissions/application/policies/permission-authorization.policy.ts',
   'src/modules/roles/application/services/role-permission.service.ts->src/modules/permissions/domain/errors/permission.errors.ts',
@@ -25,6 +26,9 @@ const ALLOWED_CROSS_MODULE_DEPENDENCIES = new Set([
   'src/modules/crm/presentation/crm.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
   'src/modules/crm/presentation/crm-lifecycle.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
   'src/modules/automation/presentation/automation.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/seo/presentation/seo-redirect-admin.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/seo/presentation/seo.controller.ts->src/modules/auth/security/jwt-auth.guard.ts',
+  'src/modules/seo/presentation/seo.controller.ts->src/modules/auth/application/services/jwt-token.service.ts',
 ]);
 async function collectTypeScriptFiles(directory) { const entries = await readdir(directory,{withFileTypes:true}); const files=[]; for(const entry of entries){if(entry.name==='node_modules'||entry.name==='dist')continue;const absolutePath=path.join(directory,entry.name);if(entry.isDirectory())files.push(...(await collectTypeScriptFiles(absolutePath)));else if(entry.isFile()&&entry.name.endsWith('.ts')&&!entry.name.endsWith('.d.ts'))files.push(absolutePath);}return files; }
 function sourceImportSpecifiers(sourceText,filePath){const sourceFile=ts.createSourceFile(filePath,sourceText,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);const specifiers=[];function visit(node){if(ts.isImportDeclaration(node)||ts.isExportDeclaration(node)){const moduleSpecifier=node.moduleSpecifier;if(moduleSpecifier&&ts.isStringLiteral(moduleSpecifier))specifiers.push(moduleSpecifier.text);}if(ts.isCallExpression(node)&&node.expression.kind===ts.SyntaxKind.ImportKeyword&&node.arguments.length===1&&ts.isStringLiteral(node.arguments[0]))specifiers.push(node.arguments[0].text);ts.forEachChild(node,visit);}visit(sourceFile);return specifiers;}
