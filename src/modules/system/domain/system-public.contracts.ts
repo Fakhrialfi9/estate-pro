@@ -1,7 +1,19 @@
 import type { SystemActivityRecord } from './system.types.js';
 
+type SystemSettingResponseValue = string | number | boolean;
+
+export interface SystemSettingResponse {
+  readonly key: string;
+  readonly scope: string;
+  readonly scopeKey: string;
+  readonly valueType: string;
+  readonly value: SystemSettingResponseValue;
+  readonly version?: number;
+  readonly updatedAt?: Date;
+}
+
 export interface SystemSettingListResult {
-  readonly items: readonly Record<string, unknown>[];
+  readonly items: readonly SystemSettingResponse[];
   readonly meta: {
     readonly page: number;
     readonly limit: number;
@@ -10,26 +22,16 @@ export interface SystemSettingListResult {
   };
 }
 
-export interface SystemSettingResult {
-  readonly key: string;
-  readonly scope: string;
-  readonly scopeKey: string;
-  readonly valueType: string;
-  readonly value: string | number | boolean;
-  readonly version?: number;
-  readonly updatedAt?: Date;
-}
-
 export interface SystemSettingUpdateResult {
   readonly key: string;
-  readonly value: string | number | boolean;
+  readonly value: SystemSettingResponseValue;
   readonly version: number;
   readonly updatedAt: Date;
 }
 
 export interface SystemSettingsContract {
   list(page: number, limit: number): Promise<SystemSettingListResult>;
-  get(key: string): Promise<SystemSettingResult>;
+  get(key: string): Promise<SystemSettingResponse>;
   update(
     key: string,
     rawValue: string,
@@ -72,7 +74,7 @@ export interface SystemActivityContract {
 /**
  * System consumes notification behavior owned by Automation. The public
  * System contract intentionally does not expose the Automation persistence
- * model; the concrete response shape remains an application/API concern.
+ * model; concrete response details remain an application/API concern.
  */
 export interface SystemNotificationsContract {
   list(
