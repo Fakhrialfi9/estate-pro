@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
@@ -48,7 +49,7 @@ export class PrismaSystemActivityRepository implements SystemActivityRepository 
 ): Promise<SystemActivityRecord> {
     const row = await this.prisma.systemActivity.create({
       data: {
-        uuid: input.uuid,
+        uuid: input.uuid ?? randomUUID(),
         actorUuid: input.actorUuid,
         eventType: input.eventType,
         category: input.category,
@@ -86,7 +87,6 @@ export class PrismaSystemActivityRepository implements SystemActivityRepository 
       ...(input.resourceType ? { resourceType: input.resourceType } : {}),
       ...(input.resourceUuid ? { resourceUuid: input.resourceUuid } : {}),
     };
-
     const [items, total] = await Promise.all([
       this.prisma.systemActivity.findMany({
         where,
@@ -96,7 +96,6 @@ export class PrismaSystemActivityRepository implements SystemActivityRepository 
       }),
       this.prisma.systemActivity.count({ where }),
     ]);
-
     return { items: items.map(toRecord), total };
   }
 }
