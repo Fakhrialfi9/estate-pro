@@ -27,7 +27,9 @@ const toRecord = (row: PersistedActivity): SystemActivityRecord => ({
   resourceUuid: row.resourceUuid,
   summary: row.summary,
   metadata:
-    row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+    row.metadata &&
+    typeof row.metadata === 'object' &&
+    !Array.isArray(row.metadata)
       ? (row.metadata as Record<string, unknown>)
       : {},
   requestId: row.requestId,
@@ -43,7 +45,7 @@ export class PrismaSystemActivityRepository implements SystemActivityRepository 
       uuid?: string;
       createdAt?: Date;
     },
-  ): Promise<SystemActivityRecord> {
+): Promise<SystemActivityRecord> {
     const row = await this.prisma.systemActivity.create({
       data: {
         uuid: input.uuid,
@@ -84,6 +86,7 @@ export class PrismaSystemActivityRepository implements SystemActivityRepository 
       ...(input.resourceType ? { resourceType: input.resourceType } : {}),
       ...(input.resourceUuid ? { resourceUuid: input.resourceUuid } : {}),
     };
+
     const [items, total] = await Promise.all([
       this.prisma.systemActivity.findMany({
         where,
@@ -93,6 +96,7 @@ export class PrismaSystemActivityRepository implements SystemActivityRepository 
       }),
       this.prisma.systemActivity.count({ where }),
     ]);
+
     return { items: items.map(toRecord), total };
   }
 }
