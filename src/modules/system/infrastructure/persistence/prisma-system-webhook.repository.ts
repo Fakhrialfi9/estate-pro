@@ -5,6 +5,7 @@ import type {
   SystemWebhookEventName,
   WebhookDeliveryRecord,
   WebhookDeliveryState,
+  WebhookEventFilter,
   WebhookSubscriptionRecord,
   WebhookSubscriptionStatus,
 } from '../../domain/webhook/webhook.contracts.js';
@@ -17,12 +18,24 @@ const eventList = (value: unknown): readonly SystemWebhookEventName[] =>
       )
     : [];
 
+const filterList = (value: unknown): readonly WebhookEventFilter[] =>
+  Array.isArray(value)
+    ? value.filter(
+        (item): item is WebhookEventFilter =>
+          item !== null &&
+          typeof item === 'object' &&
+          typeof (item as Record<string, unknown>).field === 'string' &&
+          typeof (item as Record<string, unknown>).operator === 'string',
+      )
+    : [];
+
 const toSubscription = (row: {
   id: bigint;
   uuid: string;
   endpoint: string;
   status: string;
   events: unknown;
+  filters: unknown;
   secretCiphertext: string;
   secretVersion: number;
   secretCreatedAt: Date;
@@ -32,6 +45,7 @@ const toSubscription = (row: {
   ...row,
   status: row.status as WebhookSubscriptionStatus,
   events: eventList(row.events),
+  filters: filterList(row.filters),
 });
 
 const toDelivery = (row: {
@@ -66,13 +80,18 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     uuid: string;
     endpoint: string;
     events: readonly SystemWebhookEventName[];
+    filters: readonly WebhookEventFilter[];
     status: WebhookSubscriptionStatus;
     secretCiphertext: string;
     secretVersion: number;
     secretCreatedAt: Date;
   }): Promise<WebhookSubscriptionRecord> {
     const row = await this.prisma.systemWebhookSubscription.create({
-      data: { ...input, events: [...input.events] },
+      data: {
+        ...input,
+        events: [...input.events],
+        filters: [...input.filters],
+      },
     });
     return toSubscription(row);
   }
@@ -121,6 +140,7 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
         WebhookSubscriptionRecord,
         | 'endpoint'
         | 'events'
+        | 'filters'
         | 'status'
         | 'secretCiphertext'
         | 'secretVersion'
@@ -134,6 +154,7 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
         data: {
           ...input,
           ...(input.events ? { events: [...input.events] } : {}),
+          ...(input.filters ? { filters: [...input.filters] } : {}),
         },
       });
       return toSubscription(row);
