@@ -66,6 +66,7 @@ describe('Property capabilities E2E security boundary', () => {
     const response = await httpRequest(app)
       .get('/api/v1/seo/public/property/not-a-real-property/structured-data')
       .expect(404);
-    expect(response.body.message).toBe('Public SEO resource not found');
+
+    expect(response.body).toHaveProperty('message', 'Public SEO resource not found');
   });
 });
