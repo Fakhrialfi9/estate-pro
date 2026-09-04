@@ -78,6 +78,14 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     return row ? toSubscription(row) : null;
   }
 
+  async findSubscriptionByDelivery(deliveryUuid: string): Promise<WebhookSubscriptionRecord | null> {
+    const row = await this.prisma.systemWebhookDelivery.findUnique({
+      where: { uuid: deliveryUuid },
+      include: { subscription: true },
+    });
+    return row ? toSubscription(row.subscription) : null;
+  }
+
   async listSubscriptions(input: { page: number; limit: number; status?: WebhookSubscriptionStatus }) {
     const where = input.status ? { status: input.status } : {};
     const [items, total] = await Promise.all([
