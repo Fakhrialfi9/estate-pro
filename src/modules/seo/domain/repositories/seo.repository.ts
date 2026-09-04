@@ -24,7 +24,11 @@ export interface SeoRepository {
       title?: string | null;
       description?: string | null;
       canonicalUrl?: string | null;
-      robots?: 'INDEX_FOLLOW' | 'NOINDEX_FOLLOW' | 'INDEX_NOFOLLOW' | 'NOINDEX_NOFOLLOW';
+      robots?:
+        | 'INDEX_FOLLOW'
+        | 'NOINDEX_FOLLOW'
+        | 'INDEX_NOFOLLOW'
+        | 'NOINDEX_NOFOLLOW';
       ogImageUrl?: string | null;
       metadataVersion?: string;
     },

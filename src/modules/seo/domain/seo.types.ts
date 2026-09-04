@@ -1,6 +1,10 @@
 export type SeoResourceType = 'property' | 'listing' | 'article' | 'page';
 
-export type SeoRobots = 'index,follow' | 'noindex,follow' | 'index,nofollow' | 'noindex,nofollow';
+export type SeoRobots =
+  | 'index,follow'
+  | 'noindex,follow'
+  | 'index,nofollow'
+  | 'noindex,nofollow';
 
 export interface SeoMetadata {
   title: string;
