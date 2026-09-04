@@ -30,7 +30,7 @@ const ipv4ToNumber = (value: string): number =>
 const isBlockedIpv4 = (value: string): boolean => {
   const numeric = ipv4ToNumber(value);
   return PRIVATE_IPV4_RANGES.some(([base, bits]) => {
-    const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0;
+    const mask = (0xffffffff << (32 - bits)) >>> 0;
     return (numeric & mask) === (ipv4ToNumber(base) & mask);
   });
 };
@@ -47,7 +47,8 @@ const isBlockedIpv6 = (value: string): boolean => {
     normalized.startsWith('fea') ||
     normalized.startsWith('feb') ||
     normalized.startsWith('ff') ||
-    normalized.startsWith('::ffff:') && isBlockedIpv4(normalized.slice(7))
+    (normalized.startsWith('::ffff:') &&
+      isBlockedIpv4(normalized.slice(7)))
   );
 };
 
