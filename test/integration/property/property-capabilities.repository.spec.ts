@@ -104,7 +104,7 @@ describe('Property capabilities repository integration', () => {
       ),
     ).toBe(true);
     await repository.deleteAmenity(amenity.uuid);
-    expect(await repository.getAmenity(amenity.uuid)).resolves.toMatchObject({
+    await expect(repository.getAmenity(amenity.uuid)).resolves.toMatchObject({
       uuid: amenity.uuid,
       isActive: false,
     });
