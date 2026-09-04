@@ -20,7 +20,6 @@ import type {
   ImportFormat,
   ImportRequest,
   ImportResult,
-  SystemActivityAppendInput,
 } from '../../domain/system-public.contracts.js';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -135,13 +134,11 @@ const parseRows = (
   ) {
     throw new BadRequestException('CSV headers must be non-empty and unique');
   }
-  return rows
-    .slice(1)
-    .map((values) =>
-      Object.fromEntries(
-        headers.map((header, index) => [header, values[index] ?? '']),
-      ),
-    );
+  return rows.slice(1).map((values) =>
+    Object.fromEntries(
+      headers.map((header, index) => [header, values[index] ?? '']),
+    ),
+  );
 };
 
 @Injectable()
@@ -157,12 +154,8 @@ export class SystemImportService {
     private readonly audit: SecurityAuditRepository,
   ) {}
 
-  async execute(
-    actorUuid: string,
-    input: ImportRequest,
-  ): Promise<ImportResult> {
-    if (!actorUuid)
-      throw new BadRequestException('Authenticated actor missing');
+  async execute(actorUuid: string, input: ImportRequest): Promise<ImportResult> {
+    if (!actorUuid) throw new BadRequestException('Authenticated actor missing');
 
     const extension = input.filename?.toLowerCase().split('.').pop();
     const format =
@@ -279,7 +272,7 @@ export class SystemImportService {
           .update(`${idempotencyKey}:${index}:${JSON.stringify(row)}`)
           .digest('hex')
           .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12}).*$/, '$1-$2-$3-$4-$5');
-        const data: SystemActivityAppendInput = {
+        const data = {
           uuid: deterministicUuid,
           actorUuid,
           eventType,
@@ -358,100 +351,88 @@ export class SystemImportService {
         result: 'FAILURE',
         reason: message,
       });
-      return this.toResult(updated);
+      throw error;
     }
   }
 
-  async get(actorUuid: string, uuid: string) {
-    const row = await this.jobs.findByUuid(uuid, actorUuid);
-    if (!row) throw new NotFoundException('Import job not found');
-    return this.toResult(row);
+  async get(uuid: string, actorUuid: string): Promise<ImportResult> {
+    const job = await this.jobs.findByUuid(uuid);
+    if (!job || job.actorUuid !== actorUuid) {
+      throw new NotFoundException('Import job not found');
+    }
+    return this.toResult(job);
+  }
+
+  async cancel(uuid: string, actorUuid: string): Promise<ImportResult> {
+    const job = await this.jobs.findByUuid(uuid);
+    if (!job || job.actorUuid !== actorUuid) {
+      throw new NotFoundException('Import job not found');
+    }
+    if (job.state === 'SUCCEEDED' || job.state === 'FAILED') {
+      return this.toResult(job);
+    }
+    const updated = await this.jobs.update(uuid, { state: 'CANCELLED' });
+    await this.audit.record({
+      action: 'SYSTEM_IMPORT_CANCELLED',
+      actorUuid,
+      subjectUuid: actorUuid,
+      entityType: 'system_import',
+      entityUuid: uuid,
+      result: 'SUCCESS',
+    });
+    return this.toResult(updated);
+  }
+
+  async retry(uuid: string, actorUuid: string): Promise<ImportResult> {
+    const job = await this.jobs.findByUuid(uuid);
+    if (!job || job.actorUuid !== actorUuid) {
+      throw new NotFoundException('Import job not found');
+    }
+    if (job.state !== 'FAILED' && job.state !== 'CANCELLED') {
+      return this.toResult(job);
+    }
+    const updated = await this.jobs.update(uuid, {
+      state: 'RETRYABLE',
+      errors: [],
+    });
+    await this.audit.record({
+      action: 'SYSTEM_IMPORT_RETRIED',
+      actorUuid,
+      subjectUuid: actorUuid,
+      entityType: 'system_import',
+      entityUuid: uuid,
+      result: 'SUCCESS',
+    });
+    return this.toResult(updated);
   }
 
   async list(
     actorUuid: string,
-    page = 1,
-    limit = 20,
-    state?: ImportResult['state'],
-  ) {
-    const normalizedPage = Math.max(1, page);
-    const normalizedLimit = Math.min(100, Math.max(1, limit));
+    input: { page: number; limit: number },
+  ): Promise<{
+    items: readonly ImportResult[];
+    total: number;
+  }> {
     const result = await this.jobs.list({
       actorUuid,
-      page: normalizedPage,
-      limit: normalizedLimit,
-      state,
+      page: input.page,
+      limit: input.limit,
     });
     return {
-      items: result.items.map((row) => this.toResult(row)),
+      items: result.items.map((item) => this.toResult(item)),
       total: result.total,
-      page: normalizedPage,
-      limit: normalizedLimit,
     };
   }
 
-  async failedRowReport(actorUuid: string, uuid: string) {
-    const row = await this.jobs.findByUuid(uuid, actorUuid);
-    if (!row) throw new NotFoundException('Import job not found');
+  private toResult(job: SystemImportJobRecord): ImportResult {
     return {
-      importUuid: row.uuid,
-      state: row.state,
-      failedRows: row.failedRows,
-      errors: row.errors,
-      generatedAt: new Date().toISOString(),
-    };
-  }
-
-  async retry(actorUuid: string, uuid: string) {
-    const row = await this.jobs.findByUuid(uuid, actorUuid);
-    if (!row) throw new NotFoundException('Import job not found');
-    if (!['FAILED', 'RETRYABLE'].includes(row.state)) {
-      throw new BadRequestException('Import job is not retryable');
-    }
-    if (!row.sourcePath) {
-      throw new BadRequestException('Original import source is unavailable');
-    }
-    if (row.expiresAt.getTime() <= Date.now()) {
-      throw new BadRequestException('Original import source has expired');
-    }
-    const data = await this.storage.read(row.sourcePath);
-    return this.execute(actorUuid, {
-      filename: row.filename,
-      contentBase64: data.toString('base64'),
-      format: row.format,
-      idempotencyKey: `${row.idempotencyKey ?? row.uuid}:retry`,
-    });
-  }
-
-  async cancel(actorUuid: string, uuid: string) {
-    const row = await this.jobs.findByUuid(uuid, actorUuid);
-    if (!row) throw new NotFoundException('Import job not found');
-    if (!['QUEUED', 'RUNNING'].includes(row.state)) {
-      throw new BadRequestException('Import job is not cancellable');
-    }
-    return this.toResult(await this.jobs.update(uuid, { state: 'CANCELLED' }));
-  }
-
-  private toResult(
-    row: Pick<
-      SystemImportJobRecord,
-      | 'uuid'
-      | 'state'
-      | 'totalRows'
-      | 'processedRows'
-      | 'failedRows'
-      | 'errors'
-      | 'preview'
-    >,
-  ): ImportResult {
-    return {
-      uuid: row.uuid,
-      state: row.state,
-      totalRows: row.totalRows,
-      processedRows: row.processedRows,
-      failedRows: row.failedRows,
-      errors: row.errors,
-      preview: row.preview,
+      uuid: job.uuid,
+      state: job.state,
+      totalRows: job.totalRows,
+      processedRows: job.processedRows,
+      failedRows: job.failedRows,
+      errors: job.errors,
+      preview: job.preview,
     };
   }
 }
