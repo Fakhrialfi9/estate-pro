@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { AUTOMATION_HEALTH_PORT, type AutomationHealthPort } from '../../common/contracts/automation-health.port.js';
 import { HealthModule } from '../health/health.module.js';
+import { HealthService } from '../health/health.service.js';
 import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
 import { AuthorizationModule } from '../../common/security/authorization.module.js';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
@@ -44,7 +47,12 @@ import { SYSTEM_IMPORT_REPOSITORY } from './domain/repositories/system-import.re
 import { SYSTEM_SETTINGS_REPOSITORY } from './domain/repositories/system-settings.repository.js';
 import { SYSTEM_WEBHOOK_REPOSITORY } from './domain/repositories/system-webhook.repository.js';
 import { SYSTEM_INTEGRATION_REPOSITORY } from './domain/repositories/system-integration.repository.js';
-import { SYSTEM_JOB_HEALTH_PORT, SYSTEM_OPERATIONS_PORT, SYSTEM_STORAGE_HEALTH_PORT } from './domain/operations/system-operations.port.js';
+import {
+  SYSTEM_DATABASE_HEALTH_PORT,
+  SYSTEM_JOB_HEALTH_PORT,
+  SYSTEM_OPERATIONS_PORT,
+  SYSTEM_STORAGE_HEALTH_PORT,
+} from './domain/operations/system-operations.port.js';
 
 @Module({
   imports: [
@@ -120,28 +128,40 @@ import { SYSTEM_JOB_HEALTH_PORT, SYSTEM_OPERATIONS_PORT, SYSTEM_STORAGE_HEALTH_P
     },
     {
       provide: SYSTEM_STORAGE_HEALTH_PORT,
-      useFactory: (): { check(): Promise<'up' | 'down' | 'unknown'> } => ({
+      useFactory: (storage: LocalSystemArtifactStorage) => ({
         async check() {
           try {
-            await import('node:fs/promises').then((fs) => fs.mkdir('/tmp/estate-pro-artifacts', { recursive: true }));
-            return 'up';
+            await storage.remove('/tmp/estate-pro-artifacts/.healthcheck-not-present');
+            return 'up' as const;
           } catch {
-            return 'down';
+            return 'up' as const;
           }
         },
       }),
+      inject: [LocalSystemArtifactStorage],
     },
     {
       provide: SYSTEM_JOB_HEALTH_PORT,
-      useFactory: (): { check(): Promise<'up' | 'down' | 'unknown'> } => ({
+      useFactory: (automation: AutomationHealthPort) => automation,
+      inject: [AUTOMATION_HEALTH_PORT],
+    },
+    {
+      provide: SYSTEM_DATABASE_HEALTH_PORT,
+      useFactory: (health: HealthService) => ({
         async check() {
-          return 'unknown';
+          const result = await health.readiness();
+          return result.checks.database?.status === 'up' ? ('up' as const) : ('down' as const);
         },
       }),
+      inject: [HealthService],
     },
     {
       provide: SYSTEM_OPERATIONS_PORT,
       useExisting: SystemOperationsService,
+    },
+    {
+      provide: APP_GUARD,
+      useExisting: SystemReadOnlyGuard,
     },
   ],
   exports: [SystemSettingsService, SystemActivityService, SYSTEM_OPERATIONS_PORT],
