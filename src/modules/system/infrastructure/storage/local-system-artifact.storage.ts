@@ -15,11 +15,21 @@ export class LocalSystemArtifactStorage implements SystemArtifactStorage {
   }
 
   async putStream(id: string, stream: Readable, extension: string) {
-    await fs.mkdir(ROOT, { recursive: true });
+    await fs.mkdir(ROOT, { recursive: true, mode: 0o700 });
     const safeExtension = extension.replace(/[^a-z0-9]/gi, '');
     const file = path.join(ROOT, `${id}.${safeExtension}`);
-    await pipeline(stream, createWriteStream(file, { mode: 0o600 }));
+    try {
+      await pipeline(stream, createWriteStream(file, { mode: 0o600 }));
+    } catch (error) {
+      await fs.rm(file, { force: true }).catch(() => undefined);
+      throw error;
+    }
     return { path: file };
+  }
+
+  async health(): Promise<void> {
+    await fs.mkdir(ROOT, { recursive: true, mode: 0o700 });
+    await fs.access(ROOT, 0o2);
   }
 
   read(file: string) {
