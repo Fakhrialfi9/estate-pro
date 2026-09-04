@@ -13,6 +13,23 @@ export type WebhookDeliveryState =
   | 'RETRYING'
   | 'DEAD_LETTER'
   | 'CANCELLED';
+export type WebhookFilterOperator =
+  | 'EQ'
+  | 'NEQ'
+  | 'CONTAINS'
+  | 'IN'
+  | 'GT'
+  | 'GTE'
+  | 'LT'
+  | 'LTE'
+  | 'EXISTS'
+  | 'NOT_EXISTS';
+
+export interface WebhookEventFilter {
+  readonly field: string;
+  readonly operator: WebhookFilterOperator;
+  readonly value?: unknown;
+}
 
 export interface WebhookSubscriptionRecord {
   id: bigint;
@@ -20,6 +37,7 @@ export interface WebhookSubscriptionRecord {
   endpoint: string;
   status: WebhookSubscriptionStatus;
   events: readonly SystemWebhookEventName[];
+  filters: readonly WebhookEventFilter[];
   secretCiphertext: string;
   secretVersion: number;
   secretCreatedAt: Date;
