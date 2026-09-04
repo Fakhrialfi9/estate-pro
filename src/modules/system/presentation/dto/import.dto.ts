@@ -1,3 +1,4 @@
+import type { ImportState } from '../../domain/system-public.contracts.js';
 import {
   IsBase64,
   IsBoolean,
@@ -46,5 +47,5 @@ export class ImportQueryDto {
 
   @IsOptional()
   @IsIn(['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'RETRYABLE'])
-  state?: string;
+  state?: ImportState;
 }
