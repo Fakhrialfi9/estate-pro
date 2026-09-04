@@ -35,6 +35,10 @@ import {
 const FILTER_MAX_COUNT = 10;
 const FILTER_MAX_DEPTH = 5;
 const FILTER_KEY = /^[A-Za-z0-9_]+$/;
+const HEALTH_WINDOW_HOURS = 24;
+const HEALTH_MAX_DELIVERIES = 100;
+
+type FilterScalar = string | number | boolean;
 
 @Injectable()
 export class SystemWebhookService {
@@ -184,14 +188,7 @@ export class SystemWebhookService {
         subscription.events.includes(eventName) &&
         this.matchesFilters(subscription.filters, data)
       ) {
-        await this.deliver(
-          subscription,
-          eventId,
-          eventName,
-          1,
-          data,
-          eventId,
-        );
+        await this.deliver(subscription, eventId, eventName, 1, data, eventId);
       }
     }
   }
@@ -199,13 +196,14 @@ export class SystemWebhookService {
   async test(actorUuid: string, uuid: string) {
     const row = await this.repository.findSubscription(uuid);
     if (!row) throw new NotFoundException('Webhook subscription not found');
+    const eventId = `test:${randomUUID()}`;
     const delivery = await this.deliver(
       row,
-      `test:${randomUUID()}`,
+      eventId,
       'system.activity.created',
       1,
       { test: true },
-      `test:${randomUUID()}`,
+      eventId,
     );
     await this.auditLifecycle(actorUuid, uuid, 'SYSTEM_WEBHOOK_TESTED');
     return this.toDelivery(delivery);
@@ -227,6 +225,44 @@ export class SystemWebhookService {
     return {
       ...result,
       items: result.items.map((item) => this.toDelivery(item)),
+    };
+  }
+
+  async health(uuid: string) {
+    await this.get(uuid);
+    const since = new Date(
+      Date.now() - HEALTH_WINDOW_HOURS * 60 * 60 * 1000,
+    );
+    const rows = await this.repository.listRecentDeliveries({
+      subscriptionUuid: uuid,
+      since,
+      limit: HEALTH_MAX_DELIVERIES,
+    });
+    const successful = rows.filter((row) => row.state === 'SUCCEEDED').length;
+    const failed = rows.filter((row) => row.state === 'DEAD_LETTER').length;
+    const retried = rows.filter((row) => row.attemptCount > 1).length;
+    const latencies: number[] = [];
+    for (const row of rows) {
+      if (row.completedAt !== null)
+        latencies.push(Math.max(0, row.completedAt.getTime() - row.createdAt.getTime()));
+    }
+    const averageLatencyMs =
+      latencies.length === 0
+        ? 0
+        : Math.round(
+            latencies.reduce((sum, value) => sum + value, 0) /
+              latencies.length,
+          );
+
+    return {
+      windowHours: HEALTH_WINDOW_HOURS,
+      deliveries: {
+        total: rows.length,
+        successful,
+        failed,
+        retried,
+      },
+      averageLatencyMs,
     };
   }
 
@@ -447,97 +483,93 @@ export class SystemWebhookService {
     filters: readonly WebhookEventFilter[],
     data: Record<string, unknown>,
   ): boolean {
-    for (const filter of filters) {
+    return filters.every((filter) => {
       const actual = this.readFilterValue(data, filter.field);
       const exists = actual !== undefined;
       switch (filter.operator) {
         case 'EXISTS':
-          if (!exists) return false;
-          break;
+          return exists;
         case 'NOT_EXISTS':
-          if (exists) return false;
-          break;
+          return !exists;
         case 'EQ':
-          if (actual !== filter.value) return false;
-          break;
+          return actual === filter.value;
         case 'NEQ':
-          if (actual === filter.value) return false;
-          break;
+          return actual !== filter.value;
         case 'CONTAINS':
-          if (
-            typeof actual !== 'string' ||
-            !actual.includes(String(filter.value))
-          )
-            return false;
-          break;
+          if (typeof actual === 'string')
+            return actual.includes(String(filter.value ?? ''));
+          return Array.isArray(actual) && actual.includes(filter.value);
         case 'IN':
-          if (
-            !Array.isArray(filter.value) ||
-            !filter.value.some((value) => value === actual)
-          )
-            return false;
-          break;
+          return Array.isArray(filter.value) && filter.value.includes(actual as never);
         case 'GT':
-          if (!this.compare(actual, filter.value, (a, b) => a > b)) return false;
-          break;
         case 'GTE':
-          if (!this.compare(actual, filter.value, (a, b) => a >= b)) return false;
-          break;
         case 'LT':
-          if (!this.compare(actual, filter.value, (a, b) => a < b)) return false;
-          break;
         case 'LTE':
-          if (!this.compare(actual, filter.value, (a, b) => a <= b)) return false;
-          break;
+          return this.compareFilter(actual, filter.value, filter.operator);
+        default:
+          return false;
       }
-    }
-    return true;
+    });
   }
 
-  private readFilterValue(data: Record<string, unknown>, field: string): unknown {
+  private compareFilter(
+    actual: unknown,
+    expected: unknown,
+    operator: Extract<
+      WebhookEventFilter['operator'],
+      'GT' | 'GTE' | 'LT' | 'LTE'
+    >,
+  ): boolean {
+    if (!this.isFilterScalar(actual) || !this.isFilterScalar(expected))
+      return false;
+    if (typeof actual === 'number' && typeof expected === 'number') {
+      switch (operator) {
+        case 'GT':
+          return actual > expected;
+        case 'GTE':
+          return actual >= expected;
+        case 'LT':
+          return actual < expected;
+        case 'LTE':
+          return actual <= expected;
+      }
+    }
+    if (typeof actual === 'string' && typeof expected === 'string') {
+      switch (operator) {
+        case 'GT':
+          return actual > expected;
+        case 'GTE':
+          return actual >= expected;
+        case 'LT':
+          return actual < expected;
+        case 'LTE':
+          return actual <= expected;
+      }
+    }
+    return false;
+  }
+
+  private isFilterScalar(value: unknown): value is FilterScalar {
+    return (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    );
+  }
+
+  private readFilterValue(
+    data: Record<string, unknown>,
+    field: string,
+  ): unknown {
     return field.split('.').reduce<unknown>((current, key) => {
       if (
         current === null ||
         typeof current !== 'object' ||
-        Array.isArray(current)
+        !Object.prototype.hasOwnProperty.call(current, key)
       )
         return undefined;
-      const value = current as Record<string, unknown>;
-      return Object.prototype.hasOwnProperty.call(value, key)
-        ? value[key]
-        : undefined;
+      return (current as Record<string, unknown>)[key];
     }, data);
-  }
-
-  private compare(
-    actual: unknown,
-    expected: unknown,
-    predicate: (left: string | number, right: string | number) => boolean,
-  ): boolean {
-    if (
-      (typeof actual !== 'number' && typeof actual !== 'string') ||
-      (typeof expected !== 'number' && typeof expected !== 'string') ||
-      typeof actual !== typeof expected
-    )
-      return false;
-    return predicate(actual, expected);
-  }
-
-  private async auditLifecycle(
-    actorUuid: string,
-    uuid: string,
-    action: AuditAction,
-    reason?: string,
-  ) {
-    await this.audit.record({
-      action,
-      actorUuid,
-      subjectUuid: actorUuid,
-      entityType: 'system_webhook',
-      entityUuid: uuid,
-      result: 'SUCCESS',
-      ...(reason ? { reason } : {}),
-    });
   }
 
   private toPublic(row: WebhookSubscriptionRecord) {
@@ -561,7 +593,6 @@ export class SystemWebhookService {
       deliveryKey: row.deliveryKey,
       eventName: row.eventName,
       eventVersion: row.eventVersion,
-      payloadHash: row.payloadHash,
       attemptCount: row.attemptCount,
       state: row.state,
       httpStatus: row.httpStatus,
@@ -573,5 +604,22 @@ export class SystemWebhookService {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
+  }
+
+  private async auditLifecycle(
+    actorUuid: string,
+    subjectUuid: string,
+    action: string,
+    reason = 'system-webhook',
+  ): Promise<void> {
+    await this.audit.record({
+      action: action as AuditAction,
+      actorUuid,
+      subjectUuid,
+      entityType: 'system_webhook',
+      entityUuid: subjectUuid,
+      result: 'SUCCESS',
+      reason,
+    });
   }
 }
