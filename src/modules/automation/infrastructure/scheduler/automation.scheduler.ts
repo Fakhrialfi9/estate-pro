@@ -10,6 +10,7 @@ export class AutomationScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AutomationScheduler.name);
   private timer?: NodeJS.Timeout;
   private running = false;
+  private lastSuccessfulTickAt?: number;
   private readonly workerId = `automation-${process.pid}-${Math.random().toString(36).slice(2, 10)}`;
 
   constructor(
@@ -20,10 +21,7 @@ export class AutomationScheduler implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit(): void {
-    const intervalMs = this.config.get<number>(
-      'automation.pollIntervalMs',
-      1000,
-    );
+    const intervalMs = this.config.get<number>('automation.pollIntervalMs', 1000);
     this.timer = setInterval(() => void this.tick(), intervalMs);
     this.timer.unref();
     void this.tick();
@@ -31,6 +29,11 @@ export class AutomationScheduler implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy(): void {
     if (this.timer) clearInterval(this.timer);
+  }
+
+  isHealthy(): boolean {
+    const intervalMs = this.config.get<number>('automation.pollIntervalMs', 1000);
+    return this.lastSuccessfulTickAt !== undefined && Date.now() - this.lastSuccessfulTickAt <= Math.max(intervalMs * 5, 10_000);
   }
 
   async tick(): Promise<void> {
@@ -47,6 +50,7 @@ export class AutomationScheduler implements OnModuleInit, OnModuleDestroy {
         const result = await this.automation.processDue(this.workerId, leaseMs);
         if (!result) break;
       }
+      this.lastSuccessfulTickAt = Date.now();
     } catch (error: unknown) {
       this.logger.error(
         'Automation scheduler iteration failed',
