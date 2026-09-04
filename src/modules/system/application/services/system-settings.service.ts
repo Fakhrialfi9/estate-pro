@@ -11,6 +11,7 @@ import { SYSTEM_ACTIVITY_REPOSITORY } from '../../domain/repositories/system-act
 import type { SystemActivityRepository } from '../../domain/repositories/system-activity.repository.js';
 import { SYSTEM_SETTINGS_REPOSITORY } from '../../domain/repositories/system-settings.repository.js';
 import type { SystemSettingsRepository } from '../../domain/repositories/system-settings.repository.js';
+import type { SystemSettingsContract } from '../../domain/system-public.contracts.js';
 import {
   SETTING_DEFAULTS,
   settingDefinition,
@@ -22,7 +23,7 @@ import {
 } from '../../domain/errors/system.errors.js';
 
 @Injectable()
-export class SystemSettingsService {
+export class SystemSettingsService implements SystemSettingsContract {
   constructor(
     @Inject(SYSTEM_SETTINGS_REPOSITORY)
     private readonly repository: SystemSettingsRepository,
