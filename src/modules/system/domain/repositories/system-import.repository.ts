@@ -48,10 +48,10 @@ export interface SystemImportRepository {
       >
     >,
   ): Promise<SystemImportJobRecord>;
-  list(input: {
-    actorUuid: string;
-    page: number;
-    limit: number;
-    state?: ImportState;
-  }): Promise<{ items: readonly SystemImportJobRecord[]; total: number }>;
+  list(input: { actorUuid: string; page: number; limit: number; state?: ImportState }): Promise<{
+    items: readonly SystemImportJobRecord[];
+    total: number;
+  }>;
+  listExpired(now: Date, limit: number): Promise<readonly SystemImportJobRecord[]>;
+  deleteMany(uuids: readonly string[]): Promise<void>;
 }
