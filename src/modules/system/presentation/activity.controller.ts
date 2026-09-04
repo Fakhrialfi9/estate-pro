@@ -13,7 +13,30 @@ import { ActivityQueryDto } from './dto/activity-query.dto.js';
 
 const systemActivityItemSchema = {
   type: 'object',
-  additionalProperties: true,
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    actorUuid: { type: 'string', format: 'uuid', nullable: true },
+    eventType: { type: 'string' },
+    category: { type: 'string' },
+    resourceType: { type: 'string', nullable: true },
+    resourceUuid: { type: 'string', format: 'uuid', nullable: true },
+    summary: { type: 'string' },
+    metadata: { type: 'object', additionalProperties: true },
+    requestId: { type: 'string', nullable: true },
+    createdAt: { type: 'string', format: 'date-time' },
+  },
+  required: [
+    'uuid',
+    'actorUuid',
+    'eventType',
+    'category',
+    'resourceType',
+    'resourceUuid',
+    'summary',
+    'metadata',
+    'requestId',
+    'createdAt',
+  ],
 };
 
 const systemActivityListResponseSchema = {
