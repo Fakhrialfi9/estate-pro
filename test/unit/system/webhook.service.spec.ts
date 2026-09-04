@@ -58,29 +58,24 @@ const delivery = (
 });
 
 const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
-  const findDelivery = vi.fn<
-    (uuid: string) => Promise<WebhookDeliveryRecord | null>
-  >();
-  const findSubscriptionByDelivery = vi.fn<
-    (uuid: string) => Promise<WebhookSubscriptionRecord | null>
-  >();
-  const createDelivery = vi.fn(
-    (input: CreateDeliveryInput) =>
-      Promise.resolve({
-        created: true,
-        record: delivery(input.eventId, input.deliveryKey),
-      }),
+  const findDelivery =
+    vi.fn<(uuid: string) => Promise<WebhookDeliveryRecord | null>>();
+  const findSubscriptionByDelivery =
+    vi.fn<(uuid: string) => Promise<WebhookSubscriptionRecord | null>>();
+  const createDelivery = vi.fn((input: CreateDeliveryInput) =>
+    Promise.resolve({
+      created: true,
+      record: delivery(input.eventId, input.deliveryKey),
+    }),
   );
-  const updateDelivery = vi.fn(
-    (uuid: string, input: UpdateDeliveryInput) =>
-      Promise.resolve({
-        ...delivery('event-1', uuid),
-        ...input,
-      }),
+  const updateDelivery = vi.fn((uuid: string, input: UpdateDeliveryInput) =>
+    Promise.resolve({
+      ...delivery('event-1', uuid),
+      ...input,
+    }),
   );
-  const listRecentDeliveries = vi.fn(
-    (_input: RecentDeliveriesInput) =>
-      Promise.resolve([] as readonly WebhookDeliveryRecord[]),
+  const listRecentDeliveries = vi.fn((_input: RecentDeliveriesInput) =>
+    Promise.resolve([] as readonly WebhookDeliveryRecord[]),
   );
   const repository = {
     listSubscriptions: vi.fn().mockResolvedValue({

@@ -37,7 +37,9 @@ const toJsonFilters = (
     operator: filter.operator,
     ...(filter.value !== undefined
       ? {
-          value: JSON.parse(JSON.stringify(filter.value)) as Prisma.InputJsonValue,
+          value: JSON.parse(
+            JSON.stringify(filter.value),
+          ) as Prisma.InputJsonValue,
         }
       : {}),
   }));
