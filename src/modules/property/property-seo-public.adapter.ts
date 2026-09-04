@@ -23,7 +23,7 @@ export class PrismaPropertySeoPublicAdapter implements PropertySeoPublicPort {
           {
             OR: [
               { seo: null },
-              { seo: { robots: { in: ['INDEX_FOLLOW', 'INDEX_NOFOLLOW'] } } },
+              { seo: { is: { robots: { in: ['INDEX_FOLLOW', 'INDEX_NOFOLLOW'] } } } },
             ],
           },
         ],
