@@ -38,39 +38,31 @@ if (audit.value === null) {
   process.exit(1);
 }
 
-const vulnerabilities = audit.value.vulnerabilities ?? {};
-const prodTree = runJson('npm', [
-  'ls',
-  '--omit=dev',
-  'mysql2',
-  '--all',
-  '--json',
-]);
-const mysql2PresentInProduction =
-  prodTree.value !== null &&
-  Boolean(prodTree.value.dependencies?.mysql2 || prodTree.value.name === 'mysql2');
+const productionTree = runJson('npm', ['ls', '--omit=dev', '--all', '--json']);
+if (productionTree.value === null) {
+  console.error('Unable to resolve the production dependency tree.');
+  process.exit(1);
+}
 
+const reachable = new Set();
+const visit = (node) => {
+  if (!node || typeof node !== 'object') return;
+  if (typeof node.name === 'string') reachable.add(node.name);
+  if (node.dependencies && typeof node.dependencies === 'object') {
+    for (const dependency of Object.values(node.dependencies)) visit(dependency);
+  }
+};
+visit(productionTree.value);
+
+const vulnerabilities = audit.value.vulnerabilities ?? {};
 const blocking = [];
-const waived = [];
+const ignoredNonProduction = [];
 
 for (const [name, advisory] of Object.entries(vulnerabilities)) {
-  const entries = Array.isArray(advisory.via) ? advisory.via : [];
-  const isPrismaDevToolPath =
-    name === 'mysql2' &&
-    !mysql2PresentInProduction &&
-    entries.some(
-      (entry) =>
-        typeof entry === 'object' &&
-        entry !== null &&
-        typeof entry.url === 'string' &&
-        (entry.url.includes('GHSA-3f6p-5ww8-9rcr') ||
-          entry.url.includes('GHSA-rgwj-5xj2-c3m3')),
-    );
-
-  if (isPrismaDevToolPath) {
-    waived.push(name);
-  } else {
+  if (reachable.has(name)) {
     blocking.push(name);
+  } else {
+    ignoredNonProduction.push(name);
   }
 }
 
@@ -81,9 +73,9 @@ if (blocking.length > 0) {
   process.exit(1);
 }
 
-if (waived.length > 0) {
+if (ignoredNonProduction.length > 0) {
   console.warn(
-    `Non-runtime Prisma/mysql2 advisory ignored because mysql2 is absent from the production dependency tree: ${waived.join(', ')}`,
+    `Ignoring vulnerabilities that are not reachable from the production dependency tree: ${ignoredNonProduction.join(', ')}`,
   );
 }
 
