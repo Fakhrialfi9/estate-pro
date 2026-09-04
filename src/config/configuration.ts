@@ -10,6 +10,7 @@ import loggingConfig from './logging.config.js';
 import observabilityConfig from './observability.config.js';
 import rateLimitConfig from './rate-limit.config.js';
 import securityConfig from './security.config.js';
+import systemConfig from './system.config.js';
 
 export const configuration = [
   appConfig,
@@ -23,6 +24,7 @@ export const configuration = [
   observabilityConfig,
   rateLimitConfig,
   securityConfig,
+  systemConfig,
 ];
 
 const environmentSecret = Joi.string()
@@ -249,6 +251,23 @@ export const configurationValidationSchema = Joi.object({
     .truthy('true')
     .falsy('false')
     .default(true),
+  SYSTEM_WEBHOOK_ENCRYPTION_KEY: Joi.alternatives().conditional('NODE_ENV', {
+    is: Joi.valid('staging', 'production'),
+    then: environmentSecret,
+    otherwise: Joi.string().trim().min(32).optional(),
+  }),
+  SYSTEM_WEBHOOK_ALLOW_LOCAL_HTTP: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(false),
+  SYSTEM_EXPORT_MAX_ROWS: Joi.number().integer().min(1).max(1000000).default(10000),
+  SYSTEM_EXPORT_MAX_CONCURRENT: Joi.number().integer().min(1).max(100).default(2),
+  SYSTEM_EXPORT_MAX_ARTIFACT_BYTES: Joi.number().integer().min(1024).max(1073741824).default(26214400),
+  SYSTEM_EXPORT_RETENTION_HOURS: Joi.number().integer().min(1).max(720).default(24),
+  SYSTEM_WEBHOOK_TIMEOUT_MS: Joi.number().integer().min(100).max(60000).default(5000),
+  SYSTEM_WEBHOOK_MAX_ATTEMPTS: Joi.number().integer().min(1).max(10).default(5),
+  SYSTEM_WEBHOOK_MAX_PAYLOAD_BYTES: Joi.number().integer().min(1024).max(10485760).default(1048576),
+  SYSTEM_WEBHOOK_RETENTION_DAYS: Joi.number().integer().min(1).max(3650).default(30),
   LOG_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
   LOG_LEVEL: Joi.string()
     .trim()
