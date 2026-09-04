@@ -27,7 +27,9 @@ const listOfStrings = (value: unknown): string[] =>
     ? value.filter((entry): entry is string => typeof entry === 'string')
     : [];
 
-const toTemplate = (row: Record<string, unknown>): NotificationTemplateRecord => ({
+const toTemplate = (
+  row: Record<string, unknown>,
+): NotificationTemplateRecord => ({
   uuid: String(row.uuid),
   code: String(row.code),
   version: Number(row.version),
@@ -39,7 +41,9 @@ const toTemplate = (row: Record<string, unknown>): NotificationTemplateRecord =>
   updatedAt: row.updatedAt as Date,
 });
 
-const toPreference = (row: Record<string, unknown>): NotificationPreferenceRecord => ({
+const toPreference = (
+  row: Record<string, unknown>,
+): NotificationPreferenceRecord => ({
   uuid: String(row.uuid),
   userUuid: String(row.userUuid),
   notificationType: String(row.notificationType),
@@ -59,7 +63,9 @@ const toPolicy = (row: Record<string, unknown>): NotificationPolicyRecord => ({
   updatedAt: row.updatedAt as Date,
 });
 
-const toDelivery = (row: Record<string, unknown>): NotificationDeliveryRecord => ({
+const toDelivery = (
+  row: Record<string, unknown>,
+): NotificationDeliveryRecord => ({
   uuid: String(row.uuid),
   notificationUuid: String(row.notificationUuid),
   channel: row.channel as NotificationChannel,
@@ -88,7 +94,12 @@ export class PrismaAutomationNotificationRepository
     return rows.map((row) => toPreference(clean(row)));
   }
 
-  async upsertPreference(input: { userUuid: string; notificationType: string; channel: NotificationChannel; enabled: boolean }) {
+  async upsertPreference(input: {
+    userUuid: string;
+    notificationType: string;
+    channel: NotificationChannel;
+    enabled: boolean;
+  }) {
     const row = await this.prisma.automationNotificationPreference.upsert({
       where: {
         userUuid_notificationType_channel: {
@@ -114,27 +125,54 @@ export class PrismaAutomationNotificationRepository
     return rows.map((row) => toTemplate(clean(row)));
   }
 
-  async createTemplate(input: { uuid: string; code: string; version: number; titleTemplate: string; bodyTemplate: string; variables: readonly string[]; isActive: boolean }) {
+  async createTemplate(input: {
+    uuid: string;
+    code: string;
+    version: number;
+    titleTemplate: string;
+    bodyTemplate: string;
+    variables: readonly string[];
+    isActive: boolean;
+  }) {
     const row = await this.prisma.automationNotificationTemplate.create({
       data: { ...input, variables: [...input.variables] },
     });
     return toTemplate(clean(row));
   }
 
-  async updateTemplate(uuid: string, input: Partial<Pick<NotificationTemplateRecord, 'titleTemplate' | 'bodyTemplate' | 'variables' | 'isActive'>>) {
+  async updateTemplate(
+    uuid: string,
+    input: Partial<
+      Pick<
+        NotificationTemplateRecord,
+        'titleTemplate' | 'bodyTemplate' | 'variables' | 'isActive'
+      >
+    >,
+  ) {
     const row = await this.prisma.automationNotificationTemplate.update({
       where: { uuid },
       data: {
-        ...(input.titleTemplate !== undefined ? { titleTemplate: input.titleTemplate } : {}),
-        ...(input.bodyTemplate !== undefined ? { bodyTemplate: input.bodyTemplate } : {}),
-        ...(input.variables !== undefined ? { variables: [...input.variables] } : {}),
+        ...(input.titleTemplate !== undefined
+          ? { titleTemplate: input.titleTemplate }
+          : {}),
+        ...(input.bodyTemplate !== undefined
+          ? { bodyTemplate: input.bodyTemplate }
+          : {}),
+        ...(input.variables !== undefined
+          ? { variables: [...input.variables] }
+          : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       },
     });
     return toTemplate(clean(row));
   }
 
-  async upsertPolicy(input: { notificationUuid: string; templateUuid?: string | null; priority?: NotificationPriority; expiresAt?: Date | null }) {
+  async upsertPolicy(input: {
+    notificationUuid: string;
+    templateUuid?: string | null;
+    priority?: NotificationPriority;
+    expiresAt?: Date | null;
+  }) {
     const row = await this.prisma.automationNotificationPolicy.upsert({
       where: { notificationUuid: input.notificationUuid },
       create: {
@@ -145,20 +183,31 @@ export class PrismaAutomationNotificationRepository
         expiresAt: input.expiresAt ?? null,
       },
       update: {
-        ...(input.templateUuid !== undefined ? { templateUuid: input.templateUuid } : {}),
+        ...(input.templateUuid !== undefined
+          ? { templateUuid: input.templateUuid }
+          : {}),
         ...(input.priority !== undefined ? { priority: input.priority } : {}),
-        ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
+        ...(input.expiresAt !== undefined
+          ? { expiresAt: input.expiresAt }
+          : {}),
       },
     });
     return toPolicy(clean(row));
   }
 
   async getPolicy(notificationUuid: string) {
-    const row = await this.prisma.automationNotificationPolicy.findUnique({ where: { notificationUuid } });
+    const row = await this.prisma.automationNotificationPolicy.findUnique({
+      where: { notificationUuid },
+    });
     return row ? toPolicy(clean(row)) : null;
   }
 
-  async createDelivery(input: { notificationUuid: string; channel: NotificationChannel; maxAttempts?: number; availableAt?: Date | null }) {
+  async createDelivery(input: {
+    notificationUuid: string;
+    channel: NotificationChannel;
+    maxAttempts?: number;
+    availableAt?: Date | null;
+  }) {
     const row = await this.prisma.automationNotificationDelivery.create({
       data: {
         uuid: randomUUID(),
@@ -172,7 +221,9 @@ export class PrismaAutomationNotificationRepository
   }
 
   async getDelivery(uuid: string) {
-    const row = await this.prisma.automationNotificationDelivery.findUnique({ where: { uuid } });
+    const row = await this.prisma.automationNotificationDelivery.findUnique({
+      where: { uuid },
+    });
     return row ? toDelivery(clean(row)) : null;
   }
 
@@ -188,13 +239,32 @@ export class PrismaAutomationNotificationRepository
     return rows.map((row) => toDelivery(clean(row)));
   }
 
-  async updateDelivery(uuid: string, input: Partial<Pick<NotificationDeliveryRecord, 'state' | 'attemptCount' | 'availableAt' | 'sentAt' | 'providerMessageId' | 'errorMessage'>>) {
-    const row = await this.prisma.automationNotificationDelivery.update({ where: { uuid }, data: input });
+  async updateDelivery(
+    uuid: string,
+    input: Partial<
+      Pick<
+        NotificationDeliveryRecord,
+        | 'state'
+        | 'attemptCount'
+        | 'availableAt'
+        | 'sentAt'
+        | 'providerMessageId'
+        | 'errorMessage'
+      >
+    >,
+  ) {
+    const row = await this.prisma.automationNotificationDelivery.update({
+      where: { uuid },
+      data: input,
+    });
     return toDelivery(clean(row));
   }
 
   async listNotificationDeliveries(notificationUuid: string) {
-    const rows = await this.prisma.automationNotificationDelivery.findMany({ where: { notificationUuid }, orderBy: { createdAt: 'asc' } });
+    const rows = await this.prisma.automationNotificationDelivery.findMany({
+      where: { notificationUuid },
+      orderBy: { createdAt: 'asc' },
+    });
     return rows.map((row) => toDelivery(clean(row)));
   }
 }

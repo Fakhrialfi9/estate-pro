@@ -7,8 +7,12 @@ import type {
   WebhookSubscriptionRecord,
 } from '../../../src/modules/system/domain/webhook/webhook.contracts.js';
 
-type CreateDeliveryInput = Parameters<SystemWebhookRepository['createDelivery']>[0];
-type UpdateDeliveryInput = Parameters<SystemWebhookRepository['updateDelivery']>[1];
+type CreateDeliveryInput = Parameters<
+  SystemWebhookRepository['createDelivery']
+>[0];
+type UpdateDeliveryInput = Parameters<
+  SystemWebhookRepository['updateDelivery']
+>[1];
 
 const subscription = (
   filters: WebhookSubscriptionRecord['filters'] = [],
@@ -81,9 +85,9 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     decrypt: vi.fn().mockReturnValue('secret'),
   };
   const signer = {
-    buildPayload: vi.fn().mockImplementation((input: unknown) =>
-      JSON.stringify(input),
-    ),
+    buildPayload: vi
+      .fn()
+      .mockImplementation((input: unknown) => JSON.stringify(input)),
     signature: vi.fn().mockReturnValue('signature'),
     payloadHash: vi.fn().mockReturnValue('hash'.padEnd(64, '0')),
   };

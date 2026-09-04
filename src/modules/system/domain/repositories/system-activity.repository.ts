@@ -4,7 +4,12 @@ export const SYSTEM_ACTIVITY_REPOSITORY = Symbol('SYSTEM_ACTIVITY_REPOSITORY');
 export type SystemActivitySort = 'createdAt_asc' | 'createdAt_desc';
 
 export interface SystemActivityRepository {
-  append(input: Omit<SystemActivityRecord, 'uuid' | 'createdAt'> & { uuid?: string; createdAt?: Date }): Promise<SystemActivityRecord>;
+  append(
+    input: Omit<SystemActivityRecord, 'uuid' | 'createdAt'> & {
+      uuid?: string;
+      createdAt?: Date;
+    },
+  ): Promise<SystemActivityRecord>;
   get(uuid: string): Promise<SystemActivityRecord | null>;
   list(input: {
     page: number;

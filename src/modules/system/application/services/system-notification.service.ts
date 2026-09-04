@@ -8,7 +8,10 @@ import {
   AUTOMATION_NOTIFICATION_PORT,
   type AutomationNotificationPort,
 } from '../../../../common/contracts/automation-system.port.js';
-import type { NotificationChannel, NotificationPriority } from '../../../automation/domain/notification.types.js';
+import type {
+  NotificationChannel,
+  NotificationPriority,
+} from '../../../automation/domain/notification.types.js';
 import type { SystemNotificationsContract } from '../../domain/system-public.contracts.js';
 import { SYSTEM_ERROR_CODES } from '../../domain/system-error.codes.js';
 
@@ -19,7 +22,12 @@ export class SystemNotificationService implements SystemNotificationsContract {
     private readonly automation: AutomationNotificationPort,
   ) {}
 
-  async list(userUuid: string, page: number, limit: number, unreadOnly: boolean) {
+  async list(
+    userUuid: string,
+    page: number,
+    limit: number,
+    unreadOnly: boolean,
+  ) {
     this.requireUser(userUuid);
     return this.automation.listNotifications({
       page: Math.max(1, page),
@@ -53,7 +61,11 @@ export class SystemNotificationService implements SystemNotificationsContract {
 
   setPreference(
     userUuid: string,
-    input: { notificationType: string; channel: NotificationChannel; enabled: boolean },
+    input: {
+      notificationType: string;
+      channel: NotificationChannel;
+      enabled: boolean;
+    },
   ) {
     this.requireUser(userUuid);
     return this.automation.setPreference({ userUuid, ...input });

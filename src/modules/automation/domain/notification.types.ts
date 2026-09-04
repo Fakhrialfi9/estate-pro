@@ -1,11 +1,27 @@
-export const NOTIFICATION_CHANNELS = ['IN_APP', 'EMAIL', 'WHATSAPP', 'SMS'] as const;
+export const NOTIFICATION_CHANNELS = [
+  'IN_APP',
+  'EMAIL',
+  'WHATSAPP',
+  'SMS',
+] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 
-export const NOTIFICATION_PRIORITIES = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const;
+export const NOTIFICATION_PRIORITIES = [
+  'LOW',
+  'NORMAL',
+  'HIGH',
+  'URGENT',
+] as const;
 export type NotificationPriority = (typeof NOTIFICATION_PRIORITIES)[number];
 
-export const NOTIFICATION_DELIVERY_STATES = ['QUEUED', 'SENDING', 'SENT', 'FAILED'] as const;
-export type NotificationDeliveryState = (typeof NOTIFICATION_DELIVERY_STATES)[number];
+export const NOTIFICATION_DELIVERY_STATES = [
+  'QUEUED',
+  'SENDING',
+  'SENT',
+  'FAILED',
+] as const;
+export type NotificationDeliveryState =
+  (typeof NOTIFICATION_DELIVERY_STATES)[number];
 
 export interface NotificationTemplateRecord {
   uuid: string;

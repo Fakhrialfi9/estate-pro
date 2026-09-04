@@ -230,9 +230,7 @@ export class SystemWebhookService {
 
   async health(uuid: string) {
     await this.get(uuid);
-    const since = new Date(
-      Date.now() - HEALTH_WINDOW_HOURS * 60 * 60 * 1000,
-    );
+    const since = new Date(Date.now() - HEALTH_WINDOW_HOURS * 60 * 60 * 1000);
     const rows = await this.repository.listRecentDeliveries({
       subscriptionUuid: uuid,
       since,
@@ -244,14 +242,15 @@ export class SystemWebhookService {
     const latencies: number[] = [];
     for (const row of rows) {
       if (row.completedAt !== null)
-        latencies.push(Math.max(0, row.completedAt.getTime() - row.createdAt.getTime()));
+        latencies.push(
+          Math.max(0, row.completedAt.getTime() - row.createdAt.getTime()),
+        );
     }
     const averageLatencyMs =
       latencies.length === 0
         ? 0
         : Math.round(
-            latencies.reduce((sum, value) => sum + value, 0) /
-              latencies.length,
+            latencies.reduce((sum, value) => sum + value, 0) / latencies.length,
           );
 
     return {
@@ -302,9 +301,7 @@ export class SystemWebhookService {
       3650,
       Math.max(1, retentionDays ?? configured),
     );
-    const before = new Date(
-      Date.now() - boundedDays * 24 * 60 * 60 * 1000,
-    );
+    const before = new Date(Date.now() - boundedDays * 24 * 60 * 60 * 1000);
     const rows = await this.repository.listExpiredDeliveries(
       before,
       Math.min(500, Math.max(1, limit)),
@@ -365,10 +362,7 @@ export class SystemWebhookService {
       'system.webhook.maxAttempts',
       5,
     );
-    const timeoutMs = this.config.get<number>(
-      'system.webhook.timeoutMs',
-      5000,
-    );
+    const timeoutMs = this.config.get<number>('system.webhook.timeoutMs', 5000);
     let lastFailure = 'Webhook delivery failed';
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       await this.repository.updateDelivery(deliveryId, {
@@ -500,7 +494,7 @@ export class SystemWebhookService {
             return actual.includes(String(filter.value ?? ''));
           return Array.isArray(actual) && actual.includes(filter.value);
         case 'IN':
-          return Array.isArray(filter.value) && filter.value.includes(actual as never);
+          return Array.isArray(filter.value) && filter.value.includes(actual);
         case 'GT':
         case 'GTE':
         case 'LT':
@@ -613,7 +607,7 @@ export class SystemWebhookService {
     reason = 'system-webhook',
   ): Promise<void> {
     await this.audit.record({
-      action: action as AuditAction,
+      action: action,
       actorUuid,
       subjectUuid,
       entityType: 'system_webhook',

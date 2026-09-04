@@ -21,7 +21,8 @@ describe('System webhook repository integration', () => {
     process.env.TWO_FACTOR_ENCRYPTION_KEY ??=
       'estate-pro-two-factor-integration-key-32-chars-minimum';
     process.env.SEED_ADMIN_PASSWORD ??= randomBytes(32).toString('hex');
-    process.env.SEED_DEVELOPMENT_USER_PASSWORD ??= randomBytes(32).toString('hex');
+    process.env.SEED_DEVELOPMENT_USER_PASSWORD ??=
+      randomBytes(32).toString('hex');
 
     moduleRef = await Test.createTestingModule({
       imports: [AppModule],

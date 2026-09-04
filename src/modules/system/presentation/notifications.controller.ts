@@ -1,12 +1,34 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { SystemNotificationService } from '../application/services/system-notification.service.js';
 import { NotificationQueryDto } from './dto/notification-query.dto.js';
-import { NotificationDeliveryDto, NotificationPolicyDto, NotificationPreferenceDto, NotificationTemplateDto, NotificationTemplateUpdateDto } from './dto/notification-management.dto.js';
+import {
+  NotificationDeliveryDto,
+  NotificationPolicyDto,
+  NotificationPreferenceDto,
+  NotificationTemplateDto,
+  NotificationTemplateUpdateDto,
+} from './dto/notification-management.dto.js';
 
 @ApiTags('System Notifications')
 @ApiBearerAuth()
@@ -20,7 +42,12 @@ export class NotificationsController {
   @ApiOperation({ summary: 'List current-user notifications' })
   list(@Req() request: Request, @Query() query: NotificationQueryDto) {
     const userUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
-    return this.notifications.list(userUuid, query.page, query.limit, query.unreadOnly === true);
+    return this.notifications.list(
+      userUuid,
+      query.page,
+      query.limit,
+      query.unreadOnly === true,
+    );
   }
 
   @Patch('read-all')
@@ -35,7 +62,10 @@ export class NotificationsController {
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'Mark a current-user notification as read' })
   @ApiResponse({ status: 200, description: 'Notification marked as read.' })
-  markRead(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
+  markRead(
+    @Req() request: Request,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+  ) {
     const userUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.notifications.markRead(userUuid, uuid);
   }
@@ -51,7 +81,10 @@ export class NotificationsController {
   @Patch('preferences')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'Update a current-user notification preference' })
-  setPreference(@Req() request: Request, @Body() dto: NotificationPreferenceDto) {
+  setPreference(
+    @Req() request: Request,
+    @Body() dto: NotificationPreferenceDto,
+  ) {
     const userUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.notifications.setPreference(userUuid, dto);
   }
@@ -66,15 +99,25 @@ export class NotificationsController {
   @Post('templates')
   @RequirePermissions('system.settings.update')
   @ApiOperation({ summary: 'Create a versioned notification template' })
-  createTemplate(@Req() request: Request, @Body() dto: NotificationTemplateDto) {
+  createTemplate(
+    @Req() request: Request,
+    @Body() dto: NotificationTemplateDto,
+  ) {
     const actorUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
-    return this.notifications.createTemplate({ ...dto, variables: dto.variables ?? [], actorUuid });
+    return this.notifications.createTemplate({
+      ...dto,
+      variables: dto.variables ?? [],
+      actorUuid,
+    });
   }
 
   @Patch('templates/:uuid')
   @RequirePermissions('system.settings.update')
   @ApiOperation({ summary: 'Update a notification template' })
-  updateTemplate(@Param('uuid', ParseUUIDPipe) uuid: string, @Body() dto: NotificationTemplateUpdateDto) {
+  updateTemplate(
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Body() dto: NotificationTemplateUpdateDto,
+  ) {
     return this.notifications.updateTemplate(uuid, dto);
   }
 
@@ -87,9 +130,20 @@ export class NotificationsController {
 
   @Patch(':uuid/policy')
   @RequirePermissions('system.settings.update')
-  @ApiOperation({ summary: 'Update notification priority and expiration policy' })
-  setPolicy(@Param('uuid', ParseUUIDPipe) uuid: string, @Body() dto: NotificationPolicyDto) {
-    return this.notifications.setPolicy(uuid, { ...dto, expiresAt: dto.expiresAt === undefined || dto.expiresAt === null ? dto.expiresAt : new Date(dto.expiresAt) });
+  @ApiOperation({
+    summary: 'Update notification priority and expiration policy',
+  })
+  setPolicy(
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Body() dto: NotificationPolicyDto,
+  ) {
+    return this.notifications.setPolicy(uuid, {
+      ...dto,
+      expiresAt:
+        dto.expiresAt === undefined || dto.expiresAt === null
+          ? dto.expiresAt
+          : new Date(dto.expiresAt),
+    });
   }
 
   @Get(':uuid/deliveries')
@@ -102,7 +156,14 @@ export class NotificationsController {
   @Post(':uuid/deliveries')
   @RequirePermissions('system.settings.update')
   @ApiOperation({ summary: 'Queue a notification delivery' })
-  createDelivery(@Param('uuid', ParseUUIDPipe) uuid: string, @Body() dto: NotificationDeliveryDto) {
-    return this.notifications.createDelivery(uuid, dto.channel, dto.maxAttempts);
+  createDelivery(
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Body() dto: NotificationDeliveryDto,
+  ) {
+    return this.notifications.createDelivery(
+      uuid,
+      dto.channel,
+      dto.maxAttempts,
+    );
   }
 }

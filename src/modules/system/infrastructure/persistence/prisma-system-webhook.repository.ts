@@ -37,10 +37,12 @@ const toJsonFilters = (
     operator: filter.operator,
     ...(filter.value !== undefined
       ? {
-          value: JSON.parse(JSON.stringify(filter.value)) as Prisma.InputJsonValue,
+          value: JSON.parse(
+            JSON.stringify(filter.value),
+          ) as Prisma.InputJsonValue,
         }
       : {}),
-  })) as Prisma.InputJsonArray;
+  }));
 
 const toSubscription = (row: {
   id: bigint;
@@ -110,7 +112,9 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     return toSubscription(row);
   }
 
-  async findSubscription(uuid: string): Promise<WebhookSubscriptionRecord | null> {
+  async findSubscription(
+    uuid: string,
+  ): Promise<WebhookSubscriptionRecord | null> {
     const row = await this.prisma.systemWebhookSubscription.findUnique({
       where: { uuid },
     });
@@ -196,7 +200,9 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     nextAttemptAt?: Date | null;
   }): Promise<{ created: boolean; record: WebhookDeliveryRecord }> {
     try {
-      const row = await this.prisma.systemWebhookDelivery.create({ data: input });
+      const row = await this.prisma.systemWebhookDelivery.create({
+        data: input,
+      });
       return { created: true, record: toDelivery(row) };
     } catch (error: unknown) {
       if (

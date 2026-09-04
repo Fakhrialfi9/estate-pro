@@ -40,8 +40,9 @@ export class WebhookFilterDto {
   operator!: WebhookFilterOperator;
 
   @Allow()
-  @ValidateIf((value: WebhookFilterDto) =>
-    !['EXISTS', 'NOT_EXISTS'].includes(value.operator),
+  @ValidateIf(
+    (value: WebhookFilterDto) =>
+      !['EXISTS', 'NOT_EXISTS'].includes(value.operator),
   )
   value?: unknown;
 }
