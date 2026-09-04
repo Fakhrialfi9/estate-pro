@@ -91,10 +91,7 @@ export interface PropertyCapabilitiesRepository {
       notes?: string | null;
     },
   ): Promise<AmenityAssignmentRecord>;
-  unassignAmenity(
-    propertyUuid: string,
-    amenityUuid: string,
-  ): Promise<void>;
+  unassignAmenity(propertyUuid: string, amenityUuid: string): Promise<void>;
 
   listDocuments(
     propertyUuid: string,
@@ -139,10 +136,7 @@ export interface PropertyCapabilitiesRepository {
     propertyUuid: string,
     documentUuid: string,
     input: Partial<
-      Pick<
-        DocumentRecord,
-        'classification' | 'title' | 'visibility' | 'status'
-      >
+      Pick<DocumentRecord, 'classification' | 'title' | 'visibility' | 'status'>
     > & {
       retentionUntil?: Date | string | null;
     },
