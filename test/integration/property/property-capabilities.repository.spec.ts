@@ -4,12 +4,8 @@ import type { TestingModule } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
 import { AppModule } from '../../../src/app.module.js';
 import { PrismaService } from '../../../src/infrastructure/database/prisma/prisma.service.js';
-import {
-  PROPERTY_CAPABILITIES_REPOSITORY,
-} from '../../../src/modules/property/domain/repositories/property-capabilities.repository.js';
-import type {
-  PropertyCapabilitiesRepository,
-} from '../../../src/modules/property/domain/repositories/property-capabilities.repository.js';
+import { PROPERTY_CAPABILITIES_REPOSITORY } from '../../../src/modules/property/domain/repositories/property-capabilities.repository.js';
+import type { PropertyCapabilitiesRepository } from '../../../src/modules/property/domain/repositories/property-capabilities.repository.js';
 
 let moduleRef: TestingModule;
 let prisma: PrismaService;
