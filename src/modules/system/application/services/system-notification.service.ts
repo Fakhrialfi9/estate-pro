@@ -1,4 +1,9 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   AUTOMATION_NOTIFICATION_PORT,
   type AutomationNotificationPort,
@@ -49,7 +54,6 @@ export class SystemNotificationService implements SystemNotificationsContract {
         message: 'Notification not found.',
       });
     }
-
     return result;
   }
 
@@ -60,30 +64,6 @@ export class SystemNotificationService implements SystemNotificationsContract {
         message: 'Authenticated actor missing.',
       });
     }
-
-    let updated = 0;
-    for (let page = 1; page <= 100; page += 1) {
-      const result = (await this.automation.listNotifications({
-        userUuid,
-        page,
-        limit: 100,
-        unreadOnly: true,
-      })) as {
-        items?: readonly Record<string, unknown>[];
-      };
-      const items = result.items ?? [];
-      if (items.length === 0) break;
-
-      for (const item of items) {
-        const uuid = typeof item.uuid === 'string' ? item.uuid : undefined;
-        if (!uuid) continue;
-        const marked = await this.automation.markNotificationRead(uuid, userUuid);
-        if (marked) updated += 1;
-      }
-
-      if (items.length < 100) break;
-    }
-
-    return { updated };
+    return this.automation.markAllNotificationsRead(userUuid);
   }
 }
