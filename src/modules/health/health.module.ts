@@ -12,5 +12,6 @@ import { HealthService } from './health.service.js';
     HealthService,
     { provide: DATABASE_HEALTH_CHECK, useExisting: DatabaseHealthService },
   ],
+  exports: [HealthService],
 })
 export class HealthModule {}
