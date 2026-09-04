@@ -37,14 +37,20 @@ export class OperationsController {
   @RequirePermissions('system.operations.update')
   @ApiOperation({ summary: 'Toggle system maintenance mode' })
   maintenance(@Req() request: Request, @Body() dto: ToggleOperationDto) {
-    return this.operations.setMaintenance(this.actor(request), dto.enabled === true);
+    return this.operations.setMaintenance(
+      this.actor(request),
+      dto.enabled === true,
+    );
   }
 
   @Patch('read-only')
   @RequirePermissions('system.operations.update')
   @ApiOperation({ summary: 'Toggle system read-only mode' })
   readOnly(@Req() request: Request, @Body() dto: ToggleOperationDto) {
-    return this.operations.setReadOnly(this.actor(request), dto.enabled === true);
+    return this.operations.setReadOnly(
+      this.actor(request),
+      dto.enabled === true,
+    );
   }
 
   private actor(request: Request): string {

@@ -25,11 +25,15 @@ const toRecord = (row: {
 }): SystemIntegrationRecord => ({
   ...row,
   capabilities: Array.isArray(row.capabilities)
-    ? row.capabilities.filter((value): value is string => typeof value === 'string')
+    ? row.capabilities.filter(
+        (value): value is string => typeof value === 'string',
+      )
     : [],
   state: row.state as IntegrationState,
   metadata:
-    row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+    row.metadata &&
+    typeof row.metadata === 'object' &&
+    !Array.isArray(row.metadata)
       ? (row.metadata as Record<string, unknown>)
       : {},
 });

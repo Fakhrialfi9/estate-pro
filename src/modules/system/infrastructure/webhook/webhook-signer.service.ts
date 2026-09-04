@@ -21,7 +21,12 @@ export class WebhookSignerService implements SystemWebhookSignerPort {
     });
   }
 
-  signature(secret: string, timestamp: number, deliveryId: string, payload: string): string {
+  signature(
+    secret: string,
+    timestamp: number,
+    deliveryId: string,
+    payload: string,
+  ): string {
     return createHmac('sha256', secret)
       .update(`${timestamp}.${deliveryId}.${payload}`, 'utf8')
       .digest('hex');

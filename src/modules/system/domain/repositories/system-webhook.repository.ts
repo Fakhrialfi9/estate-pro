@@ -19,14 +19,30 @@ export interface SystemWebhookRepository {
     secretCreatedAt: Date;
   }): Promise<WebhookSubscriptionRecord>;
   findSubscription(uuid: string): Promise<WebhookSubscriptionRecord | null>;
-  findSubscriptionByDelivery(deliveryUuid: string): Promise<WebhookSubscriptionRecord | null>;
-  listSubscriptions(input: { page: number; limit: number; status?: WebhookSubscriptionStatus }): Promise<{
+  findSubscriptionByDelivery(
+    deliveryUuid: string,
+  ): Promise<WebhookSubscriptionRecord | null>;
+  listSubscriptions(input: {
+    page: number;
+    limit: number;
+    status?: WebhookSubscriptionStatus;
+  }): Promise<{
     items: readonly WebhookSubscriptionRecord[];
     total: number;
   }>;
   updateSubscription(
     uuid: string,
-    input: Partial<Pick<WebhookSubscriptionRecord, 'endpoint' | 'events' | 'status' | 'secretCiphertext' | 'secretVersion' | 'secretCreatedAt'>>,
+    input: Partial<
+      Pick<
+        WebhookSubscriptionRecord,
+        | 'endpoint'
+        | 'events'
+        | 'status'
+        | 'secretCiphertext'
+        | 'secretVersion'
+        | 'secretCreatedAt'
+      >
+    >,
   ): Promise<WebhookSubscriptionRecord>;
   deleteSubscription(uuid: string): Promise<void>;
   createDelivery(input: {
@@ -42,7 +58,18 @@ export interface SystemWebhookRepository {
   findDelivery(uuid: string): Promise<WebhookDeliveryRecord | null>;
   updateDelivery(
     uuid: string,
-    input: Partial<Pick<WebhookDeliveryRecord, 'attemptCount' | 'state' | 'httpStatus' | 'responseSummary' | 'nextAttemptAt' | 'completedAt' | 'failureReason'>>,
+    input: Partial<
+      Pick<
+        WebhookDeliveryRecord,
+        | 'attemptCount'
+        | 'state'
+        | 'httpStatus'
+        | 'responseSummary'
+        | 'nextAttemptAt'
+        | 'completedAt'
+        | 'failureReason'
+      >
+    >,
   ): Promise<WebhookDeliveryRecord>;
   listDeliveries(input: {
     subscriptionUuid?: string;
@@ -50,6 +77,9 @@ export interface SystemWebhookRepository {
     page: number;
     limit: number;
   }): Promise<{ items: readonly WebhookDeliveryRecord[]; total: number }>;
-  listExpiredDeliveries(before: Date, limit: number): Promise<readonly WebhookDeliveryRecord[]>;
+  listExpiredDeliveries(
+    before: Date,
+    limit: number,
+  ): Promise<readonly WebhookDeliveryRecord[]>;
   deleteDeliveries(uuids: readonly string[]): Promise<void>;
 }

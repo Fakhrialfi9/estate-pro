@@ -12,14 +12,12 @@ export class SystemReadOnlyGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context
-      .switchToHttp()
-      .getRequest<{
-        method?: string;
-        path?: string;
-        originalUrl?: string;
-        route?: { path?: string };
-      }>();
+    const request = context.switchToHttp().getRequest<{
+      method?: string;
+      path?: string;
+      originalUrl?: string;
+      route?: { path?: string };
+    }>();
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method ?? '')) {
       return true;
     }

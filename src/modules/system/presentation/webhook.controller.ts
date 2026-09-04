@@ -1,11 +1,28 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { SystemWebhookService } from '../application/services/system-webhook.service.js';
-import { CreateWebhookDto, DeliveryListQueryDto, UpdateWebhookDto, WebhookListQueryDto } from './dto/webhook.dto.js';
+import {
+  CreateWebhookDto,
+  DeliveryListQueryDto,
+  UpdateWebhookDto,
+  WebhookListQueryDto,
+} from './dto/webhook.dto.js';
 
 @ApiTags('System Webhooks')
 @ApiBearerAuth()
@@ -45,14 +62,21 @@ export class WebhookController {
   @Patch(':uuid')
   @RequirePermissions('system.webhook.update')
   @ApiOperation({ summary: 'Update or enable/disable a webhook' })
-  update(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string, @Body() dto: UpdateWebhookDto) {
+  update(
+    @Req() request: Request,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Body() dto: UpdateWebhookDto,
+  ) {
     return this.webhooks.update(this.actor(request), uuid, dto);
   }
 
   @Delete(':uuid')
   @RequirePermissions('system.webhook.delete')
   @ApiOperation({ summary: 'Delete a webhook subscription' })
-  async remove(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
+  async remove(
+    @Req() request: Request,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+  ) {
     await this.webhooks.remove(this.actor(request), uuid);
     return { data: null };
   }
@@ -74,14 +98,27 @@ export class WebhookController {
   @Get(':uuid/deliveries')
   @RequirePermissions('system.webhook.read')
   @ApiOperation({ summary: 'List webhook delivery records' })
-  deliveries(@Param('uuid', ParseUUIDPipe) uuid: string, @Query() query: DeliveryListQueryDto) {
-    return this.webhooks.listDeliveries(uuid, query.page, query.limit, query.state);
+  deliveries(
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Query() query: DeliveryListQueryDto,
+  ) {
+    return this.webhooks.listDeliveries(
+      uuid,
+      query.page,
+      query.limit,
+      query.state,
+    );
   }
 
   @Post('deliveries/:deliveryUuid/replay')
   @RequirePermissions('system.webhook.replay')
-  @ApiOperation({ summary: 'Replay a webhook delivery with a fresh delivery identity' })
-  replay(@Req() request: Request, @Param('deliveryUuid', ParseUUIDPipe) deliveryUuid: string) {
+  @ApiOperation({
+    summary: 'Replay a webhook delivery with a fresh delivery identity',
+  })
+  replay(
+    @Req() request: Request,
+    @Param('deliveryUuid', ParseUUIDPipe) deliveryUuid: string,
+  ) {
     return this.webhooks.replay(this.actor(request), deliveryUuid);
   }
 

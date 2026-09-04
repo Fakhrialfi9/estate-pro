@@ -106,16 +106,40 @@ import {
     WebhookNetworkService,
     WebhookSecretService,
     WebhookSignerService,
-    { provide: SYSTEM_SETTINGS_REPOSITORY, useExisting: PrismaSystemSettingsRepository },
-    { provide: SYSTEM_ACTIVITY_REPOSITORY, useExisting: PrismaSystemActivityRepository },
-    { provide: SYSTEM_IMPORT_REPOSITORY, useExisting: PrismaSystemImportRepository },
-    { provide: SYSTEM_EXPORT_REPOSITORY, useExisting: PrismaSystemExportRepository },
-    { provide: SYSTEM_ARTIFACT_STORAGE, useExisting: LocalSystemArtifactStorage },
-    { provide: SYSTEM_WEBHOOK_REPOSITORY, useExisting: PrismaSystemWebhookRepository },
-    { provide: SYSTEM_INTEGRATION_REPOSITORY, useExisting: PrismaSystemIntegrationRepository },
+    {
+      provide: SYSTEM_SETTINGS_REPOSITORY,
+      useExisting: PrismaSystemSettingsRepository,
+    },
+    {
+      provide: SYSTEM_ACTIVITY_REPOSITORY,
+      useExisting: PrismaSystemActivityRepository,
+    },
+    {
+      provide: SYSTEM_IMPORT_REPOSITORY,
+      useExisting: PrismaSystemImportRepository,
+    },
+    {
+      provide: SYSTEM_EXPORT_REPOSITORY,
+      useExisting: PrismaSystemExportRepository,
+    },
+    {
+      provide: SYSTEM_ARTIFACT_STORAGE,
+      useExisting: LocalSystemArtifactStorage,
+    },
+    {
+      provide: SYSTEM_WEBHOOK_REPOSITORY,
+      useExisting: PrismaSystemWebhookRepository,
+    },
+    {
+      provide: SYSTEM_INTEGRATION_REPOSITORY,
+      useExisting: PrismaSystemIntegrationRepository,
+    },
     { provide: SYSTEM_WEBHOOK_SECRET_PORT, useExisting: WebhookSecretService },
     { provide: SYSTEM_WEBHOOK_SIGNER_PORT, useExisting: WebhookSignerService },
-    { provide: SYSTEM_WEBHOOK_NETWORK_PORT, useExisting: WebhookNetworkService },
+    {
+      provide: SYSTEM_WEBHOOK_NETWORK_PORT,
+      useExisting: WebhookNetworkService,
+    },
     {
       provide: SYSTEM_STORAGE_HEALTH_PORT,
       useFactory: (storage: LocalSystemArtifactStorage) => ({
@@ -141,7 +165,9 @@ import {
         check: async () => {
           try {
             const result = await health.readiness();
-            return result.checks.database?.status === 'up' ? ('up' as const) : ('down' as const);
+            return result.checks.database?.status === 'up'
+              ? ('up' as const)
+              : ('down' as const);
           } catch {
             return 'down' as const;
           }
@@ -152,6 +178,10 @@ import {
     { provide: SYSTEM_OPERATIONS_PORT, useExisting: SystemOperationsService },
     { provide: APP_GUARD, useExisting: SystemReadOnlyGuard },
   ],
-  exports: [SystemSettingsService, SystemActivityService, SYSTEM_OPERATIONS_PORT],
+  exports: [
+    SystemSettingsService,
+    SystemActivityService,
+    SYSTEM_OPERATIONS_PORT,
+  ],
 })
 export class SystemModule {}

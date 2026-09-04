@@ -6,7 +6,10 @@ import {
   SYSTEM_SETTINGS_REPOSITORY,
   type SystemSettingsRepository,
 } from '../../domain/repositories/system-settings.repository.js';
-import type { SystemOperationalDiagnostics, SystemOperationalState } from '../../domain/operations/system-operations.contracts.js';
+import type {
+  SystemOperationalDiagnostics,
+  SystemOperationalState,
+} from '../../domain/operations/system-operations.contracts.js';
 import {
   SYSTEM_DATABASE_HEALTH_PORT,
   SYSTEM_JOB_HEALTH_PORT,
@@ -50,7 +53,11 @@ export class SystemOperationsService {
   }
 
   async setMaintenance(actorUuid: string, enabled: boolean) {
-    const current = await this.settings.get(MAINTENANCE_KEY, 'global', 'global');
+    const current = await this.settings.get(
+      MAINTENANCE_KEY,
+      'global',
+      'global',
+    );
     await this.settings.upsert({
       key: MAINTENANCE_KEY,
       scope: 'global',
@@ -103,7 +110,9 @@ export class SystemOperationsService {
       this.jobHealth.check(),
     ]);
     const components = { database, storage, jobs };
-    const degraded = Object.values(components).some((value) => value === 'down');
+    const degraded = Object.values(components).some(
+      (value) => value === 'down',
+    );
     return {
       status: degraded ? 'degraded' : 'ok',
       maintenanceMode: state.maintenanceMode,

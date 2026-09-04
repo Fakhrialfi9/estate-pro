@@ -33,7 +33,9 @@ const toRecord = (row: {
 });
 
 @Injectable()
-export class PrismaSystemSettingsRepository implements SystemSettingsRepository {
+export class PrismaSystemSettingsRepository
+  implements SystemSettingsRepository
+{
   constructor(private readonly prisma: PrismaService) {}
 
   async get(key: string, scope: string, scopeKey: string) {

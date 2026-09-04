@@ -47,8 +47,7 @@ const isBlockedIpv6 = (value: string): boolean => {
     normalized.startsWith('fea') ||
     normalized.startsWith('feb') ||
     normalized.startsWith('ff') ||
-    (normalized.startsWith('::ffff:') &&
-      isBlockedIpv4(normalized.slice(7)))
+    (normalized.startsWith('::ffff:') && isBlockedIpv4(normalized.slice(7)))
   );
 };
 
@@ -77,7 +76,9 @@ export class WebhookNetworkService implements SystemWebhookNetworkPort {
       this.config.get<string>('system.allowLocalWebhookHttp') === 'true';
     const hostname = stripIpv6Brackets(url.hostname);
     const isLocalhost =
-      hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1';
 
     if (url.protocol !== 'https:' && !(allowLocalHttp && isLocalhost)) {
       throw new UnprocessableEntityException('Webhook endpoint must use HTTPS');

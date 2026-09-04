@@ -5,10 +5,13 @@ const meter = metrics.getMeter('estate-pro.system');
 const operationCounter = meter.createCounter('system_operations_total', {
   description: 'System operational actions completed',
 });
-const operationDuration = meter.createHistogram('system_operation_duration_ms', {
-  description: 'System operation duration in milliseconds',
-  unit: 'ms',
-});
+const operationDuration = meter.createHistogram(
+  'system_operation_duration_ms',
+  {
+    description: 'System operation duration in milliseconds',
+    unit: 'ms',
+  },
+);
 const exportRows = meter.createCounter('system_export_rows_total', {
   description: 'Rows emitted by System exports',
 });
@@ -22,16 +25,20 @@ const webhookAttempts = meter.createCounter('system_webhook_attempts_total', {
 const webhookFailures = meter.createCounter('system_webhook_failures_total', {
   description: 'Outbound webhook failures',
 });
-const integrationOperations = meter.createCounter('system_integration_operations_total', {
-  description: 'Integration operations',
-});
+const integrationOperations = meter.createCounter(
+  'system_integration_operations_total',
+  {
+    description: 'Integration operations',
+  },
+);
 
 @Injectable()
 export class SystemMetricsService {
   operation(name: string, status: 'success' | 'failure', durationMs?: number) {
     const attributes = { operation: name, status };
     operationCounter.add(1, attributes);
-    if (durationMs !== undefined) operationDuration.record(durationMs, attributes);
+    if (durationMs !== undefined)
+      operationDuration.record(durationMs, attributes);
   }
 
   exportCompleted(rows: number, bytes: number) {

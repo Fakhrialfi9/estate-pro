@@ -10,7 +10,12 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -42,7 +47,9 @@ export class ExportController {
 
   @Get()
   @RequirePermissions('system.export.read')
-  @ApiOperation({ summary: 'List export jobs owned by the authenticated actor' })
+  @ApiOperation({
+    summary: 'List export jobs owned by the authenticated actor',
+  })
   list(@Req() request: Request, @Query() query: ExportQueryDto) {
     const actorUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.exports.list(actorUuid, query.page, query.limit, query.state);
@@ -58,7 +65,9 @@ export class ExportController {
 
   @Post(':uuid/retry')
   @RequirePermissions('system.export.retry')
-  @ApiOperation({ summary: 'Retry a failed export using its immutable request snapshot' })
+  @ApiOperation({
+    summary: 'Retry a failed export using its immutable request snapshot',
+  })
   retry(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     const actorUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.exports.retry(actorUuid, uuid);

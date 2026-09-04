@@ -25,7 +25,10 @@ import type {
   SystemExportRepository,
 } from '../../domain/repositories/system-export.repository.js';
 import { SYSTEM_EXPORT_REPOSITORY } from '../../domain/repositories/system-export.repository.js';
-import type { ExportRequest, ExportResult } from '../../domain/system-public.contracts.js';
+import type {
+  ExportRequest,
+  ExportResult,
+} from '../../domain/system-public.contracts.js';
 
 const DEFAULT_MAX_ROWS = 10_000;
 const PAGE_SIZE = 500;
@@ -242,7 +245,9 @@ export class SystemExportService {
       throw new ForbiddenException('Export download has expired');
     }
     const hash = Buffer.from(
-      createHash('sha256').update(token ?? '', 'utf8').digest('hex'),
+      createHash('sha256')
+        .update(token ?? '', 'utf8')
+        .digest('hex'),
     );
     const expected = Buffer.from(row.downloadTokenHash);
     if (hash.length !== expected.length || !timingSafeEqual(hash, expected)) {
@@ -349,7 +354,9 @@ export class SystemExportService {
         state: 'FAILED',
         processedRows,
         errorMessage:
-          error instanceof Error ? error.message.slice(0, 500) : 'Export failed',
+          error instanceof Error
+            ? error.message.slice(0, 500)
+            : 'Export failed',
       });
       await this.auditLifecycle(
         job.actorUuid,
@@ -539,7 +546,5 @@ export class SystemExportService {
 const csvCell = (value: string): string => {
   let text = value;
   if (/^[=+\-@]/.test(text)) text = `'${text}`;
-  return /[",\n\r]/.test(text)
-    ? `"${text.replace(/"/g, '""')}"`
-    : text;
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };

@@ -31,14 +31,16 @@ const toRecord = (row: PersistedActivity): SystemActivityRecord => ({
     row.metadata &&
     typeof row.metadata === 'object' &&
     !Array.isArray(row.metadata)
-      ? (row.metadata as Record<string, unknown>)
+      ? row.metadata
       : {},
   requestId: row.requestId,
   createdAt: row.createdAt,
 });
 
 @Injectable()
-export class PrismaSystemActivityRepository implements SystemActivityRepository {
+export class PrismaSystemActivityRepository
+  implements SystemActivityRepository
+{
   constructor(private readonly prisma: PrismaService) {}
 
   async append(
@@ -46,7 +48,7 @@ export class PrismaSystemActivityRepository implements SystemActivityRepository 
       uuid?: string;
       createdAt?: Date;
     },
-): Promise<SystemActivityRecord> {
+  ): Promise<SystemActivityRecord> {
     const row = await this.prisma.systemActivity.create({
       data: {
         uuid: input.uuid ?? randomUUID(),

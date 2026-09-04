@@ -2,7 +2,9 @@ import type { SystemWebhookEventName } from './webhook.contracts.js';
 
 export const SYSTEM_WEBHOOK_SECRET_PORT = Symbol('SYSTEM_WEBHOOK_SECRET_PORT');
 export const SYSTEM_WEBHOOK_SIGNER_PORT = Symbol('SYSTEM_WEBHOOK_SIGNER_PORT');
-export const SYSTEM_WEBHOOK_NETWORK_PORT = Symbol('SYSTEM_WEBHOOK_NETWORK_PORT');
+export const SYSTEM_WEBHOOK_NETWORK_PORT = Symbol(
+  'SYSTEM_WEBHOOK_NETWORK_PORT',
+);
 
 export interface SystemWebhookSecretPort {
   generate(): { secret: string; ciphertext: string };

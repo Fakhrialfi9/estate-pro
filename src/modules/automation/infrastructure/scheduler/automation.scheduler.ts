@@ -21,7 +21,10 @@ export class AutomationScheduler implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit(): void {
-    const intervalMs = this.config.get<number>('automation.pollIntervalMs', 1000);
+    const intervalMs = this.config.get<number>(
+      'automation.pollIntervalMs',
+      1000,
+    );
     this.timer = setInterval(() => void this.tick(), intervalMs);
     this.timer.unref();
     void this.tick();
@@ -32,8 +35,14 @@ export class AutomationScheduler implements OnModuleInit, OnModuleDestroy {
   }
 
   isHealthy(): boolean {
-    const intervalMs = this.config.get<number>('automation.pollIntervalMs', 1000);
-    return this.lastSuccessfulTickAt !== undefined && Date.now() - this.lastSuccessfulTickAt <= Math.max(intervalMs * 5, 10_000);
+    const intervalMs = this.config.get<number>(
+      'automation.pollIntervalMs',
+      1000,
+    );
+    return (
+      this.lastSuccessfulTickAt !== undefined &&
+      Date.now() - this.lastSuccessfulTickAt <= Math.max(intervalMs * 5, 10_000)
+    );
   }
 
   async tick(): Promise<void> {

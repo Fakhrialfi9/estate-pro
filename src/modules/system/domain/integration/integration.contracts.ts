@@ -26,14 +26,23 @@ export interface IntegrationProviderPort {
   readonly key: string;
   readonly version: string;
   readonly capabilities: readonly string[];
-  testConnection(input: { metadata: Record<string, unknown>; secretRef?: string | null }): Promise<{
+  testConnection(input: {
+    metadata: Record<string, unknown>;
+    secretRef?: string | null;
+  }): Promise<{
     ok: boolean;
     latencyMs?: number;
     code?: string;
     message?: string;
   }>;
-  disconnect(input: { metadata: Record<string, unknown>; secretRef?: string | null }): Promise<void>;
-  sync?(input: { metadata: Record<string, unknown>; secretRef?: string | null }): Promise<{
+  disconnect(input: {
+    metadata: Record<string, unknown>;
+    secretRef?: string | null;
+  }): Promise<void>;
+  sync?(input: {
+    metadata: Record<string, unknown>;
+    secretRef?: string | null;
+  }): Promise<{
     state: 'SUCCEEDED' | 'FAILED';
     recordsRead?: number;
     recordsChanged?: number;

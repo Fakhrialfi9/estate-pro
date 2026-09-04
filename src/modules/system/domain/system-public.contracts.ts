@@ -1,4 +1,7 @@
-import type { SystemActivityRecord, SystemSettingValueType } from './system.types.js';
+import type {
+  SystemActivityRecord,
+  SystemSettingValueType,
+} from './system.types.js';
 
 type Scalar = string | number | boolean;
 
@@ -32,7 +35,12 @@ export interface SystemSettingUpdateResult {
 export interface SystemSettingsContract {
   list(page: number, limit: number): Promise<SystemSettingListResult>;
   get(key: string): Promise<SystemSettingResponse>;
-  update(key: string, rawValue: string, actorUuid: string, expectedVersion?: number): Promise<SystemSettingUpdateResult>;
+  update(
+    key: string,
+    rawValue: string,
+    actorUuid: string,
+    expectedVersion?: number,
+  ): Promise<SystemSettingUpdateResult>;
 }
 
 export interface SystemActivityAppendInput {
@@ -69,20 +77,34 @@ export interface SystemActivityContract {
 }
 
 export interface SystemNotificationsContract {
-  list(userUuid: string, page: number, limit: number, unreadOnly: boolean): Promise<unknown>;
+  list(
+    userUuid: string,
+    page: number,
+    limit: number,
+    unreadOnly: boolean,
+  ): Promise<unknown>;
   markRead(userUuid: string, uuid: string): Promise<unknown>;
   markAllRead(userUuid: string): Promise<{ updated: number }>;
 }
 
 export interface SystemJobsContract {
-  list(input: { page: number; limit: number; state?: string }, actorUuid: string): Promise<unknown>;
+  list(
+    input: { page: number; limit: number; state?: string },
+    actorUuid: string,
+  ): Promise<unknown>;
   get(uuid: string, actorUuid: string): Promise<unknown>;
   retry(uuid: string, actorUuid: string): Promise<unknown>;
   cancel(uuid: string, actorUuid: string): Promise<unknown>;
 }
 
 export type ImportFormat = 'csv' | 'json';
-export type ImportState = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'RETRYABLE';
+export type ImportState =
+  | 'QUEUED'
+  | 'RUNNING'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'RETRYABLE';
 
 export interface ImportRequest {
   readonly filename: string;
@@ -113,7 +135,12 @@ export interface ExportRequest {
   readonly eventType?: string;
 }
 
-export type ExportState = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+export type ExportState =
+  | 'QUEUED'
+  | 'RUNNING'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'CANCELLED';
 
 export interface ExportResult {
   readonly uuid: string;

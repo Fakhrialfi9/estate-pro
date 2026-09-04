@@ -44,7 +44,9 @@ export class ImportController {
 
   @Get()
   @RequirePermissions('system.import.read')
-  @ApiOperation({ summary: 'List import jobs owned by the authenticated actor' })
+  @ApiOperation({
+    summary: 'List import jobs owned by the authenticated actor',
+  })
   list(@Req() request: Request, @Query() query: ImportQueryDto) {
     const actorUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.imports.list(
@@ -65,7 +67,9 @@ export class ImportController {
 
   @Get(':uuid/errors')
   @RequirePermissions('system.import.read')
-  @ApiOperation({ summary: 'Download the safe failed-row report for an import' })
+  @ApiOperation({
+    summary: 'Download the safe failed-row report for an import',
+  })
   async errors(
     @Req() request: Request,
     @Param('uuid', ParseUUIDPipe) uuid: string,

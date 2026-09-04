@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
-import type { IntegrationProviderPort, IntegrationState, SystemIntegrationRecord } from '../../domain/integration/integration.contracts.js';
+import type {
+  IntegrationProviderPort,
+  IntegrationState,
+  SystemIntegrationRecord,
+} from '../../domain/integration/integration.contracts.js';
 import {
   SYSTEM_INTEGRATION_REPOSITORY,
   type SystemIntegrationRepository,
@@ -22,8 +26,12 @@ export class SystemIntegrationService {
   ) {}
 
   registerProvider(provider: IntegrationProviderPort): void {
-    if (!provider.key || !provider.version) throw new Error('Integration provider identity is required');
-    this.providers.set(this.providerId(provider.key, provider.version), provider);
+    if (!provider.key || !provider.version)
+      throw new Error('Integration provider identity is required');
+    this.providers.set(
+      this.providerId(provider.key, provider.version),
+      provider,
+    );
   }
 
   registry() {
@@ -34,9 +42,23 @@ export class SystemIntegrationService {
     }));
   }
 
-  async create(actorUuid: string, input: { providerKey: string; providerVersion: string; metadata: Record<string, unknown>; secretRef?: string }) {
-    const provider = this.findProvider(input.providerKey, input.providerVersion);
-    const existing = await this.findByProvider(input.providerKey, input.providerVersion);
+  async create(
+    actorUuid: string,
+    input: {
+      providerKey: string;
+      providerVersion: string;
+      metadata: Record<string, unknown>;
+      secretRef?: string;
+    },
+  ) {
+    const provider = this.findProvider(
+      input.providerKey,
+      input.providerVersion,
+    );
+    const existing = await this.findByProvider(
+      input.providerKey,
+      input.providerVersion,
+    );
     if (existing) return this.toPublic(existing);
     const row = await this.repository.create({
       uuid: randomUUID(),
@@ -62,8 +84,17 @@ export class SystemIntegrationService {
   async list(page = 1, limit = 20, state?: IntegrationState) {
     const normalizedPage = Math.max(1, page);
     const normalizedLimit = Math.min(MAX_PAGE_SIZE, Math.max(1, limit));
-    const result = await this.repository.list({ page: normalizedPage, limit: normalizedLimit, state });
-    return { items: result.items.map((row) => this.toPublic(row)), total: result.total, page: normalizedPage, limit: normalizedLimit };
+    const result = await this.repository.list({
+      page: normalizedPage,
+      limit: normalizedLimit,
+      state,
+    });
+    return {
+      items: result.items.map((row) => this.toPublic(row)),
+      total: result.total,
+      page: normalizedPage,
+      limit: normalizedLimit,
+    };
   }
 
   async get(uuid: string) {
@@ -72,12 +103,24 @@ export class SystemIntegrationService {
     return this.toPublic(row);
   }
 
-  async update(actorUuid: string, uuid: string, input: { metadata?: Record<string, unknown>; secretRef?: string | null; enabled?: boolean }) {
+  async update(
+    actorUuid: string,
+    uuid: string,
+    input: {
+      metadata?: Record<string, unknown>;
+      secretRef?: string | null;
+      enabled?: boolean;
+    },
+  ) {
     const current = await this.require(uuid);
     const row = await this.repository.update(uuid, {
-      ...(input.metadata ? { metadata: this.safeMetadata(input.metadata) } : {}),
+      ...(input.metadata
+        ? { metadata: this.safeMetadata(input.metadata) }
+        : {}),
       ...(input.secretRef !== undefined ? { secretRef: input.secretRef } : {}),
-      ...(input.enabled !== undefined ? { state: input.enabled ? 'ACTIVE' : 'DISABLED' } : {}),
+      ...(input.enabled !== undefined
+        ? { state: input.enabled ? 'ACTIVE' : 'DISABLED' }
+        : {}),
     });
     await this.audit.record({
       action: 'SYSTEM_SETTING_UPDATED',
@@ -109,13 +152,19 @@ export class SystemIntegrationService {
     const row = await this.require(uuid);
     const provider = this.findProvider(row.providerKey, row.providerVersion);
     const started = performance.now();
-    const result = await provider.testConnection({ metadata: row.metadata, secretRef: row.secretRef });
-    const latencyMs = result.latencyMs ?? Math.round(performance.now() - started);
+    const result = await provider.testConnection({
+      metadata: row.metadata,
+      secretRef: row.secretRef,
+    });
+    const latencyMs =
+      result.latencyMs ?? Math.round(performance.now() - started);
     const updated = await this.repository.update(uuid, {
       lastTestAt: new Date(),
       state: result.ok ? 'ACTIVE' : 'ERROR',
-      errorCode: result.ok ? null : result.code ?? 'CONNECTION_TEST_FAILED',
-      errorMessage: result.ok ? null : result.message ?? 'Connection test failed',
+      errorCode: result.ok ? null : (result.code ?? 'CONNECTION_TEST_FAILED'),
+      errorMessage: result.ok
+        ? null
+        : (result.message ?? 'Connection test failed'),
     });
     await this.audit.record({
       action: 'SYSTEM_SETTING_UPDATED',
@@ -126,19 +175,35 @@ export class SystemIntegrationService {
       result: result.ok ? 'SUCCESS' : 'FAILURE',
       reason: `integration.test.latencyMs=${latencyMs}`,
     });
-    return { uuid: updated.uuid, ok: result.ok, latencyMs, code: result.code ?? null, message: result.ok ? null : result.message ?? 'Connection test failed' };
+    return {
+      uuid: updated.uuid,
+      ok: result.ok,
+      latencyMs,
+      code: result.code ?? null,
+      message: result.ok ? null : (result.message ?? 'Connection test failed'),
+    };
   }
 
   async sync(actorUuid: string, uuid: string) {
     const row = await this.require(uuid);
     const provider = this.findProvider(row.providerKey, row.providerVersion);
-    if (!provider.sync) throw new NotFoundException('Integration sync capability is not implemented for this provider');
-    const result = await provider.sync({ metadata: row.metadata, secretRef: row.secretRef });
+    if (!provider.sync)
+      throw new NotFoundException(
+        'Integration sync capability is not implemented for this provider',
+      );
+    const result = await provider.sync({
+      metadata: row.metadata,
+      secretRef: row.secretRef,
+    });
     const updated = await this.repository.update(uuid, {
       lastSyncAt: new Date(),
       state: result.state === 'SUCCEEDED' ? 'ACTIVE' : 'ERROR',
-      errorCode: result.state === 'SUCCEEDED' ? null : result.code ?? 'SYNC_FAILED',
-      errorMessage: result.state === 'SUCCEEDED' ? null : result.message ?? 'Integration sync failed',
+      errorCode:
+        result.state === 'SUCCEEDED' ? null : (result.code ?? 'SYNC_FAILED'),
+      errorMessage:
+        result.state === 'SUCCEEDED'
+          ? null
+          : (result.message ?? 'Integration sync failed'),
     });
     await this.audit.record({
       action: 'SYSTEM_SETTING_UPDATED',
@@ -149,7 +214,14 @@ export class SystemIntegrationService {
       result: result.state === 'SUCCEEDED' ? 'SUCCESS' : 'FAILURE',
       reason: `integration.sync.recordsRead=${result.recordsRead ?? 0};recordsChanged=${result.recordsChanged ?? 0}`,
     });
-    return { uuid: updated.uuid, state: result.state, recordsRead: result.recordsRead ?? 0, recordsChanged: result.recordsChanged ?? 0, code: result.code ?? null, message: result.message ?? null };
+    return {
+      uuid: updated.uuid,
+      state: result.state,
+      recordsRead: result.recordsRead ?? 0,
+      recordsChanged: result.recordsChanged ?? 0,
+      code: result.code ?? null,
+      message: result.message ?? null,
+    };
   }
 
   async reconciliation(uuid: string) {
@@ -172,13 +244,21 @@ export class SystemIntegrationService {
 
   private findProvider(key: string, version: string) {
     const provider = this.providers.get(this.providerId(key, version));
-    if (!provider) throw new NotFoundException('Integration provider is not registered');
+    if (!provider)
+      throw new NotFoundException('Integration provider is not registered');
     return provider;
   }
 
-  private async findByProvider(key: string, version: string): Promise<SystemIntegrationRecord | null> {
+  private async findByProvider(
+    key: string,
+    version: string,
+  ): Promise<SystemIntegrationRecord | null> {
     const result = await this.repository.list({ page: 1, limit: 100 });
-    return result.items.find((row) => row.providerKey === key && row.providerVersion === version) ?? null;
+    return (
+      result.items.find(
+        (row) => row.providerKey === key && row.providerVersion === version,
+      ) ?? null
+    );
   }
 
   private providerId(key: string, version: string) {
@@ -188,7 +268,8 @@ export class SystemIntegrationService {
   private safeMetadata(input: Record<string, unknown>) {
     const sanitized = { ...input };
     for (const key of Object.keys(sanitized)) {
-      if (/secret|token|password|authorization|cookie/i.test(key)) delete sanitized[key];
+      if (/secret|token|password|authorization|cookie/i.test(key))
+        delete sanitized[key];
     }
     return sanitized;
   }

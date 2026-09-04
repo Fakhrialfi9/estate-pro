@@ -135,11 +135,13 @@ const parseRows = (
   ) {
     throw new BadRequestException('CSV headers must be non-empty and unique');
   }
-  return rows.slice(1).map((values) =>
-    Object.fromEntries(
-      headers.map((header, index) => [header, values[index] ?? '']),
-    ),
-  );
+  return rows
+    .slice(1)
+    .map((values) =>
+      Object.fromEntries(
+        headers.map((header, index) => [header, values[index] ?? '']),
+      ),
+    );
 };
 
 @Injectable()
@@ -155,8 +157,12 @@ export class SystemImportService {
     private readonly audit: SecurityAuditRepository,
   ) {}
 
-  async execute(actorUuid: string, input: ImportRequest): Promise<ImportResult> {
-    if (!actorUuid) throw new BadRequestException('Authenticated actor missing');
+  async execute(
+    actorUuid: string,
+    input: ImportRequest,
+  ): Promise<ImportResult> {
+    if (!actorUuid)
+      throw new BadRequestException('Authenticated actor missing');
 
     const extension = input.filename?.toLowerCase().split('.').pop();
     const format =
@@ -292,7 +298,10 @@ export class SystemImportService {
           await this.activity.append(data);
           processed += 1;
         } catch (error: unknown) {
-          if (error instanceof Error && /unique|duplicate/i.test(error.message)) {
+          if (
+            error instanceof Error &&
+            /unique|duplicate/i.test(error.message)
+          ) {
             processed += 1;
             continue;
           }

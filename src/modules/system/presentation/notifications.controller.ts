@@ -1,5 +1,19 @@
-import { Controller, Get, Param, ParseUUIDPipe, Patch, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -19,14 +33,22 @@ export class NotificationsController {
   @ApiOperation({ summary: 'List current-user notifications' })
   list(@Req() request: Request, @Query() query: NotificationQueryDto) {
     const userUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
-    return this.notifications.list(userUuid, query.page, query.limit, query.unreadOnly === true);
+    return this.notifications.list(
+      userUuid,
+      query.page,
+      query.limit,
+      query.unreadOnly === true,
+    );
   }
 
   @Patch(':uuid/read')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'Mark a current-user notification as read' })
   @ApiResponse({ status: 200, description: 'Notification marked as read.' })
-  markRead(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
+  markRead(
+    @Req() request: Request,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+  ) {
     const userUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.notifications.markRead(userUuid, uuid);
   }
@@ -34,7 +56,10 @@ export class NotificationsController {
   @Patch('read-all')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'Mark all current-user notifications as read' })
-  @ApiResponse({ status: 200, description: 'Unread notifications marked as read.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Unread notifications marked as read.',
+  })
   markAllRead(@Req() request: Request) {
     const userUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.notifications.markAllRead(userUuid);

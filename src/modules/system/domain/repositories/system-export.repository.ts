@@ -34,8 +34,14 @@ export interface SystemExportRepository {
     expiresAt: Date;
     estimatedRows?: number | null;
   }): Promise<SystemExportJobRecord>;
-  findByUuid(uuid: string, actorUuid?: string): Promise<SystemExportJobRecord | null>;
-  findByTokenHash(uuid: string, tokenHash: string): Promise<SystemExportJobRecord | null>;
+  findByUuid(
+    uuid: string,
+    actorUuid?: string,
+  ): Promise<SystemExportJobRecord | null>;
+  findByTokenHash(
+    uuid: string,
+    tokenHash: string,
+  ): Promise<SystemExportJobRecord | null>;
   countRunning(): Promise<number>;
   update(
     uuid: string,
@@ -57,10 +63,18 @@ export interface SystemExportRepository {
       >
     >,
   ): Promise<SystemExportJobRecord>;
-  list(input: { actorUuid: string; page: number; limit: number; state?: ExportState }): Promise<{
+  list(input: {
+    actorUuid: string;
+    page: number;
+    limit: number;
+    state?: ExportState;
+  }): Promise<{
     items: readonly SystemExportJobRecord[];
     total: number;
   }>;
-  listExpired(now: Date, limit: number): Promise<readonly SystemExportJobRecord[]>;
+  listExpired(
+    now: Date,
+    limit: number,
+  ): Promise<readonly SystemExportJobRecord[]>;
   deleteMany(uuids: readonly string[]): Promise<void>;
 }

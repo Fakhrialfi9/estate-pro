@@ -16,7 +16,9 @@ export class WebhookSecretService implements SystemWebhookSecretPort {
     const configured = config.get<string>('system.webhookEncryptionKey');
     const environment = config.get<string>('app.environment', 'development');
     if (!configured && environment === 'production') {
-      throw new Error('SYSTEM_WEBHOOK_ENCRYPTION_KEY is required in production');
+      throw new Error(
+        'SYSTEM_WEBHOOK_ENCRYPTION_KEY is required in production',
+      );
     }
     this.key = createHash('sha256')
       .update(configured ?? 'estate-pro-development-webhook-key', 'utf8')
