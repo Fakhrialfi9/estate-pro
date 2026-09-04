@@ -132,7 +132,10 @@ export class PropertyCapabilitiesController {
 
   @Patch('amenities/:uuid')
   @RequirePermissions('properties.manage')
-  @ApiOkResponse({ description: 'Amenity updated.' })
+  @ApiOkResponse({
+    description: 'Amenity updated.',
+    schema: amenityResponseSchema,
+  })
   updateAmenity(
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
     @Body() dto: UpdateAmenityDto,
