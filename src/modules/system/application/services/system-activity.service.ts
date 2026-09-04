@@ -6,6 +6,7 @@ import type {
   SystemActivityContract,
   SystemActivityListInput,
 } from '../../domain/system-public.contracts.js';
+import { SYSTEM_ERROR_CODES } from '../../domain/system-error.codes.js';
 
 const safeMetadata = (
   metadata: Record<string, unknown>,
@@ -39,7 +40,10 @@ export class SystemActivityService implements SystemActivityContract {
       !input.category.trim() ||
       !input.summary.trim()
     )
-      throw new BadRequestException('Activity event is incomplete');
+      throw new BadRequestException({
+        code: SYSTEM_ERROR_CODES.ACTIVITY_INVALID,
+        message: 'Activity event is incomplete.',
+      });
     return this.repository.append({
       actorUuid: input.actorUuid ?? null,
       eventType: input.eventType.trim().slice(0, 80),
