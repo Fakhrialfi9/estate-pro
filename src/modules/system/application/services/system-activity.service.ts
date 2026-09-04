@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { SYSTEM_ACTIVITY_REPOSITORY } from '../../domain/repositories/system-activity.repository.js';
 import type { SystemActivityRepository } from '../../domain/repositories/system-activity.repository.js';
 import type {
@@ -7,12 +12,12 @@ import type {
   SystemActivityListInput,
 } from '../../domain/system-public.contracts.js';
 import { SYSTEM_ERROR_CODES } from '../../domain/system-error.codes.js';
-import { BadRequestException } from '@nestjs/common';
 
 const safeMetadata = (
   metadata: Record<string, unknown>,
 ): Record<string, unknown> => {
-  const blocked = /password|token|secret|api[-_]?key|credential|private[-_]?key/i;
+  const blocked =
+    /password|token|secret|api[-_]?key|credential|private[-_]?key/i;
 
   const sanitize = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.slice(0, 20).map(sanitize);
@@ -56,7 +61,7 @@ export class SystemActivityService implements SystemActivityContract {
       category: input.category.trim().slice(0, 40),
       resourceType: input.resourceType?.trim().slice(0, 80) ?? null,
       resourceUuid: input.resourceUuid ?? null,
-      summary: input.summary,
+      summary: input.summary.trim().slice(0, 500),
       metadata: safeMetadata(input.metadata ?? {}),
       requestId: input.requestId ?? null,
     });
