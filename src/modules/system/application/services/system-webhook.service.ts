@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
@@ -33,6 +33,10 @@ export class SystemWebhookService {
     private readonly network: WebhookNetworkService,
   ) {}
 
+  eventCatalog() {
+    return SYSTEM_WEBHOOK_EVENTS.map((name) => ({ name, version: 1 }));
+  }
+
   async create(actorUuid: string, endpoint: string, events: readonly SystemWebhookEventName[]) {
     const safeEndpoint = await this.network.validateTarget(endpoint);
     const normalizedEvents = this.normalizeEvents(events);
@@ -60,11 +64,7 @@ export class SystemWebhookService {
   async list(page = 1, limit = 20, status?: 'ACTIVE' | 'DISABLED') {
     const normalizedPage = Math.max(1, page);
     const normalizedLimit = Math.min(100, Math.max(1, limit));
-    const result = await this.repository.listSubscriptions({
-      page: normalizedPage,
-      limit: normalizedLimit,
-      status,
-    });
+    const result = await this.repository.listSubscriptions({ page: normalizedPage, limit: normalizedLimit, status });
     return {
       items: result.items.map((row) => this.toPublic(row)),
       total: result.total,
@@ -167,14 +167,19 @@ export class SystemWebhookService {
 
   async listDeliveries(uuid: string, page = 1, limit = 20, state?: WebhookDeliveryState) {
     await this.get(uuid);
-    const result = await this.repository.listDeliveries({ subscriptionUuid: uuid, page, limit, state });
-    return { ...result, items: result.items.map(this.toDelivery) };
+    const result = await this.repository.listDeliveries({
+      subscriptionUuid: uuid,
+      page: Math.max(1, page),
+      limit: Math.min(100, Math.max(1, limit)),
+      state,
+    });
+    return { ...result, items: result.items.map((item) => this.toDelivery(item)) };
   }
 
   async replay(actorUuid: string, deliveryUuid: string) {
     const existing = await this.repository.findDelivery(deliveryUuid);
     if (!existing) throw new NotFoundException('Webhook delivery not found');
-    const subscription = await this.repository.findSubscriptionByDelivery?.(deliveryUuid);
+    const subscription = await this.repository.findSubscriptionByDelivery(deliveryUuid);
     if (!subscription) throw new NotFoundException('Webhook subscription not found');
     const delivery = await this.deliver(subscription, existing.eventName, existing.eventVersion, {
       replayOf: existing.uuid,
@@ -207,7 +212,7 @@ export class SystemWebhookService {
       data,
     });
     const payloadHash = this.signer.payloadHash(payload);
-    const created = await this.repository.createDelivery({
+    await this.repository.createDelivery({
       uuid: deliveryId,
       subscriptionId: subscription.id,
       eventName,
@@ -222,7 +227,7 @@ export class SystemWebhookService {
     let lastFailure = 'Webhook delivery failed';
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-      const current = await this.repository.updateDelivery(deliveryId, {
+      await this.repository.updateDelivery(deliveryId, {
         state: 'DELIVERING',
         attemptCount: attempt,
       });
@@ -267,15 +272,13 @@ export class SystemWebhookService {
         lastFailure = error instanceof Error && error.name === 'AbortError' ? 'Webhook request timed out' : 'Webhook request failed';
       }
       if (attempt < MAX_ATTEMPTS) {
-        const delay = RETRY_BASE_MS * 2 ** (attempt - 1) + Math.floor(Math.random() * 250);
-        await new Promise((resolve) => setTimeout(resolve, Math.min(delay, 30_000)));
+        const delay = Math.min(RETRY_BASE_MS * 2 ** (attempt - 1) + Math.floor(Math.random() * 250), 30_000);
         await this.repository.updateDelivery(deliveryId, {
           state: 'RETRYING',
           nextAttemptAt: new Date(Date.now() + delay),
           failureReason: lastFailure,
         });
       }
-      void current;
     }
     return this.repository.updateDelivery(deliveryId, {
       state: 'DEAD_LETTER',
