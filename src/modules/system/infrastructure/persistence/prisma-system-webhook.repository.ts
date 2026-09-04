@@ -97,18 +97,14 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     return toSubscription(row);
   }
 
-  async findSubscription(
-    uuid: string,
-  ): Promise<WebhookSubscriptionRecord | null> {
+  async findSubscription(uuid: string): Promise<WebhookSubscriptionRecord | null> {
     const row = await this.prisma.systemWebhookSubscription.findUnique({
       where: { uuid },
     });
     return row ? toSubscription(row) : null;
   }
 
-  async findSubscriptionByDelivery(
-    deliveryUuid: string,
-  ): Promise<WebhookSubscriptionRecord | null> {
+  async findSubscriptionByDelivery(deliveryUuid: string): Promise<WebhookSubscriptionRecord | null> {
     const row = await this.prisma.systemWebhookDelivery.findUnique({
       where: { uuid: deliveryUuid },
       include: { subscription: true },
@@ -136,18 +132,7 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
 
   async updateSubscription(
     uuid: string,
-    input: Partial<
-      Pick<
-        WebhookSubscriptionRecord,
-        | 'endpoint'
-        | 'events'
-        | 'filters'
-        | 'status'
-        | 'secretCiphertext'
-        | 'secretVersion'
-        | 'secretCreatedAt'
-      >
-    >,
+    input: Partial<Pick<WebhookSubscriptionRecord, 'endpoint' | 'events' | 'filters' | 'status' | 'secretCiphertext' | 'secretVersion' | 'secretCreatedAt'>>,
   ) {
     try {
       const row = await this.prisma.systemWebhookSubscription.update({
@@ -185,15 +170,10 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     nextAttemptAt?: Date | null;
   }): Promise<{ created: boolean; record: WebhookDeliveryRecord }> {
     try {
-      const row = await this.prisma.systemWebhookDelivery.create({
-        data: input,
-      });
+      const row = await this.prisma.systemWebhookDelivery.create({ data: input });
       return { created: true, record: toDelivery(row) };
     } catch (error: unknown) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         const existing = await this.prisma.systemWebhookDelivery.findFirst({
           where: {
             subscriptionId: input.subscriptionId,
@@ -207,31 +187,15 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
   }
 
   async findDelivery(uuid: string): Promise<WebhookDeliveryRecord | null> {
-    const row = await this.prisma.systemWebhookDelivery.findUnique({
-      where: { uuid },
-    });
+    const row = await this.prisma.systemWebhookDelivery.findUnique({ where: { uuid } });
     return row ? toDelivery(row) : null;
   }
 
   async updateDelivery(
     uuid: string,
-    input: Partial<
-      Pick<
-        WebhookDeliveryRecord,
-        | 'attemptCount'
-        | 'state'
-        | 'httpStatus'
-        | 'responseSummary'
-        | 'nextAttemptAt'
-        | 'completedAt'
-        | 'failureReason'
-      >
-    >,
+    input: Partial<Pick<WebhookDeliveryRecord, 'attemptCount' | 'state' | 'httpStatus' | 'responseSummary' | 'nextAttemptAt' | 'completedAt' | 'failureReason'>>,
   ) {
-    const row = await this.prisma.systemWebhookDelivery.update({
-      where: { uuid },
-      data: input,
-    });
+    const row = await this.prisma.systemWebhookDelivery.update({ where: { uuid }, data: input });
     return toDelivery(row);
   }
 
@@ -243,9 +207,7 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
   }) {
     const where = {
       ...(input.state ? { state: input.state } : {}),
-      ...(input.subscriptionUuid
-        ? { subscription: { uuid: input.subscriptionUuid } }
-        : {}),
+      ...(input.subscriptionUuid ? { subscription: { uuid: input.subscriptionUuid } } : {}),
     };
     const [items, total] = await Promise.all([
       this.prisma.systemWebhookDelivery.findMany({
@@ -259,6 +221,22 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     return { items: items.map(toDelivery), total };
   }
 
+  async listRecentDeliveries(input: {
+    subscriptionUuid: string;
+    since: Date;
+    limit: number;
+  }): Promise<readonly WebhookDeliveryRecord[]> {
+    const rows = await this.prisma.systemWebhookDelivery.findMany({
+      where: {
+        subscription: { uuid: input.subscriptionUuid },
+        createdAt: { gte: input.since },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: Math.min(500, Math.max(1, input.limit)),
+    });
+    return rows.map(toDelivery);
+  }
+
   async listExpiredDeliveries(before: Date, limit: number) {
     const rows = await this.prisma.systemWebhookDelivery.findMany({
       where: {
@@ -266,7 +244,7 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
         state: { in: ['SUCCEEDED', 'DEAD_LETTER', 'CANCELLED'] },
       },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      take: limit,
+      take: Math.min(500, Math.max(1, limit)),
     });
     return rows.map(toDelivery);
   }
