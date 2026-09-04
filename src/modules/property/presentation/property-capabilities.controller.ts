@@ -41,6 +41,49 @@ type AuthRequest = Request & { user?: { sub?: string } };
 const actorUuid = (request: AuthRequest): string => request.user?.sub ?? '';
 const wrap = <T>(data: T) => ({ data });
 
+const amenityCatalogResponseSchema = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: [
+          'uuid',
+          'code',
+          'name',
+          'category',
+          'description',
+          'isActive',
+          'sortOrder',
+        ],
+        properties: {
+          uuid: { type: 'string', format: 'uuid' },
+          code: { type: 'string' },
+          name: { type: 'string' },
+          category: { type: 'string', enum: [
+            'LIVING',
+            'KITCHEN',
+            'BATHROOM',
+            'OUTDOOR',
+            'SECURITY',
+            'PARKING',
+            'TECHNOLOGY',
+            'ACCESSIBILITY',
+            'RECREATION',
+            'UTILITY',
+            'OTHER',
+          ] },
+          description: { type: 'string', nullable: true },
+          isActive: { type: 'boolean' },
+          sortOrder: { type: 'integer' },
+        },
+      },
+    },
+  },
+};
+
 @ApiTags('Property Capabilities')
 @Controller({ path: 'property', version: '1' })
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
@@ -56,7 +99,10 @@ export class PropertyCapabilitiesController {
     type: Boolean,
     example: true,
   })
-  @ApiOkResponse({ description: 'Amenity catalog returned.' })
+  @ApiOkResponse({
+    description: 'Amenity catalog returned.',
+    schema: amenityCatalogResponseSchema,
+  })
   listAmenities(@Query('activeOnly') activeOnly?: string) {
     return this.service.listAmenities(activeOnly !== 'false').then(wrap);
   }
