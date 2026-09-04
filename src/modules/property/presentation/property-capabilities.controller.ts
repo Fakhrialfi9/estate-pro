@@ -41,46 +41,59 @@ type AuthRequest = Request & { user?: { sub?: string } };
 const actorUuid = (request: AuthRequest): string => request.user?.sub ?? '';
 const wrap = <T>(data: T) => ({ data });
 
+const amenityRecordSchema = {
+  type: 'object',
+  required: [
+    'uuid',
+    'code',
+    'name',
+    'category',
+    'description',
+    'isActive',
+    'sortOrder',
+  ],
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    code: { type: 'string' },
+    name: { type: 'string' },
+    category: {
+      type: 'string',
+      enum: [
+        'LIVING',
+        'KITCHEN',
+        'BATHROOM',
+        'OUTDOOR',
+        'SECURITY',
+        'PARKING',
+        'TECHNOLOGY',
+        'ACCESSIBILITY',
+        'RECREATION',
+        'UTILITY',
+        'OTHER',
+      ],
+    },
+    description: { type: 'string', nullable: true },
+    isActive: { type: 'boolean' },
+    sortOrder: { type: 'integer' },
+  },
+};
+
 const amenityCatalogResponseSchema = {
   type: 'object',
   required: ['data'],
   properties: {
     data: {
       type: 'array',
-      items: {
-        type: 'object',
-        required: [
-          'uuid',
-          'code',
-          'name',
-          'category',
-          'description',
-          'isActive',
-          'sortOrder',
-        ],
-        properties: {
-          uuid: { type: 'string', format: 'uuid' },
-          code: { type: 'string' },
-          name: { type: 'string' },
-          category: { type: 'string', enum: [
-            'LIVING',
-            'KITCHEN',
-            'BATHROOM',
-            'OUTDOOR',
-            'SECURITY',
-            'PARKING',
-            'TECHNOLOGY',
-            'ACCESSIBILITY',
-            'RECREATION',
-            'UTILITY',
-            'OTHER',
-          ] },
-          description: { type: 'string', nullable: true },
-          isActive: { type: 'boolean' },
-          sortOrder: { type: 'integer' },
-        },
-      },
+      items: amenityRecordSchema,
     },
+  },
+};
+
+const amenityResponseSchema = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: amenityRecordSchema,
   },
 };
 
@@ -109,7 +122,10 @@ export class PropertyCapabilitiesController {
 
   @Post('amenities')
   @RequirePermissions('properties.manage')
-  @ApiCreatedResponse({ description: 'Amenity created.' })
+  @ApiCreatedResponse({
+    description: 'Amenity created.',
+    schema: amenityResponseSchema,
+  })
   createAmenity(@Body() dto: CreateAmenityDto, @Req() request: AuthRequest) {
     return this.service.createAmenity(dto, actorUuid(request)).then(wrap);
   }
