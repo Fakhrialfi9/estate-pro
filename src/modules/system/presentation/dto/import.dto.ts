@@ -24,7 +24,7 @@ export class ImportDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(200)
+  @MaxLength(128)
   idempotencyKey?: string;
 
   @IsOptional()
