@@ -74,7 +74,8 @@ export class AuthorizationGuard implements CanActivate {
       return true;
     } catch (error: unknown) {
       if (error instanceof UnauthorizedException) throw error;
-      throw new ForbiddenException();
+      if (error instanceof ForbiddenException) throw error;
+      throw error;
     }
   }
 }
