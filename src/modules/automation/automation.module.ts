@@ -115,6 +115,32 @@ import { AutomationScheduler } from './infrastructure/scheduler/automation.sched
         listNotifications: (input) => automation.listNotifications(input),
         markNotificationRead: (uuid, userUuid) =>
           automation.markNotificationRead(uuid, userUuid),
+        markAllNotificationsRead: async (userUuid) => {
+          let updated = 0;
+          for (let iteration = 0; iteration < 100; iteration += 1) {
+            const result = (await automation.listNotifications({
+              userUuid,
+              page: 1,
+              limit: 100,
+              unreadOnly: true,
+            })) as {
+              items?: readonly Record<string, unknown>[];
+            };
+            const items = result.items ?? [];
+            if (items.length === 0) break;
+            for (const item of items) {
+              const uuid = typeof item.uuid === 'string' ? item.uuid : undefined;
+              if (!uuid) continue;
+              const marked = await automation.markNotificationRead(
+                uuid,
+                userUuid,
+              );
+              if (marked) updated += 1;
+            }
+            if (items.length < 100) break;
+          }
+          return { updated };
+        },
       }),
     },
     AutomationScheduler,
