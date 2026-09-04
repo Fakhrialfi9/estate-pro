@@ -4,11 +4,16 @@ import type { TestingModule } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
 import { AppModule } from '../../../src/app.module.js';
 import { PrismaService } from '../../../src/infrastructure/database/prisma/prisma.service.js';
-import { PrismaPropertyCapabilitiesRepository } from '../../../src/modules/property/infrastructure/persistence/prisma-property-capabilities.repository.js';
+import {
+  PROPERTY_CAPABILITIES_REPOSITORY,
+} from '../../../src/modules/property/domain/repositories/property-capabilities.repository.js';
+import type {
+  PropertyCapabilitiesRepository,
+} from '../../../src/modules/property/domain/repositories/property-capabilities.repository.js';
 
 let moduleRef: TestingModule;
 let prisma: PrismaService;
-let repository: PrismaPropertyCapabilitiesRepository;
+let repository: PropertyCapabilitiesRepository;
 
 const createdAmenityUuids = new Set<string>();
 const createdPropertyUuids = new Set<string>();
@@ -55,7 +60,7 @@ describe('Property capabilities repository integration', () => {
     }).compile();
     await moduleRef.init();
     prisma = moduleRef.get(PrismaService);
-    repository = moduleRef.get(PrismaPropertyCapabilitiesRepository);
+    repository = moduleRef.get(PROPERTY_CAPABILITIES_REPOSITORY);
   });
 
   afterAll(async () => {
