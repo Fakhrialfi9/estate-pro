@@ -33,11 +33,12 @@ export interface SystemExportRepository {
     filters: Record<string, unknown>;
     expiresAt: Date;
     estimatedRows?: number | null;
+    downloadTokenHash?: string | null;
   }): Promise<SystemExportJobRecord>;
   findByUuid(uuid: string, actorUuid?: string): Promise<SystemExportJobRecord | null>;
   findByTokenHash(uuid: string, tokenHash: string): Promise<SystemExportJobRecord | null>;
   countRunning(): Promise<number>;
-  claimQueued(workerId: string): Promise<SystemExportJobRecord | null>;
+  claimQueued(): Promise<SystemExportJobRecord | null>;
   update(uuid: string, input: Partial<Pick<SystemExportJobRecord, 'state' | 'artifactPath' | 'downloadTokenHash' | 'rows' | 'estimatedRows' | 'processedRows' | 'completedAt' | 'cancelledAt' | 'cancelRequested' | 'artifactBytes' | 'expiresAt' | 'errorMessage'>>): Promise<SystemExportJobRecord>;
   list(input: { actorUuid: string; page: number; limit: number; state?: ExportState }): Promise<{ items: readonly SystemExportJobRecord[]; total: number }>;
   listExpired(now: Date, limit: number): Promise<readonly SystemExportJobRecord[]>;
