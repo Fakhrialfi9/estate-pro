@@ -138,9 +138,11 @@ export interface PropertyCapabilitiesRepository {
     input: Partial<
       Pick<
         DocumentRecord,
-        'classification' | 'title' | 'visibility' | 'status' | 'retentionUntil'
+        'classification' | 'title' | 'visibility' | 'status'
       >
-    >,
+    > & {
+      retentionUntil?: Date | string | null;
+    },
     actorUuid?: string | null,
   ): Promise<DocumentRecord>;
   deleteDocument(
