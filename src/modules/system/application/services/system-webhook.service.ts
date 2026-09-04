@@ -16,9 +16,7 @@ import type {
   WebhookEventFilter,
   WebhookSubscriptionRecord,
 } from '../../domain/webhook/webhook.contracts.js';
-import {
-  SYSTEM_WEBHOOK_EVENTS,
-} from '../../domain/webhook/webhook.contracts.js';
+import { SYSTEM_WEBHOOK_EVENTS } from '../../domain/webhook/webhook.contracts.js';
 import type {
   SystemWebhookNetworkPort,
   SystemWebhookSecretPort,
@@ -127,7 +125,7 @@ export class SystemWebhookService {
       ? this.normalizeFilters(input.filters)
       : undefined;
     const row = await this.repository.updateSubscription(uuid, {
-      ...(endpoint ? { endpoint } } : {}),
+      ...(endpoint ? { endpoint } : {}),
       ...(events ? { events } : {}),
       ...(filters ? { filters } : {}),
       ...(typeof input.enabled === 'boolean'
@@ -186,7 +184,14 @@ export class SystemWebhookService {
         subscription.events.includes(eventName) &&
         this.matchesFilters(subscription.filters, data)
       ) {
-        await this.deliver(subscription, eventId, eventName, 1, data);
+        await this.deliver(
+          subscription,
+          eventId,
+          eventName,
+          1,
+          data,
+          eventId,
+        );
       }
     }
   }
@@ -200,6 +205,7 @@ export class SystemWebhookService {
       'system.activity.created',
       1,
       { test: true },
+      `test:${randomUUID()}`,
     );
     await this.auditLifecycle(actorUuid, uuid, 'SYSTEM_WEBHOOK_TESTED');
     return this.toDelivery(delivery);
@@ -233,12 +239,14 @@ export class SystemWebhookService {
       throw new NotFoundException('Webhook subscription not found');
     if (subscription.status !== 'ACTIVE')
       throw new ForbiddenException('Webhook subscription is disabled');
+    const deliveryKey = `replay:${randomUUID()}`;
     const delivery = await this.deliver(
       subscription,
       existing.eventId,
       existing.eventName,
       existing.eventVersion,
       { replayOf: existing.uuid },
+      deliveryKey,
     );
     await this.auditLifecycle(
       actorUuid,
@@ -275,6 +283,7 @@ export class SystemWebhookService {
     eventName: SystemWebhookEventName,
     eventVersion: number,
     data: Record<string, unknown>,
+    deliveryKey: string,
   ): Promise<WebhookDeliveryRecord> {
     const deliveryId = randomUUID();
     const timestamp = Math.floor(Date.now() / 1000);
@@ -300,6 +309,7 @@ export class SystemWebhookService {
       uuid: deliveryId,
       subscriptionId: subscription.id,
       eventId,
+      deliveryKey,
       eventName,
       eventVersion,
       payloadHash,
@@ -406,20 +416,29 @@ export class SystemWebhookService {
       if (
         path.length === 0 ||
         path.length > FILTER_MAX_DEPTH ||
-        path.some((key) => !FILTER_KEY.test(key) || /^(?:__proto__|prototype|constructor)$/i.test(key))
+        path.some(
+          (key) =>
+            !FILTER_KEY.test(key) ||
+            /^(?:__proto__|prototype|constructor)$/i.test(key),
+        )
       ) {
         throw new ForbiddenException('Invalid webhook filter field');
       }
       if (filter.operator === 'IN') {
         if (!Array.isArray(filter.value) || filter.value.length > 50)
-          throw new ForbiddenException('Webhook IN filter requires a bounded array');
+          throw new ForbiddenException(
+            'Webhook IN filter requires a bounded array',
+          );
       }
       if (['GT', 'GTE', 'LT', 'LTE'].includes(filter.operator)) {
         const type = typeof filter.value;
         if (type !== 'number' && type !== 'string')
-          throw new ForbiddenException('Webhook numeric filters require a scalar value');
+          throw new ForbiddenException(
+            'Webhook comparison filters require a scalar value',
+          );
       }
-      if (['EXISTS', 'NOT_EXISTS'].includes(filter.operator)) return { field, operator: filter.operator };
+      if (['EXISTS', 'NOT_EXISTS'].includes(filter.operator))
+        return { field, operator: filter.operator };
       return { field, operator: filter.operator, value: filter.value };
     });
   }
@@ -445,10 +464,18 @@ export class SystemWebhookService {
           if (actual === filter.value) return false;
           break;
         case 'CONTAINS':
-          if (typeof actual !== 'string' || !actual.includes(String(filter.value))) return false;
+          if (
+            typeof actual !== 'string' ||
+            !actual.includes(String(filter.value))
+          )
+            return false;
           break;
         case 'IN':
-          if (!Array.isArray(filter.value) || !filter.value.some((value) => value === actual)) return false;
+          if (
+            !Array.isArray(filter.value) ||
+            !filter.value.some((value) => value === actual)
+          )
+            return false;
           break;
         case 'GT':
           if (!this.compare(actual, filter.value, (a, b) => a > b)) return false;
@@ -469,9 +496,16 @@ export class SystemWebhookService {
 
   private readFilterValue(data: Record<string, unknown>, field: string): unknown {
     return field.split('.').reduce<unknown>((current, key) => {
-      if (current === null || typeof current !== 'object' || Array.isArray(current)) return undefined;
-      const record = current as Record<string, unknown>;
-      return record[key];
+      if (
+        current === null ||
+        typeof current !== 'object' ||
+        Array.isArray(current)
+      )
+        return undefined;
+      const value = current as Record<string, unknown>;
+      return Object.prototype.hasOwnProperty.call(value, key)
+        ? value[key]
+        : undefined;
     }, data);
   }
 
@@ -483,8 +517,9 @@ export class SystemWebhookService {
     if (
       (typeof actual !== 'number' && typeof actual !== 'string') ||
       (typeof expected !== 'number' && typeof expected !== 'string') ||
-      (typeof actual !== typeof expected)
-    ) return false;
+      typeof actual !== typeof expected
+    )
+      return false;
     return predicate(actual, expected);
   }
 
@@ -523,6 +558,7 @@ export class SystemWebhookService {
     return {
       uuid: row.uuid,
       eventId: row.eventId,
+      deliveryKey: row.deliveryKey,
       eventName: row.eventName,
       eventVersion: row.eventVersion,
       payloadHash: row.payloadHash,
