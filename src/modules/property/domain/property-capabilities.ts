@@ -77,12 +77,18 @@ export const validateDocumentChecksum = (value: string): string => {
 };
 
 export const validateDocumentStorageKey = (value: string): string => {
+  if (/[\r\n]/.test(value)) {
+    throw new PropertyCapabilityValidationError(
+      'Document storage key is invalid',
+    );
+  }
+
   const normalized = value.trim();
   if (
     !normalized ||
     normalized.length > 500 ||
     normalized.startsWith('/') ||
-    /[\\\r\n]/.test(normalized)
+    normalized.startsWith('\\')
   ) {
     throw new PropertyCapabilityValidationError(
       'Document storage key is invalid',
