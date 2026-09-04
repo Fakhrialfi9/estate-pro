@@ -170,7 +170,7 @@ export class SystemExportService {
     const headers = this.selectedColumns(job); yield `${headers.join(',')}\n`; let emitted = 0; let page = 1; const limit = Number(job.filters.limit ?? DEFAULT_MAX_ROWS);
     while (emitted < limit) {
       await this.throwIfCancelled(job.uuid); const result = await this.readActivityBatch(job, page++); if (result.items.length === 0) break;
-      for (const row of result.items) { await this.throwIfCancelled(job.uuid); const output = this.exportRow(row); const values = headers.map((header) => { const value = output[header]; return csvCell(typeof value === 'object' && value !== null ? JSON.stringify(value) : value == null ? '' : String(value)); }); yield `${values.join(',')}\n`; emitted += 1; await this.jobs.update(job.uuid, { processedRows: emitted }); if (emitted >= limit) break; }
+      for (const row of result.items) { await this.throwIfCancelled(job.uuid); const output = this.exportRow(row); const values = headers.map((header) => { const value = output[header]; return csvCell(stringifyExportValue(value)); }); yield `${values.join(',')}\n`; emitted += 1; await this.jobs.update(job.uuid, { processedRows: emitted }); if (emitted >= limit) break; }
       if (!result.hasMore || emitted >= limit) break;
     }
   }
@@ -192,5 +192,14 @@ export class SystemExportService {
     await this.audit.record({ action: map[operation] ?? AUDIT_ACTIONS.SYSTEM_EXPORT_FAILED, actorUuid, subjectUuid: actorUuid, entityType: 'system_export', entityUuid: uuid, result: operation === 'failed' ? 'FAILURE' : 'SUCCESS', reason });
   }
 }
+
+const stringifyExportValue = (value: unknown): string => {
+  if (value == null) return '';
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'bigint') return value.toString();
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return JSON.stringify(value) ?? '';
+};
 
 const csvCell = (value: string): string => { let text = value; if (/^[=+\-@]/.test(text)) text = `'${text}`; return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text; };
