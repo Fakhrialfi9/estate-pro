@@ -28,14 +28,37 @@ A module may contain fewer layers while it is still a scaffold. Do not add empty
 | Users | User-management domain | Scaffold | internal layers only; public module/application contract for consumers |
 | Roles | Role-management domain | Scaffold | internal layers only; public module/application contract for consumers |
 | Permissions | Permission-management domain | Scaffold | internal layers only; public module/application contract for consumers |
-| System | System-level functionality | Scaffold | system concerns only; no business-domain internals |
+| System | System-level operational, administrative, integration, and orchestration boundary | Implemented foundation: Settings, Activity, Audit operational surface, Notifications facade, and Jobs facade | system concerns only; must not own business-domain internals or replace dedicated engines |
 | Health | Health endpoints/checks | Implemented infrastructure-facing module | health contract -> infrastructure check adapter |
+
+## System ownership boundary
+
+`SystemModule` is an operational boundary, not a business-domain owner. Its responsibilities include system-level settings, operational activity, administrative/read surfaces over Audit, user-scoped notification operations, job controls delegated to Automation, and future generic import/export/webhook/integration capabilities that remain behind explicit contracts.
+
+The following ownership remains outside System:
+
+- Authentication -> `AuthModule`
+- Authorization -> `AuthorizationModule`
+- Permissions -> `PermissionsModule`
+- Audit persistence -> `AuditModule`
+- Job/workflow execution -> `AutomationModule`
+- Notification persistence/delivery execution -> `AutomationModule`
+- Health checks -> `HealthModule`
+- Logging/telemetry -> infrastructure
+- Prisma/database access -> database infrastructure
+- Property business logic -> `PropertyModule`
+- CRM business logic -> `CrmModule`
+- Sales business logic -> `SalesModule`
+
+System must not create a second persistence engine, execution engine, authentication/authorization framework, health module, observability stack, or database abstraction for any of those concerns.
+
+Cross-module collaboration must use the owning module's public contract/module boundary. System must not import another module's private application, domain, infrastructure, or presentation implementation files merely to bypass an unavailable public API.
 
 ## Public boundary rule
 
 A module exposes only what another module genuinely needs. Prefer an application service/use-case or explicit contract/provider over importing an internal file from another module.
 
-The architecture graph check enforces this at the source level: a module may reference another module's public `<module>.module.ts` entry point, but it may not reach into that module's `application`, `domain`, `infrastructure`, or `presentation` internals.
+The architecture graph check enforces this at the source level: a module may reference another module's public `<module>.module.ts` entry point, but it may not reach into that module's `application`, `domain`, `infrastructure`, or `presentation` internals unless an explicit, reviewed exception exists for a narrow boundary adapter.
 
 Forbidden examples:
 
@@ -44,6 +67,8 @@ Property -> Sales/infrastructure/*
 Sales -> Property/domain/internal-file
 CRM -> Prisma model used by Property
 Controller -> another module's repository
+System -> Automation/infrastructure/private-repository
+System -> Audit/infrastructure/private-repository
 ```
 
 Valid cross-module collaboration should be explicit in the owning module's public API and kept as narrow as possible.
@@ -51,6 +76,8 @@ Valid cross-module collaboration should be explicit in the owning module's publi
 ## Persistence boundary
 
 A business module must not expose Prisma types as part of its application/domain API. Concrete Prisma repositories belong in infrastructure and implement an inner-layer abstraction.
+
+System follows the same rule for its own persistence and must not bypass another module's repository/application boundary to read or mutate another module's data.
 
 ## Cross-boundary adapters
 
@@ -60,7 +87,7 @@ Logging and observability are infrastructure modules. `AppModule` composes them 
 
 ## Composition root
 
-`src/app.module.ts` is the composition root. It wires global configuration, structured logging, throttling, Auth, Database, Health, and Observability modules. Business-module registration should remain explicit when those modules become active.
+`src/app.module.ts` is the composition root. It wires global configuration, structured logging, throttling, Auth, Database, Health, and Observability modules. Active business and system modules are registered explicitly when their capability is enabled.
 
 ## Scaffold rule
 
