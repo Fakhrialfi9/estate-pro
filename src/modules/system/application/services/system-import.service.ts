@@ -50,9 +50,8 @@ const parseCsv = (input: string): string[][] => {
       continue;
     }
 
-    if (ch === '"' && cell === '') {
-      quoted = true;
-    } else if (ch === ',') {
+    if (ch === '"' && cell === '') quoted = true;
+    else if (ch === ',') {
       row.push(cell);
       cell = '';
     } else if (ch === '\n') {
@@ -270,27 +269,13 @@ export class SystemImportService {
         }
       }
 
-      if (cancelled) {
-        const updated = await this.jobs.update(job.uuid, {
-          state: 'CANCELLED',
-          processedRows: processed,
-          failedRows: failed,
-          errors,
-          totalRows: rows.length,
-        });
-        await this.audit.record({
-          action: 'SYSTEM_IMPORT_CANCELLED',
-          actorUuid,
-          subjectUuid: actorUuid,
-          entityType: 'system_import',
-          entityUuid: job.uuid,
-          result: 'SUCCESS',
-        });
-        return this.toResult(updated);
-      }
-
+      const finalState = cancelled
+        ? 'CANCELLED'
+        : failed > 0
+          ? 'FAILED'
+          : 'SUCCEEDED';
       const updated = await this.jobs.update(job.uuid, {
-        state: failed > 0 ? 'FAILED' : 'SUCCEEDED',
+        state: finalState,
         processedRows: processed,
         failedRows: failed,
         errors,
@@ -300,7 +285,9 @@ export class SystemImportService {
         action:
           updated.state === 'SUCCEEDED'
             ? 'SYSTEM_IMPORT_COMMITTED'
-            : 'SYSTEM_IMPORT_FAILED',
+            : updated.state === 'CANCELLED'
+              ? 'SYSTEM_IMPORT_CANCELLED'
+              : 'SYSTEM_IMPORT_FAILED',
         actorUuid,
         subjectUuid: actorUuid,
         entityType: 'system_import',
@@ -353,6 +340,18 @@ export class SystemImportService {
       total: result.total,
       page: normalizedPage,
       limit: normalizedLimit,
+    };
+  }
+
+  async failedRowReport(actorUuid: string, uuid: string) {
+    const row = await this.jobs.findByUuid(uuid, actorUuid);
+    if (!row) throw new NotFoundException('Import job not found');
+    return {
+      importUuid: row.uuid,
+      state: row.state,
+      failedRows: row.failedRows,
+      errors: row.errors,
+      generatedAt: new Date().toISOString(),
     };
   }
 
