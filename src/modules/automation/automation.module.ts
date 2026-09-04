@@ -1,4 +1,10 @@
 import { Module } from '@nestjs/common';
+import {
+  AUTOMATION_NOTIFICATION_PORT,
+  AUTOMATION_SYSTEM_PORT,
+  type AutomationNotificationPort,
+  type AutomationSystemPort,
+} from '../../common/contracts/automation-system.port.js';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { UsersModule } from '../users/users.module.js';
@@ -86,8 +92,33 @@ import { AutomationScheduler } from './infrastructure/scheduler/automation.sched
           handlers,
         ),
     },
+    {
+      provide: AUTOMATION_SYSTEM_PORT,
+      inject: [AutomationService],
+      useFactory: (automation: AutomationService): AutomationSystemPort => ({
+        listExecutions: (input, actorUuid) =>
+          automation.listExecutions(input, actorUuid),
+        getExecution: (uuid, actorUuid) =>
+          automation.getExecution(uuid, actorUuid),
+        retryExecution: (uuid, actorUuid) =>
+          automation.retryExecution(uuid, actorUuid),
+        cancelExecution: (uuid, actorUuid) =>
+          automation.cancelExecution(uuid, actorUuid),
+      }),
+    },
+    {
+      provide: AUTOMATION_NOTIFICATION_PORT,
+      inject: [AutomationService],
+      useFactory: (
+        automation: AutomationService,
+      ): AutomationNotificationPort => ({
+        listNotifications: (input) => automation.listNotifications(input),
+        markNotificationRead: (uuid, userUuid) =>
+          automation.markNotificationRead(uuid, userUuid),
+      }),
+    },
     AutomationScheduler,
   ],
-  exports: [AutomationService],
+  exports: [AUTOMATION_SYSTEM_PORT, AUTOMATION_NOTIFICATION_PORT],
 })
 export class AutomationModule {}
