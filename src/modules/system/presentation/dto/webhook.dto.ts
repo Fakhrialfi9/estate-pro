@@ -1,5 +1,17 @@
-import { IsArray, IsBoolean, IsIn, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator';
-import { SYSTEM_WEBHOOK_EVENTS, type SystemWebhookEventName } from '../../domain/webhook/webhook.contracts.js';
+import {
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsUrl,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import {
+  SYSTEM_WEBHOOK_EVENTS,
+  type SystemWebhookEventName,
+} from '../../domain/webhook/webhook.contracts.js';
 
 export class CreateWebhookDto {
   @IsUrl({ protocols: ['https'], require_protocol: true, require_tld: false })
@@ -44,8 +56,21 @@ export class WebhookListQueryDto {
 
 export class DeliveryListQueryDto {
   @IsOptional()
-  @IsIn(['PENDING', 'DELIVERING', 'SUCCEEDED', 'RETRYING', 'DEAD_LETTER', 'CANCELLED'])
-  state?: 'PENDING' | 'DELIVERING' | 'SUCCEEDED' | 'RETRYING' | 'DEAD_LETTER' | 'CANCELLED';
+  @IsIn([
+    'PENDING',
+    'DELIVERING',
+    'SUCCEEDED',
+    'RETRYING',
+    'DEAD_LETTER',
+    'CANCELLED',
+  ])
+  state?:
+    | 'PENDING'
+    | 'DELIVERING'
+    | 'SUCCEEDED'
+    | 'RETRYING'
+    | 'DEAD_LETTER'
+    | 'CANCELLED';
 
   @IsOptional()
   @Min(1)
