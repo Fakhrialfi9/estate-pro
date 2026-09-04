@@ -17,6 +17,9 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiQuery,
   ApiTags,
@@ -36,6 +39,84 @@ import {
 type AuthRequest = Request & { user: AccessTokenClaims };
 type SeoResourceType = 'property' | 'listing' | 'article' | 'page';
 
+const seoMetadataResponseSchema = {
+  type: 'object',
+  properties: {
+    resourceType: {
+      type: 'string',
+      enum: ['property', 'listing', 'article', 'page'],
+    },
+    uuid: { type: 'string', format: 'uuid' },
+    slug: { type: 'string' },
+    metadata: {
+      type: 'object',
+      required: [
+        'title',
+        'description',
+        'canonicalUrl',
+        'robots',
+        'openGraph',
+        'twitter',
+        'metadataVersion',
+      ],
+      properties: {
+        title: { type: 'string' },
+        description: { type: 'string' },
+        canonicalUrl: { type: 'string', format: 'uri' },
+        robots: {
+          type: 'string',
+          enum: [
+            'index,follow',
+            'noindex,follow',
+            'index,nofollow',
+            'noindex,nofollow',
+          ],
+        },
+        openGraph: {
+          type: 'object',
+          required: ['title', 'description', 'url', 'imageUrl', 'type'],
+          properties: {
+            title: { type: 'string' },
+            description: { type: 'string' },
+            url: { type: 'string', format: 'uri' },
+            imageUrl: { type: 'string', format: 'uri', nullable: true },
+            type: { type: 'string', enum: ['website', 'article'] },
+          },
+        },
+        twitter: {
+          type: 'object',
+          required: ['card', 'title', 'description', 'imageUrl'],
+          properties: {
+            card: { type: 'string', enum: ['summary', 'summary_large_image'] },
+            title: { type: 'string' },
+            description: { type: 'string' },
+            imageUrl: { type: 'string', format: 'uri', nullable: true },
+          },
+        },
+        metadataVersion: { type: 'string' },
+      },
+    },
+  },
+  required: ['resourceType', 'uuid', 'slug', 'metadata'],
+};
+
+const seoRedirectResponseSchema = {
+  type: 'object',
+  required: ['uuid', 'sourcePath', 'destination', 'statusCode', 'isActive'],
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    sourcePath: { type: 'string' },
+    destination: { type: 'string' },
+    statusCode: { type: 'integer', enum: [301, 302] },
+    isActive: { type: 'boolean' },
+  },
+};
+
+const genericObjectResponseSchema = {
+  type: 'object',
+  additionalProperties: true,
+};
+
 @ApiTags('SEO')
 @Controller({ path: 'seo', version: '1' })
 export class SeoController {
@@ -46,6 +127,10 @@ export class SeoController {
     summary: 'Get public SEO metadata for an indexable resource',
   })
   @ApiQuery({ name: 'language', required: false, example: 'id' })
+  @ApiOkResponse({
+    description: 'Public SEO metadata returned.',
+    schema: seoMetadataResponseSchema,
+  })
   publicMetadata(
     @Param('resourceType') resourceType: SeoResourceType,
     @Param('identifier') identifier: string,
@@ -61,6 +146,10 @@ export class SeoController {
   @Get('public/:resourceType/:identifier/structured-data')
   @ApiOperation({ summary: 'Get public JSON-LD projection' })
   @ApiQuery({ name: 'language', required: false, example: 'id' })
+  @ApiOkResponse({
+    description: 'Public structured data returned.',
+    schema: genericObjectResponseSchema,
+  })
   publicStructuredData(
     @Param('resourceType') resourceType: SeoResourceType,
     @Param('identifier') identifier: string,
@@ -75,12 +164,24 @@ export class SeoController {
 
   @Get('sitemap-index.xml')
   @Header('Content-Type', 'application/xml; charset=utf-8')
+  @ApiOkResponse({
+    description: 'Sitemap index returned.',
+    content: {
+      'application/xml': { schema: { type: 'string' } },
+    },
+  })
   async sitemapIndex(@Res() response: Response): Promise<void> {
     response.send(await this.seo.sitemapIndex());
   }
 
   @Get('sitemap/:part.xml')
   @Header('Content-Type', 'application/xml; charset=utf-8')
+  @ApiOkResponse({
+    description: 'Sitemap XML chunk returned.',
+    content: {
+      'application/xml': { schema: { type: 'string' } },
+    },
+  })
   async sitemap(
     @Param('part', ParseIntPipe) part: number,
     @Res() response: Response,
@@ -90,12 +191,22 @@ export class SeoController {
 
   @Get('robots.txt')
   @Header('Content-Type', 'text/plain; charset=utf-8')
+  @ApiOkResponse({
+    description: 'Robots directives returned.',
+    content: {
+      'text/plain': { schema: { type: 'string' } },
+    },
+  })
   robots(@Res() response: Response): void {
     response.send(this.seo.robots());
   }
 
   @Get('redirect')
   @ApiQuery({ name: 'path', required: true, example: '/articles/old-slug' })
+  @ApiOkResponse({
+    description: 'Redirect resolved.',
+    schema: seoRedirectResponseSchema,
+  })
   resolveRedirect(@Query('path') path: string) {
     return this.seo.resolveRedirect(path);
   }
@@ -104,6 +215,10 @@ export class SeoController {
   @ApiBearerAuth()
   @Patch('admin/property/:propertyUuid')
   @RequirePermissions('property-seo.update')
+  @ApiOkResponse({
+    description: 'Property SEO metadata updated.',
+    schema: genericObjectResponseSchema,
+  })
   updateProperty(
     @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
     propertyUuid: string,
@@ -117,6 +232,10 @@ export class SeoController {
   @ApiBearerAuth()
   @Patch('admin/article/:resourceUuid')
   @RequirePermissions('content.articles.update')
+  @ApiOkResponse({
+    description: 'Article SEO metadata updated.',
+    schema: genericObjectResponseSchema,
+  })
   updateArticle(
     @Param('resourceUuid', new ParseUUIDPipe({ version: '4' }))
     resourceUuid: string,
@@ -135,6 +254,10 @@ export class SeoController {
   @ApiBearerAuth()
   @Patch('admin/page/:resourceUuid')
   @RequirePermissions('content.pages.update')
+  @ApiOkResponse({
+    description: 'Page SEO metadata updated.',
+    schema: genericObjectResponseSchema,
+  })
   updatePage(
     @Param('resourceUuid', new ParseUUIDPipe({ version: '4' }))
     resourceUuid: string,
@@ -153,6 +276,10 @@ export class SeoController {
   @ApiBearerAuth()
   @Post('admin/redirects')
   @RequirePermissions('content.redirects.create')
+  @ApiCreatedResponse({
+    description: 'Redirect created.',
+    schema: seoRedirectResponseSchema,
+  })
   createRedirect(@Body() dto: CreateRedirectDto, @Req() request: AuthRequest) {
     return this.seo.createRedirect({ ...dto, actorUuid: request.user.sub });
   }
@@ -161,6 +288,7 @@ export class SeoController {
   @ApiBearerAuth()
   @Delete('admin/redirects/:uuid')
   @HttpCode(204)
+  @ApiNoContentResponse({ description: 'Redirect deactivated.' })
   @RequirePermissions('content.redirects.delete')
   deactivateRedirect(
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
