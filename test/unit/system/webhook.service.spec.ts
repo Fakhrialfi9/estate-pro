@@ -13,6 +13,9 @@ type CreateDeliveryInput = Parameters<
 type UpdateDeliveryInput = Parameters<
   SystemWebhookRepository['updateDelivery']
 >[1];
+type RecentDeliveriesInput = Parameters<
+  SystemWebhookRepository['listRecentDeliveries']
+>[0];
 
 const subscription = (
   filters: WebhookSubscriptionRecord['filters'] = [],
@@ -75,6 +78,10 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
         ...input,
       }),
   );
+  const listRecentDeliveries = vi.fn(
+    (_input: RecentDeliveriesInput) =>
+      Promise.resolve([] as readonly WebhookDeliveryRecord[]),
+  );
   const repository = {
     listSubscriptions: vi.fn().mockResolvedValue({
       items: rows,
@@ -82,7 +89,7 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     }),
     createDelivery,
     updateDelivery,
-    listRecentDeliveries: vi.fn().mockResolvedValue([]),
+    listRecentDeliveries,
     findDelivery,
     findSubscriptionByDelivery,
   } as unknown as SystemWebhookRepository;
@@ -121,12 +128,12 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
   );
   return {
     service,
-    repository,
     network,
     findDelivery,
     findSubscriptionByDelivery,
     createDelivery,
     updateDelivery,
+    listRecentDeliveries,
   };
 };
 
@@ -186,10 +193,10 @@ describe('SystemWebhookService', () => {
 
   it('reports bounded operational delivery health without exposing secrets', async () => {
     const row = subscription();
-    const { service, repository } = createService([row]);
+    const { service, listRecentDeliveries } = createService([row]);
     const createdAt = new Date(Date.now() - 1_000);
     const completedAt = new Date();
-    repository.listRecentDeliveries = vi.fn().mockResolvedValue([
+    listRecentDeliveries.mockResolvedValue([
       {
         ...delivery('event-1', 'delivery-1'),
         createdAt,
