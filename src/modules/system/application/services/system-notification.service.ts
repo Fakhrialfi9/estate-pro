@@ -1,13 +1,20 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AutomationService } from '../../../automation/application/services/automation.service.js';
+import {
+  AUTOMATION_NOTIFICATION_PORT,
+  type AutomationNotificationPort,
+} from '../../../../common/contracts/automation-system.port.js';
 
 @Injectable()
 export class SystemNotificationService {
-  constructor(private readonly automation: AutomationService) {}
+  constructor(
+    @Inject(AUTOMATION_NOTIFICATION_PORT)
+    private readonly automation: AutomationNotificationPort,
+  ) {}
 
   async list(
     userUuid: string,
