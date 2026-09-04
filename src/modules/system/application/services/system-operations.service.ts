@@ -8,8 +8,10 @@ import {
 } from '../../domain/repositories/system-settings.repository.js';
 import type { SystemOperationalDiagnostics, SystemOperationalState } from '../../domain/operations/system-operations.contracts.js';
 import {
+  SYSTEM_DATABASE_HEALTH_PORT,
   SYSTEM_JOB_HEALTH_PORT,
   SYSTEM_STORAGE_HEALTH_PORT,
+  type SystemDatabaseHealthPort,
   type SystemJobHealthPort,
   type SystemStorageHealthPort,
 } from '../../domain/operations/system-operations.port.js';
@@ -28,6 +30,8 @@ export class SystemOperationsService {
     private readonly storageHealth: SystemStorageHealthPort,
     @Inject(SYSTEM_JOB_HEALTH_PORT)
     private readonly jobHealth: SystemJobHealthPort,
+    @Inject(SYSTEM_DATABASE_HEALTH_PORT)
+    private readonly databaseHealth: SystemDatabaseHealthPort,
   ) {}
 
   async state(): Promise<SystemOperationalState> {
@@ -93,16 +97,13 @@ export class SystemOperationsService {
 
   async diagnostics(): Promise<SystemOperationalDiagnostics> {
     const state = await this.state();
-    const [storage, jobs] = await Promise.all([
+    const [database, storage, jobs] = await Promise.all([
+      this.databaseHealth.check(),
       this.storageHealth.check(),
       this.jobHealth.check(),
     ]);
-    const components = {
-      database: 'unknown' as const,
-      storage,
-      jobs,
-    };
-    const degraded = storage === 'down' || jobs === 'down';
+    const components = { database, storage, jobs };
+    const degraded = Object.values(components).some((value) => value === 'down');
     return {
       status: degraded ? 'degraded' : 'ok',
       maintenanceMode: state.maintenanceMode,
