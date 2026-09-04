@@ -55,26 +55,36 @@ const delivery = (
 });
 
 const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
+  const findDelivery = vi.fn<
+    (uuid: string) => Promise<WebhookDeliveryRecord | null>
+  >();
+  const findSubscriptionByDelivery = vi.fn<
+    (uuid: string) => Promise<WebhookSubscriptionRecord | null>
+  >();
+  const createDelivery = vi.fn(
+    (input: CreateDeliveryInput) =>
+      Promise.resolve({
+        created: true,
+        record: delivery(input.eventId, input.deliveryKey),
+      }),
+  );
+  const updateDelivery = vi.fn(
+    (uuid: string, input: UpdateDeliveryInput) =>
+      Promise.resolve({
+        ...delivery('event-1', uuid),
+        ...input,
+      }),
+  );
   const repository = {
     listSubscriptions: vi.fn().mockResolvedValue({
       items: rows,
       total: rows.length,
     }),
-    createDelivery: vi
-      .fn(async (input: CreateDeliveryInput) => ({
-        created: true,
-        record: delivery(input.eventId, input.deliveryKey),
-      }))
-      .mockName('createDelivery'),
-    updateDelivery: vi
-      .fn(async (uuid: string, input: UpdateDeliveryInput) => ({
-        ...delivery('event-1', uuid),
-        ...input,
-      }))
-      .mockName('updateDelivery'),
+    createDelivery,
+    updateDelivery,
     listRecentDeliveries: vi.fn().mockResolvedValue([]),
-    findDelivery: vi.fn(),
-    findSubscriptionByDelivery: vi.fn(),
+    findDelivery,
+    findSubscriptionByDelivery,
   } as unknown as SystemWebhookRepository;
   const audit = { record: vi.fn().mockResolvedValue(undefined) };
   const secrets = {
@@ -109,7 +119,15 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     network,
     config as never,
   );
-  return { service, repository, network };
+  return {
+    service,
+    repository,
+    network,
+    findDelivery,
+    findSubscriptionByDelivery,
+    createDelivery,
+    updateDelivery,
+  };
 };
 
 describe('SystemWebhookService', () => {
@@ -142,25 +160,16 @@ describe('SystemWebhookService', () => {
 
   it('uses a distinct delivery key for explicit replay while preserving event identity', async () => {
     const row = subscription();
-    const { service, repository, network } = createService([row]);
-    repository.findDelivery = vi
-      .fn()
-      .mockResolvedValue(delivery('event-1', 'original-delivery'));
-    repository.findSubscriptionByDelivery = vi.fn().mockResolvedValue(row);
-
-    const createDelivery = vi.fn(async (input: CreateDeliveryInput) => ({
-      created: true,
-      record: delivery(input.eventId, input.deliveryKey),
-    }));
-    repository.createDelivery = createDelivery;
-
-    const updateDelivery = vi.fn(
-      async (uuid: string, input: UpdateDeliveryInput) => ({
-        ...delivery('event-1', uuid),
-        ...input,
-      }),
-    );
-    repository.updateDelivery = updateDelivery;
+    const {
+      service,
+      network,
+      findDelivery,
+      findSubscriptionByDelivery,
+      createDelivery,
+      updateDelivery,
+    } = createService([row]);
+    findDelivery.mockResolvedValue(delivery('event-1', 'original-delivery'));
+    findSubscriptionByDelivery.mockResolvedValue(row);
 
     const result = await service.replay('actor-uuid', 'original-delivery');
 
@@ -171,6 +180,7 @@ describe('SystemWebhookService', () => {
         deliveryKey: expect.stringMatching(/^replay:/),
       }),
     );
+    expect(updateDelivery).toHaveBeenCalled();
     expect(result.eventId).toBe('event-1');
   });
 
