@@ -10,6 +10,7 @@ describe('production configuration', () => {
       APP_VERSION: '0.0.1',
       APP_HOST: '127.0.0.1',
       APP_PORT: 3000,
+      APP_PUBLIC_URL: 'https://api.example.test',
       API_PREFIX: 'api',
       API_VERSION: 'v1',
       DATABASE_URL: 'mysql://app:password@127.0.0.1:3306/estate_pro',
