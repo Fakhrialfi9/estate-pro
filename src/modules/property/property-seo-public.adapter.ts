@@ -17,22 +17,10 @@ export class PrismaPropertySeoPublicAdapter implements PropertySeoPublicPort {
   ): Promise<PropertySeoPublicSnapshot | null> {
     const property = await this.prisma.property.findFirst({
       where: {
-        AND: [
-          { OR: [{ uuid: uuidOrSlug }, { slug: uuidOrSlug }] },
-          { status: 'ACTIVE', deletedAt: null, publishedAt: { not: null } },
-          {
-            OR: [
-              { seo: { is: null } },
-              {
-                seo: {
-                  is: {
-                    robots: { in: ['INDEX_FOLLOW', 'INDEX_NOFOLLOW'] },
-                  },
-                },
-              },
-            ],
-          },
-        ],
+        OR: [{ uuid: uuidOrSlug }, { slug: uuidOrSlug }],
+        status: 'ACTIVE',
+        deletedAt: null,
+        publishedAt: { not: null },
       },
       select: {
         uuid: true,
