@@ -18,9 +18,14 @@ import { AuthorizationModule } from '../../common/security/authorization.module.
 import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
 import { AutomationController } from './presentation/automation.controller.js';
 import { AutomationService } from './application/services/automation.service.js';
+import { AutomationNotificationService } from './application/services/automation-notification.service.js';
 import { WorkflowValidator } from './application/validation/workflow-validator.js';
 import { PrismaAutomationRepository } from './infrastructure/persistence/prisma-automation.repository.js';
+import { PrismaAutomationNotificationRepository } from './infrastructure/persistence/prisma-automation-notification.repository.js';
 import { AUTOMATION_REPOSITORY } from './infrastructure/persistence/automation.repository.token.js';
+import {
+  AUTOMATION_NOTIFICATION_REPOSITORY,
+} from './domain/repositories/automation-notification.repository.js';
 import { AUTOMATION_ACTION_PROVIDERS } from './application/actions/automation-actions.js';
 import type {
   ActionHandler,
@@ -59,7 +64,13 @@ import { AutomationScheduler } from './infrastructure/scheduler/automation.sched
     AuthorizationGuard,
     WorkflowValidator,
     PrismaAutomationRepository,
+    PrismaAutomationNotificationRepository,
+    AutomationNotificationService,
     { provide: AUTOMATION_REPOSITORY, useExisting: PrismaAutomationRepository },
+    {
+      provide: AUTOMATION_NOTIFICATION_REPOSITORY,
+      useExisting: PrismaAutomationNotificationRepository,
+    },
     ...AUTOMATION_ACTION_PROVIDERS,
     {
       provide: AUTOMATION_ACTION_HANDLERS,
@@ -112,9 +123,10 @@ import { AutomationScheduler } from './infrastructure/scheduler/automation.sched
     },
     {
       provide: AUTOMATION_NOTIFICATION_PORT,
-      inject: [AutomationService],
+      inject: [AutomationService, AutomationNotificationService],
       useFactory: (
         automation: AutomationService,
+        notifications: AutomationNotificationService,
       ): AutomationNotificationPort => ({
         listNotifications: (input) => automation.listNotifications(input),
         markNotificationRead: (uuid, userUuid) =>
@@ -146,6 +158,20 @@ import { AutomationScheduler } from './infrastructure/scheduler/automation.sched
           }
           return { updated };
         },
+        listPreferences: (userUuid) => notifications.listPreferences(userUuid),
+        setPreference: (input) =>
+          notifications.setPreference(input.userUuid, {
+            notificationType: input.notificationType,
+            channel: input.channel,
+            enabled: input.enabled,
+          }),
+        listTemplates: (input) => notifications.listTemplates(input),
+        createTemplate: (input) => notifications.createTemplate(input),
+        updateTemplate: (input) => notifications.updateTemplate(input.uuid, input),
+        setPolicy: (input) => notifications.setPolicy(input.notificationUuid, input),
+        getPolicy: (notificationUuid) => notifications.getPolicy(notificationUuid),
+        createDelivery: (input) => notifications.createDelivery(input.notificationUuid, input.channel, input.maxAttempts),
+        listDeliveries: (notificationUuid) => notifications.listDeliveries(notificationUuid),
       }),
     },
     AutomationScheduler,
