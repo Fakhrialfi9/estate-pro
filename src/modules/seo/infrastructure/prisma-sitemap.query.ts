@@ -52,7 +52,15 @@ export class PrismaSitemapQuery implements SitemapQuery {
     };
   }
 
-  private contentWhere(): Prisma.ContentArticleWhereInput {
+  private articleWhere(): Prisma.ContentArticleWhereInput {
+    return {
+      status: 'PUBLISHED',
+      visibility: 'PUBLIC',
+      deletedAt: null,
+    };
+  }
+
+  private pageWhere(): Prisma.ContentPageWhereInput {
     return {
       status: 'PUBLISHED',
       visibility: 'PUBLIC',
@@ -65,8 +73,8 @@ export class PrismaSitemapQuery implements SitemapQuery {
     const [properties, listings, articles, pages] = await Promise.all([
       this.prisma.property.count({ where: this.propertyWhere() }),
       this.prisma.propertyListing.count({ where: this.listingWhere(now) }),
-      this.prisma.contentArticle.count({ where: this.contentWhere() }),
-      this.prisma.contentPage.count({ where: this.contentWhere() }),
+      this.prisma.contentArticle.count({ where: this.articleWhere() }),
+      this.prisma.contentPage.count({ where: this.pageWhere() }),
     ]);
     return properties + listings + articles + pages;
   }
@@ -82,10 +90,10 @@ export class PrismaSitemapQuery implements SitemapQuery {
       where: this.listingWhere(now),
     });
     const articleCount = await this.prisma.contentArticle.count({
-      where: this.contentWhere(),
+      where: this.articleWhere(),
     });
     const pageCount = await this.prisma.contentPage.count({
-      where: this.contentWhere(),
+      where: this.pageWhere(),
     });
     const counts = [propertyCount, listingCount, articleCount, pageCount];
     const entries: SitemapEntry[] = [];
@@ -144,7 +152,7 @@ export class PrismaSitemapQuery implements SitemapQuery {
           );
         } else if (index === 2) {
           const rows = await this.prisma.contentArticle.findMany({
-            where: this.contentWhere(),
+            where: this.articleWhere(),
             skip,
             take,
             orderBy: { id: 'asc' },
@@ -158,11 +166,7 @@ export class PrismaSitemapQuery implements SitemapQuery {
           );
         } else {
           const rows = await this.prisma.contentPage.findMany({
-            where: {
-              status: 'PUBLISHED',
-              visibility: 'PUBLIC',
-              deletedAt: null,
-            },
+            where: this.pageWhere(),
             skip,
             take,
             orderBy: { id: 'asc' },
