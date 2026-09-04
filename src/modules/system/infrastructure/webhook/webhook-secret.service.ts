@@ -1,9 +1,15 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { SystemWebhookSecretPort } from '../../domain/webhook/webhook.ports.js';
 
 @Injectable()
-export class WebhookSecretService {
+export class WebhookSecretService implements SystemWebhookSecretPort {
   private readonly key: Buffer;
 
   constructor(config: ConfigService) {
@@ -21,17 +27,22 @@ export class WebhookSecretService {
     return { secret, ciphertext: this.encrypt(secret) };
   }
 
-  encrypt(value: string): string {
+  private encrypt(value: string): string {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', this.key, iv);
-    const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
+    const encrypted = Buffer.concat([
+      cipher.update(value, 'utf8'),
+      cipher.final(),
+    ]);
     const tag = cipher.getAuthTag();
     return `${iv.toString('base64url')}.${tag.toString('base64url')}.${encrypted.toString('base64url')}`;
   }
 
   decrypt(ciphertext: string): string {
     const [ivPart, tagPart, dataPart] = ciphertext.split('.');
-    if (!ivPart || !tagPart || !dataPart) throw new Error('Invalid webhook secret ciphertext');
+    if (!ivPart || !tagPart || !dataPart) {
+      throw new Error('Invalid webhook secret ciphertext');
+    }
     const decipher = createDecipheriv(
       'aes-256-gcm',
       this.key,
