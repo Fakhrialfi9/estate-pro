@@ -14,7 +14,8 @@ export class WebhookSecretService implements SystemWebhookSecretPort {
 
   constructor(config: ConfigService) {
     const configured = config.get<string>('system.webhookEncryptionKey');
-    if (!configured && config.get<string>('app.nodeEnv') === 'production') {
+    const environment = config.get<string>('app.environment', 'development');
+    if (!configured && environment === 'production') {
       throw new Error('SYSTEM_WEBHOOK_ENCRYPTION_KEY is required in production');
     }
     this.key = createHash('sha256')
