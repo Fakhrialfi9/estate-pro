@@ -81,7 +81,7 @@ export class WebhookNetworkService {
     }
 
     if (ipType === 0) {
-      let addresses: Awaited<ReturnType<typeof lookup>>[];
+      let addresses: Awaited<ReturnType<typeof lookup>>;
       try {
         addresses = await lookup(url.hostname, { all: true, verbatim: true });
       } catch {
