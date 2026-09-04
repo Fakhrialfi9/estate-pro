@@ -228,6 +228,10 @@ export const configurationValidationSchema = Joi.object({
     .integer()
     .min(1024)
     .default(1048576),
+  SECURITY_TRUST_PROXY: Joi.string()
+    .trim()
+    .invalid('true', 'false')
+    .optional(),
   SECURITY_CSP_ENABLED: Joi.boolean()
     .truthy('true')
     .falsy('false')

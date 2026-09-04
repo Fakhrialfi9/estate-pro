@@ -8,11 +8,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Validation jobs must never mutate repository contents.
 permissions:
   contents: read
 
-# Test-only values. Production secrets are never stored in the workflow.
 env:
   DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test
   DATABASE_POOL_CONNECTION_LIMIT: 2
@@ -143,6 +141,7 @@ jobs:
           docker run --rm -d --name estate-pro-ci --network host \
             -e NODE_ENV=test -e APP_HOST=127.0.0.1 -e APP_PORT=3002 \
             -e DATABASE_URL="$DATABASE_URL" \
+            -e SECURITY_CORS_ORIGINS="$SECURITY_CORS_ORIGINS" \
             -e JWT_SECRET='test-only-secret-that-is-at-least-32-chars' \
             -e TWO_FACTOR_ENCRYPTION_KEY='test-only-two-factor-encryption-key-at-least-32-chars' \
             -e SWAGGER_ENABLED=false -e OTEL_TRACING_ENABLED=false -e OTEL_METRICS_ENABLED=false \
