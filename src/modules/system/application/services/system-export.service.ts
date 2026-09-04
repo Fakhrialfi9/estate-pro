@@ -1,15 +1,31 @@
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  createHash,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from 'node:crypto';
 import { Readable } from 'node:stream';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
 import type { SystemActivityRepository } from '../../domain/repositories/system-activity.repository.js';
 import { SYSTEM_ACTIVITY_REPOSITORY } from '../../domain/repositories/system-activity.repository.js';
 import type { SystemArtifactStorage } from '../../domain/repositories/system-artifact.storage.js';
 import { SYSTEM_ARTIFACT_STORAGE } from '../../domain/repositories/system-artifact.storage.js';
-import type { SystemExportJobRecord, SystemExportRepository } from '../../domain/repositories/system-export.repository.js';
+import type {
+  SystemExportJobRecord,
+  SystemExportRepository,
+} from '../../domain/repositories/system-export.repository.js';
 import { SYSTEM_EXPORT_REPOSITORY } from '../../domain/repositories/system-export.repository.js';
-import type { ExportRequest, ExportResult } from '../../domain/system-public.contracts.js';
+import type {
+  ExportRequest,
+  ExportResult,
+} from '../../domain/system-public.contracts.js';
 
 const MAX_ROWS = 10_000;
 const EXPIRY_MS = 15 * 60 * 1000;
@@ -17,7 +33,9 @@ const EXPIRY_MS = 15 * 60 * 1000;
 const csvCell = (value: unknown): string => {
   let text = value == null ? '' : String(value);
   if (/^[=+\-@]/.test(text)) text = `'${text}`;
-  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  return /[",\n\r]/.test(text)
+    ? `"${text.replace(/"/g, '""')}"`
+    : text;
 };
 
 @Injectable()
@@ -49,6 +67,7 @@ export class SystemExportService {
       },
       expiresAt,
     });
+
     const downloadToken = randomBytes(32).toString('base64url');
     const tokenHash = createHash('sha256')
       .update(downloadToken, 'utf8')
