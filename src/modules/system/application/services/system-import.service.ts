@@ -357,76 +357,77 @@ export class SystemImportService {
         result: 'FAILURE',
         reason: message,
       });
-      throw error;
+      return this.toResult(updated);
     }
   }
 
-  async get(uuid: string, actorUuid: string): Promise<ImportResult> {
-    const job = await this.jobs.findByUuid(uuid);
-    if (!job || job.actorUuid !== actorUuid) {
-      throw new NotFoundException('Import job not found');
-    }
+  async get(actorUuid: string, uuid: string): Promise<ImportResult> {
+    const job = await this.jobs.findByUuid(uuid, actorUuid);
+    if (!job) throw new NotFoundException('Import job not found');
     return this.toResult(job);
   }
 
-  async cancel(uuid: string, actorUuid: string): Promise<ImportResult> {
-    const job = await this.jobs.findByUuid(uuid);
-    if (!job || job.actorUuid !== actorUuid) {
-      throw new NotFoundException('Import job not found');
-    }
-    if (job.state === 'SUCCEEDED' || job.state === 'FAILED') {
-      return this.toResult(job);
-    }
-    const updated = await this.jobs.update(uuid, { state: 'CANCELLED' });
-    await this.audit.record({
-      action: 'SYSTEM_IMPORT_CANCELLED',
-      actorUuid,
-      subjectUuid: actorUuid,
-      entityType: 'system_import',
-      entityUuid: uuid,
-      result: 'SUCCESS',
-    });
-    return this.toResult(updated);
+  async failedRowReport(actorUuid: string, uuid: string) {
+    const row = await this.jobs.findByUuid(uuid, actorUuid);
+    if (!row) throw new NotFoundException('Import job not found');
+    return {
+      importUuid: row.uuid,
+      state: row.state,
+      failedRows: row.failedRows,
+      errors: row.errors,
+      generatedAt: new Date().toISOString(),
+    };
   }
 
-  async retry(uuid: string, actorUuid: string): Promise<ImportResult> {
-    const job = await this.jobs.findByUuid(uuid);
-    if (!job || job.actorUuid !== actorUuid) {
-      throw new NotFoundException('Import job not found');
+  async retry(actorUuid: string, uuid: string): Promise<ImportResult> {
+    const row = await this.jobs.findByUuid(uuid, actorUuid);
+    if (!row) throw new NotFoundException('Import job not found');
+    if (!['FAILED', 'RETRYABLE'].includes(row.state)) {
+      throw new BadRequestException('Import job is not retryable');
     }
-    if (job.state !== 'FAILED' && job.state !== 'CANCELLED') {
-      return this.toResult(job);
+    if (!row.sourcePath) {
+      throw new BadRequestException('Original import source is unavailable');
     }
-    const updated = await this.jobs.update(uuid, {
-      state: 'RETRYABLE',
-      errors: [],
+    if (row.expiresAt.getTime() <= Date.now()) {
+      throw new BadRequestException('Original import source has expired');
+    }
+    const data = await this.storage.read(row.sourcePath);
+    return this.execute(actorUuid, {
+      filename: row.filename,
+      contentBase64: data.toString('base64'),
+      format: row.format,
+      idempotencyKey: `${row.idempotencyKey ?? row.uuid}:retry`,
     });
-    await this.audit.record({
-      action: 'SYSTEM_IMPORT_RETRIED',
-      actorUuid,
-      subjectUuid: actorUuid,
-      entityType: 'system_import',
-      entityUuid: uuid,
-      result: 'SUCCESS',
-    });
-    return this.toResult(updated);
+  }
+
+  async cancel(actorUuid: string, uuid: string): Promise<ImportResult> {
+    const row = await this.jobs.findByUuid(uuid, actorUuid);
+    if (!row) throw new NotFoundException('Import job not found');
+    if (!['QUEUED', 'RUNNING'].includes(row.state)) {
+      throw new BadRequestException('Import job is not cancellable');
+    }
+    return this.toResult(await this.jobs.update(uuid, { state: 'CANCELLED' }));
   }
 
   async list(
     actorUuid: string,
-    input: { page: number; limit: number },
-  ): Promise<{
-    items: readonly ImportResult[];
-    total: number;
-  }> {
+    page = 1,
+    limit = 20,
+    state?: ImportResult['state'],
+  ) {
+    const normalizedPage = Math.max(1, page);
+    const normalizedLimit = Math.min(100, Math.max(1, limit));
     const result = await this.jobs.list({
       actorUuid,
-      page: input.page,
-      limit: input.limit,
+      page: normalizedPage,
+      limit: normalizedLimit,
+      state,
     });
     return {
-      items: result.items.map((item) => this.toResult(item)),
+      items: result.items.map((row) => this.toResult(row)),
       total: result.total,
+      page: normalizedPage,
+      limit: normalizedLimit,
     };
   }
 
