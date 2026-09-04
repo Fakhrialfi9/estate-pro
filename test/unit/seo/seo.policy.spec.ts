@@ -5,8 +5,8 @@ import {
   normalizeKeywords,
   normalizeSeoText,
   robotsFromIndexability,
-} from '../../src/modules/seo/domain/seo.policy.js';
-import type { SeoResourceSnapshot } from '../../src/modules/seo/domain/seo.types.js';
+} from '../../../src/modules/seo/domain/seo.policy.js';
+import type { SeoResourceSnapshot } from '../../../src/modules/seo/domain/seo.types.js';
 
 const resource = (
   overrides: Partial<SeoResourceSnapshot> = {},
