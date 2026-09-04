@@ -1,6 +1,11 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { SYSTEM_ACTIVITY_REPOSITORY } from '../../domain/repositories/system-activity.repository.js';
 import type { SystemActivityRepository } from '../../domain/repositories/system-activity.repository.js';
+import type {
+  SystemActivityAppendInput,
+  SystemActivityContract,
+  SystemActivityListInput,
+} from '../../domain/system-public.contracts.js';
 
 const safeMetadata = (
   metadata: Record<string, unknown>,
@@ -22,22 +27,13 @@ const safeMetadata = (
 };
 
 @Injectable()
-export class SystemActivityService {
+export class SystemActivityService implements SystemActivityContract {
   constructor(
     @Inject(SYSTEM_ACTIVITY_REPOSITORY)
     private readonly repository: SystemActivityRepository,
   ) {}
 
-  append(input: {
-    actorUuid?: string | null;
-    eventType: string;
-    category: string;
-    resourceType?: string | null;
-    resourceUuid?: string | null;
-    summary: string;
-    metadata?: Record<string, unknown>;
-    requestId?: string | null;
-  }) {
+  append(input: SystemActivityAppendInput) {
     if (
       !input.eventType.trim() ||
       !input.category.trim() ||
@@ -56,7 +52,7 @@ export class SystemActivityService {
     });
   }
 
-  list(input: Parameters<SystemActivityRepository['list']>[0]) {
+  list(input: SystemActivityListInput) {
     return this.repository.list(input);
   }
 }
