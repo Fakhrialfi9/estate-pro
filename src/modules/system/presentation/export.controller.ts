@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Get,
   Param,
@@ -7,7 +6,6 @@ import {
   Post,
   Query,
   Req,
-  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -50,10 +48,26 @@ export class ExportController {
 
   @Get(':uuid')
   @RequirePermissions('system.export.read')
-  @ApiOperation({ summary: 'Get an export job' })
+  @ApiOperation({ summary: 'Get an export job and its operational progress' })
   get(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     const actorUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.exports.get(actorUuid, uuid);
+  }
+
+  @Post(':uuid/retry')
+  @RequirePermissions('system.export.retry')
+  @ApiOperation({ summary: 'Retry a failed export using its immutable request snapshot' })
+  retry(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
+    const actorUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
+    return this.exports.retry(actorUuid, uuid);
+  }
+
+  @Post(':uuid/cancel')
+  @RequirePermissions('system.export.cancel')
+  @ApiOperation({ summary: 'Request cooperative export cancellation' })
+  cancel(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
+    const actorUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
+    return this.exports.cancel(actorUuid, uuid);
   }
 
   @Get(':uuid/download')
