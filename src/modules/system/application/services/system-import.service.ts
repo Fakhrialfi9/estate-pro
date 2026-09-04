@@ -5,8 +5,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
+import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import type { SystemActivityRepository } from '../../domain/repositories/system-activity.repository.js';
 import { SYSTEM_ACTIVITY_REPOSITORY } from '../../domain/repositories/system-activity.repository.js';
 import type { SystemArtifactStorage } from '../../domain/repositories/system-artifact.storage.js';
@@ -27,6 +27,34 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_ROWS = 10_000;
 const MAX_ERRORS = 500;
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+const sanitizeFilename = (value: string): string =>
+  Array.from(value)
+    .map((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 31 || character === '/' || character === '\\'
+        ? '_'
+        : character;
+    })
+    .join('');
+
+const readRequiredString = (
+  row: Record<string, unknown>,
+  key: string,
+): string => {
+  const value = row[key];
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+const readNullableString = (
+  row: Record<string, unknown>,
+  key: string,
+): string | null => {
+  const value = row[key];
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized || null;
+};
 
 const parseCsv = (input: string): string[][] => {
   const rows: string[][] = [];
@@ -98,7 +126,9 @@ const parseRows = (
 
   const rows = parseCsv(content);
   if (rows.length === 0) return [];
-  const headers = rows[0].map((value) => value.trim());
+  const firstRow = rows[0];
+  if (!firstRow) return [];
+  const headers = firstRow.map((value) => value.trim());
   if (
     headers.some((value) => !value) ||
     new Set(headers).size !== headers.length
@@ -159,7 +189,7 @@ export class SystemImportService {
     const job = await this.jobs.create({
       uuid: randomUUID(),
       actorUuid,
-      filename: input.filename.replace(/[\x00-\x1f/\\]/g, '_'),
+      filename: sanitizeFilename(input.filename),
       format,
       preview: input.preview === true,
       idempotencyKey,
@@ -213,9 +243,17 @@ export class SystemImportService {
 
         const row = rows[index];
         const rowNumber = index + 2;
-        const eventType = String(row.eventType ?? '').trim();
-        const category = String(row.category ?? '').trim();
-        const summary = String(row.summary ?? '').trim();
+        if (!row) {
+          failed += 1;
+          if (errors.length < MAX_ERRORS) {
+            errors.push({ row: rowNumber, message: 'Invalid row' });
+          }
+          continue;
+        }
+
+        const eventType = readRequiredString(row, 'eventType');
+        const category = readRequiredString(row, 'category');
+        const summary = readRequiredString(row, 'summary');
         if (!eventType || !category || !summary) {
           failed += 1;
           if (errors.length < MAX_ERRORS) {
@@ -240,14 +278,14 @@ export class SystemImportService {
           actorUuid,
           eventType,
           category,
-          resourceType: row.resourceType ? String(row.resourceType) : null,
-          resourceUuid: row.resourceUuid ? String(row.resourceUuid) : null,
+          resourceType: readNullableString(row, 'resourceType'),
+          resourceUuid: readNullableString(row, 'resourceUuid'),
           summary,
           metadata:
             typeof row.metadata === 'object' && row.metadata !== null
               ? (row.metadata as Record<string, unknown>)
               : {},
-          requestId: row.requestId ? String(row.requestId) : null,
+          requestId: readNullableString(row, 'requestId'),
         };
 
         try {
