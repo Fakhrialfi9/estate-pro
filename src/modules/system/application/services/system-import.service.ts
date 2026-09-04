@@ -1,15 +1,27 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { promises as fs } from 'node:fs';
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
 import type { SystemActivityRepository } from '../../domain/repositories/system-activity.repository.js';
 import { SYSTEM_ACTIVITY_REPOSITORY } from '../../domain/repositories/system-activity.repository.js';
 import type { SystemArtifactStorage } from '../../domain/repositories/system-artifact.storage.js';
 import { SYSTEM_ARTIFACT_STORAGE } from '../../domain/repositories/system-artifact.storage.js';
-import type { SystemImportJobRecord, SystemImportRepository } from '../../domain/repositories/system-import.repository.js';
+import type {
+  SystemImportJobRecord,
+  SystemImportRepository,
+} from '../../domain/repositories/system-import.repository.js';
 import { SYSTEM_IMPORT_REPOSITORY } from '../../domain/repositories/system-import.repository.js';
-import type { ImportFormat, ImportRequest, ImportResult, SystemActivityAppendInput } from '../../domain/system-public.contracts.js';
+import type {
+  ImportFormat,
+  ImportRequest,
+  ImportResult,
+  SystemActivityAppendInput,
+} from '../../domain/system-public.contracts.js';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_ROWS = 10_000;
@@ -37,6 +49,7 @@ const parseCsv = (input: string): string[][] => {
       }
       continue;
     }
+
     if (ch === '"' && cell === '') {
       quoted = true;
     } else if (ch === ',') {
@@ -214,7 +227,6 @@ export class SystemImportService {
           }
           continue;
         }
-
         if (input.preview) {
           processed += 1;
           continue;
@@ -322,18 +334,25 @@ export class SystemImportService {
     return this.toResult(row);
   }
 
-  async list(actorUuid: string, page = 1, limit = 20, state?: ImportResult['state']) {
+  async list(
+    actorUuid: string,
+    page = 1,
+    limit = 20,
+    state?: ImportResult['state'],
+  ) {
+    const normalizedPage = Math.max(1, page);
+    const normalizedLimit = Math.min(100, Math.max(1, limit));
     const result = await this.jobs.list({
       actorUuid,
-      page: Math.max(1, page),
-      limit: Math.min(100, Math.max(1, limit)),
+      page: normalizedPage,
+      limit: normalizedLimit,
       state,
     });
     return {
       items: result.items.map((row) => this.toResult(row)),
       total: result.total,
-      page: Math.max(1, page),
-      limit: Math.min(100, Math.max(1, limit)),
+      page: normalizedPage,
+      limit: normalizedLimit,
     };
   }
 
@@ -345,6 +364,9 @@ export class SystemImportService {
     }
     if (!row.sourcePath) {
       throw new BadRequestException('Original import source is unavailable');
+    }
+    if (row.expiresAt.getTime() <= Date.now()) {
+      throw new BadRequestException('Original import source has expired');
     }
     const data = await this.storage.read(row.sourcePath);
     return this.execute(actorUuid, {
@@ -365,7 +387,16 @@ export class SystemImportService {
   }
 
   private toResult(
-    row: Pick<SystemImportJobRecord, 'uuid' | 'state' | 'totalRows' | 'processedRows' | 'failedRows' | 'errors' | 'preview'>,
+    row: Pick<
+      SystemImportJobRecord,
+      | 'uuid'
+      | 'state'
+      | 'totalRows'
+      | 'processedRows'
+      | 'failedRows'
+      | 'errors'
+      | 'preview'
+    >,
   ): ImportResult {
     return {
       uuid: row.uuid,
