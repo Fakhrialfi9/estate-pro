@@ -8,9 +8,10 @@ import {
   AUTOMATION_NOTIFICATION_PORT,
   type AutomationNotificationPort,
 } from '../../../../common/contracts/automation-system.port.js';
+import type { SystemNotificationsContract } from '../../domain/system-public.contracts.js';
 
 @Injectable()
-export class SystemNotificationService {
+export class SystemNotificationService implements SystemNotificationsContract {
   constructor(
     @Inject(AUTOMATION_NOTIFICATION_PORT)
     private readonly automation: AutomationNotificationPort,
