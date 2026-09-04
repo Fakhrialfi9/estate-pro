@@ -64,6 +64,13 @@ export class WebhookController {
     return this.webhooks.get(uuid);
   }
 
+  @Get(':uuid/health')
+  @RequirePermissions('system.webhook.read')
+  @ApiOperation({ summary: 'Get safe recent webhook delivery health' })
+  health(@Param('uuid', ParseUUIDPipe) uuid: string) {
+    return this.webhooks.health(uuid);
+  }
+
   @Patch(':uuid')
   @RequirePermissions('system.webhook.update')
   @ApiOperation({ summary: 'Update or enable/disable a webhook' })
