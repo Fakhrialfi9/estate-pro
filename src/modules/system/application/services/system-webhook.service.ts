@@ -8,7 +8,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
-import type { AuditAction } from '../../../../common/audit/audit-events.js';
 import type {
   SystemWebhookEventName,
   WebhookDeliveryRecord,
@@ -491,7 +490,7 @@ export class SystemWebhookService {
           return actual !== filter.value;
         case 'CONTAINS':
           if (typeof actual === 'string')
-            return actual.includes(String(filter.value ?? ''));
+            return actual.includes(this.filterValueToString(filter.value));
           return Array.isArray(actual) && actual.includes(filter.value);
         case 'IN':
           return Array.isArray(filter.value) && filter.value.includes(actual);
@@ -504,6 +503,14 @@ export class SystemWebhookService {
           return false;
       }
     });
+  }
+
+  private filterValueToString(value: unknown): string {
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean')
+      return String(value);
+    if (value === null) return 'null';
+    return JSON.stringify(value);
   }
 
   private compareFilter(
@@ -551,19 +558,18 @@ export class SystemWebhookService {
     );
   }
 
-  private readFilterValue(
-    data: Record<string, unknown>,
-    field: string,
-  ): unknown {
-    return field.split('.').reduce<unknown>((current, key) => {
+  private readFilterValue(data: Record<string, unknown>, field: string) {
+    let current: unknown = data;
+    for (const key of field.split('.')) {
       if (
         current === null ||
         typeof current !== 'object' ||
         !Object.prototype.hasOwnProperty.call(current, key)
       )
         return undefined;
-      return (current as Record<string, unknown>)[key];
-    }, data);
+      current = (current as Record<string, unknown>)[key];
+    }
+    return current;
   }
 
   private toPublic(row: WebhookSubscriptionRecord) {
@@ -587,6 +593,7 @@ export class SystemWebhookService {
       deliveryKey: row.deliveryKey,
       eventName: row.eventName,
       eventVersion: row.eventVersion,
+      payloadHash: row.payloadHash,
       attemptCount: row.attemptCount,
       state: row.state,
       httpStatus: row.httpStatus,
@@ -602,18 +609,22 @@ export class SystemWebhookService {
 
   private async auditLifecycle(
     actorUuid: string,
-    subjectUuid: string,
-    action: string,
-    reason = 'system-webhook',
+    resourceUuid: string,
+    action:
+      | 'SYSTEM_WEBHOOK_CREATED'
+      | 'SYSTEM_WEBHOOK_UPDATED'
+      | 'SYSTEM_WEBHOOK_DELETED'
+      | 'SYSTEM_WEBHOOK_SECRET_ROTATED'
+      | 'SYSTEM_WEBHOOK_TESTED'
+      | 'SYSTEM_WEBHOOK_REPLAYED',
+    metadata?: string,
   ): Promise<void> {
     await this.audit.record({
-      action: action,
+      action,
       actorUuid,
-      subjectUuid,
-      entityType: 'system_webhook',
-      entityUuid: subjectUuid,
-      result: 'SUCCESS',
-      reason,
+      resourceType: 'SYSTEM_WEBHOOK',
+      resourceId: resourceUuid,
+      metadata,
     });
   }
 }
