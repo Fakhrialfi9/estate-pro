@@ -11,6 +11,15 @@ import {
   Min,
 } from 'class-validator';
 
+const SEO_ROBOTS = [
+  'INDEX_FOLLOW',
+  'NOINDEX_FOLLOW',
+  'INDEX_NOFOLLOW',
+  'NOINDEX_NOFOLLOW',
+] as const;
+
+type SeoRobotsInput = (typeof SEO_ROBOTS)[number];
+
 export class UpdatePropertySeoDto {
   @IsOptional() @IsString() @MaxLength(60) title?: string | null;
   @IsOptional() @IsString() @MaxLength(160) description?: string | null;
@@ -18,17 +27,8 @@ export class UpdatePropertySeoDto {
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   canonicalUrl?: string | null;
   @IsOptional()
-  @IsEnum([
-    'INDEX_FOLLOW',
-    'NOINDEX_FOLLOW',
-    'INDEX_NOFOLLOW',
-    'NOINDEX_NOFOLLOW',
-  ] as const)
-  robots?:
-    | 'INDEX_FOLLOW'
-    | 'NOINDEX_FOLLOW'
-    | 'INDEX_NOFOLLOW'
-    | 'NOINDEX_NOFOLLOW';
+  @IsEnum(SEO_ROBOTS)
+  robots?: SeoRobotsInput;
   @IsOptional()
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   ogImageUrl?: string | null;
@@ -41,7 +41,9 @@ export class UpdateContentSeoDto {
   @IsOptional()
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   canonicalUrl?: string | null;
-  @IsOptional() @IsString() @MaxLength(100) robots?: string | null;
+  @IsOptional()
+  @IsEnum(SEO_ROBOTS)
+  robots?: SeoRobotsInput | null;
   @IsOptional() @IsString() @MaxLength(180) ogTitle?: string | null;
   @IsOptional() @IsString() @MaxLength(320) ogDescription?: string | null;
   @IsOptional()
