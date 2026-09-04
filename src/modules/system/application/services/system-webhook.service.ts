@@ -8,9 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
-import type {
-  AuditAction,
-} from '../../../../common/audit/audit-events.js';
+import type { AuditAction } from '../../../../common/audit/audit-events.js';
 import type {
   SystemWebhookEventName,
   WebhookDeliveryRecord,
@@ -159,7 +157,8 @@ export class SystemWebhookService {
     eventName: SystemWebhookEventName,
     data: Record<string, unknown>,
   ) {
-    if (!eventId.trim()) throw new ForbiddenException('Webhook event ID is required');
+    if (!eventId.trim())
+      throw new ForbiddenException('Webhook event ID is required');
     if (!SYSTEM_WEBHOOK_EVENTS.includes(eventName))
       throw new ForbiddenException('Unsupported webhook event');
     const subscriptions = await this.repository.listSubscriptions({
@@ -232,9 +231,17 @@ export class SystemWebhookService {
   }
 
   async cleanup(retentionDays?: number, limit = 500) {
-    const configured = this.config.get<number>('system.webhook.retentionDays', 30);
-    const boundedDays = Math.min(3650, Math.max(1, retentionDays ?? configured));
-    const before = new Date(Date.now() - boundedDays * 24 * 60 * 60 * 1000);
+    const configured = this.config.get<number>(
+      'system.webhook.retentionDays',
+      30,
+    );
+    const boundedDays = Math.min(
+      3650,
+      Math.max(1, retentionDays ?? configured),
+    );
+    const before = new Date(
+      Date.now() - boundedDays * 24 * 60 * 60 * 1000,
+    );
     const rows = await this.repository.listExpiredDeliveries(
       before,
       Math.min(500, Math.max(1, limit)),
@@ -253,6 +260,7 @@ export class SystemWebhookService {
     const deliveryId = randomUUID();
     const timestamp = Math.floor(Date.now() / 1000);
     const payload = this.signer.buildPayload({
+      eventId,
       eventName,
       eventVersion,
       deliveryId,
@@ -264,7 +272,9 @@ export class SystemWebhookService {
       1024 * 1024,
     );
     if (Buffer.byteLength(payload, 'utf8') > maxPayloadBytes)
-      throw new ForbiddenException('Webhook payload exceeds the configured limit');
+      throw new ForbiddenException(
+        'Webhook payload exceeds the configured limit',
+      );
 
     const payloadHash = this.signer.payloadHash(payload);
     const created = await this.repository.createDelivery({
@@ -286,8 +296,14 @@ export class SystemWebhookService {
       deliveryId,
       payload,
     );
-    const maxAttempts = this.config.get<number>('system.webhook.maxAttempts', 5);
-    const timeoutMs = this.config.get<number>('system.webhook.timeoutMs', 5000);
+    const maxAttempts = this.config.get<number>(
+      'system.webhook.maxAttempts',
+      5,
+    );
+    const timeoutMs = this.config.get<number>(
+      'system.webhook.timeoutMs',
+      5000,
+    );
     let lastFailure = 'Webhook delivery failed';
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       await this.repository.updateDelivery(deliveryId, {
