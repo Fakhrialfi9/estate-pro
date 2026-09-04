@@ -53,6 +53,7 @@ const toDelivery = (row: {
   uuid: string;
   subscriptionId: bigint;
   eventId: string;
+  deliveryKey: string;
   eventName: string;
   eventVersion: number;
   payloadHash: string;
@@ -175,6 +176,7 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     uuid: string;
     subscriptionId: bigint;
     eventId: string;
+    deliveryKey: string;
     eventName: SystemWebhookEventName;
     eventVersion: number;
     payloadHash: string;
@@ -195,7 +197,7 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
         const existing = await this.prisma.systemWebhookDelivery.findFirst({
           where: {
             subscriptionId: input.subscriptionId,
-            eventId: input.eventId,
+            deliveryKey: input.deliveryKey,
           },
         });
         if (existing) return { created: false, record: toDelivery(existing) };
