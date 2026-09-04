@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPropertyStructuredData } from '../../src/modules/seo/domain/property-structured-data.js';
+import { buildPropertyStructuredData } from '../../../src/modules/seo/domain/property-structured-data.js';
 
 describe('PropertyStructuredData', () => {
   it('emits public property, offer, image, location and amenity projections only', () => {
