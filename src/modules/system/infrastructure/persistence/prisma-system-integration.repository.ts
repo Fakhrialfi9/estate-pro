@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
-import type { IntegrationState, SystemIntegrationRecord } from '../../domain/integration/integration.contracts.js';
+import type {
+  IntegrationState,
+  SystemIntegrationRecord,
+} from '../../domain/integration/integration.contracts.js';
 import type { SystemIntegrationRepository } from '../../domain/repositories/system-integration.repository.js';
 
 const toRecord = (row: {
@@ -31,7 +35,9 @@ const toRecord = (row: {
 });
 
 @Injectable()
-export class PrismaSystemIntegrationRepository implements SystemIntegrationRepository {
+export class PrismaSystemIntegrationRepository
+  implements SystemIntegrationRepository
+{
   constructor(private readonly prisma: PrismaService) {}
 
   async create(input: {
@@ -47,6 +53,7 @@ export class PrismaSystemIntegrationRepository implements SystemIntegrationRepos
       data: {
         ...input,
         capabilities: [...input.capabilities],
+        metadata: input.metadata as Prisma.InputJsonObject,
         secretRef: input.secretRef ?? null,
       },
     });
@@ -54,7 +61,9 @@ export class PrismaSystemIntegrationRepository implements SystemIntegrationRepos
   }
 
   async get(uuid: string) {
-    const row = await this.prisma.systemIntegration.findUnique({ where: { uuid } });
+    const row = await this.prisma.systemIntegration.findUnique({
+      where: { uuid },
+    });
     return row ? toRecord(row) : null;
   }
 
@@ -72,11 +81,30 @@ export class PrismaSystemIntegrationRepository implements SystemIntegrationRepos
     return { items: items.map(toRecord), total };
   }
 
-  async update(uuid: string, input: Partial<Pick<SystemIntegrationRecord, 'state' | 'metadata' | 'secretRef' | 'lastTestAt' | 'lastSyncAt' | 'errorCode' | 'errorMessage'>>) {
+  async update(
+    uuid: string,
+    input: Partial<
+      Pick<
+        SystemIntegrationRecord,
+        | 'state'
+        | 'metadata'
+        | 'secretRef'
+        | 'lastTestAt'
+        | 'lastSyncAt'
+        | 'errorCode'
+        | 'errorMessage'
+      >
+    >,
+  ) {
     try {
       const row = await this.prisma.systemIntegration.update({
         where: { uuid },
-        data: input,
+        data: {
+          ...input,
+          ...(input.metadata !== undefined
+            ? { metadata: input.metadata as Prisma.InputJsonObject }
+            : {}),
+        },
       });
       return toRecord(row);
     } catch {
