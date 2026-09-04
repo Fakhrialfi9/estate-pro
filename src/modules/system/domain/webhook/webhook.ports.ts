@@ -13,6 +13,7 @@ export interface SystemWebhookSecretPort {
 
 export interface SystemWebhookSignerPort {
   buildPayload(input: {
+    eventId: string;
     eventName: SystemWebhookEventName;
     eventVersion: number;
     deliveryId: string;
