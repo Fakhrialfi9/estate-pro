@@ -15,13 +15,18 @@ const toRecord = (row: {
   artifactPath: string | null;
   downloadTokenHash: string | null;
   rows: number;
+  estimatedRows: number | null;
+  processedRows: number;
+  completedAt: Date | null;
+  cancelledAt: Date | null;
+  cancelRequested: boolean;
+  artifactBytes: bigint | null;
   expiresAt: Date;
   errorMessage: string | null;
   createdAt: Date;
   updatedAt: Date;
 }): SystemExportJobRecord => ({
-  uuid: row.uuid,
-  actorUuid: row.actorUuid,
+  ...row,
   entity: row.entity as 'system_activity',
   format: row.format as 'csv' | 'json',
   state: row.state as SystemExportJobRecord['state'],
@@ -31,13 +36,6 @@ const toRecord = (row: {
     !Array.isArray(row.filters)
       ? (row.filters as Record<string, unknown>)
       : {},
-  artifactPath: row.artifactPath,
-  downloadTokenHash: row.downloadTokenHash,
-  rows: row.rows,
-  expiresAt: row.expiresAt,
-  errorMessage: row.errorMessage,
-  createdAt: row.createdAt,
-  updatedAt: row.updatedAt,
 });
 
 @Injectable()
@@ -51,12 +49,19 @@ export class PrismaSystemExportRepository implements SystemExportRepository {
     format: 'csv' | 'json';
     filters: Record<string, unknown>;
     expiresAt: Date;
+    estimatedRows?: number | null;
   }) {
     const row = await this.prisma.systemExportJob.create({
       data: {
         ...input,
         state: 'QUEUED',
         rows: 0,
+        estimatedRows: input.estimatedRows ?? null,
+        processedRows: 0,
+        completedAt: null,
+        cancelledAt: null,
+        cancelRequested: false,
+        artifactBytes: null,
         artifactPath: null,
         downloadTokenHash: null,
         errorMessage: null,
@@ -79,6 +84,10 @@ export class PrismaSystemExportRepository implements SystemExportRepository {
     return row ? toRecord(row) : null;
   }
 
+  async countRunning(): Promise<number> {
+    return this.prisma.systemExportJob.count({ where: { state: 'RUNNING' } });
+  }
+
   async update(
     uuid: string,
     input: Partial<
@@ -88,6 +97,12 @@ export class PrismaSystemExportRepository implements SystemExportRepository {
         | 'artifactPath'
         | 'downloadTokenHash'
         | 'rows'
+        | 'estimatedRows'
+        | 'processedRows'
+        | 'completedAt'
+        | 'cancelledAt'
+        | 'cancelRequested'
+        | 'artifactBytes'
         | 'expiresAt'
         | 'errorMessage'
       >
@@ -95,7 +110,7 @@ export class PrismaSystemExportRepository implements SystemExportRepository {
   ) {
     const row = await this.prisma.systemExportJob.update({
       where: { uuid },
-      data: input as never,
+      data: input,
     });
     return toRecord(row);
   }
@@ -113,12 +128,29 @@ export class PrismaSystemExportRepository implements SystemExportRepository {
     const [items, total] = await Promise.all([
       this.prisma.systemExportJob.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (input.page - 1) * input.limit,
         take: input.limit,
       }),
       this.prisma.systemExportJob.count({ where }),
     ]);
     return { items: items.map(toRecord), total };
+  }
+
+  async deleteExpired(now: Date, limit: number) {
+    const rows = await this.prisma.systemExportJob.findMany({
+      where: {
+        expiresAt: { lte: now },
+        state: { in: ['SUCCEEDED', 'FAILED', 'CANCELLED'] },
+      },
+      orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
+      take: limit,
+    });
+    if (rows.length > 0) {
+      await this.prisma.systemExportJob.deleteMany({
+        where: { id: { in: rows.map((row) => row.id) } },
+      });
+    }
+    return rows.map(toRecord);
   }
 }
