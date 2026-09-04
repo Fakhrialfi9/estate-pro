@@ -22,8 +22,14 @@ export class PrismaPropertySeoPublicAdapter implements PropertySeoPublicPort {
           { status: 'ACTIVE', deletedAt: null, publishedAt: { not: null } },
           {
             OR: [
-              { seo: null },
-              { seo: { is: { robots: { in: ['INDEX_FOLLOW', 'INDEX_NOFOLLOW'] } } } },
+              { seo: { is: null } },
+              {
+                seo: {
+                  is: {
+                    robots: { in: ['INDEX_FOLLOW', 'INDEX_NOFOLLOW'] },
+                  },
+                },
+              },
             ],
           },
         ],
