@@ -97,6 +97,9 @@ jobs:
       - name: Architecture validation
         run: npm run check:architecture
 
+      - name: Complete test suite
+        run: npm run test
+
       - name: Unit tests
         run: npm run test:unit
 
@@ -120,6 +123,9 @@ jobs:
 
       - name: E2E coverage
         run: npm run test:coverage:e2e
+
+      - name: Aggregate test suite
+        run: npm run test:all
 
       - name: Production build
         run: npm run build
