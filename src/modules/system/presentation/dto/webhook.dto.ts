@@ -1,10 +1,10 @@
 import { Type } from 'class-transformer';
 import {
+  Allow,
   ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsIn,
-  IsObject,
   IsOptional,
   IsString,
   IsUrl,
@@ -39,6 +39,7 @@ export class WebhookFilterDto {
   ])
   operator!: WebhookFilterOperator;
 
+  @Allow()
   @ValidateIf((value: WebhookFilterDto) =>
     !['EXISTS', 'NOT_EXISTS'].includes(value.operator),
   )
