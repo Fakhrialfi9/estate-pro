@@ -49,12 +49,7 @@ export class ImportController {
   })
   list(@Req() request: Request, @Query() query: ImportQueryDto) {
     const actorUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
-    return this.imports.list(
-      actorUuid,
-      query.page,
-      query.limit,
-      query.state as never,
-    );
+    return this.imports.list(actorUuid, query.page, query.limit, query.state);
   }
 
   @Get(':uuid')
