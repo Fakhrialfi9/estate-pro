@@ -69,12 +69,79 @@ model SystemExportJob {
   artifactPath      String?  @map("artifact_path") @db.VarChar(500)
   downloadTokenHash String?  @map("download_token_hash") @db.Char(64)
   rows              Int      @default(0)
+  estimatedRows     Int?     @map("estimated_rows")
+  processedRows     Int      @default(0) @map("processed_rows")
+  completedAt       DateTime? @map("completed_at") @db.DateTime(3)
+  cancelledAt       DateTime? @map("cancelled_at") @db.DateTime(3)
+  cancelRequested   Boolean  @default(false) @map("cancel_requested")
+  artifactBytes     BigInt?  @map("artifact_bytes") @db.UnsignedBigInt
   expiresAt         DateTime @map("expires_at")
-  errorMessage      String?  @map("error_message") @db.VarChar(500)
+  errorMessage      String?  @db.VarChar(500)
   createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.DateTime(3)
   @@index([actorUuid, createdAt])
   @@index([state, expiresAt])
   @@index([downloadTokenHash])
+  @@index([cancelRequested, state])
   @@map("system_export_jobs")
+}
+
+model SystemWebhookSubscription {
+  id                BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid              String   @unique @db.Char(36)
+  endpoint          String   @db.VarChar(2048)
+  status            String   @db.VarChar(16)
+  events            Json
+  secretCiphertext  String   @map("secret_ciphertext") @db.Text
+  secretVersion     Int      @default(1) @map("secret_version")
+  secretCreatedAt   DateTime @default(now()) @map("secret_created_at") @db.DateTime(3)
+  createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deliveries        SystemWebhookDelivery[]
+  @@index([status, createdAt])
+  @@map("system_webhook_subscriptions")
+}
+
+model SystemWebhookDelivery {
+  id                BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid              String   @unique @db.Char(36)
+  subscriptionId    BigInt   @map("subscription_id") @db.UnsignedBigInt
+  eventName         String   @map("event_name") @db.VarChar(120)
+  eventVersion      Int      @default(1) @map("event_version")
+  payloadHash       String   @map("payload_hash") @db.Char(64)
+  attemptCount      Int      @default(0) @map("attempt_count")
+  state             String   @db.VarChar(24)
+  httpStatus        Int?     @map("http_status")
+  responseSummary   String?  @map("response_summary") @db.VarChar(500)
+  nextAttemptAt     DateTime? @map("next_attempt_at") @db.DateTime(3)
+  signedAt          DateTime @map("signed_at") @db.DateTime(3)
+  completedAt       DateTime? @map("completed_at") @db.DateTime(3)
+  failureReason     String?  @map("failure_reason") @db.VarChar(500)
+  createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  subscription      SystemWebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  @@index([subscriptionId, createdAt])
+  @@index([state, nextAttemptAt])
+  @@index([payloadHash])
+  @@map("system_webhook_deliveries")
+}
+
+model SystemIntegration {
+  id                BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid              String   @unique @db.Char(36)
+  providerKey       String   @map("provider_key") @db.VarChar(80)
+  providerVersion   String   @map("provider_version") @db.VarChar(40)
+  capabilities      Json
+  state             String   @db.VarChar(24)
+  metadata          Json
+  secretRef         String?  @map("secret_ref") @db.VarChar(255)
+  lastTestAt        DateTime? @map("last_test_at") @db.DateTime(3)
+  lastSyncAt        DateTime? @map("last_sync_at") @db.DateTime(3)
+  errorCode         String?  @map("error_code") @db.VarChar(80)
+  errorMessage      String?  @map("error_message") @db.VarChar(500)
+  createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  @@unique([providerKey, providerVersion])
+  @@index([state, updatedAt])
+  @@map("system_integrations")
 }
