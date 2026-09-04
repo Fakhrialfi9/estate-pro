@@ -101,7 +101,7 @@ export class WebhookNetworkService implements SystemWebhookNetworkPort {
     }
 
     if (!family) {
-      let addresses: Awaited<ReturnType<typeof lookup>>;
+      let addresses;
       try {
         addresses = await lookup(hostname, { all: true, verbatim: true });
       } catch {
