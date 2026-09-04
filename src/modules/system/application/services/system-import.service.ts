@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
@@ -22,6 +21,7 @@ const parseCsv = (input: string): string[][] => {
   let row: string[] = [];
   let cell = '';
   let quoted = false;
+
   for (let i = 0; i < input.length; i += 1) {
     const ch = input[i];
     if (quoted) {
@@ -32,11 +32,14 @@ const parseCsv = (input: string): string[][] => {
         } else {
           quoted = false;
         }
-      } else cell += ch;
+      } else {
+        cell += ch;
+      }
       continue;
     }
-    if (ch === '"' && cell === '') quoted = true;
-    else if (ch === ',') {
+    if (ch === '"' && cell === '') {
+      quoted = true;
+    } else if (ch === ',') {
       row.push(cell);
       cell = '';
     } else if (ch === '\n') {
@@ -44,8 +47,11 @@ const parseCsv = (input: string): string[][] => {
       rows.push(row);
       row = [];
       cell = '';
-    } else cell += ch;
+    } else {
+      cell += ch;
+    }
   }
+
   if (quoted) throw new BadRequestException('Malformed CSV quoting');
   if (cell.length > 0 || row.length > 0) {
     row.push(cell);
@@ -54,7 +60,10 @@ const parseCsv = (input: string): string[][] => {
   return rows;
 };
 
-const parseRows = (content: string, format: ImportFormat): Record<string, unknown>[] => {
+const parseRows = (
+  content: string,
+  format: ImportFormat,
+): Record<string, unknown>[] => {
   if (format === 'json') {
     let parsed: unknown;
     try {
@@ -63,7 +72,9 @@ const parseRows = (content: string, format: ImportFormat): Record<string, unknow
       throw new BadRequestException('Invalid JSON import payload');
     }
     if (!Array.isArray(parsed)) {
-      throw new BadRequestException('JSON import must contain an array of objects');
+      throw new BadRequestException(
+        'JSON import must contain an array of objects',
+      );
     }
     return parsed.map((value, index) => {
       if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -76,11 +87,16 @@ const parseRows = (content: string, format: ImportFormat): Record<string, unknow
   const rows = parseCsv(content);
   if (rows.length === 0) return [];
   const headers = rows[0].map((value) => value.trim());
-  if (headers.some((value) => !value) || new Set(headers).size !== headers.length) {
+  if (
+    headers.some((value) => !value) ||
+    new Set(headers).size !== headers.length
+  ) {
     throw new BadRequestException('CSV headers must be non-empty and unique');
   }
   return rows.slice(1).map((values) =>
-    Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ''])),
+    Object.fromEntries(
+      headers.map((header, index) => [header, values[index] ?? '']),
+    ),
   );
 };
 
@@ -99,6 +115,7 @@ export class SystemImportService {
 
   async execute(actorUuid: string, input: ImportRequest): Promise<ImportResult> {
     if (!actorUuid) throw new BadRequestException('Authenticated actor missing');
+
     const extension = input.filename?.toLowerCase().split('.').pop();
     const format =
       input.format ??
@@ -106,8 +123,11 @@ export class SystemImportService {
     if (!input.filename || input.filename.length > 255 || !format) {
       throw new BadRequestException('Only CSV and JSON imports are supported');
     }
+
     const buffer = Buffer.from(input.contentBase64 ?? '', 'base64');
-    if (buffer.length === 0) throw new BadRequestException('Import content is required');
+    if (buffer.length === 0) {
+      throw new BadRequestException('Import content is required');
+    }
     if (buffer.length > MAX_FILE_BYTES) {
       throw new BadRequestException('Import file exceeds 5 MiB limit');
     }
@@ -118,7 +138,10 @@ export class SystemImportService {
       createHash('sha256')
         .update(`${actorUuid}:${input.filename}:${content}`)
         .digest('hex');
-    const existing = await this.jobs.findByIdempotencyKey(idempotencyKey, actorUuid);
+    const existing = await this.jobs.findByIdempotencyKey(
+      idempotencyKey,
+      actorUuid,
+    );
     if (existing) return this.toResult(existing);
 
     const job = await this.jobs.create({
@@ -131,6 +154,7 @@ export class SystemImportService {
       sourcePath: null,
       expiresAt: new Date(Date.now() + EXPIRY_MS),
     });
+
     await this.audit.record({
       action: 'SYSTEM_IMPORT_CREATED',
       actorUuid,
@@ -143,7 +167,10 @@ export class SystemImportService {
 
     try {
       const stored = await this.storage.put(job.uuid, buffer, 'source');
-      await this.jobs.update(job.uuid, { state: 'RUNNING', sourcePath: stored.path });
+      await this.jobs.update(job.uuid, {
+        state: 'RUNNING',
+        sourcePath: stored.path,
+      });
       await this.audit.record({
         action: 'SYSTEM_IMPORT_STARTED',
         actorUuid,
@@ -155,14 +182,23 @@ export class SystemImportService {
 
       const rows = parseRows(content, format);
       if (rows.length > MAX_ROWS) {
-        throw new BadRequestException(`Import contains more than ${MAX_ROWS} rows`);
+        throw new BadRequestException(
+          `Import contains more than ${MAX_ROWS} rows`,
+        );
       }
 
       const errors: { row: number; field?: string; message: string }[] = [];
       let processed = 0;
       let failed = 0;
+      let cancelled = false;
 
       for (let index = 0; index < rows.length; index += 1) {
+        const current = await this.jobs.findByUuid(job.uuid);
+        if (current?.state === 'CANCELLED') {
+          cancelled = true;
+          break;
+        }
+
         const row = rows[index];
         const rowNumber = index + 2;
         const eventType = String(row.eventType ?? '').trim();
@@ -178,6 +214,7 @@ export class SystemImportService {
           }
           continue;
         }
+
         if (input.preview) {
           processed += 1;
           continue;
@@ -214,10 +251,30 @@ export class SystemImportService {
           if (errors.length < MAX_ERRORS) {
             errors.push({
               row: rowNumber,
-              message: error instanceof Error ? error.message : 'Row import failed',
+              message:
+                error instanceof Error ? error.message : 'Row import failed',
             });
           }
         }
+      }
+
+      if (cancelled) {
+        const updated = await this.jobs.update(job.uuid, {
+          state: 'CANCELLED',
+          processedRows: processed,
+          failedRows: failed,
+          errors,
+          totalRows: rows.length,
+        });
+        await this.audit.record({
+          action: 'SYSTEM_IMPORT_CANCELLED',
+          actorUuid,
+          subjectUuid: actorUuid,
+          entityType: 'system_import',
+          entityUuid: job.uuid,
+          result: 'SUCCESS',
+        });
+        return this.toResult(updated);
       }
 
       const updated = await this.jobs.update(job.uuid, {
@@ -228,7 +285,10 @@ export class SystemImportService {
         totalRows: rows.length,
       });
       await this.audit.record({
-        action: updated.state === 'SUCCEEDED' ? 'SYSTEM_IMPORT_COMMITTED' : 'SYSTEM_IMPORT_FAILED',
+        action:
+          updated.state === 'SUCCEEDED'
+            ? 'SYSTEM_IMPORT_COMMITTED'
+            : 'SYSTEM_IMPORT_FAILED',
         actorUuid,
         subjectUuid: actorUuid,
         entityType: 'system_import',
@@ -263,12 +323,18 @@ export class SystemImportService {
   }
 
   async list(actorUuid: string, page = 1, limit = 20, state?: ImportResult['state']) {
-    return this.jobs.list({
+    const result = await this.jobs.list({
       actorUuid,
       page: Math.max(1, page),
       limit: Math.min(100, Math.max(1, limit)),
       state,
     });
+    return {
+      items: result.items.map((row) => this.toResult(row)),
+      total: result.total,
+      page: Math.max(1, page),
+      limit: Math.min(100, Math.max(1, limit)),
+    };
   }
 
   async retry(actorUuid: string, uuid: string) {

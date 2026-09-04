@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
-import type { SystemImportRepository, SystemImportJobRecord } from '../../domain/repositories/system-import.repository.js';
 import type { ImportState } from '../../domain/system-public.contracts.js';
+import type {
+  SystemImportJobRecord,
+  SystemImportRepository,
+} from '../../domain/repositories/system-import.repository.js';
 
 const toRecord = (row: {
   uuid: string;

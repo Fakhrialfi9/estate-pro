@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
 import type { SystemActivityRepository } from '../../domain/repositories/system-activity.repository.js';
@@ -36,7 +36,7 @@ export class SystemExportService {
   async execute(request: ExportRequest): Promise<ExportResult> {
     const uuid = randomUUID();
     const expiresAt = new Date(Date.now() + EXPIRY_MS);
-    const job = await this.jobs.create({
+    await this.jobs.create({
       uuid,
       actorUuid: request.actorUuid,
       entity: request.entity,
@@ -50,7 +50,9 @@ export class SystemExportService {
       expiresAt,
     });
     const downloadToken = randomBytes(32).toString('base64url');
-    const tokenHash = createHash('sha256').update(downloadToken, 'utf8').digest('hex');
+    const tokenHash = createHash('sha256')
+      .update(downloadToken, 'utf8')
+      .digest('hex');
 
     await this.audit.record({
       action: 'SYSTEM_EXPORT_CREATED',
@@ -63,7 +65,10 @@ export class SystemExportService {
     });
 
     try {
-      await this.jobs.update(uuid, { state: 'RUNNING', downloadTokenHash: tokenHash });
+      await this.jobs.update(uuid, {
+        state: 'RUNNING',
+        downloadTokenHash: tokenHash,
+      });
       const result = await this.activity.list({
         page: 1,
         limit: MAX_ROWS,
@@ -89,8 +94,16 @@ export class SystemExportService {
           requestId: row.requestId,
           createdAt: row.createdAt.toISOString(),
         }));
-      const body = request.format === 'json' ? JSON.stringify(rows) : this.toCsv(rows);
-      const stored = await this.storage.put(uuid, Buffer.from(body, 'utf8'), request.format);
+
+      const artifactStream =
+        request.format === 'json'
+          ? Readable.from(this.jsonChunks(rows))
+          : Readable.from(this.csvChunks(rows));
+      const stored = await this.storage.putStream(
+        uuid,
+        artifactStream,
+        request.format,
+      );
       const updated = await this.jobs.update(uuid, {
         state: 'SUCCEEDED',
         artifactPath: stored.path,
@@ -143,35 +156,85 @@ export class SystemExportService {
   async get(actorUuid: string, uuid: string) {
     const row = await this.jobs.findByUuid(uuid, actorUuid);
     if (!row) throw new NotFoundException('Export job not found');
-    const { downloadTokenHash: _ignored, ...safe } = row;
-    return safe;
+    return {
+      uuid: row.uuid,
+      actorUuid: row.actorUuid,
+      entity: row.entity,
+      format: row.format,
+      state: row.state,
+      filters: row.filters,
+      rows: row.rows,
+      expiresAt: row.expiresAt,
+      errorMessage: row.errorMessage,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
   }
 
-  async list(actorUuid: string, page = 1, limit = 20, state?: SystemExportJobRecord['state']) {
-    return this.jobs.list({
+  async list(
+    actorUuid: string,
+    page = 1,
+    limit = 20,
+    state?: SystemExportJobRecord['state'],
+  ) {
+    const normalizedPage = Math.max(1, page);
+    const normalizedLimit = Math.min(100, Math.max(1, limit));
+    const result = await this.jobs.list({
       actorUuid,
-      page: Math.max(1, page),
-      limit: Math.min(100, Math.max(1, limit)),
+      page: normalizedPage,
+      limit: normalizedLimit,
       state,
     });
+    return {
+      items: result.items.map((row) => ({
+        uuid: row.uuid,
+        actorUuid: row.actorUuid,
+        entity: row.entity,
+        format: row.format,
+        state: row.state,
+        filters: row.filters,
+        rows: row.rows,
+        expiresAt: row.expiresAt,
+        errorMessage: row.errorMessage,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      })),
+      total: result.total,
+      page: normalizedPage,
+      limit: normalizedLimit,
+    };
   }
 
-  async download(actorUuid: string, uuid: string, token: string): Promise<{
+  async download(
+    actorUuid: string,
+    uuid: string,
+    token: string,
+  ): Promise<{
     filename: string;
     stream: Readable;
     contentType: string;
   }> {
     const row = await this.jobs.findByUuid(uuid, actorUuid);
-    if (!row || row.state !== 'SUCCEEDED' || !row.artifactPath || !row.downloadTokenHash) {
+    if (
+      !row ||
+      row.state !== 'SUCCEEDED' ||
+      !row.artifactPath ||
+      !row.downloadTokenHash
+    ) {
       throw new NotFoundException('Export artifact not found');
     }
     if (row.expiresAt.getTime() <= Date.now()) {
       await this.storage.remove(row.artifactPath);
       throw new ForbiddenException('Export download has expired');
     }
-    const hash = Buffer.from(createHash('sha256').update(token ?? '', 'utf8').digest('hex'));
+    const hash = Buffer.from(
+      createHash('sha256').update(token ?? '', 'utf8').digest('hex'),
+    );
     const expected = Buffer.from(row.downloadTokenHash);
-    if (hash.length !== expected.length || !timingSafeEqual(hash, expected)) {
+    if (
+      hash.length !== expected.length ||
+      !timingSafeEqual(hash, expected)
+    ) {
       throw new ForbiddenException('Invalid export download token');
     }
     return {
@@ -184,7 +247,16 @@ export class SystemExportService {
     };
   }
 
-  private toCsv(rows: readonly Record<string, unknown>[]): string {
+  private *jsonChunks(rows: readonly Record<string, unknown>[]) {
+    yield '[';
+    for (let index = 0; index < rows.length; index += 1) {
+      if (index > 0) yield ',';
+      yield JSON.stringify(rows[index]);
+    }
+    yield ']';
+  }
+
+  private *csvChunks(rows: readonly Record<string, unknown>[]) {
     const headers = [
       'uuid',
       'actorUuid',
@@ -197,12 +269,17 @@ export class SystemExportService {
       'requestId',
       'createdAt',
     ];
-    return `${headers.join(',')}\n${rows
-      .map((row) =>
-        headers
-          .map((key) => csvCell(key === 'metadata' ? JSON.stringify(row[key] ?? {}) : row[key]))
-          .join(','),
-      )
-      .join('\n')}\n`;
+    yield `${headers.join(',')}\n`;
+    for (const row of rows) {
+      yield `${headers
+        .map((key) =>
+          csvCell(
+            key === 'metadata'
+              ? JSON.stringify(row[key] ?? {})
+              : row[key],
+          ),
+        )
+        .join(',')}\n`;
+    }
   }
 }
