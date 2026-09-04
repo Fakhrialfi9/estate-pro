@@ -48,13 +48,13 @@ export class SystemIntegrationService {
       secretRef: input.secretRef ?? null,
     });
     await this.audit.record({
-      action: 'SYSTEM_INTEGRATION_CONNECTED',
+      action: 'SYSTEM_SETTING_UPDATED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_integration',
       entityUuid: row.uuid,
       result: 'SUCCESS',
-      reason: `${provider.key}@${provider.version}`,
+      reason: `integration.connected=${provider.key}@${provider.version}`,
     });
     return this.toPublic(row);
   }
@@ -80,12 +80,13 @@ export class SystemIntegrationService {
       ...(input.enabled !== undefined ? { state: input.enabled ? 'ACTIVE' : 'DISABLED' } : {}),
     });
     await this.audit.record({
-      action: 'SYSTEM_INTEGRATION_UPDATED',
+      action: 'SYSTEM_SETTING_UPDATED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_integration',
       entityUuid: current.uuid,
       result: 'SUCCESS',
+      reason: 'integration.updated',
     });
     return this.toPublic(row);
   }
@@ -94,12 +95,13 @@ export class SystemIntegrationService {
     await this.require(uuid);
     await this.repository.delete(uuid);
     await this.audit.record({
-      action: 'SYSTEM_INTEGRATION_DISCONNECTED',
+      action: 'SYSTEM_SETTING_UPDATED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_integration',
       entityUuid: uuid,
       result: 'SUCCESS',
+      reason: 'integration.disconnected',
     });
   }
 
@@ -116,13 +118,13 @@ export class SystemIntegrationService {
       errorMessage: result.ok ? null : result.message ?? 'Connection test failed',
     });
     await this.audit.record({
-      action: 'SYSTEM_INTEGRATION_TESTED',
+      action: 'SYSTEM_SETTING_UPDATED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_integration',
       entityUuid: uuid,
       result: result.ok ? 'SUCCESS' : 'FAILURE',
-      reason: `latencyMs=${latencyMs}`,
+      reason: `integration.test.latencyMs=${latencyMs}`,
     });
     return { uuid: updated.uuid, ok: result.ok, latencyMs, code: result.code ?? null, message: result.ok ? null : result.message ?? 'Connection test failed' };
   }
@@ -139,13 +141,13 @@ export class SystemIntegrationService {
       errorMessage: result.state === 'SUCCEEDED' ? null : result.message ?? 'Integration sync failed',
     });
     await this.audit.record({
-      action: 'SYSTEM_INTEGRATION_SYNCED',
+      action: 'SYSTEM_SETTING_UPDATED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_integration',
       entityUuid: uuid,
       result: result.state === 'SUCCEEDED' ? 'SUCCESS' : 'FAILURE',
-      reason: `recordsRead=${result.recordsRead ?? 0};recordsChanged=${result.recordsChanged ?? 0}`,
+      reason: `integration.sync.recordsRead=${result.recordsRead ?? 0};recordsChanged=${result.recordsChanged ?? 0}`,
     });
     return { uuid: updated.uuid, state: result.state, recordsRead: result.recordsRead ?? 0, recordsChanged: result.recordsChanged ?? 0, code: result.code ?? null, message: result.message ?? null };
   }
