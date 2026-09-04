@@ -57,11 +57,10 @@ export interface SystemExportRepository {
       >
     >,
   ): Promise<SystemExportJobRecord>;
-  list(input: {
-    actorUuid: string;
-    page: number;
-    limit: number;
-    state?: ExportState;
-  }): Promise<{ items: readonly SystemExportJobRecord[]; total: number }>;
-  deleteExpired(now: Date, limit: number): Promise<readonly SystemExportJobRecord[]>;
+  list(input: { actorUuid: string; page: number; limit: number; state?: ExportState }): Promise<{
+    items: readonly SystemExportJobRecord[];
+    total: number;
+  }>;
+  listExpired(now: Date, limit: number): Promise<readonly SystemExportJobRecord[]>;
+  deleteMany(uuids: readonly string[]): Promise<void>;
 }
