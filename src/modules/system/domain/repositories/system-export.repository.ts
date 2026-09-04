@@ -1,3 +1,5 @@
+import type { ExportState } from '../system-public.contracts.js';
+
 export const SYSTEM_EXPORT_REPOSITORY = Symbol('SYSTEM_EXPORT_REPOSITORY');
 
 export interface SystemExportJobRecord {
@@ -5,11 +7,17 @@ export interface SystemExportJobRecord {
   actorUuid: string;
   entity: 'system_activity';
   format: 'csv' | 'json';
-  state: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+  state: ExportState;
   filters: Record<string, unknown>;
   artifactPath: string | null;
   downloadTokenHash: string | null;
   rows: number;
+  estimatedRows: number | null;
+  processedRows: number;
+  completedAt: Date | null;
+  cancelledAt: Date | null;
+  cancelRequested: boolean;
+  artifactBytes: bigint | null;
   expiresAt: Date;
   errorMessage: string | null;
   createdAt: Date;
@@ -24,15 +32,11 @@ export interface SystemExportRepository {
     format: 'csv' | 'json';
     filters: Record<string, unknown>;
     expiresAt: Date;
+    estimatedRows?: number | null;
   }): Promise<SystemExportJobRecord>;
-  findByUuid(
-    uuid: string,
-    actorUuid?: string,
-  ): Promise<SystemExportJobRecord | null>;
-  findByTokenHash(
-    uuid: string,
-    tokenHash: string,
-  ): Promise<SystemExportJobRecord | null>;
+  findByUuid(uuid: string, actorUuid?: string): Promise<SystemExportJobRecord | null>;
+  findByTokenHash(uuid: string, tokenHash: string): Promise<SystemExportJobRecord | null>;
+  countRunning(): Promise<number>;
   update(
     uuid: string,
     input: Partial<
@@ -42,6 +46,12 @@ export interface SystemExportRepository {
         | 'artifactPath'
         | 'downloadTokenHash'
         | 'rows'
+        | 'estimatedRows'
+        | 'processedRows'
+        | 'completedAt'
+        | 'cancelledAt'
+        | 'cancelRequested'
+        | 'artifactBytes'
         | 'expiresAt'
         | 'errorMessage'
       >
@@ -51,6 +61,7 @@ export interface SystemExportRepository {
     actorUuid: string;
     page: number;
     limit: number;
-    state?: SystemExportJobRecord['state'];
+    state?: ExportState;
   }): Promise<{ items: readonly SystemExportJobRecord[]; total: number }>;
+  deleteExpired(now: Date, limit: number): Promise<readonly SystemExportJobRecord[]>;
 }
