@@ -1,0 +1,37 @@
+model SystemSetting {
+  id           BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid         String   @unique @db.Char(36)
+  key          String   @db.VarChar(128)
+  scope        String   @db.VarChar(32)
+  scopeKey     String   @default("global") @db.VarChar(128)
+  valueType    String   @db.VarChar(16)
+  value        String   @db.VarChar(4000)
+  mutable      Boolean  @default(true)
+  version      Int      @default(1)
+  createdAt    DateTime @default(now()) @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @db.DateTime(3)
+
+  @@unique([key, scope, scopeKey])
+  @@index([scope, scopeKey])
+  @@map("system_settings")
+}
+
+model SystemActivity {
+  id            BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid          String   @unique @db.Char(36)
+  actorUuid     String?  @db.Char(36)
+  eventType     String   @db.VarChar(80)
+  category      String   @db.VarChar(40)
+  resourceType  String?  @db.VarChar(80)
+  resourceUuid  String?  @db.Char(36)
+  summary       String   @db.VarChar(500)
+  metadata      Json
+  requestId     String?  @db.VarChar(120)
+  createdAt     DateTime @default(now()) @db.DateTime(3)
+
+  @@index([actorUuid, createdAt])
+  @@index([resourceType, resourceUuid, createdAt])
+  @@index([category, createdAt])
+  @@index([createdAt])
+  @@map("system_activities")
+}

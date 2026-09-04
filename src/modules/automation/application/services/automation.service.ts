@@ -406,6 +406,21 @@ export class AutomationService {
     return execution;
   }
 
+  listNotifications(input: {
+    userUuid: string;
+    page: number;
+    limit: number;
+    unreadOnly: boolean;
+  }) {
+    if (!input.userUuid) throw new BadRequestException('Authenticated actor missing');
+    return this.repo.listNotifications(input);
+  }
+
+  markNotificationRead(uuid: string, userUuid: string) {
+    if (!userUuid) throw new BadRequestException('Authenticated actor missing');
+    return this.repo.markNotificationRead(uuid, userUuid);
+  }
+
   async createAssignmentRule(
     workflowUuid: string,
     input: unknown,

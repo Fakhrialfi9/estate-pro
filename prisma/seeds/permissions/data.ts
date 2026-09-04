@@ -23,6 +23,13 @@ export const PERMISSIONS: readonly PermissionSeed[] = [
   { name: 'Manage Permissions', code: 'permissions.manage', module: 'permissions', domain: 'permissions', action: 'manage' },
   { name: 'Manage Protected Roles', code: 'roles.manage.protected', module: 'roles', domain: 'manage', action: 'protected' },
   { name: 'Manage Protected Permissions', code: 'permissions.manage.protected', module: 'permissions', domain: 'manage', action: 'protected' },
+  { name: 'Read System Settings', code: 'system.settings.read', module: 'system', domain: 'settings', action: 'read' },
+  { name: 'Update System Settings', code: 'system.settings.update', module: 'system', domain: 'settings', action: 'update' },
+  { name: 'Read System Activity', code: 'system.activity.read', module: 'system', domain: 'activity', action: 'read' },
+  { name: 'Read System Notifications', code: 'system.notifications.read', module: 'system', domain: 'notifications', action: 'read' },
+  { name: 'Read System Jobs', code: 'system.jobs.read', module: 'system', domain: 'jobs', action: 'read' },
+  { name: 'Retry System Jobs', code: 'system.jobs.retry', module: 'system', domain: 'jobs', action: 'retry' },
+  { name: 'Cancel System Jobs', code: 'system.jobs.cancel', module: 'system', domain: 'jobs', action: 'cancel' },
 
   { name: 'Create Property Types', code: 'property-types.create', module: 'property', domain: 'property-types', action: 'create' },
   { name: 'Read Property Types', code: 'property-types.read', module: 'property', domain: 'property-types', action: 'read' },
@@ -41,7 +48,7 @@ export const PERMISSIONS: readonly PermissionSeed[] = [
   { name: 'Create Facilities', code: 'facilities.create', module: 'property', domain: 'facilities', action: 'create' },
   { name: 'Read Facilities', code: 'facilities.read', module: 'property', domain: 'facilities', action: 'read' },
   { name: 'Update Facilities', code: 'facilities.update', module: 'property', domain: 'facilities', action: 'update' },
-  { name: 'Delete Facilities', code: 'facilities.delete', module: 'property', domain: 'facilities', action: 'delete' },
+  { name: 'Delete Facilities', code: 'property', domain: 'facilities', action: 'delete' },
 
   { name: 'Create Properties', code: 'properties.create', module: 'property', domain: 'properties', action: 'create' },
   { name: 'Read Properties', code: 'properties.read', module: 'property', domain: 'properties', action: 'read' },

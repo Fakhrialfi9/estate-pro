@@ -1,18 +1,15 @@
 # System Domain
 
-The `system` context owns cross-cutting system capabilities that are not business-domain records.
+The `system` context is the operational boundary for cross-cutting capabilities. Authentication/authorization remain owned by their dedicated modules; database access remains infrastructure-owned.
 
-## Current capabilities
-- application bootstrap/configuration
-- health/readiness/liveness
-- request correlation
-- secure validation
-- security middleware and throttling
-- observability integration
-- persistence infrastructure
+## Implemented foundations
 
-## Security responsibility
-System infrastructure establishes secure defaults: strict configuration validation, Helmet, explicit CORS, bounded request bodies, request IDs, throttling, and safe logging. Authentication and authorization remain owned by their dedicated modules.
+- typed global Settings registry with optimistic versioning;
+- System Activity read model with centralized redaction;
+- existing immutable Audit module reused rather than duplicated;
+- existing Automation workflow execution exposed as System Job operations;
+- existing Automation Notification persistence exposed through a user-scoped System API;
+- existing Health module retained as liveness/readiness owner;
+- existing logging/telemetry infrastructure retained as observability owner.
 
-## Boundary
-System code may provide shared infrastructure contracts, but business rules should remain in their bounded context.
+The remaining import/export and outbound integration capabilities require provider/domain-specific contracts before implementation; the repository must not invent arbitrary business import mappings or external provider behavior.

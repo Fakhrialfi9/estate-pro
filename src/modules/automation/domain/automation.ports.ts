@@ -125,6 +125,16 @@ export interface AutomationRepository {
   createNotification(
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
+  listNotifications(input: {
+    userUuid: string;
+    page: number;
+    limit: number;
+    unreadOnly: boolean;
+  }): Promise<{ items: readonly Record<string, unknown>[]; total: number }>;
+  markNotificationRead(
+    uuid: string,
+    userUuid: string,
+  ): Promise<Record<string, unknown> | null>;
 }
 
 export interface WorkflowContextProvider {

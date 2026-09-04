@@ -4,6 +4,7 @@ import { PERMISSIONS } from './permissions/data.ts';
 import { SALES_PERMISSIONS } from './permissions/sales.ts';
 import { AGENT_MANAGEMENT_PERMISSIONS } from './permissions/agent-management.ts';
 import { ANALYTICS_PERMISSIONS } from './permissions/analytics.ts';
+import { SYSTEM_PERMISSIONS } from './permissions/system.ts';
 import { seedPermissions } from './permissions/seed.ts';
 import { seedRoles, seedRolePermissions } from './roles/seed.ts';
 import {
@@ -28,6 +29,7 @@ export async function seedDatabase(): Promise<void> {
   ]);
   const permissions = [
     ...PERMISSIONS,
+    ...SYSTEM_PERMISSIONS,
     ...CONTENT_PERMISSIONS,
     ...CONTENT_EXTRA_PERMISSIONS,
     ...CRM_PERMISSIONS,
@@ -60,7 +62,12 @@ export async function seedDatabase(): Promise<void> {
         permissionIds.set(permission.code, record.id);
       }
       const roleIds = await seedRoles(tx);
-      await seedRolePermissions(tx, roleIds, permissionIds, permissions.map(({ code }) => code));
+      await seedRolePermissions(
+        tx,
+        roleIds,
+        permissionIds,
+        permissions.map(({ code }) => code),
+      );
       const adminUserId = await seedAdminUser(tx, preparedAdmin);
       const adminRoleId = roleIds.get('ADMIN');
       if (adminRoleId === undefined) throw new Error('Missing seeded ADMIN role');
@@ -70,6 +77,64 @@ export async function seedDatabase(): Promise<void> {
       await seedCrm(tx);
       await seedSales(tx);
       await seedAgentManagement(tx);
+
+      await tx.systemSetting.upsert({
+        where: {
+          key_scope_scopeKey: {
+            key: 'system.default_page_size',
+            scope: 'GLOBAL',
+            scopeKey: 'global',
+          },
+        },
+        update: {},
+        create: {
+          uuid: crypto.randomUUID(),
+          key: 'system.default_page_size',
+          scope: 'GLOBAL',
+          scopeKey: 'global',
+          valueType: 'INTEGER',
+          value: '25',
+          mutable: true,
+        },
+      });
+      await tx.systemSetting.upsert({
+        where: {
+          key_scope_scopeKey: {
+            key: 'system.max_page_size',
+            scope: 'GLOBAL',
+            scopeKey: 'global',
+          },
+        },
+        update: {},
+        create: {
+          uuid: crypto.randomUUID(),
+          key: 'system.max_page_size',
+          scope: 'GLOBAL',
+          scopeKey: 'global',
+          valueType: 'INTEGER',
+          value: '100',
+          mutable: true,
+        },
+      });
+      await tx.systemSetting.upsert({
+        where: {
+          key_scope_scopeKey: {
+            key: 'system.maintenance_mode',
+            scope: 'GLOBAL',
+            scopeKey: 'global',
+          },
+        },
+        update: {},
+        create: {
+          uuid: crypto.randomUUID(),
+          key: 'system.maintenance_mode',
+          scope: 'GLOBAL',
+          scopeKey: 'global',
+          valueType: 'BOOLEAN',
+          value: 'false',
+          mutable: true,
+        },
+      });
     });
   } finally {
     await prisma.$disconnect();

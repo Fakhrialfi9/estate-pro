@@ -356,4 +356,44 @@ export class PrismaAutomationRepository implements AutomationRepository {
       await this.prisma.automationNotification.create({ data: input as never }),
     );
   }
+
+  async listNotifications(input: {
+    userUuid: string;
+    page: number;
+    limit: number;
+    unreadOnly: boolean;
+  }) {
+    const page = Math.max(1, input.page);
+    const limit = Math.min(100, Math.max(1, input.limit));
+    const where = {
+      userUuid: input.userUuid,
+      ...(input.unreadOnly ? { status: 'UNREAD' } : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.automationNotification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.automationNotification.count({ where }),
+    ]);
+    return { items: items.map(clean), total };
+  }
+
+  async markNotificationRead(uuid: string, userUuid: string) {
+    const existing = await this.prisma.automationNotification.findFirst({
+      where: { uuid, userUuid },
+    });
+    if (!existing) return null;
+    if (existing.status === 'READ') return clean(existing);
+    await this.prisma.automationNotification.updateMany({
+      where: { uuid, userUuid, status: 'UNREAD' },
+      data: { status: 'READ', readAt: new Date() },
+    });
+    const updated = await this.prisma.automationNotification.findUnique({
+      where: { uuid },
+    });
+    return updated ? clean(updated) : null;
+  }
 }
