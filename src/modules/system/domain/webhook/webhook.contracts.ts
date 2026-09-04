@@ -31,6 +31,7 @@ export interface WebhookDeliveryRecord {
   id: bigint;
   uuid: string;
   subscriptionId: bigint;
+  eventId: string;
   eventName: SystemWebhookEventName;
   eventVersion: number;
   payloadHash: string;
@@ -48,6 +49,7 @@ export interface WebhookDeliveryRecord {
 
 export interface WebhookDeliveryRequest {
   readonly subscription: WebhookSubscriptionRecord;
+  readonly eventId: string;
   readonly eventName: SystemWebhookEventName;
   readonly eventVersion: number;
   readonly payload: Record<string, unknown>;
