@@ -37,9 +37,7 @@ const toJsonFilters = (
     operator: filter.operator,
     ...(filter.value !== undefined
       ? {
-          value: JSON.parse(
-            JSON.stringify(filter.value),
-          ) as Prisma.InputJsonValue,
+          value: JSON.parse(JSON.stringify(filter.value)) as Prisma.InputJsonValue,
         }
       : {}),
   }));
@@ -165,12 +163,13 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     >,
   ) {
     try {
+      const { events, filters, ...rest } = input;
       const row = await this.prisma.systemWebhookSubscription.update({
         where: { uuid },
         data: {
-          ...input,
-          ...(input.events ? { events: [...input.events] } : {}),
-          ...(input.filters ? { filters: toJsonFilters(input.filters) } : {}),
+          ...rest,
+          ...(events ? { events: [...events] } : {}),
+          ...(filters ? { filters: toJsonFilters(filters) } : {}),
         },
       });
       return toSubscription(row);
