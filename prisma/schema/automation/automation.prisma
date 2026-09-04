@@ -100,7 +100,7 @@ model AutomationActionExecution {
   errorMessage    String?                     @db.VarChar(500)
   createdAt       DateTime                    @default(now()) @db.DateTime(3)
   updatedAt       DateTime                    @updatedAt @db.DateTime(3)
-  execution       AutomationWorkflowExecution @relation(fields: [executionUuid], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
+  execution       AutomationWorkflowExecution @relation(fields: [executionUuid], references: [uuid], onDelete: Cascade)
 
   @@unique([executionUuid, nodeId])
   @@index([state, availableAt, createdAt])
@@ -121,7 +121,7 @@ model AutomationAssignmentRule {
   isActive     Boolean            @default(true)
   createdAt    DateTime           @default(now()) @db.DateTime(3)
   updatedAt    DateTime           @updatedAt @db.DateTime(3)
-  workflow     AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
+  workflow     AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onDelete: Cascade)
 
   @@index([workflowUuid, isActive])
   @@map("automation_assignment_rules")
@@ -142,7 +142,7 @@ model AutomationSlaPolicy {
   version          Int                     @default(1)
   createdAt        DateTime                @default(now()) @db.DateTime(3)
   updatedAt        DateTime                @updatedAt @db.DateTime(3)
-  workflow         AutomationWorkflow      @relation(fields: [workflowUuid], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
+  workflow         AutomationWorkflow      @relation(fields: [workflowUuid], references: [uuid], onDelete: Cascade)
   instances        AutomationSlaInstance[]
 
   @@index([workflowUuid, isActive])
@@ -155,7 +155,7 @@ model AutomationSlaInstance {
   policyUuid    String              @db.Char(36)
   entityType    String              @db.VarChar(60)
   entityUuid    String              @db.Char(36)
-  policyVersion Int
+  policyVersion Int                 
   startedAt     DateTime            @db.DateTime(3)
   deadlineAt    DateTime            @db.DateTime(3)
   completedAt   DateTime?           @db.DateTime(3)
@@ -165,7 +165,7 @@ model AutomationSlaInstance {
   claimedBy     String?             @db.VarChar(120)
   createdAt     DateTime            @default(now()) @db.DateTime(3)
   updatedAt     DateTime            @updatedAt @db.DateTime(3)
-  policy        AutomationSlaPolicy @relation(fields: [policyUuid], references: [uuid], onUpdate: Cascade, onDelete: Restrict)
+  policy        AutomationSlaPolicy @relation(fields: [policyUuid], references: [uuid], onDelete: Restrict)
 
   @@unique([policyUuid, entityUuid, startedAt])
   @@index([state, deadlineAt])
@@ -184,7 +184,7 @@ model AutomationEscalationPolicy {
   isActive        Boolean            @default(true)
   createdAt       DateTime           @default(now()) @db.DateTime(3)
   updatedAt       DateTime           @updatedAt @db.DateTime(3)
-  workflow        AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onUpdate: Cascade, onDelete: Cascade)
+  workflow        AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onDelete: Cascade)
 
   @@index([workflowUuid, isActive])
   @@map("automation_escalation_policies")
@@ -206,4 +206,71 @@ model AutomationNotification {
   @@index([userUuid, status, createdAt])
   @@index([entityType, entityUuid, createdAt])
   @@map("automation_notifications")
+}
+
+model AutomationNotificationTemplate {
+  id            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid          String    @unique @db.Char(36)
+  code          String    @db.VarChar(80)
+  version       Int       @default(1)
+  titleTemplate String    @db.VarChar(180)
+  bodyTemplate  String    @db.Text
+  variables     Json
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now()) @db.DateTime(3)
+  updatedAt     DateTime  @updatedAt @db.DateTime(3)
+
+  @@unique([code, version])
+  @@index([code, isActive])
+  @@map("automation_notification_templates")
+}
+
+model AutomationNotificationPreference {
+  id               BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid             String   @unique @db.Char(36)
+  userUuid         String   @db.Char(36)
+  notificationType String   @db.VarChar(50)
+  channel          String   @db.VarChar(20)
+  enabled          Boolean  @default(true)
+  createdAt        DateTime @default(now()) @db.DateTime(3)
+  updatedAt        DateTime @updatedAt @db.DateTime(3)
+
+  @@unique([userUuid, notificationType, channel])
+  @@index([userUuid, enabled])
+  @@map("automation_notification_preferences")
+}
+
+model AutomationNotificationPolicy {
+  id             BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid           String   @unique @db.Char(36)
+  notificationUuid String @unique @map("notification_uuid") @db.Char(36)
+  templateUuid   String?  @map("template_uuid") @db.Char(36)
+  priority       String   @default("NORMAL") @db.VarChar(16)
+  expiresAt      DateTime? @map("expires_at") @db.DateTime(3)
+  createdAt      DateTime @default(now()) @db.DateTime(3)
+  updatedAt      DateTime @updatedAt @db.DateTime(3)
+
+  @@index([priority, expiresAt])
+  @@map("automation_notification_policies")
+}
+
+model AutomationNotificationDelivery {
+  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid             String    @unique @db.Char(36)
+  notificationUuid String    @map("notification_uuid") @db.Char(36)
+  channel          String    @db.VarChar(20)
+  state            String    @default("QUEUED") @db.VarChar(16)
+  attemptCount     Int       @default(0) @map("attempt_count")
+  maxAttempts      Int       @default(3) @map("max_attempts")
+  availableAt      DateTime? @map("available_at") @db.DateTime(3)
+  sentAt           DateTime? @map("sent_at") @db.DateTime(3)
+  providerMessageId String?   @map("provider_message_id") @db.VarChar(255)
+  errorMessage     String?   @map("error_message") @db.VarChar(500)
+  createdAt        DateTime  @default(now()) @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @db.DateTime(3)
+
+  @@unique([notificationUuid, channel])
+  @@index([state, availableAt, createdAt])
+  @@index([channel, state, availableAt])
+  @@map("automation_notification_deliveries")
 }
