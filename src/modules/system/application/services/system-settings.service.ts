@@ -12,6 +12,7 @@ import type { SystemActivityRepository } from '../../domain/repositories/system-
 import { SYSTEM_SETTINGS_REPOSITORY } from '../../domain/repositories/system-settings.repository.js';
 import type { SystemSettingsRepository } from '../../domain/repositories/system-settings.repository.js';
 import type { SystemSettingsContract } from '../../domain/system-public.contracts.js';
+import { SYSTEM_ERROR_CODES } from '../../domain/system-error.codes.js';
 import {
   SETTING_DEFAULTS,
   settingDefinition,
@@ -63,10 +64,19 @@ export class SystemSettingsService implements SystemSettingsContract {
   async get(key: string) {
     const normalizedKey = key.trim();
     const definition = settingDefinition(normalizedKey);
-    if (!definition) throw new NotFoundException('Unknown system setting');
+    if (!definition) {
+      throw new NotFoundException({
+        code: SYSTEM_ERROR_CODES.SETTING_NOT_FOUND,
+        message: 'Unknown system setting.',
+      });
+    }
     const stored = await this.repository.get(normalizedKey, 'GLOBAL', 'global');
-    if (!stored && !(normalizedKey in SETTING_DEFAULTS))
-      throw new NotFoundException('System setting not found');
+    if (!stored && !(normalizedKey in SETTING_DEFAULTS)) {
+      throw new NotFoundException({
+        code: SYSTEM_ERROR_CODES.SETTING_NOT_FOUND,
+        message: 'System setting not found.',
+      });
+    }
     const raw = stored?.value ?? SETTING_DEFAULTS[normalizedKey];
     return {
       key: normalizedKey,
@@ -88,16 +98,27 @@ export class SystemSettingsService implements SystemSettingsContract {
   ) {
     const normalizedKey = key.trim();
     const definition = settingDefinition(normalizedKey);
-    if (!definition) throw new NotFoundException('Unknown system setting');
-    if (!definition.mutable)
-      throw new BadRequestException('System setting is immutable');
+    if (!definition) {
+      throw new NotFoundException({
+        code: SYSTEM_ERROR_CODES.SETTING_NOT_FOUND,
+        message: 'Unknown system setting.',
+      });
+    }
+    if (!definition.mutable) {
+      throw new BadRequestException({
+        code: SYSTEM_ERROR_CODES.SETTING_IMMUTABLE,
+        message: 'System setting is immutable.',
+      });
+    }
     let value: string;
     try {
       value = parseSettingValue(definition, rawValue);
     } catch (error: unknown) {
-      throw new BadRequestException(
-        error instanceof Error ? error.message : 'Invalid setting value',
-      );
+      throw new BadRequestException({
+        code: SYSTEM_ERROR_CODES.SETTING_INVALID,
+        message:
+          error instanceof Error ? error.message : 'Invalid setting value.',
+      });
     }
     let result;
     try {
@@ -111,10 +132,18 @@ export class SystemSettingsService implements SystemSettingsContract {
         expectedVersion,
       });
     } catch (error: unknown) {
-      if (error instanceof SystemSettingConflictError)
-        throw new ConflictException(error.message);
-      if (error instanceof SystemSettingImmutableError)
-        throw new BadRequestException(error.message);
+      if (error instanceof SystemSettingConflictError) {
+        throw new ConflictException({
+          code: SYSTEM_ERROR_CODES.SETTING_CONFLICT,
+          message: error.message,
+        });
+      }
+      if (error instanceof SystemSettingImmutableError) {
+        throw new BadRequestException({
+          code: SYSTEM_ERROR_CODES.SETTING_IMMUTABLE,
+          message: error.message,
+        });
+      }
       throw error;
     }
     await this.audit.record({
@@ -154,8 +183,12 @@ export class SystemSettingsService implements SystemSettingsContract {
     valueType: string,
     value: string | undefined,
   ): string | number | boolean {
-    if (value === undefined)
-      throw new NotFoundException('System setting value is not configured');
+    if (value === undefined) {
+      throw new NotFoundException({
+        code: SYSTEM_ERROR_CODES.SETTING_NOT_FOUND,
+        message: 'System setting value is not configured.',
+      });
+    }
     if (valueType === 'BOOLEAN') return value === 'true';
     if (valueType === 'INTEGER') return Number(value);
     return value;
