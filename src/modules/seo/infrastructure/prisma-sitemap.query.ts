@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
+import type { Prisma } from '../../../../prisma/generated/prisma/client.js';
 import type {
   SitemapEntry,
   SitemapQuery,
@@ -19,36 +20,42 @@ export class PrismaSitemapQuery implements SitemapQuery {
       .replace(/\/$/, '');
   }
 
-  private propertyWhere() {
+  private propertyWhere(): Prisma.PropertyWhereInput {
     return {
-      status: 'ACTIVE' as const,
+      status: 'ACTIVE',
       deletedAt: null,
       publishedAt: { not: null },
       OR: [
-        { seo: null },
-        { seo: { robots: { in: ['INDEX_FOLLOW', 'INDEX_NOFOLLOW'] } } },
+        { seo: { is: null } },
+        {
+          seo: {
+            is: {
+              robots: { in: ['INDEX_FOLLOW', 'INDEX_NOFOLLOW'] },
+            },
+          },
+        },
       ],
     };
   }
 
-  private listingWhere(now: Date) {
+  private listingWhere(now: Date): Prisma.PropertyListingWhereInput {
     return {
-      status: 'PUBLISHED' as const,
-      visibility: 'PUBLIC' as const,
+      status: 'PUBLISHED',
+      visibility: 'PUBLIC',
       publishedAt: { not: null },
       OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       property: {
-        status: 'ACTIVE' as const,
+        status: 'ACTIVE',
         deletedAt: null,
         publishedAt: { not: null },
       },
     };
   }
 
-  private contentWhere() {
+  private contentWhere(): Prisma.ContentArticleWhereInput {
     return {
-      status: 'PUBLISHED' as const,
-      visibility: 'PUBLIC' as const,
+      status: 'PUBLISHED',
+      visibility: 'PUBLIC',
       deletedAt: null,
     };
   }
@@ -122,7 +129,9 @@ export class PrismaSitemapQuery implements SitemapQuery {
             select: {
               listingCode: true,
               updatedAt: true,
-              property: { select: { seo: { select: { canonicalUrl: true } } } },
+              property: {
+                select: { seo: { select: { canonicalUrl: true } } },
+              },
             },
           });
           entries.push(
@@ -149,7 +158,11 @@ export class PrismaSitemapQuery implements SitemapQuery {
           );
         } else {
           const rows = await this.prisma.contentPage.findMany({
-            where: this.contentWhere(),
+            where: {
+              status: 'PUBLISHED',
+              visibility: 'PUBLIC',
+              deletedAt: null,
+            },
             skip,
             take,
             orderBy: { id: 'asc' },
