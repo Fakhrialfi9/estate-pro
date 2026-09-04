@@ -13,7 +13,14 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiNoContentResponse, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -43,7 +50,12 @@ export class PropertyCapabilitiesController {
 
   @Get('amenities')
   @RequirePermissions('properties.read')
-  @ApiQuery({ name: 'activeOnly', required: false, type: Boolean, example: true })
+  @ApiQuery({
+    name: 'activeOnly',
+    required: false,
+    type: Boolean,
+    example: true,
+  })
   @ApiOkResponse({ description: 'Amenity catalog returned.' })
   listAmenities(@Query('activeOnly') activeOnly?: string) {
     return this.service.listAmenities(activeOnly !== 'false').then(wrap);
@@ -82,22 +94,29 @@ export class PropertyCapabilitiesController {
   @RequirePermissions('properties.read')
   @ApiOkResponse({ description: 'Property amenities returned.' })
   listPropertyAmenities(
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) propertyUuid: string,
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
     @Query('activeOnly') activeOnly?: string,
   ) {
-    return this.service.listPropertyAmenities(propertyUuid, activeOnly === 'true').then(wrap);
+    return this.service
+      .listPropertyAmenities(propertyUuid, activeOnly === 'true')
+      .then(wrap);
   }
 
   @Put('properties/:propertyUuid/amenities/:amenityUuid')
   @RequirePermissions('properties.update')
   @ApiOkResponse({ description: 'Amenity assigned to property.' })
   assignAmenity(
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) propertyUuid: string,
-    @Param('amenityUuid', new ParseUUIDPipe({ version: '4' })) amenityUuid: string,
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
+    @Param('amenityUuid', new ParseUUIDPipe({ version: '4' }))
+    amenityUuid: string,
     @Body() dto: AssignAmenityDto,
     @Req() request: AuthRequest,
   ) {
-    return this.service.assignAmenity(propertyUuid, amenityUuid, dto, actorUuid(request)).then(wrap);
+    return this.service
+      .assignAmenity(propertyUuid, amenityUuid, dto, actorUuid(request))
+      .then(wrap);
   }
 
   @Delete('properties/:propertyUuid/amenities/:amenityUuid')
@@ -105,29 +124,40 @@ export class PropertyCapabilitiesController {
   @HttpCode(204)
   @ApiNoContentResponse({ description: 'Amenity unassigned.' })
   unassignAmenity(
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) propertyUuid: string,
-    @Param('amenityUuid', new ParseUUIDPipe({ version: '4' })) amenityUuid: string,
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
+    @Param('amenityUuid', new ParseUUIDPipe({ version: '4' }))
+    amenityUuid: string,
     @Req() request: AuthRequest,
   ) {
-    return this.service.unassignAmenity(propertyUuid, amenityUuid, actorUuid(request));
+    return this.service.unassignAmenity(
+      propertyUuid,
+      amenityUuid,
+      actorUuid(request),
+    );
   }
 
   @Get('properties/:propertyUuid/documents')
   @RequirePermissions('properties.sensitive.read')
   @ApiOkResponse({ description: 'Property document metadata returned.' })
   listDocuments(
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) propertyUuid: string,
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
     @Query('includeArchived') includeArchived?: string,
   ) {
-    return this.service.listDocuments(propertyUuid, includeArchived === 'true').then(wrap);
+    return this.service
+      .listDocuments(propertyUuid, includeArchived === 'true')
+      .then(wrap);
   }
 
   @Get('properties/:propertyUuid/documents/:documentUuid')
   @RequirePermissions('properties.sensitive.read')
   @ApiOkResponse({ description: 'Property document metadata returned.' })
   getDocument(
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) propertyUuid: string,
-    @Param('documentUuid', new ParseUUIDPipe({ version: '4' })) documentUuid: string,
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
+    @Param('documentUuid', new ParseUUIDPipe({ version: '4' }))
+    documentUuid: string,
   ) {
     return this.service.getDocument(propertyUuid, documentUuid).then(wrap);
   }
@@ -136,35 +166,51 @@ export class PropertyCapabilitiesController {
   @RequirePermissions('properties.manage')
   @ApiCreatedResponse({ description: 'Property document metadata registered.' })
   createDocument(
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) propertyUuid: string,
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
     @Body() dto: CreateDocumentDto,
     @Req() request: AuthRequest,
   ) {
-    return this.service.createDocument(propertyUuid, dto, actorUuid(request)).then(wrap);
+    return this.service
+      .createDocument(propertyUuid, dto, actorUuid(request))
+      .then(wrap);
   }
 
   @Post('properties/:propertyUuid/documents/:documentUuid/versions')
   @RequirePermissions('properties.manage')
   @ApiCreatedResponse({ description: 'Document version registered.' })
   createDocumentVersion(
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) propertyUuid: string,
-    @Param('documentUuid', new ParseUUIDPipe({ version: '4' })) documentUuid: string,
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
+    @Param('documentUuid', new ParseUUIDPipe({ version: '4' }))
+    documentUuid: string,
     @Body() dto: CreateDocumentVersionDto,
     @Req() request: AuthRequest,
   ) {
-    return this.service.createDocumentVersion(propertyUuid, documentUuid, dto, actorUuid(request)).then(wrap);
+    return this.service
+      .createDocumentVersion(
+        propertyUuid,
+        documentUuid,
+        dto,
+        actorUuid(request),
+      )
+      .then(wrap);
   }
 
   @Patch('properties/:propertyUuid/documents/:documentUuid')
   @RequirePermissions('properties.manage')
   @ApiOkResponse({ description: 'Property document metadata updated.' })
   updateDocument(
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) propertyUuid: string,
-    @Param('documentUuid', new ParseUUIDPipe({ version: '4' })) documentUuid: string,
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
+    @Param('documentUuid', new ParseUUIDPipe({ version: '4' }))
+    documentUuid: string,
     @Body() dto: UpdateDocumentDto,
     @Req() request: AuthRequest,
   ) {
-    return this.service.updateDocument(propertyUuid, documentUuid, dto, actorUuid(request)).then(wrap);
+    return this.service
+      .updateDocument(propertyUuid, documentUuid, dto, actorUuid(request))
+      .then(wrap);
   }
 
   @Delete('properties/:propertyUuid/documents/:documentUuid')
@@ -172,11 +218,17 @@ export class PropertyCapabilitiesController {
   @HttpCode(204)
   @ApiNoContentResponse({ description: 'Property document deleted logically.' })
   deleteDocument(
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) propertyUuid: string,
-    @Param('documentUuid', new ParseUUIDPipe({ version: '4' })) documentUuid: string,
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
+    @Param('documentUuid', new ParseUUIDPipe({ version: '4' }))
+    documentUuid: string,
     @Req() request: AuthRequest,
   ) {
-    return this.service.deleteDocument(propertyUuid, documentUuid, actorUuid(request));
+    return this.service.deleteDocument(
+      propertyUuid,
+      documentUuid,
+      actorUuid(request),
+    );
   }
 
   @Get('properties/:propertyUuid/history')
@@ -186,20 +238,26 @@ export class PropertyCapabilitiesController {
   @ApiQuery({ name: 'event', required: false })
   @ApiOkResponse({ description: 'Business history returned.' })
   listHistory(
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) propertyUuid: string,
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
     @Query() query: HistoryQueryDto,
   ) {
-    return this.service.listHistory(propertyUuid, query.page, query.limit, query.event).then(wrap);
+    return this.service
+      .listHistory(propertyUuid, query.page, query.limit, query.event)
+      .then(wrap);
   }
 
   @Post('properties/:propertyUuid/history')
   @RequirePermissions('properties.manage')
   @ApiCreatedResponse({ description: 'Business history event recorded.' })
   createHistory(
-    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' })) propertyUuid: string,
+    @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
+    propertyUuid: string,
     @Body() dto: CreateHistoryDto,
     @Req() request: AuthRequest,
   ) {
-    return this.service.createHistory(propertyUuid, dto, actorUuid(request)).then(wrap);
+    return this.service
+      .createHistory(propertyUuid, dto, actorUuid(request))
+      .then(wrap);
   }
 }

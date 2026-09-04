@@ -50,7 +50,9 @@ async function createProperty(): Promise<{ uuid: string; id: bigint }> {
 
 describe('Property capabilities repository integration', () => {
   beforeAll(async () => {
-    moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     await moduleRef.init();
     prisma = moduleRef.get(PrismaService);
     repository = moduleRef.get(PrismaPropertyCapabilitiesRepository);
@@ -58,39 +60,79 @@ describe('Property capabilities repository integration', () => {
 
   afterAll(async () => {
     for (const propertyUuid of createdPropertyUuids) {
-      const property = await prisma.property.findUnique({ where: { uuid: propertyUuid }, select: { id: true } });
+      const property = await prisma.property.findUnique({
+        where: { uuid: propertyUuid },
+        select: { id: true },
+      });
       if (property) {
-        await prisma.propertyHistory.deleteMany({ where: { propertyId: property.id } });
-        const documents = await prisma.propertyDocument.findMany({ where: { propertyId: property.id }, select: { id: true } });
-        if (documents.length) await prisma.propertyDocumentVersion.deleteMany({ where: { documentId: { in: documents.map((row) => row.id) } } });
-        await prisma.propertyDocument.deleteMany({ where: { propertyId: property.id } });
-        await prisma.propertyAmenityAssignment.deleteMany({ where: { propertyId: property.id } });
+        await prisma.propertyHistory.deleteMany({
+          where: { propertyId: property.id },
+        });
+        const documents = await prisma.propertyDocument.findMany({
+          where: { propertyId: property.id },
+          select: { id: true },
+        });
+        if (documents.length)
+          await prisma.propertyDocumentVersion.deleteMany({
+            where: { documentId: { in: documents.map((row) => row.id) } },
+          });
+        await prisma.propertyDocument.deleteMany({
+          where: { propertyId: property.id },
+        });
+        await prisma.propertyAmenityAssignment.deleteMany({
+          where: { propertyId: property.id },
+        });
         await prisma.property.delete({ where: { id: property.id } });
       }
     }
-    for (const uuid of createdAmenityUuids) await prisma.propertyAmenity.delete({ where: { uuid } });
+    for (const uuid of createdAmenityUuids)
+      await prisma.propertyAmenity.delete({ where: { uuid } });
     await moduleRef.close();
   });
 
   it('persists and deactivates amenity taxonomy entries', async () => {
-    const amenity = await repository.createAmenity({ code: `INTEGRATION_${randomUUID().slice(0, 8).toUpperCase()}`, name: 'Integration Pool', category: 'RECREATION', sortOrder: 10 });
+    const amenity = await repository.createAmenity({
+      code: `INTEGRATION_${randomUUID().slice(0, 8).toUpperCase()}`,
+      name: 'Integration Pool',
+      category: 'RECREATION',
+      sortOrder: 10,
+    });
     createdAmenityUuids.add(amenity.uuid);
-    expect((await repository.listAmenities()).some((item) => item.uuid === amenity.uuid)).toBe(true);
+    expect(
+      (await repository.listAmenities()).some(
+        (item) => item.uuid === amenity.uuid,
+      ),
+    ).toBe(true);
     await repository.deleteAmenity(amenity.uuid);
-    expect(await repository.getAmenity(amenity.uuid)).resolves.toMatchObject({ uuid: amenity.uuid, isActive: false });
+    expect(await repository.getAmenity(amenity.uuid)).resolves.toMatchObject({
+      uuid: amenity.uuid,
+      isActive: false,
+    });
   });
 
   it('enforces property amenity relation and supports idempotent assignment', async () => {
     const property = await createProperty();
-    const amenity = await repository.createAmenity({ code: `REL_${randomUUID().slice(0, 8).toUpperCase()}`, name: 'Parking', category: 'PARKING' });
+    const amenity = await repository.createAmenity({
+      code: `REL_${randomUUID().slice(0, 8).toUpperCase()}`,
+      name: 'Parking',
+      category: 'PARKING',
+    });
     createdAmenityUuids.add(amenity.uuid);
-    await repository.assignAmenity(property.uuid, amenity.uuid, { available: true, value: '2 spaces' });
-    await repository.assignAmenity(property.uuid, amenity.uuid, { available: false, value: '2 spaces' });
+    await repository.assignAmenity(property.uuid, amenity.uuid, {
+      available: true,
+      value: '2 spaces',
+    });
+    await repository.assignAmenity(property.uuid, amenity.uuid, {
+      available: false,
+      value: '2 spaces',
+    });
     const assignments = await repository.listPropertyAmenities(property.uuid);
     expect(assignments).toHaveLength(1);
     expect(assignments[0]?.available).toBe(false);
     await repository.unassignAmenity(property.uuid, amenity.uuid);
-    expect(await repository.listPropertyAmenities(property.uuid)).toHaveLength(0);
+    expect(await repository.listPropertyAmenities(property.uuid)).toHaveLength(
+      0,
+    );
   });
 
   it('persists versioned document metadata without binary content', async () => {
@@ -131,12 +173,23 @@ describe('Property capabilities repository integration', () => {
 
   it('records immutable business history with deterministic pagination order', async () => {
     const property = await createProperty();
-    await repository.recordHistory({ propertyUuid: property.uuid, event: 'CREATED', summary: 'Property created' });
-    await repository.recordHistory({ propertyUuid: property.uuid, event: 'PRICE_CHANGED', summary: 'Price changed', changes: [{ field: 'askingPrice', oldValue: 10, newValue: 12 }] });
+    await repository.recordHistory({
+      propertyUuid: property.uuid,
+      event: 'CREATED',
+      summary: 'Property created',
+    });
+    await repository.recordHistory({
+      propertyUuid: property.uuid,
+      event: 'PRICE_CHANGED',
+      summary: 'Price changed',
+      changes: [{ field: 'askingPrice', oldValue: 10, newValue: 12 }],
+    });
     const page = await repository.listHistory(property.uuid, 1, 1);
     expect(page.total).toBe(2);
     expect(page.items).toHaveLength(1);
     expect(page.items[0]?.event).toBe('PRICE_CHANGED');
-    expect(page.items[0]?.changes).toEqual([{ field: 'askingPrice', oldValue: 10, newValue: 12 }]);
+    expect(page.items[0]?.changes).toEqual([
+      { field: 'askingPrice', oldValue: 10, newValue: 12 },
+    ]);
   });
 });

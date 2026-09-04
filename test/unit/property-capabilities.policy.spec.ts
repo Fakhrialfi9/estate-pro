@@ -21,7 +21,9 @@ describe('Property capability policies', () => {
   });
 
   it('rejects absolute or newline-containing storage keys', () => {
-    expect(validateDocumentStorageKey('properties/a.pdf')).toBe('properties/a.pdf');
+    expect(validateDocumentStorageKey('properties/a.pdf')).toBe(
+      'properties/a.pdf',
+    );
     expect(() => validateDocumentStorageKey('/properties/a.pdf')).toThrow();
     expect(() => validateDocumentStorageKey('properties/a.pdf\n')).toThrow();
   });

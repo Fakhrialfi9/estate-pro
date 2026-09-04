@@ -73,18 +73,34 @@ export interface PropertyCapabilitiesRepository {
     isActive?: boolean;
     sortOrder?: number;
   }): Promise<AmenityRecord>;
-  updateAmenity(uuid: string, input: Partial<Omit<AmenityRecord, 'uuid'>>): Promise<AmenityRecord>;
+  updateAmenity(
+    uuid: string,
+    input: Partial<Omit<AmenityRecord, 'uuid'>>,
+  ): Promise<AmenityRecord>;
   deleteAmenity(uuid: string): Promise<void>;
-  listPropertyAmenities(propertyUuid: string, activeOnly?: boolean): Promise<AmenityAssignmentRecord[]>;
+  listPropertyAmenities(
+    propertyUuid: string,
+    activeOnly?: boolean,
+  ): Promise<AmenityAssignmentRecord[]>;
   assignAmenity(
     propertyUuid: string,
     amenityUuid: string,
-    input: { available?: boolean; value?: string | null; notes?: string | null },
+    input: {
+      available?: boolean;
+      value?: string | null;
+      notes?: string | null;
+    },
   ): Promise<AmenityAssignmentRecord>;
   unassignAmenity(propertyUuid: string, amenityUuid: string): Promise<void>;
 
-  listDocuments(propertyUuid: string, includeArchived?: boolean): Promise<DocumentRecord[]>;
-  getDocument(propertyUuid: string, documentUuid: string): Promise<DocumentRecord | null>;
+  listDocuments(
+    propertyUuid: string,
+    includeArchived?: boolean,
+  ): Promise<DocumentRecord[]>;
+  getDocument(
+    propertyUuid: string,
+    documentUuid: string,
+  ): Promise<DocumentRecord | null>;
   createDocument(input: {
     propertyUuid: string;
     classification: DocumentClassification;
@@ -119,10 +135,19 @@ export interface PropertyCapabilitiesRepository {
   updateDocument(
     propertyUuid: string,
     documentUuid: string,
-    input: Partial<Pick<DocumentRecord, 'classification' | 'title' | 'visibility' | 'status' | 'retentionUntil'>>,
+    input: Partial<
+      Pick<
+        DocumentRecord,
+        'classification' | 'title' | 'visibility' | 'status' | 'retentionUntil'
+      >
+    >,
     actorUuid?: string | null,
   ): Promise<DocumentRecord>;
-  deleteDocument(propertyUuid: string, documentUuid: string, actorUuid?: string | null): Promise<void>;
+  deleteDocument(
+    propertyUuid: string,
+    documentUuid: string,
+    actorUuid?: string | null,
+  ): Promise<void>;
 
   recordHistory(input: {
     propertyUuid: string;
@@ -131,7 +156,12 @@ export interface PropertyCapabilitiesRepository {
     summary: string;
     changes?: readonly SafeChange[];
   }): Promise<HistoryRecord>;
-  listHistory(propertyUuid: string, page: number, limit: number, event?: HistoryEvent): Promise<{
+  listHistory(
+    propertyUuid: string,
+    page: number,
+    limit: number,
+    event?: HistoryEvent,
+  ): Promise<{
     items: HistoryRecord[];
     total: number;
     page: number;
@@ -139,4 +169,6 @@ export interface PropertyCapabilitiesRepository {
   }>;
 }
 
-export const PROPERTY_CAPABILITIES_REPOSITORY = Symbol('PROPERTY_CAPABILITIES_REPOSITORY');
+export const PROPERTY_CAPABILITIES_REPOSITORY = Symbol(
+  'PROPERTY_CAPABILITIES_REPOSITORY',
+);

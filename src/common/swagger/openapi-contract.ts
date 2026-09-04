@@ -1028,7 +1028,12 @@ export const applyOpenApiContract = (
         );
         setErrors(operation, [401, 500]);
       } else if (normalized === '/auth/me' && method === 'get') {
-        setResponse(operation, 200, ref('UserResponse'), 'Current user returned.');
+        setResponse(
+          operation,
+          200,
+          ref('UserResponse'),
+          'Current user returned.',
+        );
         setErrors(operation, [401, 404, 500]);
       } else if (normalized === '/auth/sessions' && method === 'get') {
         addQueryParam(
@@ -1246,10 +1251,7 @@ export const applyOpenApiContract = (
           setNoContent(operation, 'User deleted.');
           setErrors(operation, [400, 401, 403, 404, 409, 500]);
         }
-      } else if (
-        normalized === '/health/live' &&
-        method === 'get'
-      ) {
+      } else if (normalized === '/health/live' && method === 'get') {
         operation.security = [];
         setResponse(
           operation,

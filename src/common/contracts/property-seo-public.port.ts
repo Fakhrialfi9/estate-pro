@@ -41,7 +41,9 @@ export type PropertySeoPublicSnapshot = {
 };
 
 export interface PropertySeoPublicPort {
-  getPublicProperty(uuidOrSlug: string): Promise<PropertySeoPublicSnapshot | null>;
+  getPublicProperty(
+    uuidOrSlug: string,
+  ): Promise<PropertySeoPublicSnapshot | null>;
 }
 
 export const PROPERTY_SEO_PUBLIC_PORT = Symbol('PROPERTY_SEO_PUBLIC_PORT');

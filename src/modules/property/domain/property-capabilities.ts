@@ -23,7 +23,12 @@ export const DOCUMENT_CLASSIFICATIONS = [
 export type DocumentClassification = (typeof DOCUMENT_CLASSIFICATIONS)[number];
 export const DOCUMENT_VISIBILITIES = ['PRIVATE', 'RESTRICTED'] as const;
 export type DocumentVisibility = (typeof DOCUMENT_VISIBILITIES)[number];
-export const DOCUMENT_STATUSES = ['REGISTERED', 'ACTIVE', 'ARCHIVED', 'DELETED'] as const;
+export const DOCUMENT_STATUSES = [
+  'REGISTERED',
+  'ACTIVE',
+  'ARCHIVED',
+  'DELETED',
+] as const;
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 
 export const HISTORY_EVENTS = [
@@ -79,7 +84,9 @@ export const validateDocumentStorageKey = (value: string): string => {
     normalized.startsWith('/') ||
     /[\\\r\n]/.test(normalized)
   ) {
-    throw new PropertyCapabilityValidationError('Document storage key is invalid');
+    throw new PropertyCapabilityValidationError(
+      'Document storage key is invalid',
+    );
   }
   return normalized;
 };

@@ -9,7 +9,9 @@ describe('Property capabilities E2E security boundary', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const ref = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const ref = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = ref.createNestApplication();
     configureApplication(app as Parameters<typeof configureApplication>[0]);
     await app.init();
@@ -25,17 +27,39 @@ describe('Property capabilities E2E security boundary', () => {
     const documentUuid = '33333333-3333-4333-8333-333333333333';
 
     await httpRequest(app).get('/api/v1/property/amenities').expect(401);
-    await httpRequest(app).post('/api/v1/property/amenities').send({ code: 'POOL', name: 'Pool', category: 'RECREATION' }).expect(401);
-    await httpRequest(app).get(`/api/v1/property/properties/${propertyUuid}/amenities`).expect(401);
-    await httpRequest(app).put(`/api/v1/property/properties/${propertyUuid}/amenities/${amenityUuid}`).send({ available: true }).expect(401);
-    await httpRequest(app).get(`/api/v1/property/properties/${propertyUuid}/documents`).expect(401);
-    await httpRequest(app).get(`/api/v1/property/properties/${propertyUuid}/documents/${documentUuid}`).expect(401);
-    await httpRequest(app).get(`/api/v1/property/properties/${propertyUuid}/history`).expect(401);
+    await httpRequest(app)
+      .post('/api/v1/property/amenities')
+      .send({ code: 'POOL', name: 'Pool', category: 'RECREATION' })
+      .expect(401);
+    await httpRequest(app)
+      .get(`/api/v1/property/properties/${propertyUuid}/amenities`)
+      .expect(401);
+    await httpRequest(app)
+      .put(
+        `/api/v1/property/properties/${propertyUuid}/amenities/${amenityUuid}`,
+      )
+      .send({ available: true })
+      .expect(401);
+    await httpRequest(app)
+      .get(`/api/v1/property/properties/${propertyUuid}/documents`)
+      .expect(401);
+    await httpRequest(app)
+      .get(
+        `/api/v1/property/properties/${propertyUuid}/documents/${documentUuid}`,
+      )
+      .expect(401);
+    await httpRequest(app)
+      .get(`/api/v1/property/properties/${propertyUuid}/history`)
+      .expect(401);
   });
 
   it('rejects malformed nested property identifiers before reaching the business layer', async () => {
-    await httpRequest(app).get('/api/v1/property/properties/not-a-uuid/documents').expect(401);
-    await httpRequest(app).get('/api/v1/property/properties/not-a-uuid/history').expect(401);
+    await httpRequest(app)
+      .get('/api/v1/property/properties/not-a-uuid/documents')
+      .expect(401);
+    await httpRequest(app)
+      .get('/api/v1/property/properties/not-a-uuid/history')
+      .expect(401);
   });
 
   it('keeps the public structured-data endpoint separate from authenticated property capability APIs', async () => {

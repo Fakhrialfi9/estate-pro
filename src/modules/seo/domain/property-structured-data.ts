@@ -20,16 +20,25 @@ export const buildPropertyStructuredData = (
     dateModified: property.updatedAt.toISOString(),
   };
 
-  if (property.publishedAt) data.datePosted = property.publishedAt.toISOString();
+  if (property.publishedAt)
+    data.datePosted = property.publishedAt.toISOString();
   if (images.length > 0) data.image = images;
 
   if (property.location) {
     data.address = {
       '@type': 'PostalAddress',
-      ...(property.location.address ? { streetAddress: property.location.address } : {}),
-      ...(property.location.city ? { addressLocality: property.location.city } : {}),
-      ...(property.location.province ? { addressRegion: property.location.province } : {}),
-      ...(property.location.country ? { addressCountry: property.location.country } : {}),
+      ...(property.location.address
+        ? { streetAddress: property.location.address }
+        : {}),
+      ...(property.location.city
+        ? { addressLocality: property.location.city }
+        : {}),
+      ...(property.location.province
+        ? { addressRegion: property.location.province }
+        : {}),
+      ...(property.location.country
+        ? { addressCountry: property.location.country }
+        : {}),
     };
   }
 
@@ -54,11 +63,13 @@ export const buildPropertyStructuredData = (
   }
 
   if (property.amenities.length > 0) {
-    data.additionalProperty = property.amenities.slice(0, 100).map((amenity) => ({
-      '@type': 'PropertyValue',
-      name: amenity.name,
-      value: amenity.code,
-    }));
+    data.additionalProperty = property.amenities
+      .slice(0, 100)
+      .map((amenity) => ({
+        '@type': 'PropertyValue',
+        name: amenity.name,
+        value: amenity.code,
+      }));
   }
 
   return data;

@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
-import type { SitemapEntry, SitemapQuery } from '../domain/repositories/sitemap.query.js';
+import type {
+  SitemapEntry,
+  SitemapQuery,
+} from '../domain/repositories/sitemap.query.js';
 
 @Injectable()
 export class PrismaSitemapQuery implements SitemapQuery {
@@ -11,7 +14,9 @@ export class PrismaSitemapQuery implements SitemapQuery {
   ) {}
 
   private baseUrl(): string {
-    return this.config.getOrThrow<string>('app.publicBaseUrl').replace(/\/$/, '');
+    return this.config
+      .getOrThrow<string>('app.publicBaseUrl')
+      .replace(/\/$/, '');
   }
 
   private propertyWhere() {
@@ -19,7 +24,10 @@ export class PrismaSitemapQuery implements SitemapQuery {
       status: 'ACTIVE' as const,
       deletedAt: null,
       publishedAt: { not: null },
-      OR: [{ seo: null }, { seo: { robots: { in: ['INDEX_FOLLOW', 'INDEX_NOFOLLOW'] } } }],
+      OR: [
+        { seo: null },
+        { seo: { robots: { in: ['INDEX_FOLLOW', 'INDEX_NOFOLLOW'] } } },
+      ],
     };
   }
 
@@ -38,7 +46,11 @@ export class PrismaSitemapQuery implements SitemapQuery {
   }
 
   private contentWhere() {
-    return { status: 'PUBLISHED' as const, visibility: 'PUBLIC' as const, deletedAt: null };
+    return {
+      status: 'PUBLISHED' as const,
+      visibility: 'PUBLIC' as const,
+      deletedAt: null,
+    };
   }
 
   async count(): Promise<number> {
@@ -56,10 +68,18 @@ export class PrismaSitemapQuery implements SitemapQuery {
     const now = new Date();
     const start = (part - 1) * chunkSize;
     const end = start + chunkSize;
-    const propertyCount = await this.prisma.property.count({ where: this.propertyWhere() });
-    const listingCount = await this.prisma.propertyListing.count({ where: this.listingWhere(now) });
-    const articleCount = await this.prisma.contentArticle.count({ where: this.contentWhere() });
-    const pageCount = await this.prisma.contentPage.count({ where: this.contentWhere() });
+    const propertyCount = await this.prisma.property.count({
+      where: this.propertyWhere(),
+    });
+    const listingCount = await this.prisma.propertyListing.count({
+      where: this.listingWhere(now),
+    });
+    const articleCount = await this.prisma.contentArticle.count({
+      where: this.contentWhere(),
+    });
+    const pageCount = await this.prisma.contentPage.count({
+      where: this.contentWhere(),
+    });
     const counts = [propertyCount, listingCount, articleCount, pageCount];
     const entries: SitemapEntry[] = [];
 
@@ -79,18 +99,40 @@ export class PrismaSitemapQuery implements SitemapQuery {
             skip,
             take,
             orderBy: { id: 'asc' },
-            select: { slug: true, updatedAt: true, seo: { select: { canonicalUrl: true } } },
+            select: {
+              slug: true,
+              updatedAt: true,
+              seo: { select: { canonicalUrl: true } },
+            },
           });
-          entries.push(...rows.map((row) => ({ loc: row.seo?.canonicalUrl ?? `${this.baseUrl()}/properties/${encodeURIComponent(row.slug)}`, lastmod: row.updatedAt.toISOString() })));
+          entries.push(
+            ...rows.map((row) => ({
+              loc:
+                row.seo?.canonicalUrl ??
+                `${this.baseUrl()}/properties/${encodeURIComponent(row.slug)}`,
+              lastmod: row.updatedAt.toISOString(),
+            })),
+          );
         } else if (index === 1) {
           const rows = await this.prisma.propertyListing.findMany({
             where: this.listingWhere(now),
             skip,
             take,
             orderBy: { id: 'asc' },
-            select: { listingCode: true, updatedAt: true, property: { select: { seo: { select: { canonicalUrl: true } } } } },
+            select: {
+              listingCode: true,
+              updatedAt: true,
+              property: { select: { seo: { select: { canonicalUrl: true } } } },
+            },
           });
-          entries.push(...rows.map((row) => ({ loc: row.property.seo?.canonicalUrl ?? `${this.baseUrl()}/listings/${encodeURIComponent(row.listingCode)}`, lastmod: row.updatedAt.toISOString() })));
+          entries.push(
+            ...rows.map((row) => ({
+              loc:
+                row.property.seo?.canonicalUrl ??
+                `${this.baseUrl()}/listings/${encodeURIComponent(row.listingCode)}`,
+              lastmod: row.updatedAt.toISOString(),
+            })),
+          );
         } else if (index === 2) {
           const rows = await this.prisma.contentArticle.findMany({
             where: this.contentWhere(),
@@ -99,7 +141,12 @@ export class PrismaSitemapQuery implements SitemapQuery {
             orderBy: { id: 'asc' },
             select: { slug: true, updatedAt: true },
           });
-          entries.push(...rows.map((row) => ({ loc: `${this.baseUrl()}/articles/${encodeURIComponent(row.slug)}`, lastmod: row.updatedAt.toISOString() })));
+          entries.push(
+            ...rows.map((row) => ({
+              loc: `${this.baseUrl()}/articles/${encodeURIComponent(row.slug)}`,
+              lastmod: row.updatedAt.toISOString(),
+            })),
+          );
         } else {
           const rows = await this.prisma.contentPage.findMany({
             where: this.contentWhere(),
@@ -108,7 +155,12 @@ export class PrismaSitemapQuery implements SitemapQuery {
             orderBy: { id: 'asc' },
             select: { slug: true, updatedAt: true },
           });
-          entries.push(...rows.map((row) => ({ loc: `${this.baseUrl()}/pages/${encodeURIComponent(row.slug)}`, lastmod: row.updatedAt.toISOString() })));
+          entries.push(
+            ...rows.map((row) => ({
+              loc: `${this.baseUrl()}/pages/${encodeURIComponent(row.slug)}`,
+              lastmod: row.updatedAt.toISOString(),
+            })),
+          );
         }
       }
       cursor = typeEnd;
