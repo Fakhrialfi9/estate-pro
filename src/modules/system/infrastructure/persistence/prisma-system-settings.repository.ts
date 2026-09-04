@@ -33,16 +33,10 @@ const toRecord = (row: {
 });
 
 @Injectable()
-export class PrismaSystemSettingsRepository
-  implements SystemSettingsRepository
-{
+export class PrismaSystemSettingsRepository implements SystemSettingsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async get(
-    key: string,
-    scope: string,
-    scopeKey: string,
-  ): Promise<SystemSettingRecord | null> {
+  async get(key: string, scope: string, scopeKey: string) {
     const row = await this.prisma.systemSetting.findUnique({
       where: { key_scope_scopeKey: { key, scope, scopeKey } },
     });
@@ -70,7 +64,7 @@ export class PrismaSystemSettingsRepository
     value: string;
     mutable: boolean;
     expectedVersion?: number;
-  }): Promise<SystemSettingRecord> {
+  }) {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.systemSetting.findUnique({
         where: {
@@ -81,36 +75,57 @@ export class PrismaSystemSettingsRepository
           },
         },
       });
-      if (current && current.mutable === false)
+
+      if (current && current.mutable === false) {
         throw new SystemSettingImmutableError(input.key);
+      }
+
       if (
         current &&
         input.expectedVersion !== undefined &&
         current.version !== input.expectedVersion
-      )
+      ) {
         throw new SystemSettingConflictError(input.key);
-      const row = current
-        ? await tx.systemSetting.update({
-            where: { id: current.id },
-            data: {
-              value: input.value,
-              valueType: input.valueType,
-              mutable: input.mutable,
-              version: { increment: 1 },
-            },
-          })
-        : await tx.systemSetting.create({
-            data: {
-              uuid: randomUUID(),
-              key: input.key,
-              scope: input.scope,
-              scopeKey: input.scopeKey,
-              valueType: input.valueType,
-              value: input.value,
-              mutable: input.mutable,
-              version: 1,
-            },
-          });
+      }
+
+      if (!current) {
+        const row = await tx.systemSetting.create({
+          data: {
+            uuid: randomUUID(),
+            key: input.key,
+            scope: input.scope,
+            scopeKey: input.scopeKey,
+            valueType: input.valueType,
+            value: input.value,
+            mutable: input.mutable,
+            version: 1,
+          },
+        });
+        return toRecord(row);
+      }
+
+      const expectedVersion = input.expectedVersion ?? current.version;
+      const updated = await tx.systemSetting.updateMany({
+        where: {
+          id: current.id,
+          version: expectedVersion,
+          mutable: true,
+        },
+        data: {
+          value: input.value,
+          valueType: input.valueType,
+          mutable: input.mutable,
+          version: { increment: 1 },
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new SystemSettingConflictError(input.key);
+      }
+
+      const row = await tx.systemSetting.findUniqueOrThrow({
+        where: { id: current.id },
+      });
       return toRecord(row);
     });
   }

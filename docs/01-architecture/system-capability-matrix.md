@@ -3,11 +3,12 @@
 | Capability | Owner | System API responsibility | Data owner | Privilege model |
 |---|---|---|---|---|
 | Settings | System | Read/update typed operational settings | System | `system.settings.read` / `system.settings.update` |
-| Activity | System | Query operational timeline | System | `system.activity.read` |
+| Activity | System | Query operational timeline and detail | System | `system.activity.read` |
 | Audit | Audit module | Expose audit query surface | Audit | `audit:read` through existing authorization |
 | Jobs | Automation module | Operational query/retry/cancel surface | Automation | `system.jobs.*` + existing owner scope |
-| Notifications | Automation module | User-scoped notification query/read surface | Automation | `system.notifications.read` |
-| Import/Export | System | File boundary/orchestration only after concrete domain mapping exists | Domain-specific | Explicit domain permission |
+| Notifications | Automation module | User-scoped notification query/read/mark-all-read surface | Automation | `system.notifications.read` |
+| Import | System | Secure bounded generic pipeline and operational lifecycle | System job metadata + domain adapter | `system.import.*` |
+| Export | System | Secure bounded generic pipeline and artifact access | System job metadata + domain query adapter | `system.export.*` |
 | Webhooks | System | Signed outbound delivery contract | System | Explicit admin permission |
 | Integrations | System | Provider ports/config/status | Provider/domain-specific | Explicit provider permission |
 | Health | Health module | Liveness/readiness remains owned by HealthModule | Infrastructure | Public operational surface |
@@ -16,11 +17,12 @@
 ## Dependency rules
 
 1. Presentation depends on System application services.
-2. System application code depends on domain ports/contracts, not Prisma.
-3. Prisma implementations remain in infrastructure.
-4. System may consume another module's public application contract, such as `AutomationService`; it must not access that module's private repository implementation.
+2. System application code depends on domain ports/contracts, not Prisma or filesystem implementations.
+3. Prisma and local artifact storage implementations remain in infrastructure.
+4. System may consume another module's public application contract, such as Automation's notification/job ports; it must not access another module's private repository implementation.
 5. Audit and Health remain owned by their existing modules; System must not create competing stores or health checks.
 6. Authentication and authorization remain owned by Auth/Permissions infrastructure.
+7. Import/export domain adapters are explicit and allow-listed; System does not become owner of Property, CRM, Sales, Agent, or Automation business data.
 
 ## Status rule
 
