@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import type {
   SystemExportJobRecord,
@@ -53,10 +54,15 @@ export class PrismaSystemExportRepository implements SystemExportRepository {
   }) {
     const row = await this.prisma.systemExportJob.create({
       data: {
-        ...input,
+        uuid: input.uuid,
+        actorUuid: input.actorUuid,
+        entity: input.entity,
+        format: input.format,
+        filters: input.filters as Prisma.InputJsonObject,
+        expiresAt: input.expiresAt,
+        estimatedRows: input.estimatedRows ?? null,
         state: 'QUEUED',
         rows: 0,
-        estimatedRows: input.estimatedRows ?? null,
         processedRows: 0,
         completedAt: null,
         cancelledAt: null,
@@ -87,70 +93,3 @@ export class PrismaSystemExportRepository implements SystemExportRepository {
   async countRunning(): Promise<number> {
     return this.prisma.systemExportJob.count({ where: { state: 'RUNNING' } });
   }
-
-  async update(
-    uuid: string,
-    input: Partial<
-      Pick<
-        SystemExportJobRecord,
-        | 'state'
-        | 'artifactPath'
-        | 'downloadTokenHash'
-        | 'rows'
-        | 'estimatedRows'
-        | 'processedRows'
-        | 'completedAt'
-        | 'cancelledAt'
-        | 'cancelRequested'
-        | 'artifactBytes'
-        | 'expiresAt'
-        | 'errorMessage'
-      >
-    >,
-  ) {
-    const row = await this.prisma.systemExportJob.update({
-      where: { uuid },
-      data: input,
-    });
-    return toRecord(row);
-  }
-
-  async list(input: {
-    actorUuid: string;
-    page: number;
-    limit: number;
-    state?: SystemExportJobRecord['state'];
-  }) {
-    const where = {
-      actorUuid: input.actorUuid,
-      ...(input.state ? { state: input.state } : {}),
-    };
-    const [items, total] = await Promise.all([
-      this.prisma.systemExportJob.findMany({
-        where,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: (input.page - 1) * input.limit,
-        take: input.limit,
-      }),
-      this.prisma.systemExportJob.count({ where }),
-    ]);
-    return { items: items.map(toRecord), total };
-  }
-
-  async listExpired(now: Date, limit: number) {
-    const rows = await this.prisma.systemExportJob.findMany({
-      where: {
-        expiresAt: { lte: now },
-        state: { in: ['SUCCEEDED', 'FAILED', 'CANCELLED'] },
-      },
-      orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
-      take: limit,
-    });
-    return rows.map(toRecord);
-  }
-
-  async deleteMany(uuids: readonly string[]): Promise<void> {
-    if (uuids.length === 0) return;
-    await this.prisma.systemExportJob.deleteMany({ where: { uuid: { in: [...uuids] } } });
-  }
-}
