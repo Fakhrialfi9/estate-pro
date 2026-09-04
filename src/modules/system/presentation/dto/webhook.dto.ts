@@ -1,17 +1,49 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsIn,
+  IsObject,
   IsOptional,
+  IsString,
   IsUrl,
   Max,
   MaxLength,
   Min,
+  ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import {
   SYSTEM_WEBHOOK_EVENTS,
   type SystemWebhookEventName,
+  type WebhookFilterOperator,
 } from '../../domain/webhook/webhook.contracts.js';
+
+export class WebhookFilterDto {
+  @IsString()
+  @MaxLength(120)
+  field!: string;
+
+  @IsIn([
+    'EQ',
+    'NEQ',
+    'CONTAINS',
+    'IN',
+    'GT',
+    'GTE',
+    'LT',
+    'LTE',
+    'EXISTS',
+    'NOT_EXISTS',
+  ])
+  operator!: WebhookFilterOperator;
+
+  @ValidateIf((value: WebhookFilterDto) =>
+    !['EXISTS', 'NOT_EXISTS'].includes(value.operator),
+  )
+  value?: unknown;
+}
 
 export class CreateWebhookDto {
   @IsUrl({ protocols: ['https'], require_protocol: true, require_tld: false })
@@ -21,6 +53,13 @@ export class CreateWebhookDto {
   @IsArray()
   @IsIn([...SYSTEM_WEBHOOK_EVENTS], { each: true })
   events!: SystemWebhookEventName[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => WebhookFilterDto)
+  filters?: WebhookFilterDto[];
 }
 
 export class UpdateWebhookDto {
@@ -33,6 +72,13 @@ export class UpdateWebhookDto {
   @IsArray()
   @IsIn([...SYSTEM_WEBHOOK_EVENTS], { each: true })
   events?: SystemWebhookEventName[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => WebhookFilterDto)
+  filters?: WebhookFilterDto[];
 
   @IsOptional()
   @IsBoolean()
