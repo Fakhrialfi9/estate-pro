@@ -20,5 +20,10 @@ export default registerAs('app', () => {
     ...metadata,
     host: process.env.APP_HOST ?? '0.0.0.0',
     port: Number(process.env.APP_PORT ?? 3000),
+    publicBaseUrl:
+      process.env.APP_PUBLIC_URL?.trim() ||
+      (process.env.NODE_ENV === 'production'
+        ? undefined
+        : `http://localhost:${process.env.APP_PORT ?? 3000}`),
   };
 });

@@ -65,6 +65,17 @@ export const configurationValidationSchema = Joi.object({
   APP_VERSION: Joi.string().trim().min(1).max(50),
   APP_HOST: Joi.string().trim().min(1).default('0.0.0.0'),
   APP_PORT: Joi.number().integer().min(1).max(65535).default(3000),
+  APP_PUBLIC_URL: Joi.alternatives().conditional('NODE_ENV', {
+    is: 'production',
+    then: Joi.string()
+      .trim()
+      .uri({ scheme: ['http', 'https'] })
+      .required(),
+    otherwise: Joi.string()
+      .trim()
+      .uri({ scheme: ['http', 'https'] })
+      .default('http://localhost:3000'),
+  }),
   API_PREFIX: Joi.string().trim().min(1).default('api'),
   API_VERSION: Joi.string().trim().min(1).default('v1'),
   SWAGGER_ENABLED: Joi.boolean().truthy('true').falsy('false'),
@@ -229,10 +240,7 @@ export const configurationValidationSchema = Joi.object({
     .integer()
     .min(1024)
     .default(1048576),
-  SECURITY_TRUST_PROXY: Joi.string()
-    .trim()
-    .invalid('true', 'false')
-    .optional(),
+  SECURITY_TRUST_PROXY: Joi.string().trim().invalid('true', 'false').optional(),
   SECURITY_CSP_ENABLED: Joi.boolean()
     .truthy('true')
     .falsy('false')
