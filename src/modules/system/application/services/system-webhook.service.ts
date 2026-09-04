@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
 import type {
@@ -9,17 +14,25 @@ import type {
   WebhookSubscriptionRecord,
 } from '../../domain/webhook/webhook.contracts.js';
 import { SYSTEM_WEBHOOK_EVENTS } from '../../domain/webhook/webhook.contracts.js';
+import type {
+  SystemWebhookNetworkPort,
+  SystemWebhookSecretPort,
+  SystemWebhookSignerPort,
+} from '../../domain/webhook/webhook.ports.js';
+import {
+  SYSTEM_WEBHOOK_NETWORK_PORT,
+  SYSTEM_WEBHOOK_SECRET_PORT,
+  SYSTEM_WEBHOOK_SIGNER_PORT,
+} from '../../domain/webhook/webhook.ports.js';
 import {
   SYSTEM_WEBHOOK_REPOSITORY,
   type SystemWebhookRepository,
 } from '../../domain/repositories/system-webhook.repository.js';
-import { WebhookNetworkService } from '../../infrastructure/webhook/webhook-network.service.js';
-import { WebhookSecretService } from '../../infrastructure/webhook/webhook-secret.service.js';
-import { WebhookSignerService } from '../../infrastructure/webhook/webhook-signer.service.js';
 
 const MAX_ATTEMPTS = 5;
 const REQUEST_TIMEOUT_MS = 5_000;
 const RETRY_BASE_MS = 1_000;
+const MAX_PAYLOAD_BYTES = 1024 * 1024;
 const AUDIT_ACTION = 'SYSTEM_SETTING_UPDATED';
 
 @Injectable()
@@ -29,16 +42,23 @@ export class SystemWebhookService {
     private readonly repository: SystemWebhookRepository,
     @Inject(SECURITY_AUDIT_REPOSITORY)
     private readonly audit: SecurityAuditRepository,
-    private readonly secrets: WebhookSecretService,
-    private readonly signer: WebhookSignerService,
-    private readonly network: WebhookNetworkService,
+    @Inject(SYSTEM_WEBHOOK_SECRET_PORT)
+    private readonly secrets: SystemWebhookSecretPort,
+    @Inject(SYSTEM_WEBHOOK_SIGNER_PORT)
+    private readonly signer: SystemWebhookSignerPort,
+    @Inject(SYSTEM_WEBHOOK_NETWORK_PORT)
+    private readonly network: SystemWebhookNetworkPort,
   ) {}
 
   eventCatalog() {
     return SYSTEM_WEBHOOK_EVENTS.map((name) => ({ name, version: 1 }));
   }
 
-  async create(actorUuid: string, endpoint: string, events: readonly SystemWebhookEventName[]) {
+  async create(
+    actorUuid: string,
+    endpoint: string,
+    events: readonly SystemWebhookEventName[],
+  ) {
     const safeEndpoint = await this.network.validateTarget(endpoint);
     const normalizedEvents = this.normalizeEvents(events);
     const generated = this.secrets.generate();
@@ -51,22 +71,22 @@ export class SystemWebhookService {
       secretVersion: 1,
       secretCreatedAt: new Date(),
     });
-    await this.audit.record({
-      action: AUDIT_ACTION,
-      actorUuid,
-      subjectUuid: actorUuid,
-      entityType: 'system_setting',
-      entityUuid: row.uuid,
-      result: 'SUCCESS',
-      reason: 'webhook.created',
-    });
+    await this.auditLifecycle(actorUuid, row.uuid, 'webhook.created');
     return { ...this.toPublic(row), secret: generated.secret };
   }
 
-  async list(page = 1, limit = 20, status?: 'ACTIVE' | 'DISABLED') {
+  async list(
+    page = 1,
+    limit = 20,
+    status?: 'ACTIVE' | 'DISABLED',
+  ) {
     const normalizedPage = Math.max(1, page);
     const normalizedLimit = Math.min(100, Math.max(1, limit));
-    const result = await this.repository.listSubscriptions({ page: normalizedPage, limit: normalizedLimit, status });
+    const result = await this.repository.listSubscriptions({
+      page: normalizedPage,
+      limit: normalizedLimit,
+      status,
+    });
     return {
       items: result.items.map((row) => this.toPublic(row)),
       total: result.total,
@@ -81,42 +101,38 @@ export class SystemWebhookService {
     return this.toPublic(row);
   }
 
-  async update(actorUuid: string, uuid: string, input: { endpoint?: string; events?: readonly SystemWebhookEventName[]; enabled?: boolean }) {
+  async update(
+    actorUuid: string,
+    uuid: string,
+    input: {
+      endpoint?: string;
+      events?: readonly SystemWebhookEventName[];
+      enabled?: boolean;
+    },
+  ) {
     const existing = await this.repository.findSubscription(uuid);
     if (!existing) throw new NotFoundException('Webhook subscription not found');
     const endpoint = input.endpoint
       ? (await this.network.validateTarget(input.endpoint)).toString()
       : undefined;
-    const events = input.events ? this.normalizeEvents(input.events) : undefined;
+    const events = input.events
+      ? this.normalizeEvents(input.events)
+      : undefined;
     const row = await this.repository.updateSubscription(uuid, {
       ...(endpoint ? { endpoint } : {}),
       ...(events ? { events } : {}),
-      ...(typeof input.enabled === 'boolean' ? { status: input.enabled ? 'ACTIVE' : 'DISABLED' } : {}),
+      ...(typeof input.enabled === 'boolean'
+        ? { status: input.enabled ? 'ACTIVE' : 'DISABLED' }
+        : {}),
     });
-    await this.audit.record({
-      action: AUDIT_ACTION,
-      actorUuid,
-      subjectUuid: actorUuid,
-      entityType: 'system_setting',
-      entityUuid: uuid,
-      result: 'SUCCESS',
-      reason: 'webhook.updated',
-    });
+    await this.auditLifecycle(actorUuid, uuid, 'webhook.updated');
     return this.toPublic(row);
   }
 
   async remove(actorUuid: string, uuid: string): Promise<void> {
     await this.get(uuid);
     await this.repository.deleteSubscription(uuid);
-    await this.audit.record({
-      action: AUDIT_ACTION,
-      actorUuid,
-      subjectUuid: actorUuid,
-      entityType: 'system_setting',
-      entityUuid: uuid,
-      result: 'SUCCESS',
-      reason: 'webhook.deleted',
-    });
+    await this.auditLifecycle(actorUuid, uuid, 'webhook.deleted');
   }
 
   async rotateSecret(actorUuid: string, uuid: string) {
@@ -128,46 +144,53 @@ export class SystemWebhookService {
       secretVersion: existing.secretVersion + 1,
       secretCreatedAt: new Date(),
     });
-    await this.audit.record({
-      action: AUDIT_ACTION,
+    await this.auditLifecycle(
       actorUuid,
-      subjectUuid: actorUuid,
-      entityType: 'system_setting',
-      entityUuid: uuid,
-      result: 'SUCCESS',
-      reason: `webhook.secret_rotated.version=${row.secretVersion}`,
-    });
-    return { uuid: row.uuid, secretVersion: row.secretVersion, secret: generated.secret };
+      uuid,
+      `webhook.secret_rotated.version=${row.secretVersion}`,
+    );
+    return {
+      uuid: row.uuid,
+      secretVersion: row.secretVersion,
+      secret: generated.secret,
+    };
   }
 
-  async publish(eventName: SystemWebhookEventName, data: Record<string, unknown>) {
+  async publish(
+    eventName: SystemWebhookEventName,
+    data: Record<string, unknown>,
+  ) {
     if (!SYSTEM_WEBHOOK_EVENTS.includes(eventName)) {
       throw new ForbiddenException('Unsupported webhook event');
     }
-    const subscriptions = await this.repository.listSubscriptions({ page: 1, limit: 100, status: 'ACTIVE' });
+    const subscriptions = await this.repository.listSubscriptions({
+      page: 1,
+      limit: 100,
+      status: 'ACTIVE',
+    });
     for (const subscription of subscriptions.items) {
-      if (!subscription.events.includes(eventName)) continue;
-      await this.deliver(subscription, eventName, 1, data);
+      if (subscription.events.includes(eventName)) {
+        await this.deliver(subscription, eventName, 1, data);
+      }
     }
   }
 
   async test(actorUuid: string, uuid: string) {
     const row = await this.repository.findSubscription(uuid);
     if (!row) throw new NotFoundException('Webhook subscription not found');
-    const delivery = await this.deliver(row, 'system.activity.created', 1, { test: true, initiatedBy: actorUuid });
-    await this.audit.record({
-      action: AUDIT_ACTION,
-      actorUuid,
-      subjectUuid: actorUuid,
-      entityType: 'system_setting',
-      entityUuid: uuid,
-      result: delivery.state === 'SUCCEEDED' ? 'SUCCESS' : 'FAILURE',
-      reason: 'webhook.tested',
+    const delivery = await this.deliver(row, 'system.activity.created', 1, {
+      test: true,
     });
+    await this.auditLifecycle(actorUuid, uuid, 'webhook.tested');
     return this.toDelivery(delivery);
   }
 
-  async listDeliveries(uuid: string, page = 1, limit = 20, state?: WebhookDeliveryState) {
+  async listDeliveries(
+    uuid: string,
+    page = 1,
+    limit = 20,
+    state?: WebhookDeliveryState,
+  ) {
     await this.get(uuid);
     const result = await this.repository.listDeliveries({
       subscriptionUuid: uuid,
@@ -175,31 +198,41 @@ export class SystemWebhookService {
       limit: Math.min(100, Math.max(1, limit)),
       state,
     });
-    return { ...result, items: result.items.map((item) => this.toDelivery(item)) };
+    return {
+      ...result,
+      items: result.items.map((item) => this.toDelivery(item)),
+    };
   }
 
   async replay(actorUuid: string, deliveryUuid: string) {
     const existing = await this.repository.findDelivery(deliveryUuid);
     if (!existing) throw new NotFoundException('Webhook delivery not found');
-    const subscription = await this.repository.findSubscriptionByDelivery(deliveryUuid);
-    if (!subscription) throw new NotFoundException('Webhook subscription not found');
-    const delivery = await this.deliver(subscription, existing.eventName, existing.eventVersion, {
-      replayOf: existing.uuid,
-      replayRequestedBy: actorUuid,
-    });
-    await this.audit.record({
-      action: AUDIT_ACTION,
+    const subscription = await this.repository.findSubscriptionByDelivery(
+      deliveryUuid,
+    );
+    if (!subscription) {
+      throw new NotFoundException('Webhook subscription not found');
+    }
+    const delivery = await this.deliver(
+      subscription,
+      existing.eventName,
+      existing.eventVersion,
+      { replayOf: existing.uuid },
+    );
+    await this.auditLifecycle(
       actorUuid,
-      subjectUuid: actorUuid,
-      entityType: 'system_setting',
-      entityUuid: subscription.uuid,
-      result: delivery.state === 'SUCCEEDED' ? 'SUCCESS' : 'FAILURE',
-      reason: `webhook.replayed.delivery=${delivery.uuid}`,
-    });
+      subscription.uuid,
+      `webhook.replayed.delivery=${delivery.uuid}`,
+    );
     return this.toDelivery(delivery);
   }
 
-  private async deliver(subscription: WebhookSubscriptionRecord, eventName: SystemWebhookEventName, eventVersion: number, data: Record<string, unknown>): Promise<WebhookDeliveryRecord> {
+  private async deliver(
+    subscription: WebhookSubscriptionRecord,
+    eventName: SystemWebhookEventName,
+    eventVersion: number,
+    data: Record<string, unknown>,
+  ): Promise<WebhookDeliveryRecord> {
     const deliveryId = randomUUID();
     const timestamp = Math.floor(Date.now() / 1000);
     const payload = this.signer.buildPayload({
@@ -209,6 +242,9 @@ export class SystemWebhookService {
       occurredAt: new Date(timestamp * 1000).toISOString(),
       data,
     });
+    if (Buffer.byteLength(payload, 'utf8') > MAX_PAYLOAD_BYTES) {
+      throw new ForbiddenException('Webhook payload exceeds the configured limit');
+    }
     const payloadHash = this.signer.payloadHash(payload);
     await this.repository.createDelivery({
       uuid: deliveryId,
@@ -221,53 +257,60 @@ export class SystemWebhookService {
     });
 
     const secret = this.secrets.decrypt(subscription.secretCiphertext);
-    const signature = this.signer.signature(secret, timestamp, deliveryId, payload);
+    const signature = this.signer.signature(
+      secret,
+      timestamp,
+      deliveryId,
+      payload,
+    );
     let lastFailure = 'Webhook delivery failed';
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-      await this.repository.updateDelivery(deliveryId, { state: 'DELIVERING', attemptCount: attempt });
+      await this.repository.updateDelivery(deliveryId, {
+        state: 'DELIVERING',
+        attemptCount: attempt,
+      });
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-        try {
-          const response = await fetch(subscription.endpoint, {
-            method: 'POST',
-            redirect: 'manual',
-            headers: {
-              'Content-Type': 'application/json',
-              'User-Agent': 'EstatePro-Webhooks/1',
-              'X-Webhook-Id': deliveryId,
-              'X-Webhook-Timestamp': String(timestamp),
-              'X-Webhook-Signature': `v1=${signature}`,
-              'X-Webhook-Event': eventName,
-              'X-Webhook-Version': String(eventVersion),
-            },
-            body: payload,
-            signal: controller.signal,
+        const response = await this.network.send({
+          endpoint: subscription.endpoint,
+          payload,
+          timeoutMs: REQUEST_TIMEOUT_MS,
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'EstatePro-Webhooks/1',
+            'X-Webhook-Id': deliveryId,
+            'X-Webhook-Timestamp': String(timestamp),
+            'X-Webhook-Signature': `v1=${signature}`,
+            'X-Webhook-Event': eventName,
+            'X-Webhook-Version': String(eventVersion),
+          },
+        });
+        if (response.status >= 200 && response.status < 300) {
+          return this.repository.updateDelivery(deliveryId, {
+            state: 'SUCCEEDED',
+            httpStatus: response.status,
+            completedAt: new Date(),
+            responseSummary: `HTTP ${response.status}`,
+            nextAttemptAt: null,
+            failureReason: null,
           });
-          if (response.status >= 200 && response.status < 300) {
-            return this.repository.updateDelivery(deliveryId, {
-              state: 'SUCCEEDED',
-              httpStatus: response.status,
-              completedAt: new Date(),
-              responseSummary: `HTTP ${response.status}`,
-              nextAttemptAt: null,
-              failureReason: null,
-            });
-          }
-          if (response.status >= 300 && response.status < 400) {
-            lastFailure = 'Redirects are not allowed for webhook delivery';
-            break;
-          }
-          lastFailure = `HTTP ${response.status}`;
-        } finally {
-          clearTimeout(timeout);
         }
+        if (response.status >= 300 && response.status < 400) {
+          lastFailure = 'Redirects are not allowed for webhook delivery';
+          break;
+        }
+        lastFailure = `HTTP ${response.status}`;
       } catch (error: unknown) {
-        lastFailure = error instanceof Error && error.name === 'AbortError' ? 'Webhook request timed out' : 'Webhook request failed';
+        lastFailure =
+          error instanceof Error && error.name === 'AbortError'
+            ? 'Webhook request timed out'
+            : 'Webhook request failed';
       }
       if (attempt < MAX_ATTEMPTS) {
-        const delay = Math.min(RETRY_BASE_MS * 2 ** (attempt - 1) + Math.floor(Math.random() * 250), 30_000);
+        const delay = Math.min(
+          RETRY_BASE_MS * 2 ** (attempt - 1) + Math.floor(Math.random() * 250),
+          30_000,
+        );
         await this.repository.updateDelivery(deliveryId, {
           state: 'RETRYING',
           nextAttemptAt: new Date(Date.now() + delay),
@@ -275,6 +318,7 @@ export class SystemWebhookService {
         });
       }
     }
+
     return this.repository.updateDelivery(deliveryId, {
       state: 'DEAD_LETTER',
       completedAt: new Date(),
@@ -286,11 +330,25 @@ export class SystemWebhookService {
 
   private normalizeEvents(events: readonly SystemWebhookEventName[]) {
     const unique = [...new Set(events)];
-    if (unique.length === 0) throw new ForbiddenException('At least one webhook event is required');
+    if (unique.length === 0) {
+      throw new ForbiddenException('At least one webhook event is required');
+    }
     if (unique.some((event) => !SYSTEM_WEBHOOK_EVENTS.includes(event))) {
       throw new ForbiddenException('Unsupported webhook event');
     }
     return unique;
+  }
+
+  private async auditLifecycle(actorUuid: string, uuid: string, reason: string) {
+    await this.audit.record({
+      action: AUDIT_ACTION,
+      actorUuid,
+      subjectUuid: actorUuid,
+      entityType: 'system_setting',
+      entityUuid: uuid,
+      result: 'SUCCESS',
+      reason,
+    });
   }
 
   private toPublic(row: WebhookSubscriptionRecord) {
