@@ -19,6 +19,7 @@ export interface SystemWebhookRepository {
     secretCreatedAt: Date;
   }): Promise<WebhookSubscriptionRecord>;
   findSubscription(uuid: string): Promise<WebhookSubscriptionRecord | null>;
+  findSubscriptionByDelivery(deliveryUuid: string): Promise<WebhookSubscriptionRecord | null>;
   listSubscriptions(input: { page: number; limit: number; status?: WebhookSubscriptionStatus }): Promise<{
     items: readonly WebhookSubscriptionRecord[];
     total: number;
