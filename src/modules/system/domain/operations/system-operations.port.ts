@@ -3,6 +3,7 @@ import type { SystemOperationalDiagnostics, SystemOperationalState } from './sys
 export const SYSTEM_OPERATIONS_PORT = Symbol('SYSTEM_OPERATIONS_PORT');
 export const SYSTEM_STORAGE_HEALTH_PORT = Symbol('SYSTEM_STORAGE_HEALTH_PORT');
 export const SYSTEM_JOB_HEALTH_PORT = Symbol('SYSTEM_JOB_HEALTH_PORT');
+export const SYSTEM_DATABASE_HEALTH_PORT = Symbol('SYSTEM_DATABASE_HEALTH_PORT');
 
 export interface SystemOperationsPort {
   state(): Promise<SystemOperationalState>;
@@ -16,5 +17,9 @@ export interface SystemStorageHealthPort {
 }
 
 export interface SystemJobHealthPort {
+  check(): Promise<'up' | 'down' | 'unknown'>;
+}
+
+export interface SystemDatabaseHealthPort {
   check(): Promise<'up' | 'down' | 'unknown'>;
 }
