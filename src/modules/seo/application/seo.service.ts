@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  buildCanonicalUrl,
   buildSeoMetadata,
   isPubliclyIndexable,
   normalizeSeoText,
@@ -47,8 +46,9 @@ export class SeoService {
       identifier,
       language,
     );
-    if (!resource || !isPubliclyIndexable(resource))
+    if (!resource || !isPubliclyIndexable(resource)) {
       throw new NotFoundException('Public SEO resource not found');
+    }
     return {
       resource,
       metadata: buildSeoMetadata(
@@ -63,7 +63,12 @@ export class SeoService {
     resourceType: SeoResourceSnapshot['resourceType'],
     identifier: string,
     language = 'id',
-  ) {
+  ): Promise<{
+    resourceType: SeoResourceSnapshot['resourceType'];
+    uuid: string;
+    slug: string;
+    metadata: SeoMetadata;
+  }> {
     const result = await this.getPublicResource(
       resourceType,
       identifier,
@@ -94,13 +99,14 @@ export class SeoService {
       url: metadata.canonicalUrl,
       dateModified: resource.updatedAt.toISOString(),
     };
-    if (resourceType === 'article')
+    if (resourceType === 'article') {
       return {
         ...base,
         '@type': 'Article',
         headline: metadata.title,
         datePublished: resource.publishedAt?.toISOString(),
       };
+    }
     if (resourceType === 'listing') return { ...base, '@type': 'Offer' };
     return { ...base, '@type': 'WebPage' };
   }
@@ -201,12 +207,14 @@ export class SeoService {
   }): Promise<SeoRedirect> {
     const sourcePath = this.normalizeInternalPath(input.sourcePath);
     const destination = this.normalizeInternalPath(input.destination);
-    if (sourcePath === destination)
+    if (sourcePath === destination) {
       throw new ConflictException(
         'Redirect source and destination must differ',
       );
-    if (await this.wouldCycle(sourcePath, destination))
+    }
+    if (await this.wouldCycle(sourcePath, destination)) {
       throw new ConflictException('Redirect cycle detected');
+    }
     return this.repository.upsertRedirect({
       ...input,
       sourcePath,
@@ -225,14 +233,16 @@ export class SeoService {
       !Number.isInteger(chunkSize) ||
       chunkSize < 1 ||
       chunkSize > 50000
-    )
+    ) {
       throw new BadRequestException('Invalid sitemap parameters');
+    }
     const resources = (await this.repository.listPublicResources()).filter(
       isPubliclyIndexable,
     );
     const slice = resources.slice((part - 1) * chunkSize, part * chunkSize);
-    if (slice.length === 0)
+    if (slice.length === 0) {
       throw new NotFoundException('Sitemap part not found');
+    }
     const urls = slice
       .map((resource) => {
         const metadata = buildSeoMetadata(
@@ -299,13 +309,19 @@ export class SeoService {
       !input.startsWith('/') ||
       input.startsWith('//') ||
       /[\r\n]/.test(input)
-    )
+    ) {
       throw new BadRequestException('Redirect path must be internal');
+    }
     const url = new URL(input, this.baseUrl());
-    if (url.origin !== new URL(this.baseUrl()).origin || url.search || url.hash)
+    if (
+      url.origin !== new URL(this.baseUrl()).origin ||
+      url.search ||
+      url.hash
+    ) {
       throw new BadRequestException(
         'Redirect path must be a clean internal path',
       );
+    }
     return url.pathname.replace(/\/+/g, '/').replace(/\/$/, '') || '/';
   }
 
@@ -316,8 +332,9 @@ export class SeoService {
         url.origin !== new URL(this.baseUrl()).origin ||
         url.username ||
         url.password
-      )
+      ) {
         throw new Error();
+      }
       url.search = '';
       url.hash = '';
       return url.toString();
@@ -337,16 +354,19 @@ export class SeoService {
       title !== undefined &&
       title !== null &&
       normalizeSeoText(title).length > 60
-    )
+    ) {
       throw new BadRequestException('SEO title exceeds 60 characters');
+    }
     if (
       description !== undefined &&
       description !== null &&
       normalizeSeoText(description).length > 160
-    )
+    ) {
       throw new BadRequestException('SEO description exceeds 160 characters');
-    if (canonicalUrl !== undefined && canonicalUrl !== null)
+    }
+    if (canonicalUrl !== undefined && canonicalUrl !== null) {
       this.validateCanonicalUrl(canonicalUrl);
+    }
   }
 
   private baseUrl(): string {
