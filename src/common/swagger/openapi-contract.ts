@@ -939,7 +939,14 @@ export const applyOpenApiContract = (
         normalized === '/auth/refresh' ||
         normalized === '/auth/2fa/verify' ||
         normalized === '/health/live' ||
-        normalized === '/health/ready';
+        normalized === '/health/ready' ||
+        normalized === '/seo/public/{resourceType}/{identifier}' ||
+        normalized ===
+          '/seo/public/{resourceType}/{identifier}/structured-data' ||
+        normalized === '/seo/sitemap-index.xml' ||
+        normalized === '/seo/sitemap/{part}.xml' ||
+        normalized === '/seo/robots.txt' ||
+        normalized === '/seo/redirect';
       operation.security = publicEndpoint ? [] : [{ bearer: [] }];
 
       if (
@@ -1021,12 +1028,7 @@ export const applyOpenApiContract = (
         );
         setErrors(operation, [401, 500]);
       } else if (normalized === '/auth/me' && method === 'get') {
-        setResponse(
-          operation,
-          200,
-          ref('UserResponse'),
-          'Current user returned.',
-        );
+        setResponse(operation, 200, ref('UserResponse'), 'Current user returned.');
         setErrors(operation, [401, 404, 500]);
       } else if (normalized === '/auth/sessions' && method === 'get') {
         addQueryParam(
@@ -1244,7 +1246,10 @@ export const applyOpenApiContract = (
           setNoContent(operation, 'User deleted.');
           setErrors(operation, [400, 401, 403, 404, 409, 500]);
         }
-      } else if (/^\/health\/live$/.test(normalized) && method === 'get') {
+      } else if (
+        normalized === '/health/live' &&
+        method === 'get'
+      ) {
         operation.security = [];
         setResponse(
           operation,
