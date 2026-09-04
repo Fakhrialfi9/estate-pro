@@ -137,7 +137,7 @@ export class PrismaSystemExportRepository implements SystemExportRepository {
     return { items: items.map(toRecord), total };
   }
 
-  async deleteExpired(now: Date, limit: number) {
+  async listExpired(now: Date, limit: number) {
     const rows = await this.prisma.systemExportJob.findMany({
       where: {
         expiresAt: { lte: now },
@@ -146,11 +146,11 @@ export class PrismaSystemExportRepository implements SystemExportRepository {
       orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
       take: limit,
     });
-    if (rows.length > 0) {
-      await this.prisma.systemExportJob.deleteMany({
-        where: { id: { in: rows.map((row) => row.id) } },
-      });
-    }
     return rows.map(toRecord);
+  }
+
+  async deleteMany(uuids: readonly string[]): Promise<void> {
+    if (uuids.length === 0) return;
+    await this.prisma.systemExportJob.deleteMany({ where: { uuid: { in: [...uuids] } } });
   }
 }
