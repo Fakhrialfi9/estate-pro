@@ -26,10 +26,10 @@ describe('SystemActivityService', () => {
     );
   });
 
-  it('rejects incomplete events', async () => {
+  it('rejects incomplete events', () => {
     const service = new SystemActivityService({ append: vi.fn() } as never);
-    await expect(
+    expect(() =>
       service.append({ eventType: '', category: 'SYSTEM', summary: 'x' }),
-    ).rejects.toThrow();
+    ).toThrow('Activity event is incomplete');
   });
 });
