@@ -1,10 +1,12 @@
 import { createHash, createHmac } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import type { SystemWebhookSignerPort } from '../../domain/webhook/webhook.ports.js';
+import type { SystemWebhookEventName } from '../../domain/webhook/webhook.contracts.js';
 
 @Injectable()
-export class WebhookSignerService {
+export class WebhookSignerService implements SystemWebhookSignerPort {
   buildPayload(input: {
-    eventName: string;
+    eventName: SystemWebhookEventName;
     eventVersion: number;
     deliveryId: string;
     occurredAt: string;
@@ -20,8 +22,9 @@ export class WebhookSignerService {
   }
 
   signature(secret: string, timestamp: number, deliveryId: string, payload: string): string {
-    const signed = `${timestamp}.${deliveryId}.${payload}`;
-    return createHmac('sha256', secret).update(signed, 'utf8').digest('hex');
+    return createHmac('sha256', secret)
+      .update(`${timestamp}.${deliveryId}.${payload}`, 'utf8')
+      .digest('hex');
   }
 
   payloadHash(payload: string): string {
