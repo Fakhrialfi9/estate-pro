@@ -630,6 +630,10 @@ export class AutomationService {
     );
     const visited = new Set<string>();
     while (current) {
+      const latest = await this.repo.getExecution(
+        toStringValue(execution.uuid),
+      );
+      if (toStringValue(record(latest).state) === 'CANCELLED') return latest;
       if (visited.has(current))
         return this.failExecution(
           toStringValue(execution.uuid),
@@ -673,6 +677,9 @@ export class AutomationService {
     context: Record<string, unknown>,
     workerId: string,
   ) {
+    const latest = await this.repo.getExecution(toStringValue(execution.uuid));
+    if (toStringValue(record(latest).state) === 'CANCELLED')
+      return { success: false, execution: latest };
     const existing = (
       await this.repo.listActions(toStringValue(execution.uuid))
     ).find((value) => toStringValue(record(value).nodeId) === node.id);
