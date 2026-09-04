@@ -5,6 +5,12 @@ const PUBLIC_PATHS = new Set([
   '/api/v1/auth/2fa/verify',
   '/api/v1/health/live',
   '/api/v1/health/ready',
+  '/api/v1/seo/public/{resourceType}/{identifier}',
+  '/api/v1/seo/public/{resourceType}/{identifier}/structured-data',
+  '/api/v1/seo/sitemap-index.xml',
+  '/api/v1/seo/sitemap/{part}.xml',
+  '/api/v1/seo/robots.txt',
+  '/api/v1/seo/redirect',
 ]);
 const KNOWN_FORMATS = new Set(['date', 'date-time', 'duration', 'email', 'hostname', 'ipv4', 'ipv6', 'uri', 'uri-reference', 'uuid', 'regex', 'json-pointer', 'relative-json-pointer', 'byte', 'binary', 'password']);
 const SENSITIVE_NAMES = new Set(['password', 'passwordHash', 'passwordConfirmation', 'refreshToken', 'accessToken', 'secret', 'sessionSecret', 'jwtSecret', 'twoFactorSecret', 'recoveryCodes', 'clientSecret']);
