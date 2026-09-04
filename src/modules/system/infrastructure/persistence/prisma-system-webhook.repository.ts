@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import type {
   SystemWebhookEventName,
   WebhookDeliveryRecord,
@@ -37,6 +38,7 @@ const toDelivery = (row: {
   id: bigint;
   uuid: string;
   subscriptionId: bigint;
+  eventId: string;
   eventName: string;
   eventVersion: number;
   payloadHash: string;
@@ -151,15 +153,34 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
   async createDelivery(input: {
     uuid: string;
     subscriptionId: bigint;
+    eventId: string;
     eventName: SystemWebhookEventName;
     eventVersion: number;
     payloadHash: string;
     state: WebhookDeliveryState;
     signedAt: Date;
     nextAttemptAt?: Date | null;
-  }) {
-    const row = await this.prisma.systemWebhookDelivery.create({ data: input });
-    return toDelivery(row);
+  }): Promise<{ created: boolean; record: WebhookDeliveryRecord }> {
+    try {
+      const row = await this.prisma.systemWebhookDelivery.create({
+        data: input,
+      });
+      return { created: true, record: toDelivery(row) };
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const existing = await this.prisma.systemWebhookDelivery.findFirst({
+          where: {
+            subscriptionId: input.subscriptionId,
+            eventId: input.eventId,
+          },
+        });
+        if (existing) return { created: false, record: toDelivery(existing) };
+      }
+      throw error;
+    }
   }
 
   async findDelivery(uuid: string): Promise<WebhookDeliveryRecord | null> {
