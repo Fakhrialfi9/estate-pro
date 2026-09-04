@@ -139,7 +139,6 @@ export class SystemSettingsService {
       resourceUuid: result.uuid,
       summary: `Updated ${normalizedKey}`,
       metadata: { key: normalizedKey, version: result.version },
-      requestId: null,
     });
     return {
       key: result.key,
