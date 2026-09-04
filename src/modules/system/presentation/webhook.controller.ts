@@ -2,9 +2,9 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
-import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
-import { RequirePermissions } from '../../common/security/authorization.decorators.js';
-import { SystemWebhookService } from '../system/application/services/system-webhook.service.js';
+import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
+import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
+import { SystemWebhookService } from '../application/services/system-webhook.service.js';
 import { CreateWebhookDto, DeliveryListQueryDto, UpdateWebhookDto, WebhookListQueryDto } from './dto/webhook.dto.js';
 
 @ApiTags('System Webhooks')
