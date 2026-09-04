@@ -16,18 +16,9 @@ import type {
   SeoRedirect,
   SeoResourceSnapshot,
 } from '../domain/seo.types.js';
-import {
-  SEO_REPOSITORY,
-  type SeoRepository,
-} from '../domain/repositories/seo.repository.js';
-import {
-  SITEMAP_QUERY,
-  type SitemapQuery,
-} from '../domain/repositories/sitemap.query.js';
-import {
-  PROPERTY_SEO_PUBLIC_PORT,
-  type PropertySeoPublicPort,
-} from '../../../common/contracts/property-seo-public.port.js';
+import { SEO_REPOSITORY, type SeoRepository } from '../domain/repositories/seo.repository.js';
+import { SITEMAP_QUERY, type SitemapQuery } from '../domain/repositories/sitemap.query.js';
+import { PROPERTY_SEO_PUBLIC_PORT, type PropertySeoPublicPort } from '../../../common/contracts/property-seo-public.port.js';
 import { buildPropertyStructuredData } from '../domain/property-structured-data.js';
 
 const escapeXml = (value: string): string =>
@@ -35,7 +26,7 @@ const escapeXml = (value: string): string =>
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\"/g, '&quot;')
+    .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 
 @Injectable()
@@ -43,8 +34,7 @@ export class SeoService {
   constructor(
     @Inject(SEO_REPOSITORY) private readonly repository: SeoRepository,
     @Inject(SITEMAP_QUERY) private readonly sitemapQuery: SitemapQuery,
-    @Inject(PROPERTY_SEO_PUBLIC_PORT)
-    private readonly propertyPublic: PropertySeoPublicPort,
+    @Inject(PROPERTY_SEO_PUBLIC_PORT) private readonly propertyPublic: PropertySeoPublicPort,
     private readonly config: ConfigService,
   ) {}
 
@@ -167,7 +157,12 @@ export class SeoService {
     return this.repository.listRedirects();
   }
 
-  async createRedirect(input: { sourcePath: string; destination: string; statusCode: 301 | 302; actorUuid: string }): Promise<SeoRedirect> {
+  async createRedirect(input: {
+    sourcePath: string;
+    destination: string;
+    statusCode: 301 | 302;
+    actorUuid: string;
+  }): Promise<SeoRedirect> {
     const sourcePath = this.normalizeInternalPath(input.sourcePath);
     const destination = this.normalizeInternalPath(input.destination);
     if (sourcePath === destination) throw new ConflictException('Redirect source and destination must differ');
@@ -180,10 +175,14 @@ export class SeoService {
   }
 
   async sitemapChunk(part: number, chunkSize = 50000): Promise<string> {
-    if (!Number.isInteger(part) || part < 1 || !Number.isInteger(chunkSize) || chunkSize < 1 || chunkSize > 50000) throw new BadRequestException('Invalid sitemap parameters');
+    if (!Number.isInteger(part) || part < 1 || !Number.isInteger(chunkSize) || chunkSize < 1 || chunkSize > 50000) {
+      throw new BadRequestException('Invalid sitemap parameters');
+    }
     const entries = await this.sitemapQuery.page(part, chunkSize);
     if (entries.length === 0) throw new NotFoundException('Sitemap part not found');
-    const urls = entries.map((entry) => `<url><loc>${escapeXml(entry.loc)}</loc><lastmod>${escapeXml(entry.lastmod)}</lastmod></url>`).join('');
+    const urls = entries
+      .map((entry) => `<url><loc>${escapeXml(entry.loc)}</loc><lastmod>${escapeXml(entry.lastmod)}</lastmod></url>`)
+      .join('');
     return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
   }
 
@@ -198,17 +197,7 @@ export class SeoService {
   }
 
   robots(): string {
-    return [
-      'User-agent: *',
-      'Allow: /',
-      'Allow: /api/v1/seo/public/',
-      'Allow: /api/v1/seo/sitemap-index.xml',
-      'Allow: /api/v1/seo/sitemap/',
-      'Disallow: /api/',
-      'Disallow: /docs',
-      'Disallow: /seo/admin/',
-      `Sitemap: ${this.baseUrl()}/api/v1/seo/sitemap-index.xml`,
-    ].join('\n');
+    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /docs\nDisallow: /seo/admin/\nSitemap: ${this.baseUrl()}/api/v1/seo/sitemap-index.xml`;
   }
 
   private async wouldCycle(source: string, destination: string): Promise<boolean> {
