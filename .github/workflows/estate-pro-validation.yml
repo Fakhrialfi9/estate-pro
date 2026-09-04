@@ -54,6 +54,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Production dependency security gate
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Prisma schema validation
         run: npx prisma validate
 
@@ -94,9 +97,6 @@ jobs:
       - name: Architecture validation
         run: npm run check:architecture
 
-      - name: Complete test suite
-        run: npm run test
-
       - name: Unit tests
         run: npm run test:unit
 
@@ -120,9 +120,6 @@ jobs:
 
       - name: E2E coverage
         run: npm run test:coverage:e2e
-
-      - name: Aggregate test suite
-        run: npm run test:all
 
       - name: Production build
         run: npm run build
