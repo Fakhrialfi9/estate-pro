@@ -45,7 +45,6 @@ export class ExportQueryDto {
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(100)
   page = 1;
 
   @IsOptional()
@@ -55,6 +54,6 @@ export class ExportQueryDto {
   limit = 20;
 
   @IsOptional()
-  @IsIn(['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED'])
-  state?: string;
+  @IsIn(['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED'])
+  state?: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
 }
