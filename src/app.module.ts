@@ -26,6 +26,7 @@ import { PropertyMatchingModule } from './modules/property-matching/property-mat
 import { AutomationModule } from './modules/automation/automation.module.js';
 import { AgentManagementModule } from './modules/agent-management/agent-management.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
+import { SeoModule } from './modules/seo/seo.module.js';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module.js';
     PropertyMatchingModule,
     AutomationModule,
     AnalyticsModule,
+    SeoModule,
     HealthModule,
   ],
   controllers: [AppController],
