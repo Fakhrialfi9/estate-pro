@@ -6,6 +6,7 @@ import type { SystemWebhookEventName } from '../../domain/webhook/webhook.contra
 @Injectable()
 export class WebhookSignerService implements SystemWebhookSignerPort {
   buildPayload(input: {
+    eventId: string;
     eventName: SystemWebhookEventName;
     eventVersion: number;
     deliveryId: string;
@@ -13,7 +14,8 @@ export class WebhookSignerService implements SystemWebhookSignerPort {
     data: Record<string, unknown>;
   }): string {
     return JSON.stringify({
-      id: input.deliveryId,
+      id: input.eventId,
+      deliveryId: input.deliveryId,
       type: input.eventName,
       version: input.eventVersion,
       occurredAt: input.occurredAt,
