@@ -57,7 +57,7 @@ export class SystemOperationsService {
       expectedVersion: current?.version,
     });
     await this.audit.record({
-      action: 'SYSTEM_MAINTENANCE_TOGGLED',
+      action: 'SYSTEM_SETTING_UPDATED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_setting',
@@ -80,7 +80,7 @@ export class SystemOperationsService {
       expectedVersion: current?.version,
     });
     await this.audit.record({
-      action: 'SYSTEM_READ_ONLY_TOGGLED',
+      action: 'SYSTEM_SETTING_UPDATED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_setting',
