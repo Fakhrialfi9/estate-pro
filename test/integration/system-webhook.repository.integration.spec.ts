@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { AppModule } from '../../src/app.module.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 import { PrismaSystemWebhookRepository } from '../../src/modules/system/infrastructure/persistence/prisma-system-webhook.repository.js';
 
@@ -19,14 +20,16 @@ describe('System webhook repository integration', () => {
     process.env.JWT_SECRET ??= 'estate-pro-webhook-integration-secret-32-chars';
     process.env.TWO_FACTOR_ENCRYPTION_KEY ??=
       'estate-pro-two-factor-integration-key-32-chars-minimum';
+    process.env.SEED_ADMIN_PASSWORD ??= randomBytes(32).toString('hex');
+    process.env.SEED_DEVELOPMENT_USER_PASSWORD ??= randomBytes(32).toString('hex');
 
     moduleRef = await Test.createTestingModule({
-      providers: [PrismaService, PrismaSystemWebhookRepository],
+      imports: [AppModule],
     }).compile();
 
     prisma = moduleRef.get(PrismaService);
     repository = moduleRef.get(PrismaSystemWebhookRepository);
-    await prisma.$connect();
+    await moduleRef.init();
 
     const subscription = await prisma.systemWebhookSubscription.create({
       data: {
