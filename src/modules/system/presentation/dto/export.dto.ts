@@ -9,12 +9,25 @@ import {
   Min,
 } from 'class-validator';
 
+export const EXPORT_COLUMNS = [
+  'uuid',
+  'actorUuid',
+  'eventType',
+  'category',
+  'resourceType',
+  'resourceUuid',
+  'summary',
+  'metadata',
+  'requestId',
+  'createdAt',
+] as const;
+
 export class ExportDto {
   @IsIn(['system_activity'])
   entity = 'system_activity' as const;
 
-  @IsIn(['csv', 'json'])
-  format!: 'csv' | 'json';
+  @IsIn(['csv', 'json', 'xlsx'])
+  format!: 'csv' | 'json' | 'xlsx';
 
   @IsOptional()
   @IsInt()
@@ -39,6 +52,14 @@ export class ExportDto {
   @IsString()
   @MaxLength(80)
   eventType?: string;
+
+  @IsOptional()
+  @IsIn(['createdAt_asc', 'createdAt_desc'])
+  sort?: 'createdAt_asc' | 'createdAt_desc';
+
+  @IsOptional()
+  @IsIn(EXPORT_COLUMNS, { each: true })
+  columns?: (typeof EXPORT_COLUMNS)[number][];
 }
 
 export class ExportQueryDto {
@@ -54,6 +75,6 @@ export class ExportQueryDto {
   limit = 20;
 
   @IsOptional()
-  @IsIn(['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED'])
-  state?: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+  @IsIn(['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED'])
+  state?: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 }
