@@ -2,34 +2,44 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { SystemWebhookService } from '../../../src/modules/system/application/services/system-webhook.service.js';
 import type { SystemWebhookRepository } from '../../../src/modules/system/domain/repositories/system-webhook.repository.js';
-import type { WebhookSubscriptionRecord } from '../../../src/modules/system/domain/webhook/webhook.contracts.js';
+import type {
+  WebhookDeliveryRecord,
+  WebhookSubscriptionRecord,
+} from '../../../src/modules/system/domain/webhook/webhook.contracts.js';
 
-const subscription = (filters = []) =>
-  ({
-    id: 1n,
-    uuid: 'sub-uuid',
-    endpoint: 'https://example.test/webhook',
-    status: 'ACTIVE',
-    events: ['system.activity.created'],
-    filters,
-    secretCiphertext: 'ciphertext',
-    secretVersion: 1,
-    secretCreatedAt: new Date('2026-01-01T00:00:00.000Z'),
-    createdAt: new Date('2026-01-01T00:00:00.000Z'),
-    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-  }) as WebhookSubscriptionRecord;
+type CreateDeliveryInput = Parameters<SystemWebhookRepository['createDelivery']>[0];
+type UpdateDeliveryInput = Parameters<SystemWebhookRepository['updateDelivery']>[1];
 
-const delivery = (eventId: string, deliveryKey: string) => ({
+const subscription = (
+  filters: WebhookSubscriptionRecord['filters'] = [],
+): WebhookSubscriptionRecord => ({
+  id: 1n,
+  uuid: 'sub-uuid',
+  endpoint: 'https://example.test/webhook',
+  status: 'ACTIVE',
+  events: ['system.activity.created'],
+  filters,
+  secretCiphertext: 'ciphertext',
+  secretVersion: 1,
+  secretCreatedAt: new Date('2026-01-01T00:00:00.000Z'),
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+});
+
+const delivery = (
+  eventId: string,
+  deliveryKey: string,
+): WebhookDeliveryRecord => ({
   id: 1n,
   uuid: deliveryKey,
   subscriptionId: 1n,
   eventId,
   deliveryKey,
-  eventName: 'system.activity.created' as const,
+  eventName: 'system.activity.created',
   eventVersion: 1,
   payloadHash: 'hash'.padEnd(64, '0'),
   attemptCount: 1,
-  state: 'SUCCEEDED' as const,
+  state: 'SUCCEEDED',
   httpStatus: 200,
   responseSummary: 'HTTP 200',
   nextAttemptAt: null,
@@ -46,11 +56,18 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
       items: rows,
       total: rows.length,
     }),
-    createDelivery: vi.fn().mockResolvedValue({
-      created: true,
-      record: delivery('event-1', 'event-1'),
-    }),
-    updateDelivery: vi.fn().mockResolvedValue(delivery('event-1', 'event-1')),
+    createDelivery: vi
+      .fn(async (input: CreateDeliveryInput) => ({
+        created: true,
+        record: delivery(input.eventId, input.deliveryKey),
+      }))
+      .mockName('createDelivery'),
+    updateDelivery: vi
+      .fn(async (uuid: string, input: UpdateDeliveryInput) => ({
+        ...delivery('event-1', uuid),
+        ...input,
+      }))
+      .mockName('updateDelivery'),
     listRecentDeliveries: vi.fn().mockResolvedValue([]),
     findDelivery: vi.fn(),
     findSubscriptionByDelivery: vi.fn(),
@@ -64,7 +81,9 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     decrypt: vi.fn().mockReturnValue('secret'),
   };
   const signer = {
-    buildPayload: vi.fn().mockImplementation((input) => JSON.stringify(input)),
+    buildPayload: vi.fn().mockImplementation((input: unknown) =>
+      JSON.stringify(input),
+    ),
     signature: vi.fn().mockReturnValue('signature'),
     payloadHash: vi.fn().mockReturnValue('hash'.padEnd(64, '0')),
   };
@@ -77,7 +96,6 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
   const config = {
     get: vi.fn((_key: string, fallback: unknown) => fallback),
   };
-  const metrics = { webhookAttempt: vi.fn() };
 
   const service = new SystemWebhookService(
     repository,
@@ -86,9 +104,8 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     signer,
     network,
     config as never,
-    metrics as never,
   );
-  return { service, repository, network, signer, audit, metrics };
+  return { service, repository, network };
 };
 
 describe('SystemWebhookService', () => {
@@ -126,21 +143,25 @@ describe('SystemWebhookService', () => {
       .fn()
       .mockResolvedValue(delivery('event-1', 'original-delivery'));
     repository.findSubscriptionByDelivery = vi.fn().mockResolvedValue(row);
-    repository.createDelivery = vi.fn().mockImplementation(async (input) => ({
+
+    const createDelivery = vi.fn(async (input: CreateDeliveryInput) => ({
       created: true,
       record: delivery(input.eventId, input.deliveryKey),
     }));
-    repository.updateDelivery = vi
-      .fn()
-      .mockImplementation(async (uuid, input) => ({
+    repository.createDelivery = createDelivery;
+
+    const updateDelivery = vi.fn(
+      async (uuid: string, input: UpdateDeliveryInput) => ({
         ...delivery('event-1', uuid),
         ...input,
-      }));
+      }),
+    );
+    repository.updateDelivery = updateDelivery;
 
     const result = await service.replay('actor-uuid', 'original-delivery');
 
     expect(network.send).toHaveBeenCalledOnce();
-    expect(repository.createDelivery).toHaveBeenCalledWith(
+    expect(createDelivery).toHaveBeenCalledWith(
       expect.objectContaining({
         eventId: 'event-1',
         deliveryKey: expect.stringMatching(/^replay:/),
