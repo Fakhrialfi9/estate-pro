@@ -22,4 +22,5 @@ export type AutomationNotificationPort = Readonly<{
     unreadOnly: boolean;
   }): Promise<unknown>;
   markNotificationRead(uuid: string, userUuid: string): Promise<unknown>;
+  markAllNotificationsRead(userUuid: string): Promise<{ updated: number }>;
 }>;
