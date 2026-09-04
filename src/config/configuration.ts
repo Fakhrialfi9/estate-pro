@@ -50,6 +50,7 @@ const optionalSecret = Joi.string()
     'your-secret-here',
     '<production-secret>',
     '<production-2fa-key-min-32-chars>',
+    '<development-2fa-key-min-32-chars>',
   );
 const traceExporter = Joi.string().trim().valid('otlp', 'zipkin', 'none');
 const metricsExporter = Joi.string()
