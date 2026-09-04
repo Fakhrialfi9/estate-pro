@@ -38,6 +38,7 @@ import { PrismaSystemWebhookRepository } from './infrastructure/persistence/pris
 import { PrismaSystemIntegrationRepository } from './infrastructure/persistence/prisma-system-integration.repository.js';
 import { LocalSystemArtifactStorage } from './infrastructure/storage/local-system-artifact.storage.js';
 import { SystemExportScheduler } from './infrastructure/export/system-export.scheduler.js';
+import { SystemMetricsService } from './infrastructure/observability/system-metrics.service.js';
 import { WebhookNetworkService } from './infrastructure/webhook/webhook-network.service.js';
 import { WebhookSecretService } from './infrastructure/webhook/webhook-secret.service.js';
 import { WebhookSignerService } from './infrastructure/webhook/webhook-signer.service.js';
@@ -67,6 +68,7 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     SystemIntegrationService,
     SystemOperationsService,
     SystemReadOnlyGuard,
+    SystemMetricsService,
     PrismaSystemSettingsRepository,
     PrismaSystemActivityRepository,
     PrismaSystemImportRepository,
