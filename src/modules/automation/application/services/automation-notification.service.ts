@@ -1,7 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
-import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_PRIORITIES,
@@ -21,8 +19,6 @@ export class AutomationNotificationService {
   constructor(
     @Inject(AUTOMATION_NOTIFICATION_REPOSITORY)
     private readonly repository: AutomationNotificationRepository,
-    @Inject(SECURITY_AUDIT_REPOSITORY)
-    private readonly audit: SecurityAuditRepository,
   ) {}
 
   listPreferences(userUuid: string) {
