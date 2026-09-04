@@ -5,6 +5,7 @@ import {
   type AutomationNotificationPort,
   type AutomationSystemPort,
 } from '../../common/contracts/automation-system.port.js';
+import { AUTOMATION_HEALTH_PORT, type AutomationHealthPort } from '../../common/contracts/automation-health.port.js';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { UsersModule } from '../users/users.module.js';
@@ -131,10 +132,7 @@ import { AutomationScheduler } from './infrastructure/scheduler/automation.sched
             for (const item of items) {
               const uuid = typeof item.uuid === 'string' ? item.uuid : undefined;
               if (!uuid) continue;
-              const marked = await automation.markNotificationRead(
-                uuid,
-                userUuid,
-              );
+              const marked = await automation.markNotificationRead(uuid, userUuid);
               if (marked) updated += 1;
             }
             if (items.length < 100) break;
@@ -144,7 +142,16 @@ import { AutomationScheduler } from './infrastructure/scheduler/automation.sched
       }),
     },
     AutomationScheduler,
+    {
+      provide: AUTOMATION_HEALTH_PORT,
+      inject: [AutomationScheduler],
+      useFactory: (scheduler: AutomationScheduler): AutomationHealthPort => ({
+        async check() {
+          return scheduler.isHealthy() ? 'up' : 'down';
+        },
+      }),
+    },
   ],
-  exports: [AUTOMATION_SYSTEM_PORT, AUTOMATION_NOTIFICATION_PORT],
+  exports: [AUTOMATION_SYSTEM_PORT, AUTOMATION_NOTIFICATION_PORT, AUTOMATION_HEALTH_PORT],
 })
 export class AutomationModule {}
