@@ -3,9 +3,10 @@ import {
   AUTOMATION_SYSTEM_PORT,
   type AutomationSystemPort,
 } from '../../../../common/contracts/automation-system.port.js';
+import type { SystemJobsContract } from '../../domain/system-public.contracts.js';
 
 @Injectable()
-export class SystemJobOperationsService {
+export class SystemJobOperationsService implements SystemJobsContract {
   constructor(
     @Inject(AUTOMATION_SYSTEM_PORT)
     private readonly automation: AutomationSystemPort,
