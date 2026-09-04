@@ -1,12 +1,14 @@
-import { Body, Controller, Get, Patch, UseGuards, Req } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { IsBoolean } from 'class-validator';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
-import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
-import { RequirePermissions } from '../../common/security/authorization.decorators.js';
-import { SystemOperationsService } from '../system/application/services/system-operations.service.js';
+import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
+import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
+import { SystemOperationsService } from '../application/services/system-operations.service.js';
 
 class ToggleOperationDto {
+  @IsBoolean()
   enabled!: boolean;
 }
 
