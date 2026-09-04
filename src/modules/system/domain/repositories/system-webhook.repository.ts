@@ -48,13 +48,14 @@ export interface SystemWebhookRepository {
   createDelivery(input: {
     uuid: string;
     subscriptionId: bigint;
+    eventId: string;
     eventName: SystemWebhookEventName;
     eventVersion: number;
     payloadHash: string;
     state: WebhookDeliveryState;
     signedAt: Date;
     nextAttemptAt?: Date | null;
-  }): Promise<WebhookDeliveryRecord>;
+  }): Promise<{ created: boolean; record: WebhookDeliveryRecord }>;
   findDelivery(uuid: string): Promise<WebhookDeliveryRecord | null>;
   updateDelivery(
     uuid: string,
