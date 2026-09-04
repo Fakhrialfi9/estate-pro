@@ -30,6 +30,20 @@ const robots = (
   }
 };
 
+const metadataOpenGraph = (
+  title: string,
+  description: string | null,
+  canonicalUrl: string | null,
+  imageUrl: string | null,
+  type: 'article' | 'website',
+) => ({
+  title,
+  description: description ?? title,
+  url: canonicalUrl ?? '',
+  imageUrl,
+  type,
+});
+
 @Injectable()
 export class PrismaSeoRepository implements SeoRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -87,13 +101,13 @@ export class PrismaSeoRepository implements SeoRepository {
               metadataVersion: row.seo?.metadataVersion ?? undefined,
               keywords: keywords(row.seo?.keywords),
               openGraph: row.seo?.ogImageUrl
-                ? {
-                    title: row.seo.title ?? undefined,
-                    description: row.seo.description ?? undefined,
-                    url: row.seo.canonicalUrl ?? undefined,
-                    imageUrl: row.seo.ogImageUrl,
-                    type: 'website',
-                  }
+                ? metadataOpenGraph(
+                    row.seo.title ?? row.title,
+                    row.seo.description ?? row.shortDescription,
+                    row.seo.canonicalUrl,
+                    row.seo.ogImageUrl,
+                    'website',
+                  )
                 : undefined,
             },
           }
@@ -154,13 +168,13 @@ export class PrismaSeoRepository implements SeoRepository {
               robots: robots(row.property.seo?.robots),
               metadataVersion: row.property.seo?.metadataVersion ?? undefined,
               openGraph: row.property.seo?.ogImageUrl
-                ? {
-                    title: row.property.seo.title ?? undefined,
-                    description: row.property.seo.description ?? undefined,
-                    url: row.property.seo.canonicalUrl ?? undefined,
-                    imageUrl: row.property.seo.ogImageUrl,
-                    type: 'website',
-                  }
+                ? metadataOpenGraph(
+                    row.property.seo.title ?? row.property.title,
+                    row.property.seo.description ?? row.property.shortDescription,
+                    row.property.seo.canonicalUrl,
+                    row.property.seo.ogImageUrl,
+                    'website',
+                  )
                 : undefined,
             },
           }
@@ -214,20 +228,20 @@ export class PrismaSeoRepository implements SeoRepository {
           title: seo?.metaTitle ?? undefined,
           description: seo?.metaDescription ?? undefined,
           canonicalUrl: seo?.canonicalUrl ?? undefined,
-          robots: seo?.robots as SeoResourceSnapshot['seo']['robots'],
+          robots: robots(seo?.robots),
           openGraph: seo
-            ? {
-                title: seo.ogTitle ?? undefined,
-                description: seo.ogDescription ?? undefined,
-                url: seo.canonicalUrl ?? undefined,
-                imageUrl: seo.ogImageUrl,
-                type: 'article',
-              }
+            ? metadataOpenGraph(
+                seo.ogTitle ?? row.title,
+                seo.ogDescription ?? row.excerpt,
+                seo.canonicalUrl,
+                seo.ogImageUrl,
+                'article',
+              )
             : undefined,
           twitter: seo
             ? {
-                title: seo.twitterTitle ?? undefined,
-                description: seo.twitterDescription ?? undefined,
+                title: seo.twitterTitle ?? row.title,
+                description: seo.twitterDescription ?? row.excerpt ?? row.title,
                 imageUrl: seo.twitterImageUrl,
                 card: seo.twitterImageUrl ? 'summary_large_image' : 'summary',
               }
@@ -281,20 +295,20 @@ export class PrismaSeoRepository implements SeoRepository {
         title: seo?.metaTitle ?? undefined,
         description: seo?.metaDescription ?? undefined,
         canonicalUrl: seo?.canonicalUrl ?? undefined,
-        robots: seo?.robots as SeoResourceSnapshot['seo']['robots'],
+        robots: robots(seo?.robots),
         openGraph: seo
-          ? {
-              title: seo.ogTitle ?? undefined,
-              description: seo.ogDescription ?? undefined,
-              url: seo.canonicalUrl ?? undefined,
-              imageUrl: seo.ogImageUrl,
-              type: 'website',
-            }
+          ? metadataOpenGraph(
+              seo.ogTitle ?? row.title,
+              seo.ogDescription ?? row.title,
+              seo.canonicalUrl,
+              seo.ogImageUrl,
+              'website',
+            )
           : undefined,
         twitter: seo
           ? {
-              title: seo.twitterTitle ?? undefined,
-              description: seo.twitterDescription ?? undefined,
+              title: seo.twitterTitle ?? row.title,
+              description: seo.twitterDescription ?? row.title,
               imageUrl: seo.twitterImageUrl,
               card: seo.twitterImageUrl ? 'summary_large_image' : 'summary',
             }
@@ -415,13 +429,13 @@ export class PrismaSeoRepository implements SeoRepository {
             metadataVersion: row.seo?.metadataVersion ?? undefined,
             keywords: keywords(row.seo?.keywords),
             openGraph: row.seo?.ogImageUrl
-              ? {
-                  title: row.seo.title ?? undefined,
-                  description: row.seo.description ?? undefined,
-                  url: row.seo.canonicalUrl ?? undefined,
-                  imageUrl: row.seo.ogImageUrl,
-                  type: 'website',
-                }
+              ? metadataOpenGraph(
+                  row.seo.title ?? row.title,
+                  row.seo.description ?? row.shortDescription,
+                  row.seo.canonicalUrl,
+                  row.seo.ogImageUrl,
+                  'website',
+                )
               : undefined,
           },
         }),
@@ -443,6 +457,15 @@ export class PrismaSeoRepository implements SeoRepository {
             canonicalUrl: row.property.seo?.canonicalUrl ?? undefined,
             robots: robots(row.property.seo?.robots),
             metadataVersion: row.property.seo?.metadataVersion ?? undefined,
+            openGraph: row.property.seo?.ogImageUrl
+              ? metadataOpenGraph(
+                  row.property.seo.title ?? row.property.title,
+                  row.property.seo.description ?? row.property.shortDescription,
+                  row.property.seo.canonicalUrl,
+                  row.property.seo.ogImageUrl,
+                  'website',
+                )
+              : undefined,
           },
         }),
       ),
@@ -606,11 +629,37 @@ export class PrismaSeoRepository implements SeoRepository {
     },
     actorUuid: string,
   ): Promise<SeoResourceSnapshot> {
-    const model =
-      resourceType === 'article'
-        ? this.prisma.contentArticle
-        : this.prisma.contentPage;
-    const row = await model.findUnique({
+    if (resourceType === 'article') {
+      const row = await this.prisma.contentArticle.findUnique({
+        where: { uuid: resourceUuid },
+        select: { uuid: true, slug: true, language: true },
+      });
+      if (!row) throw new Error('Content not found');
+      await this.prisma.contentSeo.upsert({
+        where: {
+          entityType_entityUuid: {
+            entityType: resourceType,
+            entityUuid: resourceUuid,
+          },
+        },
+        update: { ...input },
+        create: {
+          entityType: resourceType,
+          entityUuid: resourceUuid,
+          ...input,
+        },
+      });
+      const updated = await this.getPublicResource(
+        resourceType,
+        row.slug,
+        row.language,
+      );
+      if (!updated) throw new Error('Content is not publicly indexable');
+      void actorUuid;
+      return updated;
+    }
+
+    const row = await this.prisma.contentPage.findUnique({
       where: { uuid: resourceUuid },
       select: { uuid: true, slug: true, language: true },
     });
@@ -623,7 +672,11 @@ export class PrismaSeoRepository implements SeoRepository {
         },
       },
       update: { ...input },
-      create: { entityType: resourceType, entityUuid: resourceUuid, ...input },
+      create: {
+        entityType: resourceType,
+        entityUuid: resourceUuid,
+        ...input,
+      },
     });
     const updated = await this.getPublicResource(
       resourceType,
