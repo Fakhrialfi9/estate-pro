@@ -45,7 +45,9 @@ export const SETTING_DEFAULTS: Readonly<Record<string, string>> = {
   'system.maintenance_mode': 'false',
 };
 
-export const settingDefinition = (key: string): SystemSettingDefinition | undefined =>
+export const settingDefinition = (
+  key: string,
+): SystemSettingDefinition | undefined =>
   SYSTEM_SETTINGS.find((definition) => definition.key === key);
 
 export const parseSettingValue = (
@@ -56,7 +58,8 @@ export const parseSettingValue = (
   if (!normalized) throw new Error('Setting value is required');
   switch (definition.valueType) {
     case 'INTEGER': {
-      if (!/^\d+$/.test(normalized)) throw new Error('Setting must be an integer');
+      if (!/^\d+$/.test(normalized))
+        throw new Error('Setting must be an integer');
       const parsed = Number(normalized);
       if (!Number.isSafeInteger(parsed) || parsed < 0 || parsed > 10000)
         throw new Error('Setting integer is out of range');

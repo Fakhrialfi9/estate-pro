@@ -1,4 +1,13 @@
-import { Controller, Get, Param, ParseUUIDPipe, Patch, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
@@ -18,13 +27,24 @@ export class NotificationsController {
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'List current-user notifications' })
   list(@Req() request: Request, @Query() query: NotificationQueryDto) {
-    return this.notifications.list((request.user as { sub?: string } | undefined)?.sub ?? '', query.page, query.limit, query.unreadOnly === true);
+    return this.notifications.list(
+      (request.user as { sub?: string } | undefined)?.sub ?? '',
+      query.page,
+      query.limit,
+      query.unreadOnly === true,
+    );
   }
 
   @Patch(':uuid/read')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'Mark a current-user notification as read' })
-  markRead(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
-    return this.notifications.markRead((request.user as { sub?: string } | undefined)?.sub ?? '', uuid);
+  markRead(
+    @Req() request: Request,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+  ) {
+    return this.notifications.markRead(
+      (request.user as { sub?: string } | undefined)?.sub ?? '',
+      uuid,
+    );
   }
 }

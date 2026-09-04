@@ -5,8 +5,14 @@ import { AutomationService } from '../../../automation/application/services/auto
 export class SystemJobOperationsService {
   constructor(private readonly automation: AutomationService) {}
 
-  list(input: { page: number; limit: number; state?: string }, actorUuid: string) {
-    return this.automation.listExecutions({ page: input.page, limit: input.limit, state: input.state }, actorUuid);
+  list(
+    input: { page: number; limit: number; state?: string },
+    actorUuid: string,
+  ) {
+    return this.automation.listExecutions(
+      { page: input.page, limit: input.limit, state: input.state },
+      actorUuid,
+    );
   }
 
   get(uuid: string, actorUuid: string) {

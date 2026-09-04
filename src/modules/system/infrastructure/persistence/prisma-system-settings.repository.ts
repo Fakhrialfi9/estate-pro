@@ -33,10 +33,16 @@ const toRecord = (row: {
 });
 
 @Injectable()
-export class PrismaSystemSettingsRepository implements SystemSettingsRepository {
+export class PrismaSystemSettingsRepository
+  implements SystemSettingsRepository
+{
   constructor(private readonly prisma: PrismaService) {}
 
-  async get(key: string, scope: string, scopeKey: string): Promise<SystemSettingRecord | null> {
+  async get(
+    key: string,
+    scope: string,
+    scopeKey: string,
+  ): Promise<SystemSettingRecord | null> {
     const row = await this.prisma.systemSetting.findUnique({
       where: { key_scope_scopeKey: { key, scope, scopeKey } },
     });

@@ -412,7 +412,8 @@ export class AutomationService {
     limit: number;
     unreadOnly: boolean;
   }) {
-    if (!input.userUuid) throw new BadRequestException('Authenticated actor missing');
+    if (!input.userUuid)
+      throw new BadRequestException('Authenticated actor missing');
     return this.repo.listNotifications(input);
   }
 

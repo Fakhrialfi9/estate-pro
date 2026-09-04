@@ -1,5 +1,19 @@
-import { Body, Controller, Get, Param, Patch, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -32,7 +46,11 @@ export class SettingsController {
   @RequirePermissions('system.settings.update')
   @ApiOperation({ summary: 'Update a mutable system setting' })
   @ApiResponse({ status: 400, description: 'Invalid setting value.' })
-  update(@Req() request: Request, @Param('key') key: string, @Body() dto: UpdateSettingDto) {
+  update(
+    @Req() request: Request,
+    @Param('key') key: string,
+    @Body() dto: UpdateSettingDto,
+  ) {
     const actorUuid = (request.user as { sub?: string } | undefined)?.sub;
     if (!actorUuid) throw new Error('Authenticated actor missing');
     return this.settings.update(key, dto.value, actorUuid, dto.expectedVersion);

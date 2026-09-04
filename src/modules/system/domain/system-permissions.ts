@@ -4,4 +4,5 @@ export const SYSTEM_PERMISSIONS = {
   ACTIVITY_READ: 'system.activity.read',
 } as const;
 
-export type SystemPermission = (typeof SYSTEM_PERMISSIONS)[keyof typeof SYSTEM_PERMISSIONS];
+export type SystemPermission =
+  (typeof SYSTEM_PERMISSIONS)[keyof typeof SYSTEM_PERMISSIONS];

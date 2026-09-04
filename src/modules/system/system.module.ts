@@ -21,8 +21,21 @@ import { SYSTEM_SETTINGS_REPOSITORY } from './domain/repositories/system-setting
 import { SYSTEM_ACTIVITY_REPOSITORY } from './domain/repositories/system-activity.repository.js';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, AuthModule, PermissionsModule, AuthorizationModule, AutomationModule],
-  controllers: [AuditLogsController, SettingsController, ActivityController, NotificationsController, JobsController],
+  imports: [
+    DatabaseModule,
+    AuditModule,
+    AuthModule,
+    PermissionsModule,
+    AuthorizationModule,
+    AutomationModule,
+  ],
+  controllers: [
+    AuditLogsController,
+    SettingsController,
+    ActivityController,
+    NotificationsController,
+    JobsController,
+  ],
   providers: [
     AuthorizationGuard,
     SystemSettingsService,
@@ -31,8 +44,14 @@ import { SYSTEM_ACTIVITY_REPOSITORY } from './domain/repositories/system-activit
     SystemJobOperationsService,
     PrismaSystemSettingsRepository,
     PrismaSystemActivityRepository,
-    { provide: SYSTEM_SETTINGS_REPOSITORY, useExisting: PrismaSystemSettingsRepository },
-    { provide: SYSTEM_ACTIVITY_REPOSITORY, useExisting: PrismaSystemActivityRepository },
+    {
+      provide: SYSTEM_SETTINGS_REPOSITORY,
+      useExisting: PrismaSystemSettingsRepository,
+    },
+    {
+      provide: SYSTEM_ACTIVITY_REPOSITORY,
+      useExisting: PrismaSystemActivityRepository,
+    },
   ],
   exports: [SystemSettingsService, SystemActivityService],
 })

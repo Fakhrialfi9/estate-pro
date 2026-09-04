@@ -1,4 +1,13 @@
-import { Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
@@ -25,18 +34,27 @@ export class JobsController {
   @Get(':uuid')
   @RequirePermissions('system.jobs.read')
   get(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
-    return this.jobs.get(uuid, (request.user as { sub?: string } | undefined)?.sub ?? '');
+    return this.jobs.get(
+      uuid,
+      (request.user as { sub?: string } | undefined)?.sub ?? '',
+    );
   }
 
   @Post(':uuid/retry')
   @RequirePermissions('system.jobs.retry')
   retry(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
-    return this.jobs.retry(uuid, (request.user as { sub?: string } | undefined)?.sub ?? '');
+    return this.jobs.retry(
+      uuid,
+      (request.user as { sub?: string } | undefined)?.sub ?? '',
+    );
   }
 
   @Post(':uuid/cancel')
   @RequirePermissions('system.jobs.cancel')
   cancel(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
-    return this.jobs.cancel(uuid, (request.user as { sub?: string } | undefined)?.sub ?? '');
+    return this.jobs.cancel(
+      uuid,
+      (request.user as { sub?: string } | undefined)?.sub ?? '',
+    );
   }
 }

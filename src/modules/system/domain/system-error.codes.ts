@@ -9,4 +9,5 @@ export const SYSTEM_ERROR_CODES = {
   NOTIFICATION_NOT_FOUND: 'SYSTEM_NOTIFICATION_NOT_FOUND',
 } as const;
 
-export type SystemErrorCode = (typeof SYSTEM_ERROR_CODES)[keyof typeof SYSTEM_ERROR_CODES];
+export type SystemErrorCode =
+  (typeof SYSTEM_ERROR_CODES)[keyof typeof SYSTEM_ERROR_CODES];

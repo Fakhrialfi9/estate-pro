@@ -1,13 +1,28 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { AutomationService } from '../../../automation/application/services/automation.service.js';
 
 @Injectable()
 export class SystemNotificationService {
   constructor(private readonly automation: AutomationService) {}
 
-  async list(userUuid: string, page: number, limit: number, unreadOnly: boolean) {
+  async list(
+    userUuid: string,
+    page: number,
+    limit: number,
+    unreadOnly: boolean,
+  ) {
     if (!userUuid) throw new BadRequestException('Authenticated actor missing');
-    return this.automation.listNotifications({ page, limit, unreadOnly, userUuid });
+    return this.automation.listNotifications({
+      page,
+      limit,
+      unreadOnly,
+      userUuid,
+    });
   }
 
   async markRead(userUuid: string, uuid: string) {

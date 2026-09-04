@@ -15,5 +15,7 @@ export const sanitizeSystemCorrelationContext = (
     : {}),
   ...(context.eventId ? { eventId: context.eventId.slice(0, 120) } : {}),
   ...(context.jobId ? { jobId: context.jobId.slice(0, 120) } : {}),
-  ...(context.providerId ? { providerId: context.providerId.slice(0, 120) } : {}),
+  ...(context.providerId
+    ? { providerId: context.providerId.slice(0, 120) }
+    : {}),
 });

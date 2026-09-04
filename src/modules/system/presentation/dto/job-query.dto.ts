@@ -15,7 +15,15 @@ export class JobQueryDto {
   @IsOptional()
   limit = 25;
 
-  @IsIn(['PENDING', 'RUNNING', 'WAITING', 'FAILED', 'DEAD_LETTER', 'CANCELLED', 'COMPLETED'])
+  @IsIn([
+    'PENDING',
+    'RUNNING',
+    'WAITING',
+    'FAILED',
+    'DEAD_LETTER',
+    'CANCELLED',
+    'COMPLETED',
+  ])
   @IsOptional()
   state?: string;
 }

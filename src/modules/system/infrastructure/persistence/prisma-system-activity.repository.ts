@@ -24,7 +24,9 @@ const toRecord = (row: {
   resourceUuid: row.resourceUuid,
   summary: row.summary,
   metadata:
-    row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+    row.metadata &&
+    typeof row.metadata === 'object' &&
+    !Array.isArray(row.metadata)
       ? (row.metadata as Record<string, unknown>)
       : {},
   requestId: row.requestId,
@@ -32,10 +34,17 @@ const toRecord = (row: {
 });
 
 @Injectable()
-export class PrismaSystemActivityRepository implements SystemActivityRepository {
+export class PrismaSystemActivityRepository
+  implements SystemActivityRepository
+{
   constructor(private readonly prisma: PrismaService) {}
 
-  async append(input: Omit<SystemActivityRecord, 'uuid' | 'createdAt'> & { uuid?: string; createdAt?: Date }) {
+  async append(
+    input: Omit<SystemActivityRecord, 'uuid' | 'createdAt'> & {
+      uuid?: string;
+      createdAt?: Date;
+    },
+  ) {
     const row = await this.prisma.systemActivity.create({
       data: {
         uuid: input.uuid ?? randomUUID(),
@@ -44,7 +53,11 @@ export class PrismaSystemActivityRepository implements SystemActivityRepository 
         category: input.category,
         resourceType: input.resourceType,
         resourceUuid: input.resourceUuid,
-        summary: input.summary.normalize('NFKC').replace(/[\p{Cc}]/gu, '').trim().slice(0, 500),
+        summary: input.summary
+          .normalize('NFKC')
+          .replace(/[\p{Cc}]/gu, '')
+          .trim()
+          .slice(0, 500),
         metadata: input.metadata,
         requestId: input.requestId,
         ...(input.createdAt ? { createdAt: input.createdAt } : {}),
