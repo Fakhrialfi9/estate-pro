@@ -170,7 +170,8 @@ export class PrismaSeoRepository implements SeoRepository {
               openGraph: row.property.seo?.ogImageUrl
                 ? metadataOpenGraph(
                     row.property.seo.title ?? row.property.title,
-                    row.property.seo.description ?? row.property.shortDescription,
+                    row.property.seo.description ??
+                      row.property.shortDescription,
                     row.property.seo.canonicalUrl,
                     row.property.seo.ogImageUrl,
                     'website',

@@ -51,7 +51,11 @@ export class SeoController {
     @Param('identifier') identifier: string,
     @Query('language') language?: string,
   ) {
-    return this.seo.getPublicMetadata(resourceType, identifier, language ?? 'id');
+    return this.seo.getPublicMetadata(
+      resourceType,
+      identifier,
+      language ?? 'id',
+    );
   }
 
   @Get('public/:resourceType/:identifier/structured-data')
@@ -149,10 +153,7 @@ export class SeoController {
   @ApiBearerAuth()
   @Post('admin/redirects')
   @RequirePermissions('content.redirects.create')
-  createRedirect(
-    @Body() dto: CreateRedirectDto,
-    @Req() request: AuthRequest,
-  ) {
+  createRedirect(@Body() dto: CreateRedirectDto, @Req() request: AuthRequest) {
     return this.seo.createRedirect({ ...dto, actorUuid: request.user.sub });
   }
 
