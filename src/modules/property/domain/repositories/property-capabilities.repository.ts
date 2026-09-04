@@ -91,7 +91,10 @@ export interface PropertyCapabilitiesRepository {
       notes?: string | null;
     },
   ): Promise<AmenityAssignmentRecord>;
-  unassignAmenity(propertyUuid: string, amenityUuid: string): Promise<void>;
+  unassignAmenity(
+    propertyUuid: string,
+    amenityUuid: string,
+  ): Promise<void>;
 
   listDocuments(
     propertyUuid: string,
