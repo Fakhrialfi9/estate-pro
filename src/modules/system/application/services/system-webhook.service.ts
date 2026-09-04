@@ -13,9 +13,12 @@ import type {
   SystemWebhookEventName,
   WebhookDeliveryRecord,
   WebhookDeliveryState,
+  WebhookEventFilter,
   WebhookSubscriptionRecord,
 } from '../../domain/webhook/webhook.contracts.js';
-import { SYSTEM_WEBHOOK_EVENTS } from '../../domain/webhook/webhook.contracts.js';
+import {
+  SYSTEM_WEBHOOK_EVENTS,
+} from '../../domain/webhook/webhook.contracts.js';
 import type {
   SystemWebhookNetworkPort,
   SystemWebhookSecretPort,
@@ -30,6 +33,10 @@ import {
   SYSTEM_WEBHOOK_REPOSITORY,
   type SystemWebhookRepository,
 } from '../../domain/repositories/system-webhook.repository.js';
+
+const FILTER_MAX_COUNT = 10;
+const FILTER_MAX_DEPTH = 5;
+const FILTER_KEY = /^[A-Za-z0-9_]+$/;
 
 @Injectable()
 export class SystemWebhookService {
@@ -55,14 +62,17 @@ export class SystemWebhookService {
     actorUuid: string,
     endpoint: string,
     events: readonly SystemWebhookEventName[],
+    filters: readonly WebhookEventFilter[] = [],
   ) {
     const safeEndpoint = await this.network.validateTarget(endpoint);
     const normalizedEvents = this.normalizeEvents(events);
+    const normalizedFilters = this.normalizeFilters(filters);
     const generated = this.secrets.generate();
     const row = await this.repository.createSubscription({
       uuid: randomUUID(),
       endpoint: safeEndpoint.toString(),
       events: normalizedEvents,
+      filters: normalizedFilters,
       status: 'ACTIVE',
       secretCiphertext: generated.ciphertext,
       secretVersion: 1,
@@ -100,6 +110,7 @@ export class SystemWebhookService {
     input: {
       endpoint?: string;
       events?: readonly SystemWebhookEventName[];
+      filters?: readonly WebhookEventFilter[];
       enabled?: boolean;
     },
   ) {
@@ -112,9 +123,13 @@ export class SystemWebhookService {
     const events = input.events
       ? this.normalizeEvents(input.events)
       : undefined;
+    const filters = input.filters
+      ? this.normalizeFilters(input.filters)
+      : undefined;
     const row = await this.repository.updateSubscription(uuid, {
-      ...(endpoint ? { endpoint } : {}),
+      ...(endpoint ? { endpoint } } : {}),
       ...(events ? { events } : {}),
+      ...(filters ? { filters } : {}),
       ...(typeof input.enabled === 'boolean'
         ? { status: input.enabled ? 'ACTIVE' : 'DISABLED' }
         : {}),
@@ -167,8 +182,12 @@ export class SystemWebhookService {
       status: 'ACTIVE',
     });
     for (const subscription of subscriptions.items) {
-      if (subscription.events.includes(eventName))
+      if (
+        subscription.events.includes(eventName) &&
+        this.matchesFilters(subscription.filters, data)
+      ) {
         await this.deliver(subscription, eventId, eventName, 1, data);
+      }
     }
   }
 
@@ -376,6 +395,99 @@ export class SystemWebhookService {
     return unique;
   }
 
+  private normalizeFilters(
+    filters: readonly WebhookEventFilter[],
+  ): readonly WebhookEventFilter[] {
+    if (filters.length > FILTER_MAX_COUNT)
+      throw new ForbiddenException('Too many webhook filters');
+    return filters.map((filter) => {
+      const field = filter.field.trim();
+      const path = field.split('.');
+      if (
+        path.length === 0 ||
+        path.length > FILTER_MAX_DEPTH ||
+        path.some((key) => !FILTER_KEY.test(key) || /^(?:__proto__|prototype|constructor)$/i.test(key))
+      ) {
+        throw new ForbiddenException('Invalid webhook filter field');
+      }
+      if (filter.operator === 'IN') {
+        if (!Array.isArray(filter.value) || filter.value.length > 50)
+          throw new ForbiddenException('Webhook IN filter requires a bounded array');
+      }
+      if (['GT', 'GTE', 'LT', 'LTE'].includes(filter.operator)) {
+        const type = typeof filter.value;
+        if (type !== 'number' && type !== 'string')
+          throw new ForbiddenException('Webhook numeric filters require a scalar value');
+      }
+      if (['EXISTS', 'NOT_EXISTS'].includes(filter.operator)) return { field, operator: filter.operator };
+      return { field, operator: filter.operator, value: filter.value };
+    });
+  }
+
+  private matchesFilters(
+    filters: readonly WebhookEventFilter[],
+    data: Record<string, unknown>,
+  ): boolean {
+    for (const filter of filters) {
+      const actual = this.readFilterValue(data, filter.field);
+      const exists = actual !== undefined;
+      switch (filter.operator) {
+        case 'EXISTS':
+          if (!exists) return false;
+          break;
+        case 'NOT_EXISTS':
+          if (exists) return false;
+          break;
+        case 'EQ':
+          if (actual !== filter.value) return false;
+          break;
+        case 'NEQ':
+          if (actual === filter.value) return false;
+          break;
+        case 'CONTAINS':
+          if (typeof actual !== 'string' || !actual.includes(String(filter.value))) return false;
+          break;
+        case 'IN':
+          if (!Array.isArray(filter.value) || !filter.value.some((value) => value === actual)) return false;
+          break;
+        case 'GT':
+          if (!this.compare(actual, filter.value, (a, b) => a > b)) return false;
+          break;
+        case 'GTE':
+          if (!this.compare(actual, filter.value, (a, b) => a >= b)) return false;
+          break;
+        case 'LT':
+          if (!this.compare(actual, filter.value, (a, b) => a < b)) return false;
+          break;
+        case 'LTE':
+          if (!this.compare(actual, filter.value, (a, b) => a <= b)) return false;
+          break;
+      }
+    }
+    return true;
+  }
+
+  private readFilterValue(data: Record<string, unknown>, field: string): unknown {
+    return field.split('.').reduce<unknown>((current, key) => {
+      if (current === null || typeof current !== 'object' || Array.isArray(current)) return undefined;
+      const record = current as Record<string, unknown>;
+      return record[key];
+    }, data);
+  }
+
+  private compare(
+    actual: unknown,
+    expected: unknown,
+    predicate: (left: string | number, right: string | number) => boolean,
+  ): boolean {
+    if (
+      (typeof actual !== 'number' && typeof actual !== 'string') ||
+      (typeof expected !== 'number' && typeof expected !== 'string') ||
+      (typeof actual !== typeof expected)
+    ) return false;
+    return predicate(actual, expected);
+  }
+
   private async auditLifecycle(
     actorUuid: string,
     uuid: string,
@@ -399,6 +511,7 @@ export class SystemWebhookService {
       endpoint: row.endpoint,
       status: row.status,
       events: row.events,
+      filters: row.filters,
       secretVersion: row.secretVersion,
       secretCreatedAt: row.secretCreatedAt,
       createdAt: row.createdAt,
