@@ -1,10 +1,41 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { SystemActivityService } from '../application/services/system-activity.service.js';
 import { ActivityQueryDto } from './dto/activity-query.dto.js';
+
+const systemActivityItemSchema = {
+  type: 'object',
+  additionalProperties: true,
+};
+
+const systemActivityListResponseSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: systemActivityItemSchema,
+    },
+    meta: {
+      type: 'object',
+      properties: {
+        page: { type: 'integer', minimum: 1 },
+        limit: { type: 'integer', minimum: 1 },
+        total: { type: 'integer', minimum: 0 },
+        totalPages: { type: 'integer', minimum: 0 },
+      },
+      required: ['page', 'limit', 'total', 'totalPages'],
+    },
+  },
+  required: ['items', 'meta'],
+};
 
 @ApiTags('System Activity')
 @ApiBearerAuth()
@@ -16,6 +47,11 @@ export class ActivityController {
   @Get()
   @RequirePermissions('system.activity.read')
   @ApiOperation({ summary: 'Query system activity' })
+  @ApiResponse({
+    status: 200,
+    description: 'System activity returned.',
+    schema: systemActivityListResponseSchema,
+  })
   async list(@Query() query: ActivityQueryDto) {
     const result = await this.activity.list(query);
     return {
