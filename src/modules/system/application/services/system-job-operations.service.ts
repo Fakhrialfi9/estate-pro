@@ -1,9 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { AutomationService } from '../../../automation/application/services/automation.service.js';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  AUTOMATION_SYSTEM_PORT,
+  type AutomationSystemPort,
+} from '../../../../common/contracts/automation-system.port.js';
 
 @Injectable()
 export class SystemJobOperationsService {
-  constructor(private readonly automation: AutomationService) {}
+  constructor(
+    @Inject(AUTOMATION_SYSTEM_PORT)
+    private readonly automation: AutomationSystemPort,
+  ) {}
 
   list(
     input: { page: number; limit: number; state?: string },
