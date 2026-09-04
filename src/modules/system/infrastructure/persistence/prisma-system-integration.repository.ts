@@ -25,15 +25,11 @@ const toRecord = (row: {
 }): SystemIntegrationRecord => ({
   ...row,
   capabilities: Array.isArray(row.capabilities)
-    ? row.capabilities.filter(
-        (value): value is string => typeof value === 'string',
-      )
+    ? row.capabilities.filter((value): value is string => typeof value === 'string')
     : [],
   state: row.state as IntegrationState,
   metadata:
-    row.metadata &&
-    typeof row.metadata === 'object' &&
-    !Array.isArray(row.metadata)
+    row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
       ? (row.metadata as Record<string, unknown>)
       : {},
 });
@@ -101,14 +97,20 @@ export class PrismaSystemIntegrationRepository
     >,
   ) {
     try {
+      const data: Prisma.SystemIntegrationUpdateInput = {
+        state: input.state,
+        errorCode: input.errorCode,
+        errorMessage: input.errorMessage,
+        secretRef: input.secretRef,
+        lastTestAt: input.lastTestAt,
+        lastSyncAt: input.lastSyncAt,
+        ...(input.metadata !== undefined
+          ? { metadata: input.metadata as Prisma.InputJsonObject }
+          : {}),
+      };
       const row = await this.prisma.systemIntegration.update({
         where: { uuid },
-        data: {
-          ...input,
-          ...(input.metadata !== undefined
-            ? { metadata: input.metadata as Prisma.InputJsonObject }
-            : {}),
-        },
+        data,
       });
       return toRecord(row);
     } catch {
