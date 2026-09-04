@@ -26,7 +26,6 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
-import type { AccessTokenClaims } from '../../auth/application/services/jwt-token.service.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { SeoService } from '../application/seo.service.js';
@@ -36,7 +35,7 @@ import {
   UpdatePropertySeoDto,
 } from '../application/dto/seo.dto.js';
 
-type AuthRequest = Request & { user: AccessTokenClaims };
+type AuthRequest = Request & { user: { sub: string } };
 type SeoResourceType = 'property' | 'listing' | 'article' | 'page';
 
 const seoMetadataResponseSchema = {
