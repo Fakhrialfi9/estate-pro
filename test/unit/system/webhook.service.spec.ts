@@ -1,19 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { SystemWebhookService } from '../../../src/modules/system/application/services/system-webhook.service.js';
-import type {
-  SystemWebhookRepository,
-} from '../../../src/modules/system/domain/repositories/system-webhook.repository.js';
-import {
-  SYSTEM_WEBHOOK_REPOSITORY,
-} from '../../../src/modules/system/domain/repositories/system-webhook.repository.js';
-import {
-  SYSTEM_WEBHOOK_NETWORK_PORT,
-  SYSTEM_WEBHOOK_SECRET_PORT,
-  SYSTEM_WEBHOOK_SIGNER_PORT,
-} from '../../../src/modules/system/domain/webhook/webhook.ports.js';
+import type { SystemWebhookRepository } from '../../../src/modules/system/domain/repositories/system-webhook.repository.js';
 import type { WebhookSubscriptionRecord } from '../../../src/modules/system/domain/webhook/webhook.contracts.js';
-import { SECURITY_AUDIT_REPOSITORY } from '../../../src/common/audit/security-audit.port.js';
 
 const subscription = (filters = []) =>
   ({
@@ -62,10 +51,16 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
       record: delivery('event-1', 'event-1'),
     }),
     updateDelivery: vi.fn().mockResolvedValue(delivery('event-1', 'event-1')),
+    listRecentDeliveries: vi.fn().mockResolvedValue([]),
+    findDelivery: vi.fn(),
+    findSubscriptionByDelivery: vi.fn(),
   } as unknown as SystemWebhookRepository;
   const audit = { record: vi.fn().mockResolvedValue(undefined) };
   const secrets = {
-    generate: vi.fn().mockReturnValue({ secret: 'secret', ciphertext: 'ciphertext' }),
+    generate: vi.fn().mockReturnValue({
+      secret: 'secret',
+      ciphertext: 'ciphertext',
+    }),
     decrypt: vi.fn().mockReturnValue('secret'),
   };
   const signer = {
@@ -74,12 +69,15 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     payloadHash: vi.fn().mockReturnValue('hash'.padEnd(64, '0')),
   };
   const network = {
-    validateTarget: vi.fn().mockResolvedValue(new URL('https://example.test/webhook')),
+    validateTarget: vi
+      .fn()
+      .mockResolvedValue(new URL('https://example.test/webhook')),
     send: vi.fn().mockResolvedValue({ status: 200 }),
   };
   const config = {
     get: vi.fn((_key: string, fallback: unknown) => fallback),
   };
+  const metrics = { webhookAttempt: vi.fn() };
 
   const service = new SystemWebhookService(
     repository,
@@ -88,8 +86,9 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     signer,
     network,
     config as never,
+    metrics as never,
   );
-  return { service, repository, network, signer, audit };
+  return { service, repository, network, signer, audit, metrics };
 };
 
 describe('SystemWebhookService', () => {
@@ -123,16 +122,20 @@ describe('SystemWebhookService', () => {
   it('uses a distinct delivery key for explicit replay while preserving event identity', async () => {
     const row = subscription();
     const { service, repository, network } = createService([row]);
-    repository.findDelivery = vi.fn().mockResolvedValue(delivery('event-1', 'original-delivery'));
+    repository.findDelivery = vi
+      .fn()
+      .mockResolvedValue(delivery('event-1', 'original-delivery'));
     repository.findSubscriptionByDelivery = vi.fn().mockResolvedValue(row);
     repository.createDelivery = vi.fn().mockImplementation(async (input) => ({
       created: true,
       record: delivery(input.eventId, input.deliveryKey),
     }));
-    repository.updateDelivery = vi.fn().mockImplementation(async (uuid, input) => ({
-      ...delivery('event-1', uuid),
-      ...input,
-    }));
+    repository.updateDelivery = vi
+      .fn()
+      .mockImplementation(async (uuid, input) => ({
+        ...delivery('event-1', uuid),
+        ...input,
+      }));
 
     const result = await service.replay('actor-uuid', 'original-delivery');
 
@@ -144,5 +147,37 @@ describe('SystemWebhookService', () => {
       }),
     );
     expect(result.eventId).toBe('event-1');
+  });
+
+  it('reports bounded operational delivery health without exposing secrets', async () => {
+    const row = subscription();
+    const { service, repository } = createService([row]);
+    const createdAt = new Date(Date.now() - 1_000);
+    const completedAt = new Date();
+    repository.listRecentDeliveries = vi.fn().mockResolvedValue([
+      {
+        ...delivery('event-1', 'delivery-1'),
+        createdAt,
+        completedAt,
+      },
+      {
+        ...delivery('event-2', 'delivery-2'),
+        state: 'DEAD_LETTER',
+        attemptCount: 3,
+        createdAt,
+        completedAt: null,
+      },
+    ]);
+
+    const result = await service.health('sub-uuid');
+
+    expect(result.deliveries).toEqual({
+      total: 2,
+      successful: 1,
+      failed: 1,
+      retried: 1,
+    });
+    expect(result.averageLatencyMs).toBeGreaterThanOrEqual(0);
+    expect(JSON.stringify(result)).not.toMatch(/secret|ciphertext/i);
   });
 });
