@@ -18,6 +18,7 @@ import { createDatabaseClient } from './database.ts';
 import { seedCrm } from './crm.ts';
 import { seedSales } from './sales.ts';
 import { seedAgentManagement } from './agent-management/seed.ts';
+import { seedPropertyCapabilities } from './property-capabilities.ts';
 
 export async function seedDatabase(): Promise<void> {
   const prisma = createDatabaseClient();
@@ -65,6 +66,7 @@ export async function seedDatabase(): Promise<void> {
       if (adminRoleId === undefined) throw new Error('Missing seeded ADMIN role');
       await assignAdminRole(tx, adminUserId, adminRoleId);
       await seedDevelopmentUsers(tx, preparedUsers);
+      await seedPropertyCapabilities(tx);
       await seedCrm(tx);
       await seedSales(tx);
       await seedAgentManagement(tx);

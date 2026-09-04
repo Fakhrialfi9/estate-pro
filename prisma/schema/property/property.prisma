@@ -47,6 +47,9 @@ model Property {
   seo                   PropertySeo?
   specification         PropertySpecification?
   utilities             PropertyUtility?
+  amenityAssignments    PropertyAmenityAssignment[]
+  documents             PropertyDocument[]
+  history               PropertyHistory[]
 
   @@index([availabilityStatus, availableFrom, availableTo])
   @@index([propertyCategoryId], map: "properties_property_category_id_fkey")

@@ -17,6 +17,7 @@ import { PropertyMasterService } from './application/property-master.service.js'
 import { PropertyDetailsService } from './application/property-details.service.js';
 import { PropertyExtrasService } from './application/property-extras.service.js';
 import { PropertyLifecycleService } from './application/property-lifecycle.service.js';
+import { PropertyCapabilitiesService } from './application/property-capabilities.service.js';
 import { PropertyController } from './presentation/controllers/property.controller.js';
 import { PropertyCategoryController } from './presentation/controllers/property-category.controller.js';
 import { PropertySubcategoryController } from './presentation/controllers/property-subcategory.controller.js';
@@ -25,6 +26,7 @@ import { PropertyFacilityController } from './presentation/controllers/property-
 import { PropertyDetailsController } from './presentation/property-details.controller.js';
 import { PropertyExtrasController } from './presentation/property-extras.controller.js';
 import { PropertyLifecycleController } from './presentation/property-lifecycle.controller.js';
+import { PropertyCapabilitiesController } from './presentation/property-capabilities.controller.js';
 import { PROPERTY_MASTER_REPOSITORY } from './domain/repositories/property-master.repository.js';
 import { PrismaPropertyMasterStore } from './infrastructure/persistence/prisma-property-master.store.js';
 import { PROPERTY_DETAILS_REPOSITORY } from './domain/repositories/property-details.repository.js';
@@ -33,14 +35,18 @@ import { PROPERTY_EXTRAS_REPOSITORY } from './domain/repositories/property-extra
 import { PrismaPropertyExtrasRepository } from './infrastructure/persistence/prisma-property-extras.repository.js';
 import { PROPERTY_LIFECYCLE_REPOSITORY } from './domain/repositories/property-lifecycle.repository.js';
 import { PrismaPropertyLifecycleRepository } from './infrastructure/persistence/prisma-property-lifecycle.repository.js';
+import { PROPERTY_CAPABILITIES_REPOSITORY } from './domain/repositories/property-capabilities.repository.js';
+import { PrismaPropertyCapabilitiesRepository } from './infrastructure/persistence/prisma-property-capabilities.repository.js';
 import { PropertyMetricsInterceptor } from './observability/property-metrics.interceptor.js';
 import { PROPERTY_PUBLIC_PORT } from '../../common/contracts/property-public.port.js';
+import { PROPERTY_SEO_PUBLIC_PORT } from '../../common/contracts/property-seo-public.port.js';
 import { PROPERTY_AGENT_ASSIGNMENT_PORT } from '../../common/contracts/property-agent-assignment.port.js';
 import { PROPERTY_AGENT_CONTEXT_PORT } from '../../common/contracts/property-agent-context.port.js';
 import { PROPERTY_REGION_PORT } from '../../common/contracts/property-region.port.js';
 import { PrismaPropertyAgentAssignmentAdapter } from './property-agent-assignment.adapter.js';
 import { PrismaPropertyAgentContextAdapter } from './property-agent-context.adapter.js';
 import { PrismaPropertyRegionAdapter } from './property-region.adapter.js';
+import { PrismaPropertySeoPublicAdapter } from './property-seo-public.adapter.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthorizationModule, ListingModule],
@@ -54,6 +60,7 @@ import { PrismaPropertyRegionAdapter } from './property-region.adapter.js';
     PropertyDetailsController,
     PropertyExtrasController,
     PropertyLifecycleController,
+    PropertyCapabilitiesController,
   ],
   providers: [
     AuthorizationGuard,
@@ -83,7 +90,15 @@ import { PrismaPropertyRegionAdapter } from './property-region.adapter.js';
       provide: PROPERTY_LIFECYCLE_REPOSITORY,
       useClass: PrismaPropertyLifecycleRepository,
     },
+    {
+      provide: PROPERTY_CAPABILITIES_REPOSITORY,
+      useClass: PrismaPropertyCapabilitiesRepository,
+    },
     { provide: PROPERTY_PUBLIC_PORT, useExisting: PropertyMasterService },
+    {
+      provide: PROPERTY_SEO_PUBLIC_PORT,
+      useClass: PrismaPropertySeoPublicAdapter,
+    },
     {
       provide: PROPERTY_AGENT_ASSIGNMENT_PORT,
       useClass: PrismaPropertyAgentAssignmentAdapter,
@@ -97,6 +112,7 @@ import { PrismaPropertyRegionAdapter } from './property-region.adapter.js';
     PropertyDetailsService,
     PropertyExtrasService,
     PropertyLifecycleService,
+    PropertyCapabilitiesService,
   ],
   exports: [
     PROPERTY_TYPE_REPOSITORY,
@@ -104,7 +120,9 @@ import { PrismaPropertyRegionAdapter } from './property-region.adapter.js';
     PROPERTY_DETAILS_REPOSITORY,
     PROPERTY_EXTRAS_REPOSITORY,
     PROPERTY_LIFECYCLE_REPOSITORY,
+    PROPERTY_CAPABILITIES_REPOSITORY,
     PROPERTY_PUBLIC_PORT,
+    PROPERTY_SEO_PUBLIC_PORT,
     PROPERTY_AGENT_ASSIGNMENT_PORT,
     PROPERTY_AGENT_CONTEXT_PORT,
     PROPERTY_REGION_PORT,

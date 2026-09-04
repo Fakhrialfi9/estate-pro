@@ -1,0 +1,139 @@
+enum PropertyAmenityCategory {
+  LIVING
+  KITCHEN
+  BATHROOM
+  OUTDOOR
+  SECURITY
+  PARKING
+  TECHNOLOGY
+  ACCESSIBILITY
+  RECREATION
+  UTILITY
+  OTHER
+}
+
+enum PropertyDocumentClassification {
+  CERTIFICATE
+  LEGAL
+  FINANCIAL
+  SUPPORTING
+  OTHER
+}
+
+enum PropertyDocumentVisibility {
+  PRIVATE
+  RESTRICTED
+}
+
+enum PropertyDocumentStatus {
+  REGISTERED
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum PropertyHistoryEvent {
+  CREATED
+  UPDATED
+  PRICE_CHANGED
+  STATUS_CHANGED
+  LISTING_CHANGED
+  SEO_CHANGED
+  MEDIA_CHANGED
+  AGENT_CHANGED
+}
+
+model PropertyAmenity {
+  id           BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid         String                    @unique @default(uuid()) @db.Char(36)
+  code         String                    @unique @db.VarChar(80)
+  name         String                    @db.VarChar(120)
+  category     PropertyAmenityCategory   @default(OTHER)
+  description  String?                   @db.VarChar(500)
+  isActive     Boolean                   @default(true) @map("is_active")
+  sortOrder    Int                       @default(0) @map("sort_order")
+  createdAt    DateTime                  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime                  @updatedAt @map("updated_at") @db.DateTime(3)
+  assignments  PropertyAmenityAssignment[]
+
+  @@index([category, isActive, sortOrder, id], map: "property_amenities_catalog_idx")
+  @@map("property_amenities")
+}
+
+model PropertyAmenityAssignment {
+  propertyId  BigInt          @map("property_id") @db.UnsignedBigInt
+  amenityId   BigInt          @map("amenity_id") @db.UnsignedBigInt
+  available   Boolean         @default(true)
+  value       String?         @db.VarChar(120)
+  notes       String?         @db.VarChar(500)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.DateTime(3)
+  property    Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  amenity     PropertyAmenity @relation(fields: [amenityId], references: [id], onDelete: Restrict)
+
+  @@id([propertyId, amenityId])
+  @@index([amenityId], map: "property_amenity_assignments_amenity_idx")
+  @@index([propertyId, available], map: "property_amenity_assignments_property_available_idx")
+  @@map("property_amenity_assignments")
+}
+
+model PropertyDocument {
+  id             BigInt                       @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid           String                       @unique @default(uuid()) @db.Char(36)
+  propertyId     BigInt                       @map("property_id") @db.UnsignedBigInt
+  classification PropertyDocumentClassification @default(OTHER)
+  title          String                       @db.VarChar(200)
+  visibility     PropertyDocumentVisibility   @default(RESTRICTED)
+  status         PropertyDocumentStatus       @default(REGISTERED)
+  currentVersion Int                          @default(1) @map("current_version")
+  retentionUntil DateTime?                    @map("retention_until") @db.DateTime(3)
+  createdBy      String?                      @map("created_by") @db.Char(36)
+  updatedBy      String?                      @map("updated_by") @db.Char(36)
+  createdAt      DateTime                     @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime                     @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt      DateTime?                    @map("deleted_at") @db.DateTime(3)
+  property       Property                     @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  versions       PropertyDocumentVersion[]
+
+  @@index([propertyId, status, updatedAt, id], map: "property_documents_property_status_idx")
+  @@index([propertyId, classification, visibility, status], map: "property_documents_access_idx")
+  @@map("property_documents")
+}
+
+model PropertyDocumentVersion {
+  id              BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid            String           @unique @default(uuid()) @db.Char(36)
+  documentId      BigInt           @map("document_id") @db.UnsignedBigInt
+  version         Int
+  storageProvider String?          @map("storage_provider") @db.VarChar(80)
+  storageKey      String           @map("storage_key") @db.VarChar(500)
+  mimeType        String           @map("mime_type") @db.VarChar(120)
+  extension       String?          @db.VarChar(20)
+  fileSizeBytes   Int?             @map("file_size_bytes") @db.UnsignedInt
+  checksumSha256  String           @map("checksum_sha256") @db.Char(64)
+  createdBy       String?          @map("created_by") @db.Char(36)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  document        PropertyDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, version], map: "property_document_versions_document_version_key")
+  @@index([documentId, createdAt, id], map: "property_document_versions_document_idx")
+  @@map("property_document_versions")
+}
+
+model PropertyHistory {
+  id          BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid        String              @unique @default(uuid()) @db.Char(36)
+  propertyId  BigInt              @map("property_id") @db.UnsignedBigInt
+  event       PropertyHistoryEvent
+  actorUuid   String?             @map("actor_uuid") @db.Char(36)
+  summary     String              @db.VarChar(255)
+  changes     Json?
+  occurredAt  DateTime            @default(now()) @map("occurred_at") @db.DateTime(3)
+  createdAt   DateTime            @default(now()) @map("created_at") @db.DateTime(3)
+  property    Property            @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+
+  @@index([propertyId, occurredAt, id], map: "property_history_property_occurred_idx")
+  @@index([propertyId, event, occurredAt, id], map: "property_history_property_event_idx")
+  @@index([actorUuid, occurredAt, id], map: "property_history_actor_occurred_idx")
+  @@map("property_history")
+}
