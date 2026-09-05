@@ -1,8 +1,9 @@
 import type { PrismaClient } from '../generated/prisma/client.ts';
 
 const REQUIRED_SEED_MODELS = [
-  ['authenticationUser', 1], ['authenticationUserCredential', 1], ['authenticationUserSecurity', 1],
+  ['authenticationUser', 1], ['authenticationUserCredential', 1], ['authenticationUserSecurity', 1], ['authenticationUserProfile', 1],
   ['authorizationPermission', 1], ['authorizationRole', 1], ['authorizationRolePermission', 1],
+  ['auditLog', 1], ['auditLogChange', 1],
   ['agentProfile', 1], ['agentSpecialization', 1], ['agentCoverage', 1], ['agentAvailability', 1], ['agentWeeklySchedule', 1], ['agentTarget', 1],
   ['propertyType', 1], ['propertyCategory', 1], ['propertySubcategory', 1], ['country', 1], ['province', 1], ['city', 1], ['district', 1], ['subdistrict', 1], ['facility', 1], ['propertyAmenity', 1],
   ['property', 1], ['propertySpecification', 1], ['propertyLocation', 1], ['propertyBuilding', 1], ['propertyFinancial', 1], ['propertyFeatures', 1], ['propertySecurity', 1], ['propertyEnvironment', 1], ['propertyUtility', 1], ['propertyLegal', 1], ['propertyOwner', 1], ['propertyRoom', 1], ['propertyCertificate', 1], ['propertyDocument', 1], ['propertyDocumentVersion', 1], ['propertyMedia', 1], ['propertyListing', 1], ['propertyListingPrice', 1], ['propertyListingPaymentOption', 1], ['propertyListingAnalytics', 1], ['propertyFacility', 1], ['propertyAmenityAssignment', 1], ['propertyAgentAssignment', 1], ['propertyHistory', 1],
@@ -11,23 +12,27 @@ const REQUIRED_SEED_MODELS = [
   ['propertyPreference', 1], ['matchScore', 1], ['recommendation', 1], ['recommendationItem', 1], ['recommendationHistory', 1], ['matchFeedback', 1],
   ['contentArticleCategory', 1], ['contentTag', 1], ['contentMediaFolder', 1], ['contentMedia', 1], ['contentArticle', 1], ['contentArticleTag', 1], ['contentRevision', 1], ['contentSeo', 1], ['contentPage', 1], ['contentFaq', 1], ['contentTestimonial', 1],
   ['automationWorkflow', 1], ['automationWorkflowVersion', 1], ['automationAssignmentRule', 1], ['automationSlaPolicy', 1], ['automationSlaInstance', 1], ['automationEscalationPolicy', 1], ['automationNotificationTemplate', 1], ['automationNotificationPreference', 1], ['automationNotification', 1], ['automationNotificationPolicy', 1], ['automationNotificationDelivery', 1], ['automationWorkflowExecution', 1], ['automationActionExecution', 1],
-  ['systemSetting', 1], ['systemFeatureFlag', 1], ['systemImportProfile', 1], ['systemIntegration', 1], ['systemIntegrationRuntime', 1], ['systemIntegrationEvent', 1], ['systemIntegrationIdempotency', 1], ['systemIntegrationOperation', 1], ['systemOperationalAlertRule', 1], ['systemActivity', 1],
+  ['systemSetting', 1], ['systemFeatureFlag', 1], ['systemImportProfile', 1], ['systemIntegration', 1], ['systemIntegrationCredential', 1], ['systemIntegrationRuntime', 1], ['systemIntegrationEvent', 1], ['systemIntegrationIdempotency', 1], ['systemIntegrationOperation', 1], ['systemIntegrationConflict', 1], ['systemOperationalAlertRule', 1], ['systemOperationalAlert', 1], ['systemActivity', 1],
 ] as const;
 
 type CountableModelName = (typeof REQUIRED_SEED_MODELS)[number][0];
+type CountableDelegate = { count: () => Promise<number> };
 
-type CountableDelegate = {
-  count: () => Promise<number>;
+type PrismaModels = {
+  [K in CountableModelName]: CountableDelegate;
 };
 
-function delegates(prisma: PrismaClient): Record<CountableModelName, CountableDelegate> {
+function delegates(prisma: PrismaClient): PrismaModels {
   return {
     authenticationUser: prisma.authenticationUser,
     authenticationUserCredential: prisma.authenticationUserCredential,
     authenticationUserSecurity: prisma.authenticationUserSecurity,
+    authenticationUserProfile: prisma.authenticationUserProfile,
     authorizationPermission: prisma.authorizationPermission,
     authorizationRole: prisma.authorizationRole,
     authorizationRolePermission: prisma.authorizationRolePermission,
+    auditLog: prisma.auditLog,
+    auditLogChange: prisma.auditLogChange,
     agentProfile: prisma.agentProfile,
     agentSpecialization: prisma.agentSpecialization,
     agentCoverage: prisma.agentCoverage,
@@ -128,20 +133,21 @@ function delegates(prisma: PrismaClient): Record<CountableModelName, CountableDe
     systemFeatureFlag: prisma.systemFeatureFlag,
     systemImportProfile: prisma.systemImportProfile,
     systemIntegration: prisma.systemIntegration,
+    systemIntegrationCredential: prisma.systemIntegrationCredential,
     systemIntegrationRuntime: prisma.systemIntegrationRuntime,
     systemIntegrationEvent: prisma.systemIntegrationEvent,
     systemIntegrationIdempotency: prisma.systemIntegrationIdempotency,
     systemIntegrationOperation: prisma.systemIntegrationOperation,
+    systemIntegrationConflict: prisma.systemIntegrationConflict,
     systemOperationalAlertRule: prisma.systemOperationalAlertRule,
+    systemOperationalAlert: prisma.systemOperationalAlert,
     systemActivity: prisma.systemActivity,
   };
 }
 
 export async function verifySeedState(prisma: PrismaClient): Promise<void> {
   const modelDelegates = delegates(prisma);
-  const counts = await Promise.all(
-    REQUIRED_SEED_MODELS.map(async ([model, minimum]) => [model, await modelDelegates[model].count(), minimum] as const),
-  );
+  const counts = await Promise.all(REQUIRED_SEED_MODELS.map(async ([model, minimum]) => [model, await modelDelegates[model].count(), minimum] as const));
   const missing = counts.filter(([, actual, minimum]) => actual < minimum);
   if (missing.length > 0) {
     throw new Error(`Seed verification failed: ${missing.map(([model, actual, minimum]) => `${model}: expected >= ${minimum}, got ${actual}`).join('; ')}`);
