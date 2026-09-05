@@ -74,8 +74,9 @@ export class SystemIntegrationReliabilityService {
         });
       }
       try {
-        if (Date.now() - startedAt > policy.deadlineMs)
+        if (Date.now() - startedAt > policy.deadlineMs) {
           throw new Error('Integration operation deadline exceeded');
+        }
         const value = await operation(provider);
         await this.roadmap.runtime.update(runtime.integrationId, {
           circuitState: 'CLOSED',
@@ -131,11 +132,16 @@ export class SystemIntegrationReliabilityService {
 
   async providerHealth(integrationUuid: string) {
     const provider = await this.integrations.providerFor(integrationUuid);
-    if (!provider.health)
+    const integration = await this.integrations.get(integrationUuid);
+    if (!provider.testConnection) {
       throw new NotFoundException(
         'Provider health capability is not implemented',
       );
-    const result = await provider.health();
+    }
+    const result = await provider.testConnection({
+      metadata: integration.metadata,
+      secretRef: integration.secretRef,
+    });
     const runtime = await this.integrations.runtimeFor(integrationUuid);
     await this.roadmap.runtime.update(runtime.integrationId, {
       lastHealthAt: new Date(),
