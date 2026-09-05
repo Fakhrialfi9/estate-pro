@@ -14,7 +14,7 @@ export type IntegrationCredentialStatus =
 
 export type IntegrationOperationState =
   | 'QUEUED'
-  | 'RUNNING'
+  |   'RUNNING'
   | 'SUCCEEDED'
   | 'FAILED'
   | 'RETRY_SCHEDULED'
@@ -40,6 +40,11 @@ export type IntegrationCredential = Readonly<{
   rotatedAt: Date | null;
   revokedAt: Date | null;
   metadata: Readonly<Record<string, unknown>>;
+}>;
+
+export type IntegrationProviderExecutionContext = Readonly<{
+  metadata: Record<string, unknown>;
+  secretRef?: string | null;
 }>;
 
 export type CanonicalIntegrationRequest = Readonly<{
@@ -90,12 +95,16 @@ export interface IntegrationProviderCredentialPort {
 export interface IntegrationProviderOperationPort {
   push?(
     request: CanonicalIntegrationRequest,
+    context?: IntegrationProviderExecutionContext,
   ): Promise<CanonicalIntegrationResponse>;
-  pull?(input: {
-    resourceType: string;
-    cursor?: string | null;
-    limit: number;
-  }): Promise<{
+  pull?(
+    input: {
+      resourceType: string;
+      cursor?: string | null;
+      limit: number;
+    },
+    context?: IntegrationProviderExecutionContext,
+  ): Promise<{
     records: readonly Readonly<Record<string, unknown>>[];
     nextCursor: string | null;
   }>;
@@ -123,10 +132,7 @@ export interface IntegrationProviderInboundPort {
 }
 
 export interface IntegrationProviderHealthPort {
-  health?(input?: {
-    metadata: Record<string, unknown>;
-    secretRef?: string | null;
-  }): Promise<{
+  health?(input?: IntegrationProviderExecutionContext): Promise<{
     ok: boolean;
     latencyMs: number;
     code?: string;
