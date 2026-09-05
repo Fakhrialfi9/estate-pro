@@ -43,19 +43,30 @@ export class SystemIntegrationCredentialService {
     }
     if (!provider.refreshAccessToken)
       throw new BadRequestException('Provider does not support OAuth refresh');
+
     const tokens = await provider.refreshAccessToken({
-      refreshTokenRef: credential.refreshTokenRef,
+      clientReference: credential.secretRef ?? '',
+      refreshTokenReference: credential.refreshTokenRef,
+      scopes: [],
     });
-    if (!tokens.accessTokenRef || !REF_PATTERN.test(tokens.accessTokenRef))
-      throw new BadRequestException('Provider returned an invalid access token reference');
-    if (!tokens.refreshTokenRef || !REF_PATTERN.test(tokens.refreshTokenRef))
-      throw new BadRequestException('Provider returned an invalid refresh token reference');
+    if (!REF_PATTERN.test(tokens.accessTokenReference))
+      throw new BadRequestException(
+        'Provider returned an invalid access token reference',
+      );
+    const refreshTokenReference =
+      tokens.refreshTokenReference ?? credential.refreshTokenRef;
+    if (!REF_PATTERN.test(refreshTokenReference))
+      throw new BadRequestException(
+        'Provider returned an invalid refresh token reference',
+      );
+
     const rotated = await this.roadmap.credential.rotate(uuid, {
       secretRef: credential.secretRef,
-      accessTokenRef: tokens.accessTokenRef,
-      refreshTokenRef: tokens.refreshTokenRef,
+      accessTokenRef: tokens.accessTokenReference,
+      refreshTokenRef: refreshTokenReference,
       accessTokenExpiresAt: tokens.accessTokenExpiresAt,
-      refreshTokenExpiresAt: tokens.refreshTokenExpiresAt,
+      refreshTokenExpiresAt:
+        tokens.refreshTokenExpiresAt ?? credential.refreshTokenExpiresAt,
       metadata: credential.metadata,
     });
     await this.roadmap.credential.markUsed(rotated.uuid, new Date());
