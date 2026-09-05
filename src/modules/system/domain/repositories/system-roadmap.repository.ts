@@ -304,9 +304,7 @@ export interface SystemRoadmapRepository {
   };
   alertRule: {
     list(enabled?: boolean): Promise<readonly OperationalAlertRuleRecord[]>;
-    upsert(
-      input: OperationalAlertRuleRecord,
-    ): Promise<OperationalAlertRuleRecord>;
+    upsert(input: OperationalAlertRuleRecord): Promise<OperationalAlertRuleRecord>;
   };
   alert: {
     upsert(input: OperationalAlertRecord): Promise<OperationalAlertRecord>;
