@@ -38,11 +38,6 @@ const steps = [
     args: ['run', 'prisma:deploy'],
   },
   {
-    name: 'Prisma seed',
-    command: npmCommand,
-    args: ['run', 'prisma:seed'],
-  },
-  {
     name: 'Prisma final status',
     command: npmCommand,
     args: ['run', 'prisma:status'],
@@ -78,14 +73,9 @@ const steps = [
     args: ['run', 'check:architecture'],
   },
   {
-    name: 'Complete test suite',
-    command: npmCommand,
-    args: ['run', 'test'],
-  },
-  {
     name: 'Unit tests',
     command: npmCommand,
-    args: ['run', 'test:unit'],
+    args: ['test'],
   },
   {
     name: 'Integration tests',
@@ -98,14 +88,14 @@ const steps = [
     args: ['run', 'test:e2e'],
   },
   {
-    name: 'OpenAPI contract tests',
-    command: npmCommand,
-    args: ['run', 'test:openapi'],
-  },
-  {
     name: 'OpenAPI specification validation',
     command: npmCommand,
     args: ['run', 'openapi:validate'],
+  },
+  {
+    name: 'OpenAPI contract tests',
+    command: npmCommand,
+    args: ['run', 'test:openapi'],
   },
   {
     name: 'Security tests',
@@ -151,9 +141,7 @@ const steps = [
 
 function formatDuration(ms) {
   const seconds = ms / 1000;
-
   if (seconds < 60) return `${seconds.toFixed(2)}s`;
-
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds % 60;
   return `${minutes}m ${remainder.toFixed(2)}s`;
@@ -161,7 +149,6 @@ function formatDuration(ms) {
 
 function runStep(step, index) {
   const total = steps.length;
-
   console.log('');
   console.log('='.repeat(80));
   console.log(`[${index + 1}/${total}] ${step.name}`);
