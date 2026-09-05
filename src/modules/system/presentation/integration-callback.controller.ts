@@ -1,11 +1,11 @@
 import {
+  BadRequestException,
   Controller,
   Headers,
   Param,
   Post,
   Req,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
@@ -32,12 +32,18 @@ export class IntegrationCallbackController {
   ) {
     if (!timestamp || !signature)
       throw new UnauthorizedException('Callback authentication required');
+    if (!request.rawBody)
+      throw new BadRequestException('Raw callback body is required');
     const provider = await this.integrations.providerFor(uuid);
-    const body =
-      request.rawBody?.toString('utf8') ?? JSON.stringify(request.body ?? {});
     return this.callbacks.handle(
       uuid,
-      { timestamp, signature, eventId, eventName, body },
+      {
+        timestamp,
+        signature,
+        eventId,
+        eventName,
+        body: request.rawBody.toString('utf8'),
+      },
       provider,
     );
   }
