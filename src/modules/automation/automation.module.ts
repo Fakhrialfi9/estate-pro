@@ -25,6 +25,7 @@ import { PrismaAutomationNotificationRepository } from './infrastructure/persist
 import { AUTOMATION_REPOSITORY } from './infrastructure/persistence/automation.repository.token.js';
 import { AUTOMATION_NOTIFICATION_REPOSITORY } from './domain/repositories/automation-notification.repository.js';
 import { AUTOMATION_ACTION_PROVIDERS } from './application/actions/automation-actions.js';
+import { SendCommunicationAction } from './application/actions/send-communication.action.js';
 import type {
   ActionHandler,
   AutomationRepository,
@@ -48,6 +49,8 @@ import {
 } from '../../common/audit/security-audit.port.js';
 import { AutomationScheduler } from './infrastructure/scheduler/automation.scheduler.js';
 
+const ACTION_HANDLERS = [...AUTOMATION_ACTION_PROVIDERS, SendCommunicationAction] as const;
+
 @Module({
   imports: [
     DatabaseModule,
@@ -64,15 +67,15 @@ import { AutomationScheduler } from './infrastructure/scheduler/automation.sched
     PrismaAutomationRepository,
     PrismaAutomationNotificationRepository,
     AutomationNotificationService,
+    ...ACTION_HANDLERS,
     { provide: AUTOMATION_REPOSITORY, useExisting: PrismaAutomationRepository },
     {
       provide: AUTOMATION_NOTIFICATION_REPOSITORY,
       useExisting: PrismaAutomationNotificationRepository,
     },
-    ...AUTOMATION_ACTION_PROVIDERS,
     {
       provide: AUTOMATION_ACTION_HANDLERS,
-      inject: [...AUTOMATION_ACTION_PROVIDERS],
+      inject: [...ACTION_HANDLERS],
       useFactory: (...handlers: ActionHandler[]) => handlers,
     },
     {
