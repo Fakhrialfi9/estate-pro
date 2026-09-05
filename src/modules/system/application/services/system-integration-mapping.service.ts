@@ -110,9 +110,10 @@ export class SystemIntegrationMappingService {
     if (value === undefined || transform === undefined) return value;
     switch (transform) {
       case 'string':
-        return typeof value === 'string' ? value : String(value);
+        return toSafeString(value);
       case 'number': {
-        const result = typeof value === 'number' ? value : Number(value);
+        const result =
+          typeof value === 'number' ? value : Number(toSafeString(value));
         if (!Number.isFinite(result))
           throw new Error('Integration mapping produced an invalid number');
         return result;
@@ -124,7 +125,7 @@ export class SystemIntegrationMappingService {
         throw new Error('Integration mapping produced an invalid boolean');
       case 'date': {
         if (value instanceof Date) return value.toISOString();
-        const date = new Date(String(value));
+        const date = new Date(toSafeString(value));
         if (!Number.isFinite(date.getTime()))
           throw new Error('Integration mapping produced an invalid date');
         return date.toISOString();
@@ -171,4 +172,19 @@ export class SystemIntegrationMappingService {
     if (!PATH_PATTERN.test(path) || path.length > 220)
       throw new Error('Invalid integration mapping path');
   }
+}
+
+function toSafeString(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  )
+    return String(value);
+  if (value instanceof Date) return value.toISOString();
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined)
+    throw new Error('Integration mapping value cannot be stringified');
+  return serialized;
 }
