@@ -76,7 +76,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
           headers: {
             accept: 'application/json',
             'content-type': 'application/json',
-            ...(input.secretRef ? { 'x-secret-ref': input.secretRef } : {}),
+            ...(await this.authorizationHeaders(input.metadata, input.secretRef)),
           },
           body: JSON.stringify({ operation: 'reconnect' }),
           redirect: 'error',
@@ -197,6 +197,8 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
       mapped,
       request.idempotencyKey,
       numberValue(metadata.timeoutMs, DEFAULT_TIMEOUT_MS),
+      stringValue(metadata.secretRef),
+      metadata,
     );
     const body = await readJson(response);
     return this.mapResponse({
@@ -220,7 +222,10 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
   }): Promise<boolean> {
     if (!input.secretRef) return false;
     try {
-      const secret = await this.secrets.resolve(input.secretRef);
+      const reference = keyVersion
+        ? versionedReference(input.secretRef, keyVersion)
+        : input.secretRef;
+      const secret = await this.secrets.resolve(reference);
       const digest = createHmac('sha256', secret)
         .update(`${input.timestamp}.${input.body}`, 'utf8')
         .digest();
@@ -250,7 +255,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
         method: 'GET',
         headers: {
           accept: 'application/json',
-          ...(secretRef ? { 'x-secret-ref': secretRef } : {}),
+          ...(await this.authorizationHeaders(metadata, secretRef)),
           'x-integration-mode': mode,
         },
         redirect: 'error',
@@ -266,6 +271,8 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     mappedRequest: Record<string, unknown>,
     idempotencyKey: string,
     timeoutMs: number,
+    secretRef: string | null,
+    metadata: Record<string, unknown>,
   ) {
     const url = await assertPublicHttpsUrl(endpoint);
     return fetch(url, {
@@ -274,11 +281,30 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
         accept: 'application/json',
         'content-type': 'application/json',
         'idempotency-key': idempotencyKey,
+        ...(await this.authorizationHeaders(metadata, secretRef)),
       },
       body: JSON.stringify(mappedRequest),
       redirect: 'error',
       signal: AbortSignal.timeout(timeoutMs),
     });
+  }
+
+  private async authorizationHeaders(
+    metadata: Record<string, unknown>,
+    secretRef?: string | null,
+  ): Promise<Record<string, string>> {
+    if (!secretRef) return {};
+    const secret = await this.secrets.resolve(secretRef);
+    const scheme = stringValue(metadata.authScheme)?.toLowerCase() ?? 'bearer';
+    if (scheme === 'apikey') {
+      const header = stringValue(metadata.apiKeyHeader) ?? 'x-api-key';
+      if (!/^[A-Za-z0-9-]{1,64}$/.test(header))
+        throw new Error('Integration API key header is invalid');
+      return { [header]: secret };
+    }
+    if (scheme !== 'bearer')
+      throw new Error('Unsupported integration authentication scheme');
+    return { authorization: `Bearer ${secret}` };
   }
 
   private errorCode(error: unknown) {
@@ -296,6 +322,14 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
       )
       .slice(0, 500);
   }
+}
+
+function versionedReference(baseReference: string, keyVersion: string): string {
+  if (!/^env:\/\/[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(baseReference))
+    return baseReference;
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(keyVersion))
+    throw new Error('Invalid integration signature key version');
+  return `${baseReference}_${keyVersion.toUpperCase()}`;
 }
 
 export async function assertPublicHttpsUrl(raw: string): Promise<string> {
