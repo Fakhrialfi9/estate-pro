@@ -27,6 +27,7 @@ import { SettingsController } from './presentation/settings.controller.js';
 import { WebhookController } from './presentation/webhook.controller.js';
 import { IntegrationController } from './presentation/integration.controller.js';
 import { OperationsController } from './presentation/operations.controller.js';
+import { SystemRoadmapControlController } from './presentation/system-roadmap-control.controller.js';
 import { SystemActivityService } from './application/services/system-activity.service.js';
 import { SystemExportService } from './application/services/system-export.service.js';
 import { SystemImportService } from './application/services/system-import.service.js';
@@ -36,6 +37,7 @@ import { SystemSettingsService } from './application/services/system-settings.se
 import { SystemWebhookService } from './application/services/system-webhook.service.js';
 import { SystemIntegrationService } from './application/services/system-integration.service.js';
 import { SystemOperationsService } from './application/services/system-operations.service.js';
+import { SystemRoadmapControlService } from './application/services/system-roadmap-control.service.js';
 import { SystemReadOnlyGuard } from './application/guards/system-read-only.guard.js';
 import { PrismaSystemActivityRepository } from './infrastructure/persistence/prisma-system-activity.repository.js';
 import { PrismaSystemExportRepository } from './infrastructure/persistence/prisma-system-export.repository.js';
@@ -43,6 +45,7 @@ import { PrismaSystemImportRepository } from './infrastructure/persistence/prism
 import { PrismaSystemSettingsRepository } from './infrastructure/persistence/prisma-system-settings.repository.js';
 import { PrismaSystemWebhookRepository } from './infrastructure/persistence/prisma-system-webhook.repository.js';
 import { PrismaSystemIntegrationRepository } from './infrastructure/persistence/prisma-system-integration.repository.js';
+import { PrismaSystemRoadmapRepository } from './infrastructure/persistence/prisma-system-roadmap.repository.js';
 import { LocalSystemArtifactStorage } from './infrastructure/storage/local-system-artifact.storage.js';
 import { SystemExportScheduler } from './infrastructure/export/system-export.scheduler.js';
 import { SystemXlsxExporterAdapter } from './infrastructure/export/system-xlsx-exporter.adapter.js';
@@ -58,6 +61,7 @@ import { SYSTEM_SETTINGS_REPOSITORY } from './domain/repositories/system-setting
 import { SYSTEM_WEBHOOK_REPOSITORY } from './domain/repositories/system-webhook.repository.js';
 import { SYSTEM_INTEGRATION_REPOSITORY } from './domain/repositories/system-integration.repository.js';
 import { SYSTEM_XLSX_EXPORTER } from './domain/repositories/system-xlsx-exporter.port.js';
+import { SYSTEM_ROADMAP_REPOSITORY } from './domain/repositories/system-roadmap.repository.js';
 import {
   SYSTEM_DATABASE_HEALTH_PORT,
   SYSTEM_JOB_HEALTH_PORT,
@@ -91,6 +95,7 @@ import {
     WebhookController,
     IntegrationController,
     OperationsController,
+    SystemRoadmapControlController,
   ],
   providers: [
     AuthenticatedAccessGuard,
@@ -106,6 +111,7 @@ import {
     SystemWebhookService,
     SystemIntegrationService,
     SystemOperationsService,
+    SystemRoadmapControlService,
     SystemReadOnlyGuard,
     SystemMetricsService,
     PrismaSystemSettingsRepository,
@@ -114,6 +120,7 @@ import {
     PrismaSystemExportRepository,
     PrismaSystemWebhookRepository,
     PrismaSystemIntegrationRepository,
+    PrismaSystemRoadmapRepository,
     LocalSystemArtifactStorage,
     WebhookNetworkService,
     WebhookSecretService,
@@ -149,6 +156,10 @@ import {
     {
       provide: SYSTEM_INTEGRATION_REPOSITORY,
       useExisting: PrismaSystemIntegrationRepository,
+    },
+    {
+      provide: SYSTEM_ROADMAP_REPOSITORY,
+      useExisting: PrismaSystemRoadmapRepository,
     },
     { provide: SYSTEM_WEBHOOK_SECRET_PORT, useExisting: WebhookSecretService },
     { provide: SYSTEM_WEBHOOK_SIGNER_PORT, useExisting: WebhookSignerService },
@@ -189,6 +200,7 @@ import {
     SystemSettingsService,
     SystemActivityService,
     SYSTEM_OPERATIONS_PORT,
+    SystemRoadmapControlService,
   ],
 })
 export class SystemModule {}
