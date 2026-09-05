@@ -25,6 +25,20 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_HEALTH_TIMEOUT_MS = 3_000;
 const MAX_RESPONSE_BYTES = 512 * 1024;
 
+export class IntegrationProviderHttpError extends Error {
+  readonly retryAfterMs: number | null;
+
+  constructor(
+    readonly statusCode: number,
+    message: string,
+    retryAfterMs: number | null = null,
+  ) {
+    super(`Provider HTTP ${statusCode}: ${message}`);
+    this.name = 'IntegrationProviderHttpError';
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
 @Injectable()
 export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
   readonly key = 'http';
@@ -82,10 +96,16 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
           redirect: 'error',
           signal: controller.signal,
         });
+        if (!response.ok)
+          throw new IntegrationProviderHttpError(
+            response.status,
+            'Provider reconnect request failed',
+            parseRetryAfter(response.headers.get('retry-after')),
+          );
         return {
-          ok: response.ok,
-          code: response.ok ? undefined : `HTTP_${response.status}`,
-          message: response.ok ? undefined : 'Provider reconnect request failed',
+          ok: true,
+          code: undefined,
+          message: undefined,
         };
       } finally {
         clearTimeout(timer);
@@ -93,7 +113,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     } catch (error: unknown) {
       return {
         ok: false,
-        code: this.errorCode(error),
+        code: errorCode(error),
         message: safeMessage(error),
       };
     }
@@ -140,7 +160,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
       return {
         ok: false,
         latencyMs: Math.round(performance.now() - started),
-        code: this.errorCode(error),
+        code: errorCode(error),
       };
     }
   }
@@ -201,7 +221,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
       metadata,
     );
     const body = await readJson(response);
-    return this.mapResponse({
+    const canonical = this.mapResponse({
       ok: response.ok,
       operationKey: request.operationKey,
       resourceType: request.resourceType,
@@ -211,6 +231,13 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
       errorCode: response.ok ? null : `HTTP_${response.status}`,
       errorMessage: response.ok ? null : 'Provider rejected push request',
     });
+    if (!response.ok)
+      throw new IntegrationProviderHttpError(
+        response.status,
+        canonical.errorMessage ?? 'Provider rejected push request',
+        parseRetryAfter(response.headers.get('retry-after')),
+      );
+    return canonical;
   }
 
   async verifySignature(input: {
@@ -222,8 +249,8 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
   }): Promise<boolean> {
     if (!input.secretRef) return false;
     try {
-      const reference = keyVersion
-        ? versionedReference(input.secretRef, keyVersion)
+      const reference = input.keyVersion
+        ? versionedReference(input.secretRef, input.keyVersion)
         : input.secretRef;
       const secret = await this.secrets.resolve(reference);
       const digest = createHmac('sha256', secret)
@@ -306,22 +333,6 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
       throw new Error('Unsupported integration authentication scheme');
     return { authorization: `Bearer ${secret}` };
   }
-
-  private errorCode(error: unknown) {
-    if (error instanceof Error && /aborted|timeout/i.test(error.message))
-      return 'PROVIDER_TIMEOUT';
-    return 'PROVIDER_UNAVAILABLE';
-  }
-
-  private safeProviderError(value: unknown) {
-    if (typeof value !== 'string') return 'Provider request failed';
-    return value
-      .replace(
-        /(token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+/gi,
-        '$1=[REDACTED]',
-      )
-      .slice(0, 500);
-  }
 }
 
 function versionedReference(baseReference: string, keyVersion: string): string {
@@ -330,6 +341,22 @@ function versionedReference(baseReference: string, keyVersion: string): string {
   if (!/^[A-Za-z0-9_-]{1,32}$/.test(keyVersion))
     throw new Error('Invalid integration signature key version');
   return `${baseReference}_${keyVersion.toUpperCase()}`;
+}
+
+function parseRetryAfter(value: string | null): number | null {
+  if (!value) return null;
+  const seconds = Number(value.trim());
+  if (Number.isFinite(seconds)) return Math.min(60_000, Math.max(0, Math.round(seconds * 1_000)));
+  const date = Date.parse(value);
+  if (!Number.isFinite(date)) return null;
+  return Math.min(60_000, Math.max(0, date - Date.now()));
+}
+
+function errorCode(error: unknown) {
+  if (error instanceof IntegrationProviderHttpError) return `HTTP_${error.statusCode}`;
+  if (error instanceof Error && /aborted|timeout/i.test(error.message))
+    return 'PROVIDER_TIMEOUT';
+  return 'PROVIDER_UNAVAILABLE';
 }
 
 export async function assertPublicHttpsUrl(raw: string): Promise<string> {
