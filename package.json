@@ -10,17 +10,17 @@
     "node": "22.23.2"
   },
   "scripts": {
+    "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:status": "prisma migrate status",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
-    "prisma:ready": "npm run prisma:status && npm run prisma:generate && npm run prisma:migrate && npm run prisma:deploy && npx prisma validate && npm run prisma:seed && npm run prisma:status",
     "fresh": "bash scripts/fresh-install.sh",
     "clean:hard": "bash scripts/hard-clean.sh",
     "clean:soft": "bash scripts/soft-clean.sh",
-    "clean": "rm -rf dist node_modules/.cache generated tsconfig.build.tsbuildinfo && npm run clean:soft",
+    "clean": "npm run clean:soft",
     "build": "prisma generate && nest build --path tsconfig.build.json",
     "start": "prisma generate && nest start",
     "start:dev": "prisma generate && nest start --watch",
@@ -31,6 +31,10 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"src/modules/users/credentials\" \"test/**/*.ts\" --no-error-on-unmatched-pattern",
     "format:check": "prettier --check \"src/**/*.ts\" \"src/modules/users/credentials\" \"test/**/*.ts\" --no-error-on-unmatched-pattern",
+    "check:architecture": "bash scripts/check-architecture.sh",
+    "check:production-dependencies": "node scripts/check-production-dependencies.mjs",
+    "check:runtime": "bash scripts/check-runtime.sh",
+    "check:secrets": "bash scripts/check-secrets.sh",
     "validate:all": "node scripts/validate-all.mjs",
     "test": "prisma generate && vitest run",
     "test:watch": "prisma generate && vitest",
@@ -44,9 +48,7 @@
     "test:coverage": "prisma generate && vitest run --coverage --config vitest.coverage.config.ts",
     "test:coverage:e2e": "prisma generate && vitest run --config vitest.e2e.config.ts --coverage",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:openapi && npm run test:security",
-    "check:fix": "npm run lint:fix && npm run format:check && npm run typecheck",
-    "check:health": "npm run lint && npm run typecheck && npm run check:architecture && npm test && npm run format:check && npm run build",
-    "check:fresh": "npm run clean && npm ci && npm run check:health"
+    "check:fresh": "bash scripts/fresh-install.sh"
   },
   "dependencies": {
     "@nestjs/common": "12.0.1",
