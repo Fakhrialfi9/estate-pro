@@ -14,31 +14,14 @@ export interface CommunicationRecord {
   readonly subject: string | null;
   readonly body: string;
 }
+
 export interface CommunicationRepository {
-  create(
-    record: Omit<
-      CommunicationRecord,
-      'uuid' | 'providerMessageId' | 'providerError' | 'status'
-    >,
-  ): Promise<CommunicationRecord>;
   findByUuid(uuid: string): Promise<CommunicationRecord | null>;
-  list(query: {
-    page: number;
-    limit: number;
-    leadUuid?: string;
-    contactUuid?: string;
-    channel?: string;
-    status?: string;
-  }): Promise<{
-    items: readonly CommunicationRecord[];
-    total: number;
-    page: number;
-    limit: number;
-  }>;
-  updateProviderStatus(
+  transitionCommunication(
     uuid: string,
     status: string,
-    metadata?: { providerMessageId?: string; providerError?: string },
+    input?: { providerMessageId?: string; providerError?: string },
   ): Promise<CommunicationRecord>;
 }
+
 export const COMMUNICATION_REPOSITORY = Symbol('COMMUNICATION_REPOSITORY');
