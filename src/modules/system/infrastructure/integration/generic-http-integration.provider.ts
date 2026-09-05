@@ -47,17 +47,20 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     }
   }
 
-  async disconnect() {
-    return undefined;
+  disconnect(): Promise<void> {
+    return Promise.resolve();
   }
 
-  async health() {
-    const started = performance.now();
-    return {
+  health(): Promise<{
+    ok: boolean;
+    latencyMs: number;
+    code: string;
+  }> {
+    return Promise.resolve({
       ok: true,
-      latencyMs: Math.round(performance.now() - started),
+      latencyMs: 0,
       code: 'STATIC_PROVIDER_REGISTRY_HEALTHY',
-    };
+    });
   }
 
   mapRequest(request: CanonicalIntegrationRequest) {
@@ -66,11 +69,13 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
 
   mapResponse(response: unknown): CanonicalIntegrationResponse {
     if (isRecord(response) && typeof response.operationKey === 'string') {
+      const resourceType = stringValue(response.resourceType);
+      const resourceUuid = stringValue(response.resourceUuid);
       return {
         ok: response.ok !== false,
         operationKey: response.operationKey,
-        resourceType: stringValue(response.resourceType),
-        resourceUuid: stringValue(response.resourceUuid),
+        ...(resourceType !== null ? { resourceType } : {}),
+        ...(resourceUuid !== null ? { resourceUuid } : {}),
         data: isRecord(response.data) ? response.data : {},
         errorCode: stringValue(response.errorCode),
         errorMessage: stringValue(response.errorMessage),
@@ -197,7 +202,7 @@ export async function assertPublicHttpsUrl(raw: string): Promise<string> {
 function isPrivateHost(address: string) {
   const version = isIP(address);
   if (version === 4) {
-    const [a, b] = address.split('.').map(Number);
+    const [a = Number.NaN, b = Number.NaN] = address.split('.').map(Number);
     return (
       a === 10 ||
       a === 127 ||
