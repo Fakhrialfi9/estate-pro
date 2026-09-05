@@ -19,7 +19,6 @@ import { PropertyModule } from './modules/property/property.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { SystemModule } from './modules/system/system.module.js';
-import { SystemCacheModule } from './modules/system/cache/system-cache.module.js';
 import { ContentModule } from './modules/content/content.module.js';
 import { CrmModule } from './modules/crm/crm.module.js';
 import { SalesModule } from './modules/sales/sales.module.js';
@@ -56,7 +55,6 @@ import { DashboardModule } from './modules/dashboard/dashboard.module.js';
     PropertyModule,
     RolesModule,
     SystemModule,
-    SystemCacheModule,
     ContentModule,
     CrmModule,
     SalesModule,
