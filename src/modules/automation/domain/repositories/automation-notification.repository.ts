@@ -12,9 +12,8 @@ export const AUTOMATION_NOTIFICATION_REPOSITORY = Symbol(
 );
 
 export interface AutomationNotificationRepository {
-  listPreferences(
-    userUuid: string,
-  ): Promise<readonly NotificationPreferenceRecord[]>;
+  createNotification(input: Record<string, unknown>): Promise<Record<string, unknown>>;
+  listPreferences(userUuid: string): Promise<readonly NotificationPreferenceRecord[]>;
   upsertPreference(input: {
     userUuid: string;
     notificationType: string;
@@ -57,10 +56,7 @@ export interface AutomationNotificationRepository {
     availableAt?: Date | null;
   }): Promise<NotificationDeliveryRecord>;
   getDelivery(uuid: string): Promise<NotificationDeliveryRecord | null>;
-  listDueDeliveries(
-    now: Date,
-    limit: number,
-  ): Promise<readonly NotificationDeliveryRecord[]>;
+  listDueDeliveries(now: Date, limit: number): Promise<readonly NotificationDeliveryRecord[]>;
   updateDelivery(
     uuid: string,
     input: Partial<
@@ -75,7 +71,5 @@ export interface AutomationNotificationRepository {
       >
     >,
   ): Promise<NotificationDeliveryRecord>;
-  listNotificationDeliveries(
-    notificationUuid: string,
-  ): Promise<readonly NotificationDeliveryRecord[]>;
+  listNotificationDeliveries(notificationUuid: string): Promise<readonly NotificationDeliveryRecord[]>;
 }
