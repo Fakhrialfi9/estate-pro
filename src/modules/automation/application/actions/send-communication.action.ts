@@ -40,10 +40,11 @@ export class SendCommunicationAction implements ActionHandler {
 
     try {
       const result = await this.crm.deliverCommunication(value, actor);
+      const reference = typeof result.uuid === 'string' ? result.uuid : value;
       return {
         success: true,
         retryable: false,
-        reference: result.uuid ?? value,
+        reference,
         output: result,
       };
     } catch (error: unknown) {
