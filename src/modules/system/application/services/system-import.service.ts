@@ -20,12 +20,6 @@ import type {
 } from '../../domain/repositories/system-import.repository.js';
 import { SYSTEM_IMPORT_REPOSITORY } from '../../domain/repositories/system-import.repository.js';
 import type {
-  ImportColumnMapping,
-  ImportConflictStrategy,
-  ImportFieldMapping,
-  ImportTransactionStrategy,
-} from '../../domain/import/import-mapping.contracts.js';
-import type {
   ImportFormat,
   ImportRequest,
   ImportResult,
@@ -230,7 +224,7 @@ export class SystemImportService {
       const writes: {
         index: number;
         existing: boolean;
-        data: SystemActivityWrite;
+        data: SystemActivityWrite & { uuid: string };
       }[] = [];
       for (const candidate of prepared) {
         if (!candidate.data) {
@@ -425,7 +419,7 @@ export class SystemImportService {
     rowNumber: number,
   ): {
     row: number;
-    data?: SystemActivityWrite;
+    data?: SystemActivityWrite & { uuid: string };
     error: { row: number; field?: string; message: string };
   } {
     const eventType = stringValue(row.eventType);
