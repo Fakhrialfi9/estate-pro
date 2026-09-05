@@ -1,21 +1,112 @@
-import { IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
-export class FeatureFlagQueryDto { @IsOptional() @IsString() @MaxLength(32) environment?: string; }
-export class SetFeatureFlagDto { @IsString() @MinLength(1) @MaxLength(160) key!: string; @IsString() @MinLength(1) @MaxLength(32) environment!: string; @IsBoolean() enabled!: boolean; @IsOptional() @IsInt() @Min(0) @Max(100) rolloutPercentage?: number; @IsOptional() @IsString() @MaxLength(500) description?: string; @IsOptional() @IsObject() metadata?: Record<string, unknown>; }
-export class EvaluateFeatureFlagDto { @IsString() @MinLength(1) @MaxLength(160) key!: string; @IsString() @MinLength(1) @MaxLength(32) environment!: string; @IsOptional() @IsString() @MaxLength(255) subjectKey?: string; }
-export class ImportProfileQueryDto { @IsOptional() @IsString() @MaxLength(80) entity?: string; @IsOptional() @IsBoolean() active?: boolean; }
-export class CreateImportProfileDto { @IsString() @MinLength(1) @MaxLength(160) name!: string; @IsString() @MinLength(1) @MaxLength(80) entity!: string; @IsOptional() @IsInt() @Min(1) version?: number; @IsString() @IsIn(['csv','json']) format!: string; @IsObject() columnMapping!: Record<string, unknown>; @IsObject() fieldMapping!: Record<string, unknown>; @IsString() conflictStrategy!: string; @IsString() transactionStrategy!: string; @IsOptional() @IsBoolean() active?: boolean; }
+export class FeatureFlagQueryDto {
+  @IsOptional() @IsString() @MaxLength(32) environment?: string;
+}
+export class SetFeatureFlagDto {
+  @IsString() @MinLength(1) @MaxLength(160) key!: string;
+  @IsString() @MinLength(1) @MaxLength(32) environment!: string;
+  @IsBoolean() enabled!: boolean;
+  @IsOptional() @IsInt() @Min(0) @Max(100) rolloutPercentage?: number;
+  @IsOptional() @IsString() @MaxLength(500) description?: string;
+  @IsOptional() @IsObject() metadata?: Record<string, unknown>;
+}
+export class EvaluateFeatureFlagDto {
+  @IsString() @MinLength(1) @MaxLength(160) key!: string;
+  @IsString() @MinLength(1) @MaxLength(32) environment!: string;
+  @IsOptional() @IsString() @MaxLength(255) subjectKey?: string;
+}
+export class ImportProfileQueryDto {
+  @IsOptional() @IsString() @MaxLength(80) entity?: string;
+  @IsOptional() @IsBoolean() active?: boolean;
+}
+export class CreateImportProfileDto {
+  @IsString() @MinLength(1) @MaxLength(160) name!: string;
+  @IsString() @MinLength(1) @MaxLength(80) entity!: string;
+  @IsOptional() @IsInt() @Min(1) version?: number;
+  @IsString() @IsIn(['csv', 'json']) format!: string;
+  @IsObject() columnMapping!: Record<string, unknown>;
+  @IsObject() fieldMapping!: Record<string, unknown>;
+  @IsString() conflictStrategy!: string;
+  @IsString() transactionStrategy!: string;
+  @IsOptional() @IsBoolean() active?: boolean;
+}
 export class UpdateImportProfileDto extends CreateImportProfileDto {}
-export class CredentialQueryDto { @IsOptional() @IsString() @MaxLength(32) credentialType?: string; }
-export class CreateCredentialDto { @IsString() @MaxLength(32) credentialType!: string; @IsString() @MaxLength(255) secretRef!: string; @IsOptional() @IsString() accessTokenExpiresAt?: string; @IsOptional() @IsString() refreshTokenExpiresAt?: string; @IsOptional() @IsObject() metadata?: Record<string, unknown>; }
+export class CredentialQueryDto {
+  @IsOptional() @IsString() @MaxLength(32) credentialType?: string;
+}
+export class CreateCredentialDto {
+  @IsString() @MaxLength(32) credentialType!: string;
+  @IsString() @MaxLength(255) secretRef!: string;
+  @IsOptional() @IsString() accessTokenExpiresAt?: string;
+  @IsOptional() @IsString() refreshTokenExpiresAt?: string;
+  @IsOptional() @IsObject() metadata?: Record<string, unknown>;
+}
 export class RotateCredentialDto extends CreateCredentialDto {}
-export class RuntimeUpdateDto { @IsOptional() @IsIn(['PULL','PUSH','BIDIRECTIONAL']) syncDirection?: string; @IsOptional() @IsObject() requestMapping?: Record<string, unknown>; @IsOptional() @IsObject() responseMapping?: Record<string, unknown>; @IsOptional() @IsObject() metadata?: Record<string, unknown>; }
-export class OperationQueryDto { @IsOptional() @IsString() @MaxLength(24) state?: string; @IsOptional() @IsInt() @Min(1) @Max(100) limit?: number; }
-export class CreateOperationDto { @IsString() @MaxLength(120) operationKey!: string; @IsString() @IsIn(['PULL','PUSH','BIDIRECTIONAL']) direction!: string; @IsString() @MinLength(1) @MaxLength(180) idempotencyKey!: string; @IsOptional() @IsObject() requestPayload?: Record<string, unknown>; @IsOptional() @IsInt() @Min(1) @Max(10) maxAttempts?: number; }
-export class FailOperationDto { @IsOptional() @IsString() @MaxLength(80) code?: string; @IsString() @MaxLength(500) message!: string; @IsOptional() @IsBoolean() retryable?: boolean; }
-export class EventQueryDto { @IsOptional() @IsString() @MaxLength(24) status?: string; @IsOptional() @IsInt() @Min(1) @Max(100) limit?: number; }
-export class CreateEventDto { @IsString() @MaxLength(180) eventKey!: string; @IsString() @MaxLength(120) eventName!: string; @IsOptional() @IsInt() @Min(1) eventVersion?: number; @IsObject() payload!: Record<string, unknown>; @IsOptional() @IsString() @MaxLength(180) idempotencyKey?: string; }
-export class ConflictQueryDto { @IsOptional() @IsString() @MaxLength(24) status?: string; @IsOptional() @IsInt() @Min(1) @Max(100) limit?: number; }
-export class CreateConflictDto { @IsString() @MaxLength(180) conflictKey!: string; @IsString() @MaxLength(80) entityType!: string; @IsOptional() @IsString() @MaxLength(80) localVersion?: string; @IsOptional() @IsString() @MaxLength(80) remoteVersion?: string; @IsOptional() @IsObject() localPayload?: Record<string, unknown>; @IsOptional() @IsObject() remotePayload?: Record<string, unknown>; @IsOptional() @IsString() operationUuid?: string; }
-export class ResolveConflictDto { @IsString() @IsIn(['LOCAL_WINS','REMOTE_WINS','MERGE','SKIP']) resolution!: string; }
-export class AlertQueryDto { @IsOptional() @IsString() @MaxLength(16) status?: string; @IsOptional() @IsString() @MaxLength(16) severity?: string; @IsOptional() @IsInt() @Min(1) @Max(100) limit?: number; }
+export class RuntimeUpdateDto {
+  @IsOptional() @IsIn(['PULL', 'PUSH', 'BIDIRECTIONAL']) syncDirection?: string;
+  @IsOptional() @IsObject() requestMapping?: Record<string, unknown>;
+  @IsOptional() @IsObject() responseMapping?: Record<string, unknown>;
+  @IsOptional() @IsObject() metadata?: Record<string, unknown>;
+}
+export class OperationQueryDto {
+  @IsOptional() @IsString() @MaxLength(24) state?: string;
+  @IsOptional() @IsInt() @Min(1) @Max(100) limit?: number;
+}
+export class CreateOperationDto {
+  @IsString() @MaxLength(120) operationKey!: string;
+  @IsString() @IsIn(['PULL', 'PUSH', 'BIDIRECTIONAL']) direction!: string;
+  @IsString() @MinLength(1) @MaxLength(180) idempotencyKey!: string;
+  @IsOptional() @IsObject() requestPayload?: Record<string, unknown>;
+  @IsOptional() @IsInt() @Min(1) @Max(10) maxAttempts?: number;
+}
+export class FailOperationDto {
+  @IsOptional() @IsString() @MaxLength(80) code?: string;
+  @IsString() @MaxLength(500) message!: string;
+  @IsOptional() @IsBoolean() retryable?: boolean;
+}
+export class EventQueryDto {
+  @IsOptional() @IsString() @MaxLength(24) status?: string;
+  @IsOptional() @IsInt() @Min(1) @Max(100) limit?: number;
+}
+export class CreateEventDto {
+  @IsString() @MaxLength(180) eventKey!: string;
+  @IsString() @MaxLength(120) eventName!: string;
+  @IsOptional() @IsInt() @Min(1) eventVersion?: number;
+  @IsObject() payload!: Record<string, unknown>;
+  @IsOptional() @IsString() @MaxLength(180) idempotencyKey?: string;
+}
+export class ConflictQueryDto {
+  @IsOptional() @IsString() @MaxLength(24) status?: string;
+  @IsOptional() @IsInt() @Min(1) @Max(100) limit?: number;
+}
+export class CreateConflictDto {
+  @IsString() @MaxLength(180) conflictKey!: string;
+  @IsString() @MaxLength(80) entityType!: string;
+  @IsOptional() @IsString() @MaxLength(80) localVersion?: string;
+  @IsOptional() @IsString() @MaxLength(80) remoteVersion?: string;
+  @IsOptional() @IsObject() localPayload?: Record<string, unknown>;
+  @IsOptional() @IsObject() remotePayload?: Record<string, unknown>;
+  @IsOptional() @IsString() operationUuid?: string;
+}
+export class ResolveConflictDto {
+  @IsString()
+  @IsIn(['LOCAL_WINS', 'REMOTE_WINS', 'MERGE', 'SKIP'])
+  resolution!: string;
+}
+export class AlertQueryDto {
+  @IsOptional() @IsString() @MaxLength(16) status?: string;
+  @IsOptional() @IsString() @MaxLength(16) severity?: string;
+  @IsOptional() @IsInt() @Min(1) @Max(100) limit?: number;
+}

@@ -135,7 +135,7 @@ export class PrismaSystemImportRepository implements SystemImportRepository {
       where: { uuid },
       data: {
         ...input,
-        ...(input.errors ? { errors: input.errors as Prisma.InputJsonValue } : {}),
+        ...(input.errors ? { errors: input.errors } : {}),
       },
     });
     return toRecord(row);

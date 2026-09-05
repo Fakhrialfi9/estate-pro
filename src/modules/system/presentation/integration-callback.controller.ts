@@ -1,4 +1,12 @@
-import { Controller, Headers, Param, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Headers,
+  Param,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { SystemIntegrationCallbackService } from '../application/services/system-integration-callback.service.js';
@@ -22,9 +30,15 @@ export class IntegrationCallbackController {
     @Headers('x-integration-event-name') eventName: string | undefined,
     @Req() request: Request & { rawBody?: Buffer },
   ) {
-    if (!timestamp || !signature) throw new UnauthorizedException('Callback authentication required');
+    if (!timestamp || !signature)
+      throw new UnauthorizedException('Callback authentication required');
     const provider = await this.integrations.providerFor(uuid);
-    const body = request.rawBody?.toString('utf8') ?? JSON.stringify(request.body ?? {});
-    return this.callbacks.handle(uuid, { timestamp, signature, eventId, eventName, body }, provider);
+    const body =
+      request.rawBody?.toString('utf8') ?? JSON.stringify(request.body ?? {});
+    return this.callbacks.handle(
+      uuid,
+      { timestamp, signature, eventId, eventName, body },
+      provider,
+    );
   }
 }

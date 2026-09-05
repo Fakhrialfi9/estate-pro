@@ -1,5 +1,23 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+  UnauthorizedException,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -25,9 +43,16 @@ export class ImportController {
 
   @Get()
   @RequirePermissions('system.import.read')
-  @ApiOperation({ summary: 'List import jobs owned by the authenticated actor' })
+  @ApiOperation({
+    summary: 'List import jobs owned by the authenticated actor',
+  })
   list(@Req() request: Request, @Query() query: ImportQueryDto) {
-    return this.imports.list(actor(request), query.page, query.limit, query.state);
+    return this.imports.list(
+      actor(request),
+      query.page,
+      query.limit,
+      query.state,
+    );
   }
 
   @Get(':uuid')
@@ -39,12 +64,21 @@ export class ImportController {
 
   @Get(':uuid/errors')
   @RequirePermissions('system.import.read')
-  @ApiOperation({ summary: 'Download the safe failed-row report for an import' })
-  async errors(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string, @Res() response: Response) {
+  @ApiOperation({
+    summary: 'Download the safe failed-row report for an import',
+  })
+  async errors(
+    @Req() request: Request,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Res() response: Response,
+  ) {
     const report = await this.imports.failedRowReport(actor(request), uuid);
     response.setHeader('Content-Type', 'application/json; charset=utf-8');
     response.setHeader('Cache-Control', 'private, no-store');
-    response.setHeader('Content-Disposition', `attachment; filename="${uuid}-errors.json"`);
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${uuid}-errors.json"`,
+    );
     response.status(200).json(report);
   }
 
@@ -65,6 +99,7 @@ export class ImportController {
 
 function actor(request: Request): string {
   const actorUuid = (request.user as { sub?: string } | undefined)?.sub;
-  if (!actorUuid) throw new UnauthorizedException('Authenticated actor missing');
+  if (!actorUuid)
+    throw new UnauthorizedException('Authenticated actor missing');
   return actorUuid;
 }

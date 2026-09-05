@@ -16,7 +16,8 @@ export class SystemImportMappingService {
     if (!mapping?.length) return { ...row };
     this.validateColumnMapping(mapping, Object.keys(row));
     const mapped: Record<string, unknown> = {};
-    for (const item of mapping) mapped[item.targetField] = row[item.sourceColumn];
+    for (const item of mapping)
+      mapped[item.targetField] = row[item.sourceColumn];
     return mapped;
   }
 
@@ -39,7 +40,8 @@ export class SystemImportMappingService {
     rows: readonly Readonly<Record<string, unknown>>[],
   ): readonly string[] {
     const columns = new Set<string>();
-    for (const row of rows) for (const key of Object.keys(row)) columns.add(key);
+    for (const row of rows)
+      for (const key of Object.keys(row)) columns.add(key);
     return [...columns].sort();
   }
 
@@ -51,16 +53,24 @@ export class SystemImportMappingService {
     const targets = new Set<ImportTargetField>();
     for (const item of mapping) {
       if (!sourceColumns.has(item.sourceColumn))
-        throw new BadRequestException(`Unknown source column: ${item.sourceColumn}`);
+        throw new BadRequestException(
+          `Unknown source column: ${item.sourceColumn}`,
+        );
       if (!IMPORT_TARGET_FIELDS.includes(item.targetField))
-        throw new BadRequestException(`Forbidden import target: ${item.targetField}`);
+        throw new BadRequestException(
+          `Forbidden import target: ${item.targetField}`,
+        );
       if (targets.has(item.targetField))
-        throw new BadRequestException(`Duplicate import target: ${item.targetField}`);
+        throw new BadRequestException(
+          `Duplicate import target: ${item.targetField}`,
+        );
       targets.add(item.targetField);
     }
   }
 
-  validateFieldMapping(mapping: readonly ImportFieldMapping[] | undefined): void {
+  validateFieldMapping(
+    mapping: readonly ImportFieldMapping[] | undefined,
+  ): void {
     if (!mapping) return;
     const targets = new Set<ImportTargetField>();
     const transforms = new Set<ImportTransform>([
@@ -74,18 +84,27 @@ export class SystemImportMappingService {
     ]);
     for (const item of mapping) {
       if (!IMPORT_TARGET_FIELDS.includes(item.targetField))
-        throw new BadRequestException(`Forbidden import target: ${item.targetField}`);
+        throw new BadRequestException(
+          `Forbidden import target: ${item.targetField}`,
+        );
       if (targets.has(item.targetField))
-        throw new BadRequestException(`Duplicate field mapping: ${item.targetField}`);
+        throw new BadRequestException(
+          `Duplicate field mapping: ${item.targetField}`,
+        );
       targets.add(item.targetField);
       for (const transform of item.transforms) {
         if (!transforms.has(transform))
-          throw new BadRequestException(`Unsupported import transform: ${transform}`);
+          throw new BadRequestException(
+            `Unsupported import transform: ${transform}`,
+          );
       }
     }
   }
 
-  private applyTransforms(value: unknown, transforms: readonly ImportTransform[]) {
+  private applyTransforms(
+    value: unknown,
+    transforms: readonly ImportTransform[],
+  ) {
     let current: unknown = value;
     for (const transform of transforms) {
       switch (transform) {
@@ -99,23 +118,33 @@ export class SystemImportMappingService {
           if (typeof current === 'string') current = current.toUpperCase();
           break;
         case 'null-if-empty':
-          if (current === '' || (typeof current === 'string' && current.trim() === '')) current = null;
+          if (
+            current === '' ||
+            (typeof current === 'string' && current.trim() === '')
+          )
+            current = null;
           break;
         case 'number': {
-          const parsed = typeof current === 'number' ? current : Number(current);
-          if (!Number.isFinite(parsed)) throw new BadRequestException('Invalid numeric import value');
+          const parsed =
+            typeof current === 'number' ? current : Number(current);
+          if (!Number.isFinite(parsed))
+            throw new BadRequestException('Invalid numeric import value');
           current = parsed;
           break;
         }
         case 'boolean':
           if (typeof current === 'boolean') break;
-          if (current === 'true' || current === 1 || current === '1') current = true;
-          else if (current === 'false' || current === 0 || current === '0') current = false;
+          if (current === 'true' || current === 1 || current === '1')
+            current = true;
+          else if (current === 'false' || current === 0 || current === '0')
+            current = false;
           else throw new BadRequestException('Invalid boolean import value');
           break;
         case 'date': {
-          const date = current instanceof Date ? current : new Date(String(current));
-          if (!Number.isFinite(date.getTime())) throw new BadRequestException('Invalid date import value');
+          const date =
+            current instanceof Date ? current : new Date(String(current));
+          if (!Number.isFinite(date.getTime()))
+            throw new BadRequestException('Invalid date import value');
           current = date.toISOString();
           break;
         }

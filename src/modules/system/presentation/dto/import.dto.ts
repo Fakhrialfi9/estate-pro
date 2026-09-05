@@ -13,7 +13,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ImportColumnMappingDto, ImportFieldMappingDto } from './import-mapping.dto.js';
+import {
+  ImportColumnMappingDto,
+  ImportFieldMappingDto,
+} from './import-mapping.dto.js';
 
 export class ImportDto {
   @IsString()

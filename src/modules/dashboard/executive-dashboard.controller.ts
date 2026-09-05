@@ -19,7 +19,7 @@ export class ExecutiveDashboardController {
   @RequirePermissions('system.dashboard.read')
   @ApiOperation({ summary: 'Read the authorized executive dashboard' })
   get(@Req() request: Request, @Query() query: ExecutiveDashboardQueryDto) {
-    const user = request.user as AccessTokenClaims | undefined;
+    const user = request.user;
     if (!user?.sub) throw new Error('Authenticated actor missing');
     return this.dashboard.get(query, user);
   }

@@ -30,15 +30,28 @@ export class SystemIntegrationReliabilityService {
   isRetryable(error: unknown): boolean {
     if (!(error instanceof Error)) return true;
     const message = error.message.toLowerCase();
-    return !/(^|\b)(400|401|403|404|409|422)(\b|$)/.test(message) &&
-      !/(invalid|forbidden|unauthorized|not found|conflict|validation)/.test(message);
+    return (
+      !/(^|\b)(400|401|403|404|409|422)(\b|$)/.test(message) &&
+      !/(invalid|forbidden|unauthorized|not found|conflict|validation)/.test(
+        message,
+      )
+    );
   }
 
-  delayMs(attempt: number, policy: RetryPolicy = DEFAULT_INTEGRATION_RETRY_POLICY): number {
+  delayMs(
+    attempt: number,
+    policy: RetryPolicy = DEFAULT_INTEGRATION_RETRY_POLICY,
+  ): number {
     const boundedAttempt = Math.max(0, attempt);
-    const exponential = Math.min(policy.maxDelayMs, policy.baseDelayMs * 2 ** boundedAttempt);
+    const exponential = Math.min(
+      policy.maxDelayMs,
+      policy.baseDelayMs * 2 ** boundedAttempt,
+    );
     const jitter = exponential * policy.jitterRatio;
-    return Math.max(0, Math.round(exponential - jitter + Math.random() * jitter * 2));
+    return Math.max(
+      0,
+      Math.round(exponential - jitter + Math.random() * jitter * 2),
+    );
   }
 
   async execute<T>(
@@ -61,7 +74,8 @@ export class SystemIntegrationReliabilityService {
         });
       }
       try {
-        if (Date.now() - startedAt > policy.deadlineMs) throw new Error('Integration operation deadline exceeded');
+        if (Date.now() - startedAt > policy.deadlineMs)
+          throw new Error('Integration operation deadline exceeded');
         const value = await operation(provider);
         await this.roadmap.runtime.update(runtime.integrationId, {
           circuitState: 'CLOSED',
@@ -85,20 +99,30 @@ export class SystemIntegrationReliabilityService {
         };
       } catch (error: unknown) {
         lastError = error;
-        const retryable = this.isRetryable(error) && attempt + 1 < policy.maxAttempts;
-        const nextAttemptAt = retryable ? new Date(Date.now() + this.delayMs(attempt, policy)) : null;
+        const retryable =
+          this.isRetryable(error) && attempt + 1 < policy.maxAttempts;
+        const nextAttemptAt = retryable
+          ? new Date(Date.now() + this.delayMs(attempt, policy))
+          : null;
         const failures = runtime.failureCount + 1;
         const open = failures >= 5;
         await this.roadmap.runtime.update(runtime.integrationId, {
           failureCount: failures,
           circuitState: open ? 'OPEN' : runtime.circuitState,
           openedAt: open ? new Date() : runtime.openedAt,
-          nextRetryAt: nextAttemptAt ?? (open ? new Date(Date.now() + 30_000) : runtime.nextRetryAt),
+          nextRetryAt:
+            nextAttemptAt ??
+            (open ? new Date(Date.now() + 30_000) : runtime.nextRetryAt),
           lastOperationAt: new Date(),
           lastOperationStatus: 'FAILED',
         });
         if (!retryable) break;
-        await new Promise((resolve) => setTimeout(resolve, Math.max(0, (nextAttemptAt?.getTime() ?? Date.now()) - Date.now())));
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            Math.max(0, (nextAttemptAt?.getTime() ?? Date.now()) - Date.now()),
+          ),
+        );
       }
     }
     if (lastError instanceof Error) throw lastError;
@@ -107,7 +131,10 @@ export class SystemIntegrationReliabilityService {
 
   async providerHealth(integrationUuid: string) {
     const provider = this.integrations.providerFor(integrationUuid);
-    if (!provider.health) throw new NotFoundException('Provider health capability is not implemented');
+    if (!provider.health)
+      throw new NotFoundException(
+        'Provider health capability is not implemented',
+      );
     const result = await provider.health();
     const runtime = await this.integrations.runtimeFor(integrationUuid);
     await this.roadmap.runtime.update(runtime.integrationId, {

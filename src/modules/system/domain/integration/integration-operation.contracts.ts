@@ -1,6 +1,10 @@
 export type IntegrationSyncDirection = 'PULL' | 'PUSH' | 'BIDIRECTIONAL';
 
-export type IntegrationCredentialType = 'API_KEY' | 'OAUTH2' | 'BEARER' | 'BASIC';
+export type IntegrationCredentialType =
+  | 'API_KEY'
+  | 'OAUTH2'
+  | 'BEARER'
+  | 'BASIC';
 
 export type IntegrationCredentialStatus =
   | 'ACTIVE'
@@ -84,7 +88,9 @@ export interface IntegrationProviderCredentialPort {
 }
 
 export interface IntegrationProviderOperationPort {
-  push?(request: CanonicalIntegrationRequest): Promise<CanonicalIntegrationResponse>;
+  push?(
+    request: CanonicalIntegrationRequest,
+  ): Promise<CanonicalIntegrationResponse>;
   pull?(input: {
     resourceType: string;
     cursor?: string | null;

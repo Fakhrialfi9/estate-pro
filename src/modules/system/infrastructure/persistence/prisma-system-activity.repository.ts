@@ -41,7 +41,9 @@ const toRecord = (row: PersistedActivity): SystemActivityRecord => ({
   createdAt: row.createdAt,
 });
 
-const toData = (input: SystemActivityWrite): Prisma.SystemActivityCreateInput => ({
+const toData = (
+  input: SystemActivityWrite,
+): Prisma.SystemActivityCreateInput => ({
   uuid: input.uuid ?? randomUUID(),
   actorUuid: input.actorUuid,
   eventType: input.eventType,
@@ -54,7 +56,9 @@ const toData = (input: SystemActivityWrite): Prisma.SystemActivityCreateInput =>
   ...(input.createdAt ? { createdAt: input.createdAt } : {}),
 });
 
-const toUpdate = (input: SystemActivityWrite): Prisma.SystemActivityUpdateInput => ({
+const toUpdate = (
+  input: SystemActivityWrite,
+): Prisma.SystemActivityUpdateInput => ({
   actorUuid: input.actorUuid,
   eventType: input.eventType,
   category: input.category,
@@ -66,11 +70,15 @@ const toUpdate = (input: SystemActivityWrite): Prisma.SystemActivityUpdateInput 
 });
 
 @Injectable()
-export class PrismaSystemActivityRepository implements SystemActivityRepository {
+export class PrismaSystemActivityRepository
+  implements SystemActivityRepository
+{
   constructor(private readonly prisma: PrismaService) {}
 
   async append(input: SystemActivityWrite) {
-    return toRecord(await this.prisma.systemActivity.create({ data: toData(input) }));
+    return toRecord(
+      await this.prisma.systemActivity.create({ data: toData(input) }),
+    );
   }
 
   async upsert(input: SystemActivityWrite) {
@@ -87,7 +95,9 @@ export class PrismaSystemActivityRepository implements SystemActivityRepository 
   async appendBatch(input: readonly SystemActivityWrite[]) {
     if (input.length === 0) return [];
     const rows = await this.prisma.$transaction(
-      input.map((item) => this.prisma.systemActivity.create({ data: toData(item) })),
+      input.map((item) =>
+        this.prisma.systemActivity.create({ data: toData(item) }),
+      ),
     );
     return rows.map(toRecord);
   }
@@ -108,7 +118,9 @@ export class PrismaSystemActivityRepository implements SystemActivityRepository 
   }
 
   async get(uuid: string) {
-    const row = await this.prisma.systemActivity.findUnique({ where: { uuid } });
+    const row = await this.prisma.systemActivity.findUnique({
+      where: { uuid },
+    });
     return row ? toRecord(row) : null;
   }
 

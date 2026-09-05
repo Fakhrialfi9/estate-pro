@@ -6,20 +6,31 @@ describe('SystemImportMappingService', () => {
   const service = new SystemImportMappingService();
 
   it('discovers deterministic source columns', () => {
-    expect(service.discoverColumns([{ b: 1, a: 2 }, { c: 3, a: 4 }])).toEqual(['a', 'b', 'c']);
+    expect(
+      service.discoverColumns([
+        { b: 1, a: 2 },
+        { c: 3, a: 4 },
+      ]),
+    ).toEqual(['a', 'b', 'c']);
   });
 
   it('rejects duplicate targets', () => {
-    expect(() => service.validateColumnMapping([
-      { sourceColumn: 'a', targetField: 'summary' },
-      { sourceColumn: 'b', targetField: 'summary' },
-    ], ['a', 'b'])).toThrow(BadRequestException);
+    expect(() =>
+      service.validateColumnMapping(
+        [
+          { sourceColumn: 'a', targetField: 'summary' },
+          { sourceColumn: 'b', targetField: 'summary' },
+        ],
+        ['a', 'b'],
+      ),
+    ).toThrow(BadRequestException);
   });
 
   it('applies finite transforms without dynamic execution', () => {
-    expect(service.applyFieldMapping(
-      { summary: '  MIXED  ' },
-      [{ targetField: 'summary', transforms: ['trim', 'lowercase'] }],
-    )).toEqual({ summary: 'mixed' });
+    expect(
+      service.applyFieldMapping({ summary: '  MIXED  ' }, [
+        { targetField: 'summary', transforms: ['trim', 'lowercase'] },
+      ]),
+    ).toEqual({ summary: 'mixed' });
   });
 });

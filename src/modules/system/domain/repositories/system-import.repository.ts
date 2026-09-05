@@ -45,8 +45,14 @@ export interface SystemImportRepository {
     sourcePath: string | null;
     expiresAt: Date;
   }): Promise<SystemImportJobRecord>;
-  findByUuid(uuid: string, actorUuid?: string): Promise<SystemImportJobRecord | null>;
-  findByIdempotencyKey(key: string, actorUuid: string): Promise<SystemImportJobRecord | null>;
+  findByUuid(
+    uuid: string,
+    actorUuid?: string,
+  ): Promise<SystemImportJobRecord | null>;
+  findByIdempotencyKey(
+    key: string,
+    actorUuid: string,
+  ): Promise<SystemImportJobRecord | null>;
   update(
     uuid: string,
     input: Partial<
@@ -68,6 +74,9 @@ export interface SystemImportRepository {
     limit: number;
     state?: ImportState;
   }): Promise<{ items: readonly SystemImportJobRecord[]; total: number }>;
-  listExpired(now: Date, limit: number): Promise<readonly SystemImportJobRecord[]>;
+  listExpired(
+    now: Date,
+    limit: number,
+  ): Promise<readonly SystemImportJobRecord[]>;
   deleteMany(uuids: readonly string[]): Promise<void>;
 }

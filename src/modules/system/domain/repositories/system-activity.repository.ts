@@ -2,7 +2,10 @@ import type { SystemActivityRecord } from '../system.types.js';
 
 export const SYSTEM_ACTIVITY_REPOSITORY = Symbol('SYSTEM_ACTIVITY_REPOSITORY');
 export type SystemActivitySort = 'createdAt_asc' | 'createdAt_desc';
-export type SystemActivityWrite = Omit<SystemActivityRecord, 'uuid' | 'createdAt'> & {
+export type SystemActivityWrite = Omit<
+  SystemActivityRecord,
+  'uuid' | 'createdAt'
+> & {
   uuid?: string;
   createdAt?: Date;
 };
@@ -10,8 +13,12 @@ export type SystemActivityWrite = Omit<SystemActivityRecord, 'uuid' | 'createdAt
 export interface SystemActivityRepository {
   append(input: SystemActivityWrite): Promise<SystemActivityRecord>;
   upsert(input: SystemActivityWrite): Promise<SystemActivityRecord>;
-  appendBatch(input: readonly SystemActivityWrite[]): Promise<readonly SystemActivityRecord[]>;
-  upsertBatch(input: readonly SystemActivityWrite[]): Promise<readonly SystemActivityRecord[]>;
+  appendBatch(
+    input: readonly SystemActivityWrite[],
+  ): Promise<readonly SystemActivityRecord[]>;
+  upsertBatch(
+    input: readonly SystemActivityWrite[],
+  ): Promise<readonly SystemActivityRecord[]>;
   get(uuid: string): Promise<SystemActivityRecord | null>;
   list(input: {
     page: number;
