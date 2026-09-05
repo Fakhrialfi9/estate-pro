@@ -3,7 +3,9 @@ import type {
   IntegrationCredentialStatus,
   IntegrationCredentialType,
 } from '../integration/integration-operation.contracts.js';
+
 export const SYSTEM_ROADMAP_REPOSITORY = Symbol('SYSTEM_ROADMAP_REPOSITORY');
+
 export type FeatureFlagRecord = {
   uuid: string;
   key: string;
@@ -17,6 +19,7 @@ export type FeatureFlagRecord = {
   createdAt: Date;
   updatedAt: Date;
 };
+
 export type ImportProfileRecord = {
   uuid: string;
   name: string;
@@ -33,15 +36,16 @@ export type ImportProfileRecord = {
   createdAt: Date;
   updatedAt: Date;
 };
+
 export type IntegrationCredentialRecord = {
   uuid: string;
   integrationId: bigint;
-  credentialType: IntegrationCredentialType | string;
+  credentialType: IntegrationCredentialType;
   secretRef: string | null;
   accessTokenRef: string | null;
   refreshTokenRef: string | null;
   version: number;
-  status: IntegrationCredentialStatus | string;
+  status: IntegrationCredentialStatus;
   issuedAt: Date;
   accessTokenExpiresAt: Date | null;
   refreshTokenExpiresAt: Date | null;
@@ -50,6 +54,7 @@ export type IntegrationCredentialRecord = {
   revokedAt: Date | null;
   metadata: Record<string, unknown>;
 };
+
 export type IntegrationRuntimeRecord = {
   uuid: string;
   integrationId: bigint;
@@ -69,6 +74,7 @@ export type IntegrationRuntimeRecord = {
   lastOperationStatus: string | null;
   metadata: Record<string, unknown>;
 };
+
 export type IntegrationOperationRecord = {
   uuid: string;
   integrationId: bigint;
@@ -89,6 +95,7 @@ export type IntegrationOperationRecord = {
   errorMessage: string | null;
   metadata: Record<string, unknown>;
 };
+
 export type IntegrationEventRecord = {
   uuid: string;
   integrationId: bigint;
@@ -102,6 +109,7 @@ export type IntegrationEventRecord = {
   occurredAt: Date;
   processedAt: Date | null;
 };
+
 export type IntegrationConflictRecord = {
   uuid: string;
   integrationId: bigint;
@@ -117,6 +125,7 @@ export type IntegrationConflictRecord = {
   resolvedBy: string | null;
   resolvedAt: Date | null;
 };
+
 export type IntegrationIdempotencyRecord = {
   uuid: string;
   integrationId: bigint;
@@ -131,6 +140,7 @@ export type IntegrationIdempotencyRecord = {
   createdAt: Date;
   updatedAt: Date;
 };
+
 export type OperationalAlertRuleRecord = {
   uuid: string;
   ruleKey: string;
@@ -144,6 +154,7 @@ export type OperationalAlertRuleRecord = {
   createdAt: Date;
   updatedAt: Date;
 };
+
 export type OperationalAlertRecord = {
   uuid: string;
   alertKey: string;
@@ -158,39 +169,51 @@ export type OperationalAlertRecord = {
   lastSeenAt: Date;
   resolvedAt: Date | null;
 };
+
 export interface SystemRoadmapRepository {
   featureFlag: {
-    list(e?: string): Promise<readonly FeatureFlagRecord[]>;
-    get(k: string, e: string): Promise<FeatureFlagRecord | null>;
+    list(environment?: string): Promise<readonly FeatureFlagRecord[]>;
+    get(key: string, environment: string): Promise<FeatureFlagRecord | null>;
     upsert(
-      i: Omit<FeatureFlagRecord, 'createdAt' | 'updatedAt'>,
+      input: Omit<FeatureFlagRecord, 'createdAt' | 'updatedAt'>,
     ): Promise<FeatureFlagRecord>;
   };
   importProfile: {
     create(
-      i: Omit<ImportProfileRecord, 'createdAt' | 'updatedAt'>,
+      input: Omit<ImportProfileRecord, 'createdAt' | 'updatedAt'>,
     ): Promise<ImportProfileRecord>;
-    list(e?: string, a?: boolean): Promise<readonly ImportProfileRecord[]>;
-    get(u: string): Promise<ImportProfileRecord | null>;
+    list(
+      entity?: string,
+      active?: boolean,
+    ): Promise<readonly ImportProfileRecord[]>;
+    get(uuid: string): Promise<ImportProfileRecord | null>;
     update(
-      u: string,
-      i: Partial<Omit<ImportProfileRecord, 'uuid' | 'createdAt' | 'updatedAt'>>,
+      uuid: string,
+      input: Partial<
+        Omit<ImportProfileRecord, 'uuid' | 'createdAt' | 'updatedAt'>
+      >,
     ): Promise<ImportProfileRecord>;
   };
   credential: {
-    get(u: string): Promise<IntegrationCredentialRecord | null>;
+    get(uuid: string): Promise<IntegrationCredentialRecord | null>;
     list(
-      i: bigint,
-      t?: string,
+      integrationId: bigint,
+      credentialType?: string,
     ): Promise<readonly IntegrationCredentialRecord[]>;
     create(
-      i: Omit<IntegrationCredentialRecord, 'issuedAt' | 'lastUsedAt'>,
+      input: Omit<IntegrationCredentialRecord, 'issuedAt' | 'lastUsedAt'> &
+        Partial<
+          Pick<IntegrationCredentialRecord, 'accessTokenRef' | 'refreshTokenRef'>
+        >,
     ): Promise<IntegrationCredentialRecord>;
-    revoke(u: string, d: Date): Promise<IntegrationCredentialRecord>;
-    markUsed(u: string, d: Date): Promise<IntegrationCredentialRecord>;
+    revoke(uuid: string, revokedAt: Date): Promise<IntegrationCredentialRecord>;
+    markUsed(
+      uuid: string,
+      lastUsedAt: Date,
+    ): Promise<IntegrationCredentialRecord>;
     rotate(
-      u: string,
-      i: {
+      uuid: string,
+      input: {
         secretRef?: string | null;
         accessTokenRef?: string | null;
         refreshTokenRef?: string | null;
@@ -201,78 +224,86 @@ export interface SystemRoadmapRepository {
     ): Promise<IntegrationCredentialRecord>;
   };
   runtime: {
-    getOrCreate(i: bigint): Promise<IntegrationRuntimeRecord>;
+    getOrCreate(integrationId: bigint): Promise<IntegrationRuntimeRecord>;
     update(
-      i: bigint,
-      p: Partial<Omit<IntegrationRuntimeRecord, 'uuid' | 'integrationId'>>,
+      integrationId: bigint,
+      patch: Partial<
+        Omit<IntegrationRuntimeRecord, 'uuid' | 'integrationId'>
+      >,
     ): Promise<IntegrationRuntimeRecord>;
   };
   operation: {
     getByIdempotency(
-      i: bigint,
-      k: string,
+      integrationId: bigint,
+      idempotencyKey: string,
     ): Promise<IntegrationOperationRecord | null>;
-    create(
-      i: Omit<IntegrationOperationRecord, 'uuid'> & { uuid: string },
-    ): Promise<IntegrationOperationRecord>;
+    create(input: IntegrationOperationRecord): Promise<IntegrationOperationRecord>;
     update(
-      u: string,
-      i: Partial<Omit<IntegrationOperationRecord, 'uuid'>>,
+      uuid: string,
+      input: Partial<Omit<IntegrationOperationRecord, 'uuid'>>,
     ): Promise<IntegrationOperationRecord>;
     list(
-      i: bigint,
-      s?: string,
-      l?: number,
+      integrationId: bigint,
+      state?: string,
+      limit?: number,
     ): Promise<readonly IntegrationOperationRecord[]>;
   };
   event: {
-    create(i: IntegrationEventRecord): Promise<IntegrationEventRecord>;
-    getByKey(i: bigint, k: string): Promise<IntegrationEventRecord | null>;
+    create(input: IntegrationEventRecord): Promise<IntegrationEventRecord>;
+    getByKey(
+      integrationId: bigint,
+      eventKey: string,
+    ): Promise<IntegrationEventRecord | null>;
     update(
-      u: string,
-      i: Partial<Omit<IntegrationEventRecord, 'uuid'>>,
+      uuid: string,
+      input: Partial<Omit<IntegrationEventRecord, 'uuid'>>,
     ): Promise<IntegrationEventRecord>;
     list(
-      i: bigint,
-      s?: string,
-      l?: number,
+      integrationId: bigint,
+      status?: string,
+      limit?: number,
     ): Promise<readonly IntegrationEventRecord[]>;
   };
   idempotency: {
     reserve(
-      i: Omit<IntegrationIdempotencyRecord, 'createdAt' | 'updatedAt'>,
+      input: Omit<IntegrationIdempotencyRecord, 'createdAt' | 'updatedAt'>,
     ): Promise<{ record: IntegrationIdempotencyRecord; created: boolean }>;
     update(
-      u: string,
-      i: Partial<Omit<IntegrationIdempotencyRecord, 'uuid' | 'integrationId'>>,
+      uuid: string,
+      input: Partial<
+        Omit<IntegrationIdempotencyRecord, 'uuid' | 'integrationId'>
+      >,
     ): Promise<IntegrationIdempotencyRecord>;
   };
   conflict: {
-    upsert(i: IntegrationConflictRecord): Promise<IntegrationConflictRecord>;
-    get(i: bigint, k: string): Promise<IntegrationConflictRecord | null>;
+    upsert(input: IntegrationConflictRecord): Promise<IntegrationConflictRecord>;
+    get(
+      integrationId: bigint,
+      conflictKey: string,
+    ): Promise<IntegrationConflictRecord | null>;
     list(
-      i: bigint,
-      s?: string,
-      l?: number,
+      integrationId: bigint,
+      status?: string,
+      limit?: number,
     ): Promise<readonly IntegrationConflictRecord[]>;
     resolve(
-      i: bigint,
-      k: string,
-      p: { resolution: string; resolvedBy: string },
+      integrationId: bigint,
+      conflictKey: string,
+      input: { resolution: string; resolvedBy: string },
     ): Promise<IntegrationConflictRecord>;
   };
   alertRule: {
     list(enabled?: boolean): Promise<readonly OperationalAlertRuleRecord[]>;
-    upsert(i: OperationalAlertRuleRecord): Promise<OperationalAlertRuleRecord>;
+    upsert(input: OperationalAlertRuleRecord): Promise<OperationalAlertRuleRecord>;
   };
   alert: {
-    upsert(i: OperationalAlertRecord): Promise<OperationalAlertRecord>;
+    upsert(input: OperationalAlertRecord): Promise<OperationalAlertRecord>;
     list(
-      s?: string,
-      v?: string,
-      l?: number,
+      status?: string,
+      severity?: string,
+      limit?: number,
     ): Promise<readonly OperationalAlertRecord[]>;
-    resolve(u: string): Promise<OperationalAlertRecord>;
+    resolve(uuid: string): Promise<OperationalAlertRecord>;
   };
   aggregate(): Promise<{
     featureFlags: number;
