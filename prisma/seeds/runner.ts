@@ -7,41 +7,23 @@ import { ANALYTICS_PERMISSIONS } from './permissions/analytics.ts';
 import { SYSTEM_PERMISSIONS } from './permissions/system.ts';
 import { seedPermissions } from './permissions/seed.ts';
 import { seedRoles, seedRolePermissions } from './roles/seed.ts';
-import {
-  ADMIN_USER,
-  SEED_USERS,
-  assignAdminRole,
-  prepareUserSeed,
-  seedAdminUser,
-  seedDevelopmentUsers,
-} from './users/seed.ts';
+import { ADMIN_USER, SEED_USERS, assignAdminRole, prepareUserSeed, seedAdminUser, seedDevelopmentUsers } from './users/seed.ts';
 import { createDatabaseClient } from './database.ts';
+import { seedAudit } from './audit/seed.ts';
 import { seedCrm } from './crm/seed.ts';
 import { seedSales } from './sales/seed.ts';
 import { seedAgentManagement } from './agent-management/seed.ts';
 import { seedProperty } from './property/seed.ts';
 import { seedPropertyMatching } from './property-matching/seed.ts';
-import { seedContent } from './content/seed.ts';
 import { seedAutomation } from './automation/seed.ts';
+import { seedContent } from './content/seed.ts';
 import { seedSystem } from './system/seed.ts';
 import { verifySeedState } from './verification.ts';
 
 export async function seedDatabase(): Promise<void> {
   const prisma = createDatabaseClient();
-  const [preparedAdmin, ...preparedUsers] = await Promise.all([
-    prepareUserSeed(ADMIN_USER),
-    ...SEED_USERS.map(prepareUserSeed),
-  ]);
-  const permissions = [
-    ...PERMISSIONS,
-    ...SYSTEM_PERMISSIONS,
-    ...CONTENT_PERMISSIONS,
-    ...CONTENT_EXTRA_PERMISSIONS,
-    ...CRM_PERMISSIONS,
-    ...SALES_PERMISSIONS,
-    ...AGENT_MANAGEMENT_PERMISSIONS,
-    ...ANALYTICS_PERMISSIONS,
-  ];
+  const [preparedAdmin, ...preparedUsers] = await Promise.all([prepareUserSeed(ADMIN_USER), ...SEED_USERS.map(prepareUserSeed)]);
+  const permissions = [...PERMISSIONS, ...SYSTEM_PERMISSIONS, ...CONTENT_PERMISSIONS, ...CONTENT_EXTRA_PERMISSIONS, ...CRM_PERMISSIONS, ...SALES_PERMISSIONS, ...AGENT_MANAGEMENT_PERMISSIONS, ...ANALYTICS_PERMISSIONS];
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -55,7 +37,8 @@ export async function seedDatabase(): Promise<void> {
       await assignAdminRole(tx, adminUserId, adminRoleId);
       await seedDevelopmentUsers(tx, preparedUsers);
 
-      // Dependency order is explicit and mirrors bounded-context relationships.
+      // Dependency order: identity/RBAC -> audit/agents -> property -> CRM -> sales -> matching -> automation/content/system.
+      await seedAudit(tx);
       await seedAgentManagement(tx, adminUserId);
       await seedProperty(tx);
       await seedCrm(tx);
