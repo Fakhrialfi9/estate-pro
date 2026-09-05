@@ -1,3 +1,18 @@
+export interface DashboardSectionResponse {
+  readonly generatedAt: string;
+  readonly period: {
+    readonly from: string;
+    readonly to: string;
+  };
+  readonly data: Readonly<Record<string, unknown>>;
+}
+
+export interface DashboardOperationalResponse {
+  readonly generatedAt: string;
+  readonly status: 'ok' | 'degraded';
+  readonly components: Readonly<Record<string, 'up' | 'down' | 'unknown'>>;
+}
+
 export interface ExecutiveDashboardResponse {
   readonly generatedAt: string;
   readonly period: {

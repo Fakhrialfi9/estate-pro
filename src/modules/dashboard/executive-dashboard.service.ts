@@ -6,7 +6,11 @@ import {
 } from '../system/system.module.js';
 import { AnalyticsService } from '../analytics/analytics.module.js';
 import type { ExecutiveDashboardQueryDto } from './executive-dashboard.query.dto.js';
-import type { ExecutiveDashboardResponse } from './dashboard.types.js';
+import type {
+  DashboardOperationalResponse,
+  DashboardSectionResponse,
+  ExecutiveDashboardResponse,
+} from './dashboard.types.js';
 
 type AnalyticsData = Record<string, unknown>;
 
@@ -78,6 +82,63 @@ export class ExecutiveDashboardService {
         status: diagnostics.status,
         components: diagnostics.components,
       },
+    };
+  }
+
+  async getProperty(
+    query: ExecutiveDashboardQueryDto,
+    user: AccessTokenClaims,
+  ): Promise<DashboardSectionResponse> {
+    const dashboard = await this.get(query, user);
+    return {
+      generatedAt: dashboard.generatedAt,
+      period: dashboard.period,
+      data: dashboard.kpi.property,
+    };
+  }
+
+  async getCrm(
+    query: ExecutiveDashboardQueryDto,
+    user: AccessTokenClaims,
+  ): Promise<DashboardSectionResponse> {
+    const dashboard = await this.get(query, user);
+    return {
+      generatedAt: dashboard.generatedAt,
+      period: dashboard.period,
+      data: dashboard.kpi.crm,
+    };
+  }
+
+  async getSales(
+    query: ExecutiveDashboardQueryDto,
+    user: AccessTokenClaims,
+  ): Promise<DashboardSectionResponse> {
+    const dashboard = await this.get(query, user);
+    return {
+      generatedAt: dashboard.generatedAt,
+      period: dashboard.period,
+      data: dashboard.kpi.sales,
+    };
+  }
+
+  async getAgent(
+    query: ExecutiveDashboardQueryDto,
+    user: AccessTokenClaims,
+  ): Promise<DashboardSectionResponse> {
+    const dashboard = await this.get(query, user);
+    return {
+      generatedAt: dashboard.generatedAt,
+      period: dashboard.period,
+      data: dashboard.kpi.agents,
+    };
+  }
+
+  async getOperational(): Promise<DashboardOperationalResponse> {
+    const diagnostics = await this.operations.diagnostics();
+    return {
+      generatedAt: new Date().toISOString(),
+      status: diagnostics.status,
+      components: diagnostics.components,
     };
   }
 }
