@@ -10,7 +10,8 @@ export type IntegrationState =
   | 'ACTIVE'
   | 'DISABLED'
   | 'ERROR'
-  | 'DISCONNECTED';
+  | 'DISCONNECTED'
+  | 'CONNECTING';
 
 export interface SystemIntegrationRecord {
   id: bigint;
@@ -43,6 +44,14 @@ export interface IntegrationProviderPort
   }): Promise<{
     ok: boolean;
     latencyMs?: number;
+    code?: string;
+    message?: string;
+  }>;
+  reconnect?(input: {
+    metadata: Record<string, unknown>;
+    secretRef?: string | null;
+  }): Promise<{
+    ok: boolean;
     code?: string;
     message?: string;
   }>;
