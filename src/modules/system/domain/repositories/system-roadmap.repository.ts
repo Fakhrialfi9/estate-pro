@@ -231,6 +231,7 @@ export interface SystemRoadmapRepository {
     ): Promise<IntegrationRuntimeRecord>;
   };
   operation: {
+    get(uuid: string): Promise<IntegrationOperationRecord | null>;
     getByIdempotency(
       integrationId: bigint,
       idempotencyKey: string,
@@ -242,6 +243,7 @@ export interface SystemRoadmapRepository {
       uuid: string,
       input: Partial<Omit<IntegrationOperationRecord, 'uuid'>>,
     ): Promise<IntegrationOperationRecord>;
+    claimDue(uuid: string, now: Date): Promise<IntegrationOperationRecord | null>;
     list(
       integrationId: bigint,
       state?: string,
