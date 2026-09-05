@@ -1,3 +1,10 @@
+import type {
+  IntegrationProviderCredentialPort,
+  IntegrationProviderHealthPort,
+  IntegrationProviderInboundPort,
+  IntegrationProviderOperationPort,
+} from './integration-operation.contracts.js';
+
 export type IntegrationState =
   | 'CONFIGURED'
   | 'ACTIVE'
@@ -22,7 +29,11 @@ export interface SystemIntegrationRecord {
   updatedAt: Date;
 }
 
-export interface IntegrationProviderPort {
+export interface IntegrationProviderPort
+  extends IntegrationProviderCredentialPort,
+    IntegrationProviderOperationPort,
+    IntegrationProviderInboundPort,
+    IntegrationProviderHealthPort {
   readonly key: string;
   readonly version: string;
   readonly capabilities: readonly string[];
