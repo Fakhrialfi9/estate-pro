@@ -14,6 +14,10 @@ type UpdateDeliveryInput = Parameters<
   SystemWebhookRepository['updateDelivery']
 >[1];
 
+type ReplayResult = {
+  eventId: string;
+};
+
 const subscription = (
   filters: WebhookSubscriptionRecord['filters'] = [],
 ): WebhookSubscriptionRecord => ({
@@ -170,7 +174,10 @@ describe('SystemWebhookService', () => {
     findDelivery.mockResolvedValue(delivery('event-1', 'original-delivery'));
     findSubscriptionByDelivery.mockResolvedValue(row);
 
-    const result = await service.replay('actor-uuid', 'original-delivery');
+    const result = (await service.replay(
+      'actor-uuid',
+      'original-delivery',
+    )) as ReplayResult;
 
     expect(network.send).toHaveBeenCalledOnce();
     expect(createDelivery).toHaveBeenCalledWith(
