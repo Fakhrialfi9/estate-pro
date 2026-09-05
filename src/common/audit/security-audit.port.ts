@@ -19,11 +19,17 @@ export interface SecurityAuditEvent {
   actorType?: AuditActorType | undefined;
   entityType?: string | undefined;
   entityUuid?: string | undefined;
+  /** @deprecated Use entityType. Kept for backwards-compatible application callers. */
+  resourceType?: string | undefined;
+  /** @deprecated Use entityUuid. Kept for backwards-compatible application callers. */
+  resourceId?: string | undefined;
   ipAddress?: string | undefined;
   userAgent?: string | undefined;
   requestId?: string | undefined;
   result?: AuditResult | undefined;
   reason?: string | undefined;
+  /** @deprecated Use reason. Kept for backwards-compatible application callers. */
+  metadata?: string | undefined;
   changes?: readonly SecurityAuditChange[] | undefined;
   system?: boolean | undefined;
 }
