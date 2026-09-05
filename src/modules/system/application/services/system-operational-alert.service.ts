@@ -1,7 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { AUTOMATION_NOTIFICATION_PORT, type AutomationNotificationPort } from '../../../../common/contracts/automation-system.port.js';
 import { SECURITY_AUDIT_REPOSITORY, type SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
-import { SYSTEM_ROADMAP_REPOSITORY, type SystemRoadmapRepository, type OperationalAlertRuleRecord, type OperationalAlertRecord } from '../../domain/repositories/system-roadmap.repository.js';
+import { SYSTEM_ROADMAP_REPOSITORY, type SystemRoadmapRepository, type OperationalAlertRecord } from '../../domain/repositories/system-roadmap.repository.js';
 
 @Injectable()
 export class SystemOperationalAlertService {
@@ -20,10 +21,18 @@ export class SystemOperationalAlertService {
       const now = new Date();
       const dedupeKey = `${rule.ruleKey}:${input.resourceUuid ?? 'global'}`;
       const alert = await this.roadmap.alert.upsert({
-        uuid: crypto.randomUUID(), alertKey: rule.ruleKey, severity: rule.severity, status: 'OPEN',
-        message: `${rule.signal} threshold exceeded`, dedupeKey, resourceType: input.resourceUuid ? 'system_integration' : null,
-        resourceUuid: input.resourceUuid ?? null, metadata: { signal: rule.signal, value: signalValue, threshold: rule.threshold },
-        firstSeenAt: now, lastSeenAt: now, resolvedAt: null,
+        uuid: randomUUID(),
+        alertKey: rule.ruleKey,
+        severity: rule.severity,
+        status: 'OPEN',
+        message: `${rule.signal} threshold exceeded`,
+        dedupeKey,
+        resourceType: input.resourceUuid ? 'system_integration' : null,
+        resourceUuid: input.resourceUuid ?? null,
+        metadata: { signal: rule.signal, value: signalValue, threshold: rule.threshold },
+        firstSeenAt: now,
+        lastSeenAt: now,
+        resolvedAt: null,
       });
       results.push(alert);
       const targetUserUuid = typeof rule.metadata.targetUserUuid === 'string' ? rule.metadata.targetUserUuid : null;
@@ -46,7 +55,7 @@ export class SystemOperationalAlertService {
   async acknowledge(actorUuid: string, uuid: string) {
     const alerts = await this.roadmap.alert.list('OPEN', undefined, 100);
     const alert = alerts.find((item) => item.uuid === uuid);
-    if (!alert) throw new Error('Operational alert not found');
+    if (!alert) throw new NotFoundException('Operational alert not found');
     const updated = await this.roadmap.alert.upsert({ ...alert, status: 'ACKNOWLEDGED', metadata: { ...alert.metadata, acknowledgedBy: actorUuid } });
     await this.audit.record({ action: 'SYSTEM_SETTING_UPDATED', actorUuid, subjectUuid: actorUuid, entityType: 'system_operational_alert', entityUuid: uuid, result: 'SUCCESS', reason: 'operational-alert-acknowledged' });
     return updated;
