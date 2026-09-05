@@ -1,13 +1,8 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
 import {
   AUTOMATION_HEALTH_PORT,
   type AutomationHealthPort,
 } from '../../common/contracts/automation-health.port.js';
-import {
-  AUTOMATION_NOTIFICATION_PORT,
-  type AutomationNotificationPort,
-} from '../../common/contracts/automation-system.port.js';
 import {
   SYSTEM_HEALTH_PORT,
   type SystemHealthPort,
