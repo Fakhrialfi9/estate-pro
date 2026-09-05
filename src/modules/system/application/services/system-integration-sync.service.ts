@@ -72,8 +72,9 @@ export class SystemIntegrationSyncService
         'Provider does not support push synchronization',
       );
     const runtime = await this.integrations.runtimeFor(integrationUuid);
-    this.mapping.validate(runtime.requestMapping);
+    this.mapping.validate(runtime.requestMapping, provider.version);
     const mappedPayload = this.mapping.map(input.payload, runtime.requestMapping);
+    const context = await this.integrations.providerConfiguration(integrationUuid);
     const existing = await this.roadmap.operation.getByIdempotency(
       runtime.integrationId,
       input.idempotencyKey,
@@ -107,34 +108,45 @@ export class SystemIntegrationSyncService
 
     let operation = existing;
     if (!operation) {
-      operation = await this.roadmap.operation.create({
-        uuid: randomUUID(),
-        integrationId: runtime.integrationId,
-        operationKey: 'sync.push',
-        direction: 'PUSH',
-        idempotencyKey: input.idempotencyKey,
-        attempt: 1,
-        maxAttempts: OPERATION_MAX_ATTEMPTS,
-        state: 'RUNNING',
-        requestHash: hashJson({
-          resourceType: input.resourceType,
-          resourceUuid: input.resourceUuid,
-          payload: mappedPayload,
-        }),
-        responseHash: null,
-        requestPayload: {
-          resourceType: input.resourceType,
-          resourceUuid: input.resourceUuid,
-          payload: mappedPayload,
-        },
-        responsePayload: null,
-        nextAttemptAt: null,
-        startedAt: new Date(),
-        completedAt: null,
-        errorCode: null,
-        errorMessage: null,
-        metadata: { actorUuid },
-      });
+      try {
+        operation = await this.roadmap.operation.create({
+          uuid: randomUUID(),
+          integrationId: runtime.integrationId,
+          operationKey: 'sync.push',
+          direction: 'PUSH',
+          idempotencyKey: input.idempotencyKey,
+          attempt: 1,
+          maxAttempts: OPERATION_MAX_ATTEMPTS,
+          state: 'RUNNING',
+          requestHash: hashJson({
+            resourceType: input.resourceType,
+            resourceUuid: input.resourceUuid,
+            payload: mappedPayload,
+          }),
+          responseHash: null,
+          requestPayload: {
+            resourceType: input.resourceType,
+            resourceUuid: input.resourceUuid,
+            payload: mappedPayload,
+          },
+          responsePayload: null,
+          nextAttemptAt: null,
+          startedAt: new Date(),
+          completedAt: null,
+          errorCode: null,
+          errorMessage: null,
+          metadata: { actorUuid },
+        });
+      } catch {
+        const raced = await this.roadmap.operation.getByIdempotency(
+          runtime.integrationId,
+          input.idempotencyKey,
+        );
+        if (!raced) throw new ConflictException('Integration operation could not be reserved');
+        operation = raced;
+        if (raced.state === 'RUNNING')
+          throw new ConflictException('Integration operation is already running');
+      }
     } else if (operation.state === 'FAILED') {
       operation = await this.roadmap.operation.update(operation.uuid, {
         state: 'RUNNING',
@@ -157,7 +169,7 @@ export class SystemIntegrationSyncService
         occurredAt: new Date(),
       };
       const result = await this.reliability.execute(integrationUuid, () =>
-        provider.push!(request),
+        provider.push!(request, context),
       );
       const response = {
         ...result.value,
@@ -215,7 +227,8 @@ export class SystemIntegrationSyncService
         'Provider does not support pull synchronization',
       );
     const runtime = await this.integrations.runtimeFor(integrationUuid);
-    this.mapping.validate(runtime.responseMapping);
+    this.mapping.validate(runtime.responseMapping, provider.version);
+    const context = await this.integrations.providerConfiguration(integrationUuid);
     const limit = Math.min(MAX_PULL, Math.max(1, input.limit ?? 50));
     const cursor = runtime.syncCursor;
     const idempotencyKey = `sync.pull:${integrationUuid}:${cursor ?? 'initial'}:${input.resourceType}`;
@@ -257,30 +270,35 @@ export class SystemIntegrationSyncService
 
     let operation = existing;
     if (!operation) {
-      operation = await this.roadmap.operation.create({
-        uuid: randomUUID(),
-        integrationId: runtime.integrationId,
-        operationKey: 'sync.pull',
-        direction: 'PULL',
-        idempotencyKey,
-        attempt: 1,
-        maxAttempts: OPERATION_MAX_ATTEMPTS,
-        state: 'RUNNING',
-        requestHash: hashJson({
-          resourceType: input.resourceType,
-          limit,
-          cursor,
-        }),
-        responseHash: null,
-        requestPayload: { resourceType: input.resourceType, limit, cursor },
-        responsePayload: null,
-        nextAttemptAt: null,
-        startedAt: new Date(),
-        completedAt: null,
-        errorCode: null,
-        errorMessage: null,
-        metadata: { actorUuid },
-      });
+      try {
+        operation = await this.roadmap.operation.create({
+          uuid: randomUUID(),
+          integrationId: runtime.integrationId,
+          operationKey: 'sync.pull',
+          direction: 'PULL',
+          idempotencyKey,
+          attempt: 1,
+          maxAttempts: OPERATION_MAX_ATTEMPTS,
+          state: 'RUNNING',
+          requestHash: hashJson({ resourceType: input.resourceType, limit, cursor }),
+          responseHash: null,
+          requestPayload: { resourceType: input.resourceType, limit, cursor },
+          responsePayload: null,
+          nextAttemptAt: null,
+          startedAt: new Date(),
+          completedAt: null,
+          errorCode: null,
+          errorMessage: null,
+          metadata: { actorUuid },
+        });
+      } catch {
+        const raced = await this.roadmap.operation.getByIdempotency(
+          runtime.integrationId,
+          idempotencyKey,
+        );
+        if (!raced) throw new ConflictException('Integration operation could not be reserved');
+        operation = raced;
+      }
     } else {
       if (operation.attempt >= operation.maxAttempts)
         throw new ConflictException('Integration operation retry limit exhausted');
@@ -300,7 +318,7 @@ export class SystemIntegrationSyncService
           resourceType: input.resourceType,
           cursor,
           limit,
-        }),
+        }, context),
       );
       const records = result.value.records.map((record) =>
         this.mapping.map(record, runtime.responseMapping),
@@ -341,9 +359,7 @@ export class SystemIntegrationSyncService
         state: nextAttemptAt ? 'RETRY_SCHEDULED' : 'FAILED',
         nextAttemptAt,
         completedAt: nextAttemptAt ? null : new Date(),
-        errorCode: retryable
-          ? 'PROVIDER_TRANSIENT_FAILURE'
-          : 'PROVIDER_PERMANENT_FAILURE',
+        errorCode: retryable ? 'PROVIDER_TRANSIENT_FAILURE' : 'PROVIDER_PERMANENT_FAILURE',
         errorMessage: safeError(error),
       });
       throw error;
@@ -451,6 +467,7 @@ export class SystemIntegrationSyncService
     try {
       const provider = await this.integrations.providerFor(integrationUuid);
       const runtime = await this.integrations.runtimeFor(integrationUuid);
+      const context = await this.integrations.providerConfiguration(integrationUuid);
       const payload = operation.requestPayload ?? {};
       const result =
         operation.operationKey === 'sync.push'
@@ -460,6 +477,7 @@ export class SystemIntegrationSyncService
               payload,
               operation.idempotencyKey,
               runtime.responseMapping,
+              context,
             )
           : operation.operationKey === 'sync.pull'
             ? await this.retryPull(
@@ -467,6 +485,7 @@ export class SystemIntegrationSyncService
                 provider,
                 payload,
                 runtime.responseMapping,
+                context,
               )
             : null;
       if (result === null) throw new Error('Unsupported operation retry key');
@@ -504,6 +523,7 @@ export class SystemIntegrationSyncService
     payload: Record<string, unknown>,
     idempotencyKey: string,
     responseMapping: Record<string, unknown>,
+    context: { metadata: Record<string, unknown>; secretRef: string | null },
   ) {
     if (!provider.push)
       throw new Error('Provider does not support push synchronization');
@@ -522,7 +542,7 @@ export class SystemIntegrationSyncService
       occurredAt: new Date(),
     };
     const result = await this.reliability.execute(integrationUuid, () =>
-      provider.push!(request),
+      provider.push!(request, context),
     );
     return {
       ...result.value,
@@ -538,6 +558,7 @@ export class SystemIntegrationSyncService
     provider: Awaited<ReturnType<SystemIntegrationService['providerFor']>>,
     payload: Record<string, unknown>,
     responseMapping: Record<string, unknown>,
+    context: { metadata: Record<string, unknown>; secretRef: string | null },
   ) {
     if (!provider.pull)
       throw new Error('Provider does not support pull synchronization');
@@ -547,11 +568,14 @@ export class SystemIntegrationSyncService
       cursor?: string | null;
     };
     const result = await this.reliability.execute(integrationUuid, () =>
-      provider.pull!({
-        resourceType: input.resourceType ?? 'unknown',
-        limit: Math.min(MAX_PULL, Math.max(1, input.limit ?? 50)),
-        cursor: input.cursor ?? null,
-      }),
+      provider.pull!(
+        {
+          resourceType: input.resourceType ?? 'unknown',
+          limit: Math.min(MAX_PULL, Math.max(1, input.limit ?? 50)),
+          cursor: input.cursor ?? null,
+        },
+        context,
+      ),
     );
     const records = result.value.records.map((record) =>
       this.mapping.map(record, responseMapping),
