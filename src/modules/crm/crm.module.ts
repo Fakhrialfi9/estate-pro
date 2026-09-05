@@ -57,7 +57,10 @@ import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
     QualificationPolicy,
     ClosurePolicy,
     { provide: CRM_REPOSITORY, useClass: PrismaCrmRepository },
-    { provide: COMMUNICATION_REPOSITORY, useExisting: PrismaCommunicationRepository },
+    {
+      provide: COMMUNICATION_REPOSITORY,
+      useExisting: PrismaCommunicationRepository,
+    },
     { provide: CRM_AUTOMATION_PORT, useExisting: CrmAutomationAdapter },
     {
       provide: CRM_AGENT_WORKLOAD_PORT,
