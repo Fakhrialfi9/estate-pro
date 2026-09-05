@@ -27,6 +27,7 @@ import { AutomationModule } from './modules/automation/automation.module.js';
 import { AgentManagementModule } from './modules/agent-management/agent-management.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { SeoModule } from './modules/seo/seo.module.js';
+import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { SeoModule } from './modules/seo/seo.module.js';
     AutomationModule,
     AnalyticsModule,
     SeoModule,
+    DashboardModule,
     HealthModule,
   ],
   controllers: [AppController],
