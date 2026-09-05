@@ -9,7 +9,6 @@ import type {
 
 const CAPABILITIES = [
   'PUSH',
-  'PULL',
   'HEALTH',
   'REQUEST_MAPPING',
   'RESPONSE_MAPPING',
@@ -111,16 +110,6 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
       errorCode: response.ok ? null : `HTTP_${response.status}`,
       errorMessage: response.ok ? null : 'Provider rejected push request',
     });
-  }
-
-  async pull(input: {
-    resourceType: string;
-    cursor?: string | null;
-    limit: number;
-  }) {
-    throw new Error(
-      `Generic HTTP integration requires a dedicated pull endpoint for ${input.resourceType}; configure it before enabling pull`,
-    );
   }
 
   private async request(
