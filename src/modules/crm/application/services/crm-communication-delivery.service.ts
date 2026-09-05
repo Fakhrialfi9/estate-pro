@@ -52,8 +52,7 @@ export class CrmCommunicationDeliveryService {
       return this.toPublic(communication);
     }
 
-    const channel =
-      communication.channel.toUpperCase() as CommunicationChannel;
+    const channel = communication.channel.toUpperCase() as CommunicationChannel;
     if (!CHANNELS.includes(channel)) {
       throw new Error(
         `Unsupported communication channel: ${communication.channel}`,
@@ -89,13 +88,8 @@ export class CrmCommunicationDeliveryService {
       return this.toPublic(updated);
     } catch (error: unknown) {
       const message =
-        error instanceof Error
-          ? error.message
-          : 'Provider delivery failed';
-      if (
-        error instanceof CommunicationProviderError &&
-        error.retryable
-      ) {
+        error instanceof Error ? error.message : 'Provider delivery failed';
+      if (error instanceof CommunicationProviderError && error.retryable) {
         await this.recordRetryableFailure(uuid, actorUuid, message);
       } else {
         await this.fail(uuid, actorUuid, message.slice(0, 240));
