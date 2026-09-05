@@ -85,7 +85,9 @@ export class HttpCommunicationProvider implements CommunicationProvider {
         );
       }
       throw new CommunicationProviderError(
-        error instanceof Error ? error.message : 'Communication provider request failed',
+        error instanceof Error
+          ? error.message
+          : 'Communication provider request failed',
         true,
       );
     } finally {
