@@ -16,10 +16,11 @@ import {
   seedDevelopmentUsers,
 } from './users/seed.ts';
 import { createDatabaseClient } from './database.ts';
-import { seedCrm } from './crm.ts';
-import { seedSales } from './sales.ts';
+import { seedCrm } from './crm/seed.ts';
+import { seedSales } from './sales/seed.ts';
 import { seedAgentManagement } from './agent-management/seed.ts';
-import { seedPropertyCapabilities } from './property-capabilities.ts';
+import { seedProperty } from './property/seed.ts';
+import { seedSystem } from './system/seed.ts';
 
 export async function seedDatabase(): Promise<void> {
   const prisma = createDatabaseClient();
@@ -51,7 +52,7 @@ export async function seedDatabase(): Promise<void> {
             action: permission.action,
           },
           create: {
-            uuid: crypto.randomUUID(),
+            uuid: permission.code.length > 0 ? permission.code : crypto.randomUUID(),
             name: permission.name,
             code: permission.code,
             module: permission.module,
@@ -61,80 +62,22 @@ export async function seedDatabase(): Promise<void> {
         });
         permissionIds.set(permission.code, record.id);
       }
+
       const roleIds = await seedRoles(tx);
-      await seedRolePermissions(
-        tx,
-        roleIds,
-        permissionIds,
-        permissions.map(({ code }) => code),
-      );
+      await seedRolePermissions(tx, roleIds, permissionIds, permissions.map(({ code }) => code));
+
       const adminUserId = await seedAdminUser(tx, preparedAdmin);
       const adminRoleId = roleIds.get('ADMIN');
       if (adminRoleId === undefined) throw new Error('Missing seeded ADMIN role');
       await assignAdminRole(tx, adminUserId, adminRoleId);
       await seedDevelopmentUsers(tx, preparedUsers);
-      await seedPropertyCapabilities(tx);
+
+      // Dependency order: users/RBAC -> agent -> property -> CRM -> sales -> system.
+      await seedAgentManagement(tx, adminUserId);
+      await seedProperty(tx);
       await seedCrm(tx);
       await seedSales(tx);
-      await seedAgentManagement(tx);
-
-      await tx.systemSetting.upsert({
-        where: {
-          key_scope_scopeKey: {
-            key: 'system.default_page_size',
-            scope: 'GLOBAL',
-            scopeKey: 'global',
-          },
-        },
-        update: {},
-        create: {
-          uuid: crypto.randomUUID(),
-          key: 'system.default_page_size',
-          scope: 'GLOBAL',
-          scopeKey: 'global',
-          valueType: 'INTEGER',
-          value: '25',
-          mutable: true,
-        },
-      });
-      await tx.systemSetting.upsert({
-        where: {
-          key_scope_scopeKey: {
-            key: 'system.max_page_size',
-            scope: 'GLOBAL',
-            scopeKey: 'global',
-          },
-        },
-        update: {},
-        create: {
-          uuid: crypto.randomUUID(),
-          key: 'system.max_page_size',
-          scope: 'GLOBAL',
-          scopeKey: 'global',
-          valueType: 'INTEGER',
-          value: '100',
-          mutable: true,
-        },
-      });
-      await tx.systemSetting.upsert({
-        where: {
-          key_scope_scopeKey: {
-            key: 'system.maintenance_mode',
-            scope: 'GLOBAL',
-            scopeKey: 'global',
-          },
-        },
-        update: {},
-        create: {
-          uuid: crypto.randomUUID(),
-          key: 'system.maintenance_mode',
-          scope: 'GLOBAL',
-          scopeKey: 'global',
-          valueType: 'BOOLEAN',
-          value: 'false',
-          mutable: true,
-        },
-      });
+      await seedSystem(tx);
     });
   } finally {
     await prisma.$disconnect();
