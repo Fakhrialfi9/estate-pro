@@ -85,6 +85,18 @@ jobs:
       - name: Secret scan
         run: bash scripts/check-secrets.sh
 
+      - name: Format diagnostics
+        run: |
+          npx prettier --write \
+            src/modules/analytics/application/analytics.service.ts \
+            src/modules/dashboard/executive-dashboard.service.ts \
+            test/unit/dashboard/executive-dashboard.service.spec.ts
+          git diff -- \
+            src/modules/analytics/application/analytics.service.ts \
+            src/modules/dashboard/executive-dashboard.service.ts \
+            test/unit/dashboard/executive-dashboard.service.spec.ts
+          exit 1
+
       - name: Format check
         run: npm run format:check
 
