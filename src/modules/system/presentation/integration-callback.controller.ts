@@ -25,6 +25,7 @@ export class IntegrationCallbackController {
   @ApiOperation({ summary: 'Receive an authenticated integration callback' })
   async callback(
     @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Headers('content-type') contentType: string | undefined,
     @Headers('x-integration-timestamp') timestamp: string,
     @Headers('x-integration-signature') signature: string,
     @Headers('x-integration-event-id') eventId: string | undefined,
@@ -32,6 +33,8 @@ export class IntegrationCallbackController {
     @Headers('x-integration-key-version') keyVersion: string | undefined,
     @Req() request: Request & { rawBody?: Buffer },
   ) {
+    if (contentType?.toLowerCase().split(';')[0].trim() !== 'application/json')
+      throw new BadRequestException('Callback Content-Type must be application/json');
     if (!timestamp || !signature)
       throw new UnauthorizedException('Callback authentication required');
     if (!request.rawBody)
