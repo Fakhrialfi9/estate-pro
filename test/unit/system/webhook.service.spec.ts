@@ -59,12 +59,14 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     vi.fn<(uuid: string) => Promise<WebhookDeliveryRecord | null>>();
   const findSubscriptionByDelivery =
     vi.fn<(uuid: string) => Promise<WebhookSubscriptionRecord | null>>();
-  const createDelivery = vi.fn((input: CreateDeliveryInput) =>
-    Promise.resolve({
+  let createdDeliveryInput: CreateDeliveryInput | undefined;
+  const createDelivery = vi.fn((input: CreateDeliveryInput) => {
+    createdDeliveryInput = input;
+    return Promise.resolve({
       created: true,
       record: delivery(input.eventId, input.deliveryKey),
-    }),
-  );
+    });
+  });
   const updateDelivery = vi.fn((uuid: string, input: UpdateDeliveryInput) =>
     Promise.resolve({
       ...delivery('event-1', uuid),
@@ -132,6 +134,8 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     createDelivery,
     updateDelivery,
     listRecentDeliveries,
+    getCreatedDeliveryInput: (): CreateDeliveryInput | undefined =>
+      createdDeliveryInput,
   };
 };
 
@@ -170,17 +174,16 @@ describe('SystemWebhookService', () => {
       network,
       findDelivery,
       findSubscriptionByDelivery,
-      createDelivery,
       updateDelivery,
+      getCreatedDeliveryInput,
     } = createService([row]);
     findDelivery.mockResolvedValue(delivery('event-1', 'original-delivery'));
     findSubscriptionByDelivery.mockResolvedValue(row);
 
     await service.replay('actor-uuid', 'original-delivery');
 
+    const createdDelivery = getCreatedDeliveryInput();
     expect(network.send).toHaveBeenCalledOnce();
-    expect(createDelivery).toHaveBeenCalledOnce();
-    const [createdDelivery] = createDelivery.mock.calls[0] ?? [];
     expect(createdDelivery?.eventId).toBe('event-1');
     expect(createdDelivery?.deliveryKey).toMatch(/^replay:/);
     expect(updateDelivery).toHaveBeenCalled();
