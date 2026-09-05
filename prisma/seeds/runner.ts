@@ -37,10 +37,10 @@ export async function seedDatabase(): Promise<void> {
       await assignAdminRole(tx, adminUserId, adminRoleId);
       await seedDevelopmentUsers(tx, preparedUsers);
 
-      // Dependency order: identity/RBAC -> audit/agents -> property -> CRM -> sales -> matching -> automation/content/system.
-      await seedAudit(tx);
+      // Dependency order: identity/RBAC -> agents -> property -> audit -> CRM -> sales -> matching -> automation/content/system.
       await seedAgentManagement(tx, adminUserId);
       await seedProperty(tx);
+      await seedAudit(tx);
       await seedCrm(tx);
       await seedSales(tx);
       await seedPropertyMatching(tx);
