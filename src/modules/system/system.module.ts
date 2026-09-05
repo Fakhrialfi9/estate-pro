@@ -1,13 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import {
-  AUTOMATION_HEALTH_PORT,
-  type AutomationHealthPort,
-} from '../../common/contracts/automation-health.port.js';
-import {
-  SYSTEM_HEALTH_PORT,
-  type SystemHealthPort,
-} from '../../common/contracts/health-system.port.js';
+import { AUTOMATION_HEALTH_PORT, type AutomationHealthPort } from '../../common/contracts/automation-health.port.js';
+import { SYSTEM_HEALTH_PORT, type SystemHealthPort } from '../../common/contracts/health-system.port.js';
 import { AuthenticatedAccessGuard } from '../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
 import { AuthorizationModule } from '../../common/security/authorization.module.js';
@@ -32,6 +26,7 @@ import { SystemActivityService } from './application/services/system-activity.se
 import { SystemExportService } from './application/services/system-export.service.js';
 import { SystemImportService } from './application/services/system-import.service.js';
 import { SystemImportMappingService } from './application/services/system-import-mapping.service.js';
+import { SystemEnvironmentService } from './application/services/system-environment.service.js';
 import { SystemIntegrationReliabilityService } from './application/services/system-integration-reliability.service.js';
 import { SystemJobOperationsService } from './application/services/system-job-operations.service.js';
 import { SystemNotificationService } from './application/services/system-notification.service.js';
@@ -64,17 +59,8 @@ import { SYSTEM_WEBHOOK_REPOSITORY } from './domain/repositories/system-webhook.
 import { SYSTEM_INTEGRATION_REPOSITORY } from './domain/repositories/system-integration.repository.js';
 import { SYSTEM_XLSX_EXPORTER } from './domain/repositories/system-xlsx-exporter.port.js';
 import { SYSTEM_ROADMAP_REPOSITORY } from './domain/repositories/system-roadmap.repository.js';
-import {
-  SYSTEM_DATABASE_HEALTH_PORT,
-  SYSTEM_JOB_HEALTH_PORT,
-  SYSTEM_OPERATIONS_PORT,
-  SYSTEM_STORAGE_HEALTH_PORT,
-} from './domain/operations/system-operations.port.js';
-import {
-  SYSTEM_WEBHOOK_NETWORK_PORT,
-  SYSTEM_WEBHOOK_SECRET_PORT,
-  SYSTEM_WEBHOOK_SIGNER_PORT,
-} from './domain/webhook/webhook.ports.js';
+import { SYSTEM_DATABASE_HEALTH_PORT, SYSTEM_JOB_HEALTH_PORT, SYSTEM_OPERATIONS_PORT, SYSTEM_STORAGE_HEALTH_PORT } from './domain/operations/system-operations.port.js';
+import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK_SIGNER_PORT } from './domain/webhook/webhook.ports.js';
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthModule, PermissionsModule, AuthorizationModule, AutomationModule, HealthModule],
@@ -88,6 +74,7 @@ import {
     SystemJobOperationsService,
     SystemImportService,
     SystemImportMappingService,
+    SystemEnvironmentService,
     SystemIntegrationReliabilityService,
     SystemExportService,
     SystemExportScheduler,
