@@ -49,7 +49,7 @@ export class SendCommunicationAction implements ActionHandler {
     } catch (error: unknown) {
       const retryable = hasRetryClassification(error)
         ? error.retryable === true
-        : true;
+        : false;
       return {
         success: false,
         retryable,
