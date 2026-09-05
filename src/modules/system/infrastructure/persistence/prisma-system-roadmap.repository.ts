@@ -8,8 +8,6 @@ import type { IntegrationState } from '../../domain/integration/integration.cont
 const object = (v: unknown): Record<string, unknown> =>
   v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
 
-const record = <T>(row: T): T => row;
-
 @Injectable()
 export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -73,13 +71,13 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
           eventVersion: input.eventVersion, payloadHash: input.payloadHash, status: input.status,
           attempt: input.attempt, processedAt: input.processedAt ?? null, lastErrorCode: input.lastErrorCode ?? null,
         } });
-        return { record: record({ ...row, metadata: undefined as never }), created: true } as any;
+        return { record: row, created: true };
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
           const row = await this.prisma.systemIntegrationIdempotency.findUniqueOrThrow({ where: { integrationId_eventKey_eventName_eventVersion: {
             integrationId: input.integrationId, eventKey: input.eventKey, eventName: input.eventName, eventVersion: input.eventVersion,
           } } });
-          return { record: row, created: false } as any;
+          return { record: row, created: false };
         }
         throw error;
       }
