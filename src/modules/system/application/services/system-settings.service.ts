@@ -25,7 +25,7 @@ import {
 import {
   SYSTEM_CACHE,
   type SystemCachePort,
-} from '../cache/system-cache.port.js';
+} from '../../cache/system-cache.port.js';
 
 const SETTINGS_CACHE_TTL_MS = 30_000;
 
