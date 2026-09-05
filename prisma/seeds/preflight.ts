@@ -1,5 +1,7 @@
 import { spawnSync } from 'node:child_process';
 
+const SCHEMA_ENTRYPOINT = './prisma/schema/schema.prisma';
+
 function prismaCliCommand(): { command: string; prefix: string[] } {
   if (process.platform === 'win32') {
     return { command: 'npx.cmd', prefix: ['--no-install', 'prisma'] };
@@ -19,7 +21,7 @@ export function assertDatabaseSchemaMatchesSchema(): void {
       '--exit-code',
       '--from-config-datasource',
       '--to-schema',
-      './prisma/schema',
+      SCHEMA_ENTRYPOINT,
     ],
     {
       encoding: 'utf8',
