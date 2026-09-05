@@ -31,7 +31,7 @@
     "typecheck": "prisma generate && tsc --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"src/modules/users/credentials\" \"test/**/*.ts\" --no-error-on-unmatched-pattern",
     "format:check": "prettier --check \"src/**/*.ts\" \"src/modules/users/credentials\" \"test/**/*.ts\" --no-error-on-unmatched-pattern",
-    "check:architecture": "bash scripts/check-architecture.sh",
+    "validate:all": "node scripts/validate-all.mjs",
     "test": "prisma generate && vitest run",
     "test:watch": "prisma generate && vitest",
     "test:unit": "prisma generate && vitest run --config vitest.config.ts",
@@ -43,8 +43,8 @@
     "test:security:baseline": "bash scripts/security-test.sh",
     "test:coverage": "prisma generate && vitest run --coverage --config vitest.coverage.config.ts",
     "test:coverage:e2e": "prisma generate && vitest run --config vitest.e2e.config.ts --coverage",
-    "check:fix": "npm run lint:fix && npm run format:check && npm run typecheck",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:openapi && npm run test:security",
+    "check:fix": "npm run lint:fix && npm run format:check && npm run typecheck",
     "check:health": "npm run lint && npm run typecheck && npm run check:architecture && npm test && npm run format:check && npm run build",
     "check:fresh": "npm run clean && npm ci && npm run check:health"
   },
