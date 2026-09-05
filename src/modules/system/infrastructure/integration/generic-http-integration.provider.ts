@@ -40,28 +40,13 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     metadata: Record<string, unknown>;
     secretRef?: string | null;
   }) {
-    const started = performance.now();
-    try {
-      const response = await this.request(
-        input.metadata,
-        input.secretRef,
-        'health',
-        DEFAULT_HEALTH_TIMEOUT_MS,
-      );
-      return {
-        ok: response.ok,
-        latencyMs: Math.round(performance.now() - started),
-        code: response.ok ? undefined : `HTTP_${response.status}`,
-        message: response.ok ? undefined : 'Provider health request failed',
-      };
-    } catch (error: unknown) {
-      return {
-        ok: false,
-        latencyMs: Math.round(performance.now() - started),
-        code: this.errorCode(error),
-        message: safeMessage(error),
-      };
-    }
+    const result = await this.health(input);
+    return {
+      ok: result.ok,
+      latencyMs: result.latencyMs,
+      code: result.code,
+      message: result.ok ? undefined : 'Provider health request failed',
+    };
   }
 
   async reconnect(input: {
@@ -118,16 +103,46 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     return Promise.resolve();
   }
 
-  async health(): Promise<{
+  async health(input?: {
+    metadata: Record<string, unknown>;
+    secretRef?: string | null;
+  }): Promise<{
     ok: boolean;
     latencyMs: number;
     code: string;
   }> {
-    return {
-      ok: true,
-      latencyMs: 0,
-      code: 'PROVIDER_ADAPTER_HEALTHY',
-    };
+    const metadata = input?.metadata ?? {};
+    const endpoint =
+      stringValue(metadata.healthUrl) ?? stringValue(metadata.endpoint);
+    if (!endpoint)
+      return {
+        ok: false,
+        latencyMs: 0,
+        code: 'HEALTH_ENDPOINT_NOT_CONFIGURED',
+      };
+    const started = performance.now();
+    try {
+      const response = await this.request(
+        metadata,
+        input?.secretRef,
+        'health',
+        Math.min(
+          DEFAULT_HEALTH_TIMEOUT_MS,
+          numberValue(metadata.timeoutMs, DEFAULT_HEALTH_TIMEOUT_MS),
+        ),
+      );
+      return {
+        ok: response.ok,
+        latencyMs: Math.round(performance.now() - started),
+        code: response.ok ? 'UP' : `HTTP_${response.status}`,
+      };
+    } catch (error: unknown) {
+      return {
+        ok: false,
+        latencyMs: Math.round(performance.now() - started),
+        code: this.errorCode(error),
+      };
+    }
   }
 
   mapRequest(request: CanonicalIntegrationRequest) {
@@ -201,11 +216,11 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     body: string;
     signature: string;
     keyVersion?: string;
+    secretRef?: string | null;
   }): Promise<boolean> {
-    const reference = process.env.INTEGRATION_HTTP_SIGNATURE_SECRET_REF;
-    if (!reference) return false;
+    if (!input.secretRef) return false;
     try {
-      const secret = await this.secrets.resolve(reference);
+      const secret = await this.secrets.resolve(input.secretRef);
       const digest = createHmac('sha256', secret)
         .update(`${input.timestamp}.${input.body}`, 'utf8')
         .digest();
@@ -274,7 +289,12 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
 
   private safeProviderError(value: unknown) {
     if (typeof value !== 'string') return 'Provider request failed';
-    return value.replace(/(token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+/gi, '$1=[REDACTED]').slice(0, 500);
+    return value
+      .replace(
+        /(token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+/gi,
+        '$1=[REDACTED]',
+      )
+      .slice(0, 500);
   }
 }
 
@@ -347,7 +367,10 @@ function numberValue(value: unknown, fallback: number): number {
 function safeMessage(error: unknown): string {
   return error instanceof Error
     ? error.message
-        .replace(/(token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+/gi, '$1=[REDACTED]')
+        .replace(
+          /(token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+/gi,
+          '$1=[REDACTED]',
+        )
         .slice(0, 240)
     : 'Provider request failed';
 }
