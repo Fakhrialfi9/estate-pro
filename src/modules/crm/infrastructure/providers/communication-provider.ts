@@ -9,6 +9,8 @@ export interface CommunicationProvider {
 }
 
 export class ProviderNotConfiguredError extends Error {
+  readonly retryable = false;
+
   constructor(channel: string) {
     super(`No ${channel} communication provider is configured`);
     this.name = 'ProviderNotConfiguredError';
