@@ -31,6 +31,7 @@ import { SystemEnvironmentService } from './application/services/system-environm
 import { SystemIntegrationCallbackService } from './application/services/system-integration-callback.service.js';
 import { SystemIntegrationCredentialService } from './application/services/system-integration-credential.service.js';
 import { SystemIntegrationReliabilityService } from './application/services/system-integration-reliability.service.js';
+import { SystemIntegrationSyncService } from './application/services/system-integration-sync.service.js';
 import { SystemJobOperationsService } from './application/services/system-job-operations.service.js';
 import { SystemNotificationService } from './application/services/system-notification.service.js';
 import { SystemSettingsService } from './application/services/system-settings.service.js';
@@ -69,38 +70,14 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
   imports: [DatabaseModule, AuditModule, AuthModule, PermissionsModule, AuthorizationModule, AutomationModule, HealthModule],
   controllers: [AuditLogsController, ActivityController, ExportController, ImportController, JobsController, NotificationsController, SettingsController, WebhookController, IntegrationController, OperationsController, SystemRoadmapControlController, IntegrationCallbackController],
   providers: [
-    AuthenticatedAccessGuard,
-    AuthorizationGuard,
-    SystemSettingsService,
-    SystemActivityService,
-    SystemNotificationService,
-    SystemJobOperationsService,
-    SystemImportService,
-    SystemImportMappingService,
-    SystemEnvironmentService,
-    SystemIntegrationCallbackService,
-    SystemIntegrationCredentialService,
-    SystemIntegrationReliabilityService,
-    SystemExportService,
-    SystemExportScheduler,
-    SystemXlsxExporterAdapter,
-    SystemWebhookService,
-    SystemIntegrationService,
-    SystemOperationsService,
-    SystemRoadmapControlService,
-    SystemReadOnlyGuard,
-    SystemMetricsService,
-    PrismaSystemSettingsRepository,
-    PrismaSystemActivityRepository,
-    PrismaSystemImportRepository,
-    PrismaSystemExportRepository,
-    PrismaSystemWebhookRepository,
-    PrismaSystemIntegrationRepository,
-    PrismaSystemRoadmapRepository,
-    LocalSystemArtifactStorage,
-    WebhookNetworkService,
-    WebhookSecretService,
-    WebhookSignerService,
+    AuthenticatedAccessGuard, AuthorizationGuard, SystemSettingsService, SystemActivityService, SystemNotificationService,
+    SystemJobOperationsService, SystemImportService, SystemImportMappingService, SystemEnvironmentService,
+    SystemIntegrationCallbackService, SystemIntegrationCredentialService, SystemIntegrationReliabilityService,
+    SystemIntegrationSyncService, SystemExportService, SystemExportScheduler, SystemXlsxExporterAdapter,
+    SystemWebhookService, SystemIntegrationService, SystemOperationsService, SystemRoadmapControlService, SystemReadOnlyGuard, SystemMetricsService,
+    PrismaSystemSettingsRepository, PrismaSystemActivityRepository, PrismaSystemImportRepository, PrismaSystemExportRepository,
+    PrismaSystemWebhookRepository, PrismaSystemIntegrationRepository, PrismaSystemRoadmapRepository, LocalSystemArtifactStorage,
+    WebhookNetworkService, WebhookSecretService, WebhookSignerService,
     { provide: SYSTEM_SETTINGS_REPOSITORY, useExisting: PrismaSystemSettingsRepository },
     { provide: SYSTEM_ACTIVITY_REPOSITORY, useExisting: PrismaSystemActivityRepository },
     { provide: SYSTEM_IMPORT_REPOSITORY, useExisting: PrismaSystemImportRepository },
@@ -119,6 +96,6 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     { provide: SYSTEM_OPERATIONS_PORT, useExisting: SystemOperationsService },
     { provide: APP_GUARD, useExisting: SystemReadOnlyGuard },
   ],
-  exports: [SystemSettingsService, SystemActivityService, SYSTEM_OPERATIONS_PORT, SystemRoadmapControlService, SystemIntegrationService, SystemIntegrationReliabilityService, SystemIntegrationCredentialService],
+  exports: [SystemSettingsService, SystemActivityService, SYSTEM_OPERATIONS_PORT, SystemRoadmapControlService, SystemIntegrationService, SystemIntegrationReliabilityService, SystemIntegrationSyncService, SystemIntegrationCredentialService],
 })
 export class SystemModule {}
