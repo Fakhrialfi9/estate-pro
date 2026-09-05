@@ -7,11 +7,9 @@ import {
 import {
   AUTOMATION_NOTIFICATION_PORT,
   type AutomationNotificationPort,
+  type NotificationChannelContract,
+  type NotificationPriorityContract,
 } from '../../../../common/contracts/automation-system.port.js';
-import type {
-  NotificationChannel,
-  NotificationPriority,
-} from '../../../automation/domain/notification.types.js';
 import type { SystemNotificationsContract } from '../../domain/system-public.contracts.js';
 import { SYSTEM_ERROR_CODES } from '../../domain/system-error.codes.js';
 
@@ -63,7 +61,7 @@ export class SystemNotificationService implements SystemNotificationsContract {
     userUuid: string,
     input: {
       notificationType: string;
-      channel: NotificationChannel;
+      channel: NotificationChannelContract;
       enabled: boolean;
     },
   ) {
@@ -103,7 +101,7 @@ export class SystemNotificationService implements SystemNotificationsContract {
     notificationUuid: string,
     input: {
       templateUuid?: string | null;
-      priority?: NotificationPriority;
+      priority?: NotificationPriorityContract;
       expiresAt?: Date | null;
     },
   ) {
@@ -116,7 +114,7 @@ export class SystemNotificationService implements SystemNotificationsContract {
 
   createDelivery(
     notificationUuid: string,
-    channel: NotificationChannel,
+    channel: NotificationChannelContract,
     maxAttempts?: number,
   ) {
     return this.automation.createDelivery({
