@@ -28,7 +28,8 @@ const stringValue = (value: unknown): string =>
 @Injectable()
 export class AnalyticsService {
   constructor(
-    @Inject(ANALYTICS_QUERY_PORT) private readonly queries: AnalyticsQueryPort,
+    @Inject(ANALYTICS_QUERY_PORT)
+    private readonly queries: AnalyticsQueryPort,
     private readonly scopePolicy: AnalyticsScopePolicy,
   ) {}
 
@@ -463,8 +464,12 @@ export class AnalyticsService {
         );
     }
     const rows = this.flattenReport(result.data).slice(0, 10000);
-    if (rows.length === 0)
-      return { filename: `analytics-${normalized}.csv`, content: '' };
+    if (rows.length === 0) {
+      return {
+        filename: `analytics-${normalized}.csv`,
+        content: '',
+      };
+    }
     const keys = [...new Set(rows.flatMap((row) => Object.keys(row)))];
     const csv = [
       keys,
@@ -472,7 +477,10 @@ export class AnalyticsService {
     ]
       .map((row) => row.join(','))
       .join('\n');
-    return { filename: `analytics-${normalized}.csv`, content: csv };
+    return {
+      filename: `analytics-${normalized}.csv`,
+      content: csv,
+    };
   }
 
   private report<T extends Record<string, unknown>>(
@@ -569,7 +577,9 @@ export class AnalyticsService {
     const converted = this.numberValue(row.converted);
     return {
       ...row,
-      qualifiedRate: leads ? Number(((qualified / leads) * 100).toFixed(4)) : 0,
+      qualifiedRate: leads
+        ? Number(((qualified / leads) * 100).toFixed(4))
+        : 0,
       conversionRate: leads
         ? Number(((converted / leads) * 100).toFixed(4))
         : 0,
