@@ -22,3 +22,5 @@ import { PrismaAnalyticsQueryRepository } from './infrastructure/prisma-analytic
   exports: [AnalyticsService],
 })
 export class AnalyticsModule {}
+
+export { AnalyticsService } from './application/analytics.service.js';

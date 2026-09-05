@@ -226,3 +226,6 @@ import {
   ],
 })
 export class SystemModule {}
+
+export { SYSTEM_OPERATIONS_PORT } from './domain/operations/system-operations.port.js';
+export type { SystemOperationsPort } from './domain/operations/system-operations.port.js';
