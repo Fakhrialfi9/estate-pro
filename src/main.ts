@@ -13,6 +13,7 @@ import {
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
+    rawBody: true,
     bufferLogs: true,
   });
 
