@@ -129,7 +129,10 @@ export class ExecutiveDashboardService {
         funnel: this.mapCrmFunnel(this.rows(leadData.funnel)),
         assignments: this.mapCrmAssignments(this.rows(leadData.assignments)),
         sources: this.mapAcquisition(this.rows(acquisitionData.sources)),
-        campaigns: this.mapAcquisition(this.rows(acquisitionData.campaigns), true),
+        campaigns: this.mapAcquisition(
+          this.rows(acquisitionData.campaigns),
+          true,
+        ),
         conversion: this.mapCrmConversion(conversionData),
         sla: this.mapCrmSla(slaData),
       },
@@ -147,7 +150,9 @@ export class ExecutiveDashboardService {
     const pipelineData = this.firstRow(pipeline.data);
     const data: SalesDashboardData = {
       pipeline: this.mapSalesPipeline(this.rows(pipelineData.pipeline)),
-      stageVelocity: this.mapSalesVelocity(this.rows(pipelineData.stageVelocity)),
+      stageVelocity: this.mapSalesVelocity(
+        this.rows(pipelineData.stageVelocity),
+      ),
       aging: this.mapSalesAging(this.rows(pipelineData.aging)),
       value: this.mapSalesValue(this.rows(pipelineData.value)),
       conversion: this.mapCrmConversion(this.firstRow(conversion.data)),
@@ -158,7 +163,9 @@ export class ExecutiveDashboardService {
       const revenueData = this.firstRow(revenue.data);
       data.sales = this.mapSalesVolume(this.rows(revenueData.sales));
       data.revenue = this.mapSalesRevenue(this.rows(revenueData.revenue));
-      data.averageDeal = this.mapAverageDeal(this.rows(revenueData.averageDeal));
+      data.averageDeal = this.mapAverageDeal(
+        this.rows(revenueData.averageDeal),
+      );
     }
 
     if (this.canForecast(user)) {
@@ -561,7 +568,9 @@ export class ExecutiveDashboardService {
   }
 
   private canForecast(user: AccessTokenClaims): boolean {
-    return (user.permissions ?? []).includes('analytics.forecast') ||
-      (user.permissions ?? []).includes('analytics.manage');
+    return (
+      (user.permissions ?? []).includes('analytics.forecast') ||
+      (user.permissions ?? []).includes('analytics.manage')
+    );
   }
 }
