@@ -203,10 +203,16 @@ export interface SystemRoadmapRepository {
     create(
       input: Omit<IntegrationCredentialRecord, 'issuedAt' | 'lastUsedAt'> &
         Partial<
-          Pick<IntegrationCredentialRecord, 'accessTokenRef' | 'refreshTokenRef'>
+          Pick<
+            IntegrationCredentialRecord,
+            'accessTokenRef' | 'refreshTokenRef'
+          >
         >,
     ): Promise<IntegrationCredentialRecord>;
-    revoke(uuid: string, revokedAt: Date): Promise<IntegrationCredentialRecord>;
+    revoke(
+      uuid: string,
+      revokedAt: Date,
+    ): Promise<IntegrationCredentialRecord>;
     markUsed(
       uuid: string,
       lastUsedAt: Date,
@@ -237,7 +243,9 @@ export interface SystemRoadmapRepository {
       integrationId: bigint,
       idempotencyKey: string,
     ): Promise<IntegrationOperationRecord | null>;
-    create(input: IntegrationOperationRecord): Promise<IntegrationOperationRecord>;
+    create(
+      input: IntegrationOperationRecord,
+    ): Promise<IntegrationOperationRecord>;
     update(
       uuid: string,
       input: Partial<Omit<IntegrationOperationRecord, 'uuid'>>,
@@ -294,7 +302,9 @@ export interface SystemRoadmapRepository {
   };
   alertRule: {
     list(enabled?: boolean): Promise<readonly OperationalAlertRuleRecord[]>;
-    upsert(input: OperationalAlertRuleRecord): Promise<OperationalAlertRuleRecord>;
+    upsert(
+      input: OperationalAlertRuleRecord,
+    ): Promise<OperationalAlertRuleRecord>;
   };
   alert: {
     upsert(input: OperationalAlertRecord): Promise<OperationalAlertRecord>;
