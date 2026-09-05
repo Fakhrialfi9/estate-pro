@@ -194,6 +194,86 @@ export class AnalyticsService {
     });
   }
 
+  async property(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
+    const query = this.normalizeQuery(dto);
+    const scope = this.scopeFor(user);
+    const [inventory, listings, lifecycle, aging] = await this.withTimeout(
+      Promise.all([
+        this.queries.propertyInventory(query, scope),
+        this.queries.listingAnalytics(query, scope),
+        this.queries.propertyLifecycle(query, scope),
+        this.queries.propertyAging(query, scope),
+      ]),
+    );
+    return this.report(query, {
+      inventory: this.normalizeRows(inventory),
+      listings: this.normalizeRows(listings),
+      lifecycle: this.normalizeRows(lifecycle)[0] ?? {},
+      aging: this.normalizeRows(aging)[0] ?? {},
+    });
+  }
+
+  async agent(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
+    const query = this.normalizeQuery(dto);
+    const scope = this.scopeFor(user);
+    const [workload, activity, conversion, agentProperty] =
+      await this.withTimeout(
+        Promise.all([
+          this.queries.agentWorkload(query, scope),
+          this.queries.agentActivity(query, scope),
+          this.queries.agentConversion(query, scope),
+          this.queries.agentProperty(query, scope),
+        ]),
+      );
+    const conversions = new Map(
+      this.normalizeRows(conversion).map((row) => [
+        stringValue(row.agentUuid),
+        row,
+      ]),
+    );
+    const properties = new Map(
+      this.normalizeRows(agentProperty).map((row) => [
+        stringValue(row.agentUuid),
+        row,
+      ]),
+    );
+    const canReadRevenue = this.scopePolicy.canReadRevenue(user);
+    const scorecards = this.normalizeRows(workload).map((row) => {
+      const id = stringValue(row.agentUuid);
+      const c = conversions.get(id) ?? {};
+      const p = properties.get(id) ?? {};
+      const opportunities = this.numberValue(c.opportunities);
+      const won = this.numberValue(c.wonDeals);
+      const base = {
+        ...row,
+        activeProperties: this.numberValue(p.activeProperties),
+        publishedProperties: this.numberValue(p.publishedProperties),
+        wonDeals: won,
+        conversionRate: opportunities
+          ? Number(((won / opportunities) * 100).toFixed(4))
+          : 0,
+      };
+      return canReadRevenue
+        ? { ...base, revenue: c.revenue ?? '0' }
+        : base;
+    });
+    const safeConversion = this.normalizeRows(conversion).map((row) => {
+      if (canReadRevenue) return row;
+      const { revenue: _revenue, ...safeRow } = row;
+      return safeRow;
+    });
+    return this.report(query, {
+      workload: this.normalizeRows(workload),
+      activity: this.normalizeRows(activity).map((row) => ({
+        ...row,
+        category: this.activityCategory(stringValue(row.type)),
+      })),
+      conversion: safeConversion,
+      propertiesByAgent: this.normalizeRows(agentProperty),
+      scorecards,
+    });
+  }
+
   async propertyAndAgent(dto: AnalyticsQueryDto, user: AccessTokenClaims) {
     const query = this.normalizeQuery(dto);
     const scope = this.scopeFor(user);
@@ -230,22 +310,30 @@ export class AnalyticsService {
         row,
       ]),
     );
+    const canReadRevenue = this.scopePolicy.canReadRevenue(user);
     const scorecards = this.normalizeRows(workload).map((row) => {
       const id = stringValue(row.agentUuid);
       const c = conversions.get(id) ?? {};
       const p = properties.get(id) ?? {};
       const opportunities = this.numberValue(c.opportunities);
       const won = this.numberValue(c.wonDeals);
-      return {
+      const base = {
         ...row,
         activeProperties: this.numberValue(p.activeProperties),
         publishedProperties: this.numberValue(p.publishedProperties),
         wonDeals: won,
-        revenue: c.revenue ?? '0',
         conversionRate: opportunities
           ? Number(((won / opportunities) * 100).toFixed(4))
           : 0,
       };
+      return canReadRevenue
+        ? { ...base, revenue: c.revenue ?? '0' }
+        : base;
+    });
+    const safeConversion = this.normalizeRows(conversion).map((row) => {
+      if (canReadRevenue) return row;
+      const { revenue: _revenue, ...safeRow } = row;
+      return safeRow;
     });
     return this.report(query, {
       inventory: this.normalizeRows(inventory),
@@ -257,7 +345,7 @@ export class AnalyticsService {
         ...row,
         category: this.activityCategory(stringValue(row.type)),
       })),
-      conversion: this.normalizeRows(conversion),
+      conversion: safeConversion,
       propertiesByAgent: this.normalizeRows(agentProperty),
       scorecards,
     });
