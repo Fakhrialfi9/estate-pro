@@ -14,3 +14,14 @@ export class ProviderNotConfiguredError extends Error {
     this.name = 'ProviderNotConfiguredError';
   }
 }
+
+export class CommunicationProviderError extends Error {
+  constructor(
+    message: string,
+    readonly retryable: boolean,
+    readonly statusCode?: number,
+  ) {
+    super(message);
+    this.name = 'CommunicationProviderError';
+  }
+}
