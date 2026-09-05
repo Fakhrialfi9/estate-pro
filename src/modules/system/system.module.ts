@@ -29,6 +29,7 @@ import { SystemImportService } from './application/services/system-import.servic
 import { SystemImportMappingService } from './application/services/system-import-mapping.service.js';
 import { SystemEnvironmentService } from './application/services/system-environment.service.js';
 import { SystemIntegrationCallbackService } from './application/services/system-integration-callback.service.js';
+import { SystemIntegrationCredentialService } from './application/services/system-integration-credential.service.js';
 import { SystemIntegrationReliabilityService } from './application/services/system-integration-reliability.service.js';
 import { SystemJobOperationsService } from './application/services/system-job-operations.service.js';
 import { SystemNotificationService } from './application/services/system-notification.service.js';
@@ -78,6 +79,7 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     SystemImportMappingService,
     SystemEnvironmentService,
     SystemIntegrationCallbackService,
+    SystemIntegrationCredentialService,
     SystemIntegrationReliabilityService,
     SystemExportService,
     SystemExportScheduler,
@@ -117,6 +119,6 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     { provide: SYSTEM_OPERATIONS_PORT, useExisting: SystemOperationsService },
     { provide: APP_GUARD, useExisting: SystemReadOnlyGuard },
   ],
-  exports: [SystemSettingsService, SystemActivityService, SYSTEM_OPERATIONS_PORT, SystemRoadmapControlService, SystemIntegrationService, SystemIntegrationReliabilityService],
+  exports: [SystemSettingsService, SystemActivityService, SYSTEM_OPERATIONS_PORT, SystemRoadmapControlService, SystemIntegrationService, SystemIntegrationReliabilityService, SystemIntegrationCredentialService],
 })
 export class SystemModule {}
