@@ -5,6 +5,7 @@ import {
   SYSTEM_ROADMAP_REPOSITORY,
   type SystemRoadmapRepository,
 } from '../../domain/repositories/system-roadmap.repository.js';
+import { SystemIntegrationMappingService } from './system-integration-mapping.service.js';
 import { SystemIntegrationReliabilityService } from './system-integration-reliability.service.js';
 import { SystemIntegrationService } from './system-integration.service.js';
 
@@ -15,6 +16,7 @@ export class SystemIntegrationSyncService {
   constructor(
     private readonly integrations: SystemIntegrationService,
     private readonly reliability: SystemIntegrationReliabilityService,
+    private readonly mapping: SystemIntegrationMappingService,
     @Inject(SYSTEM_ROADMAP_REPOSITORY)
     private readonly roadmap: SystemRoadmapRepository,
   ) {}
@@ -34,23 +36,33 @@ export class SystemIntegrationSyncService {
       throw new BadRequestException(
         'Provider does not support push synchronization',
       );
+    const runtime = await this.integrations.runtimeFor(integrationUuid);
+    this.mapping.validate(runtime.requestMapping);
+    const mappedPayload = this.mapping.map(input.payload, runtime.requestMapping);
     const request: CanonicalIntegrationRequest = {
       operationKey: 'sync.push',
       direction: 'PUSH',
       resourceType: input.resourceType,
       resourceUuid: input.resourceUuid,
-      payload: input.payload,
+      payload: mappedPayload,
       idempotencyKey: input.idempotencyKey,
       occurredAt: new Date(),
     };
     const result = await this.reliability.execute(integrationUuid, () =>
       provider.push!(request),
     );
+    const response = {
+      ...result.value,
+      data: this.mapping.map(
+        result.value.data as Record<string, unknown>,
+        runtime.responseMapping,
+      ),
+    };
     return {
       direction: 'PUSH',
       integrationUuid,
       actorUuid,
-      result: result.value,
+      result: response,
       attempts: result.retry.attempt,
     };
   }
@@ -66,6 +78,7 @@ export class SystemIntegrationSyncService {
         'Provider does not support pull synchronization',
       );
     const runtime = await this.integrations.runtimeFor(integrationUuid);
+    this.mapping.validate(runtime.responseMapping);
     const limit = Math.min(MAX_PULL, Math.max(1, input.limit ?? 50));
     const result = await this.reliability.execute(integrationUuid, () =>
       provider.pull!({
@@ -73,6 +86,9 @@ export class SystemIntegrationSyncService {
         cursor: runtime.syncCursor,
         limit,
       }),
+    );
+    const records = result.value.records.map((record) =>
+      this.mapping.map(record, runtime.responseMapping),
     );
     await this.roadmap.runtime.update(runtime.integrationId, {
       syncCursor: result.value.nextCursor,
@@ -84,7 +100,8 @@ export class SystemIntegrationSyncService {
       integrationUuid,
       actorUuid,
       resourceType: input.resourceType,
-      recordsRead: result.value.records.length,
+      recordsRead: records.length,
+      records,
       nextCursor: result.value.nextCursor,
     };
   }
