@@ -41,28 +41,7 @@ export async function seedDatabase(): Promise<void> {
 
   try {
     await prisma.$transaction(async (tx) => {
-      const permissionIds = await seedPermissions(tx);
-      for (const permission of permissions) {
-        const record = await tx.authorizationPermission.upsert({
-          where: { code: permission.code },
-          update: {
-            name: permission.name,
-            module: permission.module,
-            domain: permission.domain,
-            action: permission.action,
-          },
-          create: {
-            uuid: permission.code.length > 0 ? permission.code : crypto.randomUUID(),
-            name: permission.name,
-            code: permission.code,
-            module: permission.module,
-            domain: permission.domain,
-            action: permission.action,
-          },
-        });
-        permissionIds.set(permission.code, record.id);
-      }
-
+      const permissionIds = await seedPermissions(tx, permissions);
       const roleIds = await seedRoles(tx);
       await seedRolePermissions(tx, roleIds, permissionIds, permissions.map(({ code }) => code));
 
@@ -72,7 +51,7 @@ export async function seedDatabase(): Promise<void> {
       await assignAdminRole(tx, adminUserId, adminRoleId);
       await seedDevelopmentUsers(tx, preparedUsers);
 
-      // Dependency order: users/RBAC -> agent -> property -> CRM -> sales -> system.
+      // Explicit dependency order: identity/RBAC -> agents -> property -> CRM -> sales -> system.
       await seedAgentManagement(tx, adminUserId);
       await seedProperty(tx);
       await seedCrm(tx);
