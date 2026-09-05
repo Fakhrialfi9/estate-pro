@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AUTOMATION_HEALTH_PORT, type AutomationHealthPort } from '../../common/contracts/automation-health.port.js';
+import { AUTOMATION_NOTIFICATION_PORT, type AutomationNotificationPort } from '../../common/contracts/automation-system.port.js';
 import { SYSTEM_HEALTH_PORT, type SystemHealthPort } from '../../common/contracts/health-system.port.js';
 import { AuthenticatedAccessGuard } from '../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
@@ -32,6 +33,7 @@ import { SystemIntegrationCallbackService } from './application/services/system-
 import { SystemIntegrationCredentialService } from './application/services/system-integration-credential.service.js';
 import { SystemIntegrationReliabilityService } from './application/services/system-integration-reliability.service.js';
 import { SystemIntegrationSyncService } from './application/services/system-integration-sync.service.js';
+import { SystemOperationalAlertService } from './application/services/system-operational-alert.service.js';
 import { SystemJobOperationsService } from './application/services/system-job-operations.service.js';
 import { SystemNotificationService } from './application/services/system-notification.service.js';
 import { SystemSettingsService } from './application/services/system-settings.service.js';
@@ -73,7 +75,7 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     AuthenticatedAccessGuard, AuthorizationGuard, SystemSettingsService, SystemActivityService, SystemNotificationService,
     SystemJobOperationsService, SystemImportService, SystemImportMappingService, SystemEnvironmentService,
     SystemIntegrationCallbackService, SystemIntegrationCredentialService, SystemIntegrationReliabilityService,
-    SystemIntegrationSyncService, SystemExportService, SystemExportScheduler, SystemXlsxExporterAdapter,
+    SystemIntegrationSyncService, SystemOperationalAlertService, SystemExportService, SystemExportScheduler, SystemXlsxExporterAdapter,
     SystemWebhookService, SystemIntegrationService, SystemOperationsService, SystemRoadmapControlService, SystemReadOnlyGuard, SystemMetricsService,
     PrismaSystemSettingsRepository, PrismaSystemActivityRepository, PrismaSystemImportRepository, PrismaSystemExportRepository,
     PrismaSystemWebhookRepository, PrismaSystemIntegrationRepository, PrismaSystemRoadmapRepository, LocalSystemArtifactStorage,
@@ -94,8 +96,7 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     { provide: SYSTEM_JOB_HEALTH_PORT, useFactory: (automation: AutomationHealthPort) => automation, inject: [AUTOMATION_HEALTH_PORT] },
     { provide: SYSTEM_DATABASE_HEALTH_PORT, useFactory: (health: SystemHealthPort) => ({ check: async (): Promise<'up' | 'down'> => { try { return await health.checkDatabase(); } catch { return 'down'; } } }), inject: [SYSTEM_HEALTH_PORT] },
     { provide: SYSTEM_OPERATIONS_PORT, useExisting: SystemOperationsService },
-    { provide: APP_GUARD, useExisting: SystemReadOnlyGuard },
   ],
-  exports: [SystemSettingsService, SystemActivityService, SYSTEM_OPERATIONS_PORT, SystemRoadmapControlService, SystemIntegrationService, SystemIntegrationReliabilityService, SystemIntegrationSyncService, SystemIntegrationCredentialService],
+  exports: [SystemSettingsService, SystemActivityService, SYSTEM_OPERATIONS_PORT, SystemRoadmapControlService, SystemIntegrationService, SystemIntegrationReliabilityService, SystemIntegrationSyncService, SystemIntegrationCredentialService, SystemOperationalAlertService],
 })
 export class SystemModule {}
