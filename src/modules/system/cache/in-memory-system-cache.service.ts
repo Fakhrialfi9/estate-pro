@@ -19,27 +19,29 @@ export class InMemorySystemCacheService implements SystemCachePort {
   private deletes = 0;
   private evictions = 0;
 
-  async get<T>(key: string): Promise<T | null> {
+  get<T>(key: string): Promise<T | null> {
     this.validateKey(key);
     const entry = this.store.get(key);
     if (!entry) {
       this.misses += 1;
-      return null;
+      return Promise.resolve(null);
     }
     if (entry.expiresAt <= Date.now()) {
       this.store.delete(key);
       this.evictions += 1;
       this.misses += 1;
-      return null;
+      return Promise.resolve(null);
     }
     this.hits += 1;
-    return structuredClone(entry.value) as T;
+    return Promise.resolve(structuredClone(entry.value) as T);
   }
 
-  async set<T>(key: string, value: T, ttlMs: number): Promise<void> {
+  set<T>(key: string, value: T, ttlMs: number): Promise<void> {
     this.validateKey(key);
     if (!Number.isFinite(ttlMs) || ttlMs < 1 || ttlMs > MAX_TTL_MS)
-      throw new Error(`Cache TTL must be between 1ms and ${MAX_TTL_MS}ms`);
+      return Promise.reject(
+        new Error(`Cache TTL must be between 1ms and ${MAX_TTL_MS}ms`),
+      );
     const namespace = key.slice(0, key.indexOf(':'));
     this.store.set(key, {
       value: structuredClone(value),
@@ -47,16 +49,17 @@ export class InMemorySystemCacheService implements SystemCachePort {
       namespace,
     });
     this.sets += 1;
+    return Promise.resolve();
   }
 
-  async delete(key: string): Promise<boolean> {
+  delete(key: string): Promise<boolean> {
     this.validateKey(key);
     const deleted = this.store.delete(key);
     if (deleted) this.deletes += 1;
-    return deleted;
+    return Promise.resolve(deleted);
   }
 
-  async invalidateNamespace(namespace: string): Promise<number> {
+  invalidateNamespace(namespace: string): Promise<number> {
     this.validateNamespace(namespace);
     let count = 0;
     for (const [key, entry] of this.store.entries()) {
@@ -66,24 +69,25 @@ export class InMemorySystemCacheService implements SystemCachePort {
       }
     }
     this.deletes += count;
-    return count;
+    return Promise.resolve(count);
   }
 
-  async clear(): Promise<void> {
+  clear(): Promise<void> {
     this.store.clear();
     this.deletes += 1;
+    return Promise.resolve();
   }
 
-  async stats(): Promise<CacheStats> {
+  stats(): Promise<CacheStats> {
     this.purgeExpired();
-    return {
+    return Promise.resolve({
       hits: this.hits,
       misses: this.misses,
       sets: this.sets,
       deletes: this.deletes,
       evictions: this.evictions,
       keys: this.store.size,
-    };
+    });
   }
 
   health(): Promise<{ ok: boolean; code: string }> {
