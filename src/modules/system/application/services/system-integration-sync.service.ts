@@ -12,6 +12,10 @@ import type { SecurityAuditRepository } from '../../../../common/audit/security-
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
 import type { CanonicalIntegrationRequest } from '../../domain/integration/integration-operation.contracts.js';
 import {
+  SYSTEM_INTEGRATION_OPERATION_RETRY_REPOSITORY,
+  type SystemIntegrationOperationRetryRepository,
+} from '../../domain/repositories/system-integration-operation-retry.repository.js';
+import {
   SYSTEM_ROADMAP_REPOSITORY,
   type SystemRoadmapRepository,
 } from '../../domain/repositories/system-roadmap.repository.js';
@@ -28,7 +32,6 @@ export class SystemIntegrationSyncService
   implements OnModuleInit, OnModuleDestroy
 {
   private retryTimer?: ReturnType<typeof setInterval>;
-  private readonly runningRetries = new Set<string>();
 
   constructor(
     private readonly integrations: SystemIntegrationService,
@@ -36,6 +39,8 @@ export class SystemIntegrationSyncService
     private readonly mapping: SystemIntegrationMappingService,
     @Inject(SYSTEM_ROADMAP_REPOSITORY)
     private readonly roadmap: SystemRoadmapRepository,
+    @Inject(SYSTEM_INTEGRATION_OPERATION_RETRY_REPOSITORY)
+    private readonly retryRepository: SystemIntegrationOperationRetryRepository,
     @Inject(SECURITY_AUDIT_REPOSITORY)
     private readonly audit: SecurityAuditRepository,
   ) {}
@@ -100,9 +105,9 @@ export class SystemIntegrationSyncService
         throw new ConflictException('Integration operation retry limit exhausted');
     }
 
-    const operation =
-      existing ??
-      (await this.roadmap.operation.create({
+    let operation = existing;
+    if (!operation) {
+      operation = await this.roadmap.operation.create({
         uuid: randomUUID(),
         integrationId: runtime.integrationId,
         operationKey: 'sync.push',
@@ -129,12 +134,11 @@ export class SystemIntegrationSyncService
         errorCode: null,
         errorMessage: null,
         metadata: { actorUuid },
-      }));
-
-    if (existing?.state === 'FAILED') {
-      await this.roadmap.operation.update(operation.uuid, {
+      });
+    } else if (operation.state === 'FAILED') {
+      operation = await this.roadmap.operation.update(operation.uuid, {
         state: 'RUNNING',
-        attempt: existing.attempt + 1,
+        attempt: operation.attempt + 1,
         startedAt: new Date(),
         nextAttemptAt: null,
         errorCode: null,
@@ -147,7 +151,7 @@ export class SystemIntegrationSyncService
         operationKey: 'sync.push',
         direction: 'PUSH',
         resourceType: input.resourceType,
-        resourceUuid: input.resourceUuid,
+        ...(input.resourceUuid ? { resourceUuid: input.resourceUuid } : {}),
         payload: mappedPayload,
         idempotencyKey: input.idempotencyKey,
         occurredAt: new Date(),
@@ -183,10 +187,9 @@ export class SystemIntegrationSyncService
       };
     } catch (error: unknown) {
       const retryable = this.reliability.isRetryable(error);
-      const attempt = operation.attempt;
       const nextAttemptAt =
-        retryable && attempt < operation.maxAttempts
-          ? new Date(Date.now() + this.reliability.delayMs(attempt))
+        retryable && operation.attempt < operation.maxAttempts
+          ? new Date(Date.now() + this.reliability.delayMs(operation.attempt))
           : null;
       await this.roadmap.operation.update(operation.uuid, {
         state: nextAttemptAt ? 'RETRY_SCHEDULED' : 'FAILED',
@@ -214,7 +217,8 @@ export class SystemIntegrationSyncService
     const runtime = await this.integrations.runtimeFor(integrationUuid);
     this.mapping.validate(runtime.responseMapping);
     const limit = Math.min(MAX_PULL, Math.max(1, input.limit ?? 50));
-    const idempotencyKey = `sync.pull:${integrationUuid}:${runtime.syncCursor ?? 'initial'}:${input.resourceType}`;
+    const cursor = runtime.syncCursor;
+    const idempotencyKey = `sync.pull:${integrationUuid}:${cursor ?? 'initial'}:${input.resourceType}`;
     const existing = await this.roadmap.operation.getByIdempotency(
       runtime.integrationId,
       idempotencyKey,
@@ -251,9 +255,9 @@ export class SystemIntegrationSyncService
         nextAttemptAt: existing.nextAttemptAt,
       };
 
-    const operation =
-      existing ??
-      (await this.roadmap.operation.create({
+    let operation = existing;
+    if (!operation) {
+      operation = await this.roadmap.operation.create({
         uuid: randomUUID(),
         integrationId: runtime.integrationId,
         operationKey: 'sync.pull',
@@ -265,14 +269,10 @@ export class SystemIntegrationSyncService
         requestHash: hashJson({
           resourceType: input.resourceType,
           limit,
-          cursor: runtime.syncCursor,
+          cursor,
         }),
         responseHash: null,
-        requestPayload: {
-          resourceType: input.resourceType,
-          limit,
-          cursor: runtime.syncCursor,
-        },
+        requestPayload: { resourceType: input.resourceType, limit, cursor },
         responsePayload: null,
         nextAttemptAt: null,
         startedAt: new Date(),
@@ -280,12 +280,13 @@ export class SystemIntegrationSyncService
         errorCode: null,
         errorMessage: null,
         metadata: { actorUuid },
-      }));
-
-    if (existing?.state === 'FAILED') {
-      await this.roadmap.operation.update(operation.uuid, {
+      });
+    } else {
+      if (operation.attempt >= operation.maxAttempts)
+        throw new ConflictException('Integration operation retry limit exhausted');
+      operation = await this.roadmap.operation.update(operation.uuid, {
         state: 'RUNNING',
-        attempt: existing.attempt + 1,
+        attempt: operation.attempt + 1,
         startedAt: new Date(),
         nextAttemptAt: null,
         errorCode: null,
@@ -297,7 +298,7 @@ export class SystemIntegrationSyncService
       const result = await this.reliability.execute(integrationUuid, () =>
         provider.pull!({
           resourceType: input.resourceType,
-          cursor: runtime.syncCursor,
+          cursor,
           limit,
         }),
       );
@@ -313,10 +314,7 @@ export class SystemIntegrationSyncService
         state: 'SUCCEEDED',
         attempt: operation.attempt,
         responseHash: hashJson({ records, nextCursor: result.value.nextCursor }),
-        responsePayload: {
-          records,
-          nextCursor: result.value.nextCursor,
-        },
+        responsePayload: { records, nextCursor: result.value.nextCursor },
         completedAt: new Date(),
         nextAttemptAt: null,
         errorCode: null,
@@ -429,31 +427,19 @@ export class SystemIntegrationSyncService
 
   private async recoverDueOperations(): Promise<void> {
     const integrations = await this.integrations.list(1, 100);
-    const now = Date.now();
     for (const integration of integrations.items) {
-      let runtime: Awaited<ReturnType<SystemIntegrationService['runtimeFor']>>;
       try {
-        runtime = await this.integrations.runtimeFor(integration.uuid);
+        const runtime = await this.integrations.runtimeFor(integration.uuid);
+        const operations = await this.retryRepository.claimDue(
+          runtime.integrationId,
+          new Date(),
+          20,
+        );
+        for (const operation of operations) {
+          void this.executeStoredOperation(integration.uuid, operation);
+        }
       } catch {
-        continue;
-      }
-      const operations = await this.roadmap.operation.list(
-        runtime.integrationId,
-        'RETRY_SCHEDULED',
-        100,
-      );
-      for (const operation of operations) {
-        if (
-          !operation.nextAttemptAt ||
-          operation.nextAttemptAt.getTime() > now ||
-          this.runningRetries.has(operation.uuid) ||
-          operation.attempt >= operation.maxAttempts
-        )
-          continue;
-        this.runningRetries.add(operation.uuid);
-        void this.executeStoredOperation(integration.uuid, operation).finally(() => {
-          this.runningRetries.delete(operation.uuid);
-        });
+        // One integration must not prevent retry processing for the remaining integrations.
       }
     }
   }
@@ -462,21 +448,26 @@ export class SystemIntegrationSyncService
     integrationUuid: string,
     operation: Awaited<ReturnType<SystemRoadmapRepository['operation']['list']>>[number],
   ) {
-    const provider = await this.integrations.providerFor(integrationUuid);
-    const runtime = await this.integrations.runtimeFor(integrationUuid);
-    await this.roadmap.operation.update(operation.uuid, {
-      state: 'RUNNING',
-      attempt: operation.attempt + 1,
-      startedAt: new Date(),
-      nextAttemptAt: null,
-    });
     try {
+      const provider = await this.integrations.providerFor(integrationUuid);
+      const runtime = await this.integrations.runtimeFor(integrationUuid);
       const payload = operation.requestPayload ?? {};
       const result =
         operation.operationKey === 'sync.push'
-          ? await this.retryPush(integrationUuid, provider, payload, operation.idempotencyKey, runtime.responseMapping)
+          ? await this.retryPush(
+              integrationUuid,
+              provider,
+              payload,
+              operation.idempotencyKey,
+              runtime.responseMapping,
+            )
           : operation.operationKey === 'sync.pull'
-            ? await this.retryPull(integrationUuid, provider, payload, runtime.responseMapping)
+            ? await this.retryPull(
+                integrationUuid,
+                provider,
+                payload,
+                runtime.responseMapping,
+              )
             : null;
       if (result === null) throw new Error('Unsupported operation retry key');
       await this.roadmap.operation.update(operation.uuid, {
@@ -489,10 +480,9 @@ export class SystemIntegrationSyncService
       });
     } catch (error: unknown) {
       const retryable = this.reliability.isRetryable(error);
-      const nextAttempt = operation.attempt + 1;
       const nextAttemptAt =
-        retryable && nextAttempt < operation.maxAttempts
-          ? new Date(Date.now() + this.reliability.delayMs(nextAttempt))
+        retryable && operation.attempt < operation.maxAttempts
+          ? new Date(Date.now() + this.reliability.delayMs(operation.attempt))
           : null;
       await this.roadmap.operation.update(operation.uuid, {
         state: nextAttemptAt ? 'RETRY_SCHEDULED' : 'FAILED',
@@ -500,7 +490,9 @@ export class SystemIntegrationSyncService
         completedAt: nextAttemptAt ? null : new Date(),
         errorCode: retryable
           ? 'PROVIDER_TRANSIENT_FAILURE'
-          : 'OPERATION_RETRY_EXHAUSTED',
+          : operation.attempt >= operation.maxAttempts
+            ? 'OPERATION_RETRY_EXHAUSTED'
+            : 'OPERATION_RETRY_FAILED',
         errorMessage: safeError(error),
       });
     }
