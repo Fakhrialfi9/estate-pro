@@ -26,8 +26,19 @@ import {
   SYSTEM_CACHE,
   type SystemCachePort,
 } from '../../cache/system-cache.port.js';
+import type { SystemSettingValueType } from '../../domain/system.types.js';
 
 const SETTINGS_CACHE_TTL_MS = 30_000;
+
+type SystemSettingResult = {
+  key: string;
+  scope: 'GLOBAL';
+  scopeKey: 'global';
+  valueType: SystemSettingValueType;
+  value: string | number | boolean;
+  version?: number;
+  updatedAt?: Date;
+};
 
 @Injectable()
 export class SystemSettingsService implements SystemSettingsContract {
@@ -69,7 +80,7 @@ export class SystemSettingsService implements SystemSettingsContract {
     };
   }
 
-  async get(key: string) {
+  async get(key: string): Promise<SystemSettingResult> {
     const normalizedKey = key.trim();
     const definition = settingDefinition(normalizedKey);
     if (!definition) {
@@ -81,15 +92,7 @@ export class SystemSettingsService implements SystemSettingsContract {
 
     const cacheKey = `system:settings:${normalizedKey}`;
     try {
-      const cached = await this.cache.get<{
-        key: string;
-        scope: 'GLOBAL';
-        scopeKey: 'global';
-        valueType: string;
-        value: string | number | boolean;
-        version?: number;
-        updatedAt?: Date | string;
-      }>(cacheKey);
+      const cached = await this.cache.get<SystemSettingResult>(cacheKey);
       if (cached) return cached;
     } catch {
       // Cache is an optimization; the database remains authoritative.
@@ -103,10 +106,10 @@ export class SystemSettingsService implements SystemSettingsContract {
       });
     }
     const raw = stored?.value ?? SETTING_DEFAULTS[normalizedKey];
-    const result = {
+    const result: SystemSettingResult = {
       key: normalizedKey,
-      scope: 'GLOBAL' as const,
-      scopeKey: 'global' as const,
+      scope: 'GLOBAL',
+      scopeKey: 'global',
       valueType: definition.valueType,
       value: this.deserialize(definition.valueType, raw),
       ...(stored
@@ -218,7 +221,7 @@ export class SystemSettingsService implements SystemSettingsContract {
   }
 
   private deserialize(
-    valueType: string,
+    valueType: SystemSettingValueType,
     value: string | undefined,
   ): string | number | boolean {
     if (value === undefined) {
