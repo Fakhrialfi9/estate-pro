@@ -68,20 +68,19 @@ export class SystemRoadmapControlController {
   environmentMetadata() {
     return this.environment.read();
   }
-  @Get('flags') @RequirePermissions('system.flags.read') flags(
-    @Query() q: FeatureFlagQueryDto,
-  ) {
+  @Get('flags')
+  @RequirePermissions('system.flags.read')
+  flags(@Query() q: FeatureFlagQueryDto) {
     return this.control.listFlags(q.environment);
   }
-  @Post('flags') @RequirePermissions('system.flags.update') setFlag(
-    @Req() req: Request,
-    @Body() dto: SetFeatureFlagDto,
-  ) {
+  @Post('flags')
+  @RequirePermissions('system.flags.update')
+  setFlag(@Req() req: Request, @Body() dto: SetFeatureFlagDto) {
     return this.control.setFlag(actor(req), dto);
   }
-  @Post('flags/evaluate') @RequirePermissions('system.flags.read') evaluate(
-    @Body() dto: EvaluateFeatureFlagDto,
-  ) {
+  @Post('flags/evaluate')
+  @RequirePermissions('system.flags.read')
+  evaluate(@Body() dto: EvaluateFeatureFlagDto) {
     return this.control.evaluateFlag(dto.key, dto.environment, dto.subjectKey);
   }
   @Get('import-profiles')
@@ -237,6 +236,12 @@ export class SystemRoadmapControlController {
   ) {
     return this.control.operation(actor(req), uuid, dto);
   }
+  @Post('operations/:uuid/retry')
+  @RequirePermissions('system.integration.operation.update')
+  @ApiOperation({ summary: 'Schedule a failed integration operation for retry' })
+  retryOperation(@Req() req: Request, @Param('uuid') uuid: string) {
+    return this.sync.retryOperation(actor(req), uuid);
+  }
   @Post('operations/:uuid/complete')
   @RequirePermissions('system.integration.operation.update')
   complete(
@@ -298,9 +303,9 @@ export class SystemRoadmapControlController {
   ) {
     return this.control.resolveConflict(actor(req), uuid, key, dto.resolution);
   }
-  @Get('alerts') @RequirePermissions('system.alert.read') alerts(
-    @Query() q: AlertQueryDto,
-  ) {
+  @Get('alerts')
+  @RequirePermissions('system.alert.read')
+  alerts(@Query() q: AlertQueryDto) {
     return this.control.alerts(q.status, q.severity, q.limit);
   }
   @Post('alerts/evaluate')
