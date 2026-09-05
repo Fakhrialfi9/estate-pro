@@ -134,10 +134,7 @@ export async function assertPublicHttpsUrl(raw: string): Promise<void> {
     );
   }
 
-  const addresses = await lookup(hostname, {
-    all: true,
-    verbatim: true,
-  });
+  const addresses = await lookup(hostname, { all: true, verbatim: true });
   if (addresses.some((entry) => isPrivateAddress(entry.address))) {
     throw new CommunicationProviderError(
       'Communication provider URL resolves to a private network',
@@ -158,10 +155,7 @@ function isPrivateAddress(address: string): boolean {
       (a === 172 && b >= 16 && b <= 31)
     );
   }
-  return (
-    version === 6 &&
-    (address === '::1' || /^(fc|fd|fe80:)/i.test(address))
-  );
+  return version === 6 && (address === '::1' || /^(fc|fd|fe80:)/i.test(address));
 }
 
 function parseObject(text: string): Record<string, unknown> | null {
