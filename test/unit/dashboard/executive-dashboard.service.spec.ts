@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ExecutiveDashboardService } from '../../../src/modules/dashboard/executive-dashboard.service.js';
+import {
+  ExecutiveDashboardService,
+} from '../../../src/modules/dashboard/executive-dashboard.service.js';
 
 const AGENT_UUID = '00000000-0000-0000-0000-000000000001';
 
