@@ -1,24 +1,34 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import { Injectable } from '@nestjs/common';
 import type { IntegrationProviderPort } from '../../domain/integration/integration.contracts.js';
 import type {
   CanonicalIntegrationRequest,
   CanonicalIntegrationResponse,
 } from '../../domain/integration/integration-operation.contracts.js';
+import type { IntegrationSecretResolverPort } from '../../domain/integration/integration-secret-resolver.port.js';
 
 const CAPABILITIES = [
   'PUSH',
   'HEALTH',
   'REQUEST_MAPPING',
   'RESPONSE_MAPPING',
+  'RECONNECT',
+  'INBOUND',
+  'SIGNATURE_VALIDATION',
 ] as const;
 const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_HEALTH_TIMEOUT_MS = 3_000;
+const MAX_RESPONSE_BYTES = 512 * 1024;
 
+@Injectable()
 export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
   readonly key = 'http';
   readonly version = '1';
   readonly capabilities = CAPABILITIES;
+
+  constructor(private readonly secrets: IntegrationSecretResolverPort) {}
 
   async testConnection(input: {
     metadata: Record<string, unknown>;
@@ -30,6 +40,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
         input.metadata,
         input.secretRef,
         'health',
+        DEFAULT_HEALTH_TIMEOUT_MS,
       );
       return {
         ok: response.ok,
@@ -41,7 +52,59 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
       return {
         ok: false,
         latencyMs: Math.round(performance.now() - started),
-        code: 'PROVIDER_UNAVAILABLE',
+        code: this.errorCode(error),
+        message: safeMessage(error),
+      };
+    }
+  }
+
+  async reconnect(input: {
+    metadata: Record<string, unknown>;
+    secretRef?: string | null;
+  }) {
+    try {
+      const endpoint =
+        stringValue(input.metadata.reconnectUrl) ??
+        stringValue(input.metadata.endpoint);
+      if (!endpoint) {
+        return {
+          ok: false,
+          code: 'RECONNECT_ENDPOINT_NOT_CONFIGURED',
+          message: 'Integration reconnect endpoint is not configured',
+        };
+      }
+      const url = await assertPublicHttpsUrl(endpoint);
+      const controller = new AbortController();
+      const timer = setTimeout(
+        () => controller.abort(),
+        numberValue(input.metadata.timeoutMs, DEFAULT_TIMEOUT_MS),
+      );
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json',
+            ...(input.secretRef
+              ? { 'x-secret-ref': input.secretRef }
+              : {}),
+          },
+          body: JSON.stringify({ operation: 'reconnect' }),
+          redirect: 'error',
+          signal: controller.signal,
+        });
+        return {
+          ok: response.ok,
+          code: response.ok ? undefined : `HTTP_${response.status}`,
+          message: response.ok ? undefined : 'Provider reconnect request failed',
+        };
+      } finally {
+        clearTimeout(timer);
+      }
+    } catch (error: unknown) {
+      return {
+        ok: false,
+        code: this.errorCode(error),
         message: safeMessage(error),
       };
     }
@@ -51,45 +114,53 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     return Promise.resolve();
   }
 
-  health(): Promise<{
+  async health(): Promise<{
     ok: boolean;
     latencyMs: number;
     code: string;
   }> {
-    return Promise.resolve({
+    return {
       ok: true,
       latencyMs: 0,
-      code: 'STATIC_PROVIDER_REGISTRY_HEALTHY',
-    });
+      code: 'PROVIDER_ADAPTER_HEALTHY',
+    };
   }
 
   mapRequest(request: CanonicalIntegrationRequest) {
-    return request.payload;
+    const payload = deepCloneRecord(request.payload);
+    return {
+      operationKey: request.operationKey,
+      direction: request.direction,
+      resourceType: request.resourceType,
+      resourceUuid: request.resourceUuid ?? null,
+      payload,
+      idempotencyKey: request.idempotencyKey,
+      occurredAt: request.occurredAt.toISOString(),
+    };
   }
 
   mapResponse(response: unknown): CanonicalIntegrationResponse {
-    if (isRecord(response) && typeof response.operationKey === 'string') {
-      const resourceType = stringValue(response.resourceType);
-      const resourceUuid = stringValue(response.resourceUuid);
-      return {
-        ok: response.ok !== false,
-        operationKey: response.operationKey,
-        ...(resourceType !== null ? { resourceType } : {}),
-        ...(resourceUuid !== null ? { resourceUuid } : {}),
-        data: isRecord(response.data) ? response.data : {},
-        errorCode: stringValue(response.errorCode),
-        errorMessage: stringValue(response.errorMessage),
-        providerRequestId: stringValue(response.providerRequestId),
-        receivedAt: new Date(),
-      };
-    }
+    if (!isRecord(response) || typeof response.operationKey !== 'string')
+      throw new Error('Provider response cannot be mapped to canonical response');
+    const data = response.data;
+    if (data !== undefined && !isRecord(data))
+      throw new Error('Provider response data is invalid');
+    const ok = response.ok !== false;
+    if (ok && response.errorCode !== undefined && response.errorCode !== null)
+      throw new Error('Successful provider response cannot contain an error');
     return {
-      ok: true,
-      operationKey: 'http',
-      data: isRecord(response) ? response : {},
-      errorCode: null,
-      errorMessage: null,
-      providerRequestId: null,
+      ok,
+      operationKey: response.operationKey,
+      ...(stringValue(response.resourceType)
+        ? { resourceType: stringValue(response.resourceType)! }
+        : {}),
+      ...(stringValue(response.resourceUuid)
+        ? { resourceUuid: stringValue(response.resourceUuid)! }
+        : {}),
+      data: isRecord(data) ? deepCloneRecord(data) : {},
+      errorCode: stringValue(response.errorCode),
+      errorMessage: ok ? null : this.safeProviderError(response.errorMessage),
+      providerRequestId: stringValue(response.providerRequestId),
       receivedAt: new Date(),
     };
   }
@@ -100,10 +171,15 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     const metadata = request.payload;
     const endpoint =
       stringValue(metadata.pushUrl) ?? stringValue(metadata.endpoint);
-    if (!endpoint) {
-      throw new Error('Integration push endpoint is not configured');
-    }
-    const response = await this.post(endpoint, request, request.idempotencyKey);
+    if (!endpoint) throw new Error('Integration push endpoint is not configured');
+
+    const mapped = this.mapRequest(request);
+    const response = await this.post(
+      endpoint,
+      mapped,
+      request.idempotencyKey,
+      numberValue(metadata.timeoutMs, DEFAULT_TIMEOUT_MS),
+    );
     const body = await readJson(response);
     return this.mapResponse({
       ok: response.ok,
@@ -117,22 +193,36 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     });
   }
 
+  async verifySignature(input: {
+    timestamp: string;
+    body: string;
+    signature: string;
+    keyVersion?: string;
+  }): Promise<boolean> {
+    const reference = process.env.INTEGRATION_HTTP_SIGNATURE_SECRET_REF;
+    if (!reference) return false;
+    const secret = await this.secrets.resolve(reference);
+    const digest = createHmac('sha256', secret)
+      .update(`${input.timestamp}.${input.body}`, 'utf8')
+      .digest();
+    const supplied = input.signature.trim().replace(/^sha256=/i, '');
+    if (!/^[a-f0-9]{64}$/i.test(supplied)) return false;
+    const expected = Buffer.from(supplied, 'hex');
+    return expected.length === digest.length && timingSafeEqual(expected, digest);
+  }
+
   private async request(
     metadata: Record<string, unknown>,
     secretRef: string | null | undefined,
     mode: 'health',
+    timeoutMs: number,
   ) {
     const endpoint =
       stringValue(metadata.healthUrl) ?? stringValue(metadata.endpoint);
-    if (!endpoint) {
-      throw new Error('Integration health endpoint is not configured');
-    }
+    if (!endpoint) throw new Error('Integration health endpoint is not configured');
     const url = await assertPublicHttpsUrl(endpoint);
     const controller = new AbortController();
-    const timer = setTimeout(
-      () => controller.abort(),
-      numberValue(metadata.timeoutMs, DEFAULT_TIMEOUT_MS),
-    );
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       return await fetch(url, {
         method: 'GET',
@@ -151,8 +241,9 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
 
   private async post(
     endpoint: string,
-    request: CanonicalIntegrationRequest,
+    mappedRequest: Record<string, unknown>,
     idempotencyKey: string,
+    timeoutMs: number,
   ) {
     const url = await assertPublicHttpsUrl(endpoint);
     return fetch(url, {
@@ -162,17 +253,21 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
         'content-type': 'application/json',
         'idempotency-key': idempotencyKey,
       },
-      body: JSON.stringify({
-        operationKey: request.operationKey,
-        direction: request.direction,
-        resourceType: request.resourceType,
-        resourceUuid: request.resourceUuid ?? null,
-        payload: request.payload,
-        occurredAt: request.occurredAt.toISOString(),
-      }),
+      body: JSON.stringify(mappedRequest),
       redirect: 'error',
-      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
+  }
+
+  private errorCode(error: unknown) {
+    if (error instanceof Error && /aborted|timeout/i.test(error.message))
+      return 'PROVIDER_TIMEOUT';
+    return 'PROVIDER_UNAVAILABLE';
+  }
+
+  private safeProviderError(value: unknown) {
+    if (typeof value !== 'string') return 'Provider request failed';
+    return value.replace(/(token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+/gi, '$1=[REDACTED]').slice(0, 500);
   }
 }
 
@@ -183,19 +278,15 @@ export async function assertPublicHttpsUrl(raw: string): Promise<string> {
   } catch {
     throw new Error('Integration provider URL is invalid');
   }
-  if (url.protocol !== 'https:') {
+  if (url.protocol !== 'https:')
     throw new Error('Integration provider URL must use HTTPS');
-  }
-  if (url.username || url.password) {
+  if (url.username || url.password)
     throw new Error('Integration provider URL cannot contain credentials');
-  }
-  if (isPrivateHost(url.hostname)) {
+  if (isPrivateHost(url.hostname))
     throw new Error('Integration provider URL targets a private network');
-  }
   const addresses = await lookup(url.hostname, { all: true, verbatim: true });
-  if (addresses.some((entry) => isPrivateHost(entry.address))) {
+  if (addresses.some((entry) => isPrivateHost(entry.address)))
     throw new Error('Integration provider URL resolves to a private network');
-  }
   return url.toString();
 }
 
@@ -218,6 +309,8 @@ function isPrivateHost(address: string) {
 
 async function readJson(response: Response): Promise<unknown> {
   const text = await response.text();
+  if (Buffer.byteLength(text, 'utf8') > MAX_RESPONSE_BYTES)
+    throw new Error('Provider response exceeds limit');
   if (!text.trim()) return {};
   try {
     return JSON.parse(text) as unknown;
@@ -228,6 +321,10 @@ async function readJson(response: Response): Promise<unknown> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function deepCloneRecord(value: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
 }
 
 function stringValue(value: unknown): string | null {
@@ -242,6 +339,8 @@ function numberValue(value: unknown, fallback: number): number {
 
 function safeMessage(error: unknown): string {
   return error instanceof Error
-    ? error.message.slice(0, 240)
+    ? error.message
+        .replace(/(token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+/gi, '$1=[REDACTED]')
+        .slice(0, 240)
     : 'Provider request failed';
 }
