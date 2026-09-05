@@ -27,7 +27,11 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
   }) {
     const started = performance.now();
     try {
-      const response = await this.request(input.metadata, input.secretRef, 'health');
+      const response = await this.request(
+        input.metadata,
+        input.secretRef,
+        'health',
+      );
       return {
         ok: response.ok,
         latencyMs: Math.round(performance.now() - started),
@@ -86,10 +90,15 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     };
   }
 
-  async push(request: CanonicalIntegrationRequest): Promise<CanonicalIntegrationResponse> {
+  async push(
+    request: CanonicalIntegrationRequest,
+  ): Promise<CanonicalIntegrationResponse> {
     const metadata = request.payload;
-    const endpoint = stringValue(metadata.pushUrl) ?? stringValue(metadata.endpoint);
-    if (!endpoint) throw new Error('Integration push endpoint is not configured');
+    const endpoint =
+      stringValue(metadata.pushUrl) ?? stringValue(metadata.endpoint);
+    if (!endpoint) {
+      throw new Error('Integration push endpoint is not configured');
+    }
     const response = await this.post(endpoint, request, request.idempotencyKey);
     const body = await readJson(response);
     return this.mapResponse({
@@ -104,7 +113,11 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     });
   }
 
-  async pull(input: { resourceType: string; cursor?: string | null; limit: number }) {
+  async pull(input: {
+    resourceType: string;
+    cursor?: string | null;
+    limit: number;
+  }) {
     throw new Error(
       `Generic HTTP integration requires a dedicated pull endpoint for ${input.resourceType}; configure it before enabling pull`,
     );
@@ -115,8 +128,11 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     secretRef: string | null | undefined,
     mode: 'health',
   ) {
-    const endpoint = stringValue(metadata.healthUrl) ?? stringValue(metadata.endpoint);
-    if (!endpoint) throw new Error('Integration health endpoint is not configured');
+    const endpoint =
+      stringValue(metadata.healthUrl) ?? stringValue(metadata.endpoint);
+    if (!endpoint) {
+      throw new Error('Integration health endpoint is not configured');
+    }
     const url = await assertPublicHttpsUrl(endpoint);
     const controller = new AbortController();
     const timer = setTimeout(
@@ -173,9 +189,15 @@ export async function assertPublicHttpsUrl(raw: string): Promise<string> {
   } catch {
     throw new Error('Integration provider URL is invalid');
   }
-  if (url.protocol !== 'https:') throw new Error('Integration provider URL must use HTTPS');
-  if (url.username || url.password) throw new Error('Integration provider URL cannot contain credentials');
-  if (isPrivateHost(url.hostname)) throw new Error('Integration provider URL targets a private network');
+  if (url.protocol !== 'https:') {
+    throw new Error('Integration provider URL must use HTTPS');
+  }
+  if (url.username || url.password) {
+    throw new Error('Integration provider URL cannot contain credentials');
+  }
+  if (isPrivateHost(url.hostname)) {
+    throw new Error('Integration provider URL targets a private network');
+  }
   const addresses = await lookup(url.hostname, { all: true, verbatim: true });
   if (addresses.some((entry) => isPrivateHost(entry.address))) {
     throw new Error('Integration provider URL resolves to a private network');
@@ -187,9 +209,18 @@ function isPrivateHost(address: string) {
   const version = isIP(address);
   if (version === 4) {
     const [a, b] = address.split('.').map(Number);
-    return a === 10 || a === 127 || (a === 169 && b === 254) || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31);
+    return (
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 192 && b === 168) ||
+      (a === 172 && b >= 16 && b <= 31)
+    );
   }
-  return version === 6 && (address === '::1' || /^(fc|fd|fe80:)/i.test(address));
+  return (
+    version === 6 &&
+    (address === '::1' || /^(fc|fd|fe80:)/i.test(address))
+  );
 }
 
 async function readJson(response: Response): Promise<unknown> {
@@ -211,9 +242,13 @@ function stringValue(value: unknown): string | null {
 }
 
 function numberValue(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? Math.min(60_000, Math.max(250, Math.trunc(value))) : fallback;
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(60_000, Math.max(250, Math.trunc(value)))
+    : fallback;
 }
 
 function safeMessage(error: unknown): string {
-  return error instanceof Error ? error.message.slice(0, 240) : 'Provider request failed';
+  return error instanceof Error
+    ? error.message.slice(0, 240)
+    : 'Provider request failed';
 }
