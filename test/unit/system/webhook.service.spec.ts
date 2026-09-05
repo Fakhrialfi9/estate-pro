@@ -100,12 +100,17 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     signature: vi.fn().mockReturnValue('signature'),
     payloadHash: vi.fn().mockReturnValue('hash'.padEnd(64, '0')),
   };
-  const network = {
-    validateTarget: vi
-      .fn()
-      .mockResolvedValue(new URL('https://example.test/webhook')),
-    send: vi.fn().mockResolvedValue({ status: 200 }),
-  };
+  const validateTarget = vi.fn<(endpoint: string) => Promise<URL>>();
+  validateTarget.mockResolvedValue(new URL('https://example.test/webhook'));
+  const send = vi.fn<
+    (
+      endpoint: string,
+      payload: string,
+      headers: Record<string, string>,
+    ) => Promise<{ status: number }>
+  >();
+  send.mockResolvedValue({ status: 200 });
+  const network = { validateTarget, send };
   const config = {
     get: vi.fn((_key: string, fallback: unknown) => fallback),
   };
