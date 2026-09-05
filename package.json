@@ -17,24 +17,31 @@
     "prisma:status": "prisma migrate status",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
+    "prisma:ready": "npm run prisma:status && npm run prisma:generate && npm run prisma:migrate && npm run prisma:deploy && npx prisma validate && npm run prisma:seed && npm run prisma:status",
+
     "clean:hard": "bash scripts/hard-clean.sh",
     "clean:soft": "bash scripts/soft-clean.sh",
     "clean": "npm run clean:soft",
+
     "build": "prisma generate && nest build --path tsconfig.build.json",
+
     "start": "prisma generate && nest start",
     "start:dev": "prisma generate && nest start --watch",
     "start:debug": "prisma generate && nest start --debug --watch",
     "start:prod": "node dist/src/main.js",
+
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"src/modules/users/credentials\" \"test/**/*.ts\" --no-error-on-unmatched-pattern",
     "format:check": "prettier --check \"src/**/*.ts\" \"src/modules/users/credentials\" \"test/**/*.ts\" --no-error-on-unmatched-pattern",
+
     "check:architecture": "bash scripts/check-architecture.sh",
     "check:production-dependencies": "node scripts/check-production-dependencies.mjs",
     "check:runtime": "bash scripts/check-runtime.sh",
     "check:secrets": "bash scripts/check-secrets.sh",
     "validate:all": "node scripts/validate-all.mjs",
+
     "test": "prisma generate && vitest run",
     "test:watch": "prisma generate && vitest",
     "test:unit": "prisma generate && vitest run --config vitest.config.ts",
@@ -47,6 +54,8 @@
     "test:coverage": "prisma generate && vitest run --coverage --config vitest.coverage.config.ts",
     "test:coverage:e2e": "prisma generate && vitest run --config vitest.e2e.config.ts --coverage",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:openapi && npm run test:security",
+
+    "check:format": "npm run lint:fix && npm run format:check && npm run typecheck",
     "check:fresh": "bash scripts/fresh-install.sh"
   },
   "dependencies": {
