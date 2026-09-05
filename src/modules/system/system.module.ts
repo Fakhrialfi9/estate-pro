@@ -4,14 +4,18 @@ import {
   AUTOMATION_HEALTH_PORT,
   type AutomationHealthPort,
 } from '../../common/contracts/automation-health.port.js';
-import { HealthModule } from '../health/health.module.js';
-import { HealthService } from '../health/health.service.js';
+import {
+  SYSTEM_HEALTH_PORT,
+  type SystemHealthPort,
+} from '../../common/contracts/health-system.port.js';
+import { AuthenticatedAccessGuard } from '../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
 import { AuthorizationModule } from '../../common/security/authorization.module.js';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { AutomationModule } from '../automation/automation.module.js';
+import { HealthModule } from '../health/health.module.js';
 import { PermissionsModule } from '../permissions/permissions.module.js';
 import { AuditLogsController } from './presentation/audit-logs.controller.js';
 import { ActivityController } from './presentation/activity.controller.js';
@@ -87,6 +91,7 @@ import {
     OperationsController,
   ],
   providers: [
+    AuthenticatedAccessGuard,
     AuthorizationGuard,
     SystemSettingsService,
     SystemActivityService,
@@ -165,19 +170,10 @@ import {
     },
     {
       provide: SYSTEM_DATABASE_HEALTH_PORT,
-      useFactory: (health: HealthService) => ({
-        check: async () => {
-          try {
-            const result = await health.readiness();
-            return result.checks.database?.status === 'up'
-              ? ('up' as const)
-              : ('down' as const);
-          } catch {
-            return 'down' as const;
-          }
-        },
+      useFactory: (health: SystemHealthPort) => ({
+        check: health.checkDatabase,
       }),
-      inject: [HealthService],
+      inject: [SYSTEM_HEALTH_PORT],
     },
     { provide: SYSTEM_OPERATIONS_PORT, useExisting: SystemOperationsService },
     { provide: APP_GUARD, useExisting: SystemReadOnlyGuard },
