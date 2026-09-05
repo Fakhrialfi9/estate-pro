@@ -62,7 +62,7 @@ import { AutomationScheduler } from './infrastructure/scheduler/automation.sched
       provide: AUTOMATION_NOTIFICATION_PORT,
       inject: [AutomationService, AutomationNotificationService],
       useFactory: (automation: AutomationService, notifications: AutomationNotificationService): AutomationNotificationPort => ({
-        createNotification: (input) => automation.createNotification(input),
+        createNotification: (input) => notifications.createNotification(input),
         listNotifications: (input) => automation.listNotifications(input),
         markNotificationRead: (uuid, userUuid) => automation.markNotificationRead(uuid, userUuid),
         markAllNotificationsRead: async (userUuid) => {
