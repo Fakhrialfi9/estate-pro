@@ -1,13 +1,16 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { IntegrationProviderPort } from '../../domain/integration/integration.contracts.js';
 import type {
   CanonicalIntegrationRequest,
   CanonicalIntegrationResponse,
 } from '../../domain/integration/integration-operation.contracts.js';
-import type { IntegrationSecretResolverPort } from '../../domain/integration/integration-secret-resolver.port.js';
+import {
+  SYSTEM_INTEGRATION_SECRET_RESOLVER,
+  type IntegrationSecretResolverPort,
+} from '../../domain/integration/integration-secret-resolver.port.js';
 
 const CAPABILITIES = [
   'PUSH',
@@ -28,7 +31,10 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
   readonly version = '1';
   readonly capabilities = CAPABILITIES;
 
-  constructor(private readonly secrets: IntegrationSecretResolverPort) {}
+  constructor(
+    @Inject(SYSTEM_INTEGRATION_SECRET_RESOLVER)
+    private readonly secrets: IntegrationSecretResolverPort,
+  ) {}
 
   async testConnection(input: {
     metadata: Record<string, unknown>;
@@ -85,9 +91,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
           headers: {
             accept: 'application/json',
             'content-type': 'application/json',
-            ...(input.secretRef
-              ? { 'x-secret-ref': input.secretRef }
-              : {}),
+            ...(input.secretRef ? { 'x-secret-ref': input.secretRef } : {}),
           },
           body: JSON.stringify({ operation: 'reconnect' }),
           redirect: 'error',
@@ -127,13 +131,12 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
   }
 
   mapRequest(request: CanonicalIntegrationRequest) {
-    const payload = deepCloneRecord(request.payload);
     return {
       operationKey: request.operationKey,
       direction: request.direction,
       resourceType: request.resourceType,
       resourceUuid: request.resourceUuid ?? null,
-      payload,
+      payload: deepCloneRecord(request.payload),
       idempotencyKey: request.idempotencyKey,
       occurredAt: request.occurredAt.toISOString(),
     };
@@ -201,14 +204,18 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
   }): Promise<boolean> {
     const reference = process.env.INTEGRATION_HTTP_SIGNATURE_SECRET_REF;
     if (!reference) return false;
-    const secret = await this.secrets.resolve(reference);
-    const digest = createHmac('sha256', secret)
-      .update(`${input.timestamp}.${input.body}`, 'utf8')
-      .digest();
-    const supplied = input.signature.trim().replace(/^sha256=/i, '');
-    if (!/^[a-f0-9]{64}$/i.test(supplied)) return false;
-    const expected = Buffer.from(supplied, 'hex');
-    return expected.length === digest.length && timingSafeEqual(expected, digest);
+    try {
+      const secret = await this.secrets.resolve(reference);
+      const digest = createHmac('sha256', secret)
+        .update(`${input.timestamp}.${input.body}`, 'utf8')
+        .digest();
+      const supplied = input.signature.trim().replace(/^sha256=/i, '');
+      if (!/^[a-f0-9]{64}$/i.test(supplied)) return false;
+      const expected = Buffer.from(supplied, 'hex');
+      return expected.length === digest.length && timingSafeEqual(expected, digest);
+    } catch {
+      return false;
+    }
   }
 
   private async request(
