@@ -178,7 +178,8 @@ const isActionNode = (value: unknown): value is ActionNode =>
   isOneOf(ACTION_TYPES, value.actionType) &&
   isObject(value.input) &&
   (value.maxAttempts === undefined ||
-    (typeof value.maxAttempts === 'number' && Number.isInteger(value.maxAttempts))) &&
+    (typeof value.maxAttempts === 'number' &&
+      Number.isInteger(value.maxAttempts))) &&
   (value.timeoutMs === undefined ||
     (typeof value.timeoutMs === 'number' && Number.isInteger(value.timeoutMs)));
 
