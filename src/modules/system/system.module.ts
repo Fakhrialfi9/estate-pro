@@ -45,6 +45,7 @@ import { PrismaSystemWebhookRepository } from './infrastructure/persistence/pris
 import { PrismaSystemIntegrationRepository } from './infrastructure/persistence/prisma-system-integration.repository.js';
 import { LocalSystemArtifactStorage } from './infrastructure/storage/local-system-artifact.storage.js';
 import { SystemExportScheduler } from './infrastructure/export/system-export.scheduler.js';
+import { SystemXlsxExporterAdapter } from './infrastructure/export/system-xlsx-exporter.adapter.js';
 import { SystemMetricsService } from './infrastructure/observability/system-metrics.service.js';
 import { WebhookNetworkService } from './infrastructure/webhook/webhook-network.service.js';
 import { WebhookSecretService } from './infrastructure/webhook/webhook-secret.service.js';
@@ -56,6 +57,7 @@ import { SYSTEM_IMPORT_REPOSITORY } from './domain/repositories/system-import.re
 import { SYSTEM_SETTINGS_REPOSITORY } from './domain/repositories/system-settings.repository.js';
 import { SYSTEM_WEBHOOK_REPOSITORY } from './domain/repositories/system-webhook.repository.js';
 import { SYSTEM_INTEGRATION_REPOSITORY } from './domain/repositories/system-integration.repository.js';
+import { SYSTEM_XLSX_EXPORTER } from './domain/repositories/system-xlsx-exporter.port.js';
 import {
   SYSTEM_DATABASE_HEALTH_PORT,
   SYSTEM_JOB_HEALTH_PORT,
@@ -100,6 +102,7 @@ import {
     SystemImportService,
     SystemExportService,
     SystemExportScheduler,
+    SystemXlsxExporterAdapter,
     SystemWebhookService,
     SystemIntegrationService,
     SystemOperationsService,
@@ -134,6 +137,10 @@ import {
     {
       provide: SYSTEM_ARTIFACT_STORAGE,
       useExisting: LocalSystemArtifactStorage,
+    },
+    {
+      provide: SYSTEM_XLSX_EXPORTER,
+      useExisting: SystemXlsxExporterAdapter,
     },
     {
       provide: SYSTEM_WEBHOOK_REPOSITORY,
