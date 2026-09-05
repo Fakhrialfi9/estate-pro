@@ -60,6 +60,7 @@ import { SystemMetricsService } from './infrastructure/observability/system-metr
 import { WebhookNetworkService } from './infrastructure/webhook/webhook-network.service.js';
 import { WebhookSecretService } from './infrastructure/webhook/webhook-secret.service.js';
 import { WebhookSignerService } from './infrastructure/webhook/webhook-signer.service.js';
+import { EnvironmentIntegrationSecretResolverService } from './infrastructure/integration/environment-integration-secret-resolver.service.js';
 import { GenericHttpIntegrationProvider } from './infrastructure/integration/generic-http-integration.provider.js';
 import { SYSTEM_ACTIVITY_REPOSITORY } from './domain/repositories/system-activity.repository.js';
 import { SYSTEM_ARTIFACT_STORAGE } from './domain/repositories/system-artifact.storage.js';
@@ -70,6 +71,7 @@ import { SYSTEM_WEBHOOK_REPOSITORY } from './domain/repositories/system-webhook.
 import { SYSTEM_INTEGRATION_REPOSITORY } from './domain/repositories/system-integration.repository.js';
 import { SYSTEM_XLSX_EXPORTER } from './domain/repositories/system-xlsx-exporter.port.js';
 import { SYSTEM_ROADMAP_REPOSITORY } from './domain/repositories/system-roadmap.repository.js';
+import { SYSTEM_INTEGRATION_SECRET_RESOLVER } from './domain/integration/integration-secret-resolver.port.js';
 import {
   SYSTEM_DATABASE_HEALTH_PORT,
   SYSTEM_JOB_HEALTH_PORT,
@@ -126,6 +128,7 @@ import {
     SystemXlsxExporterAdapter,
     SystemWebhookService,
     SystemIntegrationService,
+    EnvironmentIntegrationSecretResolverService,
     GenericHttpIntegrationProvider,
     SystemOperationsService,
     SystemRoadmapControlService,
@@ -174,6 +177,10 @@ import {
     {
       provide: SYSTEM_ROADMAP_REPOSITORY,
       useExisting: PrismaSystemRoadmapRepository,
+    },
+    {
+      provide: SYSTEM_INTEGRATION_SECRET_RESOLVER,
+      useExisting: EnvironmentIntegrationSecretResolverService,
     },
     { provide: SYSTEM_WEBHOOK_SECRET_PORT, useExisting: WebhookSecretService },
     { provide: SYSTEM_WEBHOOK_SIGNER_PORT, useExisting: WebhookSignerService },
