@@ -54,6 +54,7 @@ import { PrismaSystemSettingsRepository } from './infrastructure/persistence/pri
 import { PrismaSystemWebhookRepository } from './infrastructure/persistence/prisma-system-webhook.repository.js';
 import { PrismaSystemIntegrationRepository } from './infrastructure/persistence/prisma-system-integration.repository.js';
 import { PrismaSystemRoadmapRepository } from './infrastructure/persistence/prisma-system-roadmap.repository.js';
+import { PrismaSystemIntegrationOperationRetryRepository } from './infrastructure/persistence/prisma-system-integration-operation-retry.repository.js';
 import { LocalSystemArtifactStorage } from './infrastructure/storage/local-system-artifact.storage.js';
 import { SystemExportScheduler } from './infrastructure/export/system-export.scheduler.js';
 import { SystemXlsxExporterAdapter } from './infrastructure/export/system-xlsx-exporter.adapter.js';
@@ -72,6 +73,7 @@ import { SYSTEM_WEBHOOK_REPOSITORY } from './domain/repositories/system-webhook.
 import { SYSTEM_INTEGRATION_REPOSITORY } from './domain/repositories/system-integration.repository.js';
 import { SYSTEM_XLSX_EXPORTER } from './domain/repositories/system-xlsx-exporter.port.js';
 import { SYSTEM_ROADMAP_REPOSITORY } from './domain/repositories/system-roadmap.repository.js';
+import { SYSTEM_INTEGRATION_OPERATION_RETRY_REPOSITORY } from './domain/repositories/system-integration-operation-retry.repository.js';
 import { SYSTEM_INTEGRATION_SECRET_RESOLVER } from './domain/integration/integration-secret-resolver.port.js';
 import {
   SYSTEM_DATABASE_HEALTH_PORT,
@@ -143,6 +145,7 @@ import {
     PrismaSystemWebhookRepository,
     PrismaSystemIntegrationRepository,
     PrismaSystemRoadmapRepository,
+    PrismaSystemIntegrationOperationRetryRepository,
     LocalSystemArtifactStorage,
     WebhookNetworkService,
     WebhookSecretService,
@@ -179,6 +182,10 @@ import {
     {
       provide: SYSTEM_ROADMAP_REPOSITORY,
       useExisting: PrismaSystemRoadmapRepository,
+    },
+    {
+      provide: SYSTEM_INTEGRATION_OPERATION_RETRY_REPOSITORY,
+      useExisting: PrismaSystemIntegrationOperationRetryRepository,
     },
     {
       provide: SYSTEM_INTEGRATION_SECRET_RESOLVER,
