@@ -109,6 +109,7 @@ export interface IntegrationProviderInboundPort {
     body: string;
     signature: string;
     keyVersion?: string;
+    secretRef?: string | null;
   }): boolean | Promise<boolean>;
   normalizeInbound?(input: unknown): Readonly<{
     eventKey: string;
