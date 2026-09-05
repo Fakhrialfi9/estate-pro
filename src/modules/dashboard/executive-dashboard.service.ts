@@ -234,6 +234,10 @@ export class ExecutiveDashboardService {
   }
 
   private firstRow(value: unknown): AnalyticsRow {
+    if (Array.isArray(value)) {
+      const first = value[0];
+      return this.isRow(first) ? first : {};
+    }
     return this.isRow(value) ? value : {};
   }
 
@@ -452,28 +456,28 @@ export class ExecutiveDashboardService {
 
   private mapSalesValue(rows: AnalyticsRow[]): SalesValueKpi[] {
     return rows.map((row) => ({
-      currency: this.string(row.currency, 'UNKNOWN'),
-      opportunities: this.number(row.opportunities),
+      currency: this.stringOrNull(row.currency),
       totalValue: this.money(row.totalValue),
-      averageValue: this.money(row.averageValue),
+      weightedValue: this.money(row.weightedValue),
+      opportunities: this.number(row.opportunities),
     }));
   }
 
   private mapSalesVolume(rows: AnalyticsRow[]): SalesVolumeKpi[] {
     return rows.map((row) => ({
       period: this.string(row.period),
-      status: this.string(row.status),
-      opportunities: this.number(row.opportunities),
-      won: this.number(row.won),
-      lost: this.number(row.lost),
+      currency: this.stringOrNull(row.currency),
       deals: this.number(row.deals),
+      wonDeals: this.number(row.wonDeals),
+      lostDeals: this.number(row.lostDeals),
+      closedRevenue: this.money(row.closedRevenue),
     }));
   }
 
   private mapSalesRevenue(rows: AnalyticsRow[]): SalesRevenueKpi[] {
     return rows.map((row) => ({
       period: this.string(row.period),
-      currency: this.string(row.currency, 'UNKNOWN'),
+      currency: this.string(row.currency),
       closedRevenue: this.money(row.closedRevenue),
       deals: this.number(row.deals),
     }));
@@ -481,7 +485,7 @@ export class ExecutiveDashboardService {
 
   private mapAverageDeal(rows: AnalyticsRow[]): SalesAverageDealKpi[] {
     return rows.map((row) => ({
-      currency: this.string(row.currency, 'UNKNOWN'),
+      currency: this.string(row.currency),
       deals: this.number(row.deals),
       averageValue: this.money(row.averageValue),
       minValue: this.money(row.minValue),
@@ -491,10 +495,10 @@ export class ExecutiveDashboardService {
 
   private mapForecast(row: AnalyticsRow): SalesForecastKpi {
     return {
-      target: 'expected-revenue',
+      target: this.string(row.target),
       forecast: this.number(row.forecast),
       methodology: this.string(row.methodology),
-      confidence: row.confidence === 'NORMAL' ? 'NORMAL' : 'INSUFFICIENT_DATA',
+      confidence: this.string(row.confidence),
       minimumHistoricalDeals: this.number(row.minimumHistoricalDeals),
       historicalAverageDeal: this.number(row.historicalAverageDeal),
       weightedPipeline: this.number(row.weightedPipeline),
