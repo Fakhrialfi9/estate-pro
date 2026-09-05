@@ -2,6 +2,10 @@ import type {
   SystemActivityRecord,
   SystemSettingValueType,
 } from './system.types.js';
+import type {
+  ImportColumnMapping,
+  ImportFieldMapping,
+} from './import/import-mapping.contracts.js';
 
 type Scalar = string | number | boolean;
 export interface SystemSettingResponse {
@@ -94,12 +98,18 @@ export type ImportState =
   | 'FAILED'
   | 'CANCELLED'
   | 'RETRYABLE';
+export type ImportConflictStrategy = 'FAIL' | 'SKIP' | 'UPDATE' | 'UPSERT';
+export type ImportTransactionStrategy = 'ROW' | 'BATCH' | 'ALL_OR_NOTHING';
 export interface ImportRequest {
   readonly filename: string;
   readonly contentBase64: string;
   readonly format?: ImportFormat;
   readonly idempotencyKey?: string;
   readonly preview?: boolean;
+  readonly columnMapping?: readonly ImportColumnMapping[];
+  readonly fieldMapping?: readonly ImportFieldMapping[];
+  readonly conflictStrategy?: ImportConflictStrategy;
+  readonly transactionStrategy?: ImportTransactionStrategy;
 }
 export interface ImportResult {
   readonly uuid: string;
