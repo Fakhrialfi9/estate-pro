@@ -206,15 +206,15 @@ export interface SalesForecastKpi {
 }
 
 export interface SalesDashboardData {
-  readonly pipeline: readonly SalesPipelineKpi[];
-  readonly stageVelocity: readonly SalesVelocityKpi[];
-  readonly aging: readonly SalesAgingKpi[];
-  readonly value: readonly SalesValueKpi[];
-  readonly conversion: CrmConversionKpi;
-  readonly sales?: readonly SalesVolumeKpi[];
-  readonly revenue?: readonly SalesRevenueKpi[];
-  readonly averageDeal?: readonly SalesAverageDealKpi[];
-  readonly forecast?: SalesForecastKpi;
+  pipeline: readonly SalesPipelineKpi[];
+  stageVelocity: readonly SalesVelocityKpi[];
+  aging: readonly SalesAgingKpi[];
+  value: readonly SalesValueKpi[];
+  conversion: CrmConversionKpi;
+  sales?: readonly SalesVolumeKpi[];
+  revenue?: readonly SalesRevenueKpi[];
+  averageDeal?: readonly SalesAverageDealKpi[];
+  forecast?: SalesForecastKpi;
 }
 
 export interface AgentWorkloadKpi {
