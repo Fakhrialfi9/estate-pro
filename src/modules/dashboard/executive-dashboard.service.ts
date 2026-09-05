@@ -8,6 +8,8 @@ import { AnalyticsService } from '../analytics/application/analytics.service.js'
 import type { ExecutiveDashboardQueryDto } from './executive-dashboard.query.dto.js';
 import type { ExecutiveDashboardResponse } from './dashboard.types.js';
 
+type AnalyticsData = Record<string, unknown>;
+
 @Injectable()
 export class ExecutiveDashboardService {
   constructor(
@@ -41,9 +43,9 @@ export class ExecutiveDashboardService {
       from: leads.meta.from,
       to: leads.meta.to,
     };
-    const leadData = leads.data[0] ?? {};
-    const pipelineData = pipeline.data[0] ?? {};
-    const propertyData = propertyAndAgent.data[0] ?? {};
+    const leadData: AnalyticsData = leads.data[0] ?? {};
+    const pipelineData: AnalyticsData = pipeline.data[0] ?? {};
+    const propertyData: AnalyticsData = propertyAndAgent.data[0] ?? {};
 
     return {
       generatedAt: new Date().toISOString(),
