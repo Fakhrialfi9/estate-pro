@@ -3,6 +3,7 @@ import {
   Controller,
   Headers,
   Param,
+  ParseUUIDPipe,
   Post,
   Req,
   UnauthorizedException,
@@ -23,11 +24,12 @@ export class IntegrationCallbackController {
   @Post(':uuid/callback')
   @ApiOperation({ summary: 'Receive an authenticated integration callback' })
   async callback(
-    @Param('uuid') uuid: string,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
     @Headers('x-integration-timestamp') timestamp: string,
     @Headers('x-integration-signature') signature: string,
     @Headers('x-integration-event-id') eventId: string | undefined,
     @Headers('x-integration-event-name') eventName: string | undefined,
+    @Headers('x-integration-key-version') keyVersion: string | undefined,
     @Req() request: Request & { rawBody?: Buffer },
   ) {
     if (!timestamp || !signature)
@@ -42,6 +44,7 @@ export class IntegrationCallbackController {
         signature,
         eventId,
         eventName,
+        keyVersion,
         body: request.rawBody.toString('utf8'),
       },
       provider,
