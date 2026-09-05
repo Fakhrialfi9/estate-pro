@@ -104,7 +104,7 @@ model AgentCoverage {
   createdBy  String?            @map("created_by") @db.Char(36)
   updatedBy  String?            @map("updated_by") @db.Char(36)
   createdAt  DateTime           @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt  DateTime           @updatedAt @db.DateTime(3)
+  updatedAt  DateTime           @updatedAt @map("updated_at") @db.DateTime(3)
   agent      AgentProfile       @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@unique([agentId, level, regionUuid], map: "agent_coverages_agent_level_region_key")
@@ -176,7 +176,7 @@ model AgentTarget {
   createdBy   String?           @map("created_by") @db.Char(36)
   updatedBy   String?           @map("updated_by") @db.Char(36)
   createdAt   DateTime          @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt   DateTime          @updatedAt @map("updated_at") @db.DateTime(3)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.DateTime(3)
   agent       AgentProfile      @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@unique([agentId, metricType, periodStart, periodEnd], map: "agent_targets_agent_metric_period_key")
