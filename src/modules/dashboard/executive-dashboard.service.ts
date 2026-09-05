@@ -38,35 +38,38 @@ export class ExecutiveDashboardService {
       ]);
 
     const period = {
-      from: leads.from.toISOString(),
-      to: leads.to.toISOString(),
+      from: leads.meta.from,
+      to: leads.meta.to,
     };
+    const leadData = leads.data[0] ?? {};
+    const pipelineData = pipeline.data[0] ?? {};
+    const propertyData = propertyAndAgent.data[0] ?? {};
 
     return {
       generatedAt: new Date().toISOString(),
       period,
       kpi: {
         property: {
-          inventory: propertyAndAgent.data.inventory,
-          listings: propertyAndAgent.data.listings,
-          lifecycle: propertyAndAgent.data.lifecycle,
-          aging: propertyAndAgent.data.aging,
+          inventory: propertyData.inventory ?? [],
+          listings: propertyData.listings ?? [],
+          lifecycle: propertyData.lifecycle ?? {},
+          aging: propertyData.aging ?? {},
         },
         crm: {
-          volume: leads.data.volume,
-          lifecycle: leads.data.lifecycle,
-          aging: leads.data.aging,
-          funnel: leads.data.funnel,
+          volume: leadData.volume ?? [],
+          lifecycle: leadData.lifecycle ?? {},
+          aging: leadData.aging ?? {},
+          funnel: leadData.funnel ?? [],
         },
         sales: {
-          pipeline: pipeline.data.pipeline,
-          value: pipeline.data.value,
-          conversion: conversion.data,
+          pipeline: pipelineData.pipeline ?? [],
+          value: pipelineData.value ?? [],
+          conversion: conversion.data[0] ?? {},
         },
         agents: {
-          workload: propertyAndAgent.data.workload,
-          activity: propertyAndAgent.data.activity,
-          conversion: propertyAndAgent.data.conversion,
+          workload: propertyData.workload ?? [],
+          activity: propertyData.activity ?? [],
+          conversion: propertyData.conversion ?? [],
         },
       },
       operations: {
