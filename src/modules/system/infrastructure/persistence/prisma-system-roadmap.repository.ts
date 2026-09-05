@@ -3,9 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import type { IntegrationState } from '../../domain/integration/integration.contracts.js';
-import type {
-  IntegrationCredentialStatus,
-} from '../../domain/integration/integration-operation.contracts.js';
+import type { IntegrationCredentialStatus } from '../../domain/integration/integration-operation.contracts.js';
 import type {
   FeatureFlagRecord,
   ImportProfileRecord,
@@ -38,9 +36,9 @@ const credentialStatus = (value: string): IntegrationCredentialStatus => {
   throw new Error(`Invalid integration credential status: ${value}`);
 };
 
-const credentialRecord = <
-  T extends { status: string; metadata: unknown },
->(row: T) => ({
+const credentialRecord = <T extends { status: string; metadata: unknown }>(
+  row: T,
+) => ({
   ...row,
   status: credentialStatus(row.status),
   metadata: object(row.metadata),
@@ -196,10 +194,9 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
       },
     ) => {
       const row = await this.prisma.$transaction(async (tx) => {
-        const current =
-          await tx.systemIntegrationCredential.findUniqueOrThrow({
-            where: { uuid },
-          });
+        const current = await tx.systemIntegrationCredential.findUniqueOrThrow({
+          where: { uuid },
+        });
         await tx.systemIntegrationCredential.update({
           where: { uuid },
           data: { status: 'ROTATED', rotatedAt: new Date() },
