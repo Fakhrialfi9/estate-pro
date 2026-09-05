@@ -74,8 +74,8 @@ model SystemExportJob {
   rows              Int      @default(0)
   estimatedRows     Int?     @map("estimated_rows")
   processedRows     Int      @default(0) @map("processed_rows")
-  completedAt       DateTime? @map("completed_at")
-  cancelledAt       DateTime? @map("cancelled_at")
+  completedAt       DateTime? @map("completed_at") @db.DateTime(3)
+  cancelledAt       DateTime? @map("cancelled_at") @db.DateTime(3)
   cancelRequested   Boolean  @default(false) @map("cancel_requested")
   artifactBytes     BigInt?  @map("artifact_bytes") @db.UnsignedBigInt
   expiresAt         DateTime @map("expires_at")
@@ -98,7 +98,7 @@ model SystemWebhookSubscription {
   filters           Json
   secretCiphertext  String   @map("secret_ciphertext") @db.Text
   secretVersion     Int      @default(1) @map("secret_version")
-  secretCreatedAt   DateTime @default(now()) @map("secret_created_at") @db.DateTime(3)
+  secretCreatedAt   DateTime @default(now()) @map("secret_created_at")
   createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.DateTime(3)
   deliveries        SystemWebhookDelivery[]
