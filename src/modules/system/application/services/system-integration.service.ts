@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
 import type {
@@ -17,6 +23,7 @@ import {
 } from '../../domain/repositories/system-roadmap.repository.js';
 
 const MAX_PAGE_SIZE = 100;
+const RECONNECT_TIMEOUT_MS = 15_000;
 
 @Injectable()
 export class SystemIntegrationService {
@@ -86,7 +93,7 @@ export class SystemIntegrationService {
       secretRef: input.secretRef ?? null,
     });
     await this.audit.record({
-      action: 'SYSTEM_SETTING_UPDATED',
+      action: 'SYSTEM_INTEGRATION_CONNECTED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_integration',
@@ -150,7 +157,7 @@ export class SystemIntegrationService {
         : {}),
     });
     await this.audit.record({
-      action: 'SYSTEM_SETTING_UPDATED',
+      action: 'SYSTEM_INTEGRATION_UPDATED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_integration',
@@ -165,7 +172,7 @@ export class SystemIntegrationService {
     await this.require(uuid);
     await this.repository.delete(uuid);
     await this.audit.record({
-      action: 'SYSTEM_SETTING_UPDATED',
+      action: 'SYSTEM_INTEGRATION_DISCONNECTED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_integration',
@@ -194,7 +201,7 @@ export class SystemIntegrationService {
         : (result.message ?? 'Connection test failed'),
     });
     await this.audit.record({
-      action: 'SYSTEM_SETTING_UPDATED',
+      action: 'SYSTEM_INTEGRATION_TESTED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_integration',
@@ -209,6 +216,169 @@ export class SystemIntegrationService {
       code: result.code ?? null,
       message: result.ok ? null : (result.message ?? 'Connection test failed'),
     };
+  }
+
+  async reconnect(
+    actorUuid: string,
+    uuid: string,
+    idempotencyKey?: string,
+  ) {
+    const current = await this.require(uuid);
+    if (current.state === 'DISABLED')
+      throw new BadRequestException('Disabled integration cannot be reconnected');
+    if (current.state === 'CONNECTING')
+      throw new ConflictException('Integration reconnect is already running');
+
+    const key = idempotencyKey?.trim() || `reconnect:${uuid}:${randomUUID()}`;
+    const existing = await this.roadmap.operation.getByIdempotency(
+      current.id,
+      key,
+    );
+    if (existing) {
+      if (existing.state === 'SUCCEEDED')
+        return {
+          uuid,
+          ok: true,
+          operationUuid: existing.uuid,
+          state: 'ACTIVE',
+          idempotentReplay: true,
+        };
+      if (
+        existing.state === 'RUNNING' ||
+        existing.state === 'RETRY_SCHEDULED'
+      )
+        throw new ConflictException('Integration reconnect is already running');
+      throw new ConflictException('Integration reconnect idempotency key was already used');
+    }
+
+    const operationUuid = randomUUID();
+    await this.roadmap.operation.create({
+      uuid: operationUuid,
+      integrationId: current.id,
+      operationKey: 'integration.reconnect',
+      direction: 'BIDIRECTIONAL',
+      idempotencyKey: key,
+      attempt: 1,
+      maxAttempts: 1,
+      state: 'RUNNING',
+      requestHash: null,
+      responseHash: null,
+      requestPayload: null,
+      responsePayload: null,
+      nextAttemptAt: null,
+      startedAt: new Date(),
+      completedAt: null,
+      errorCode: null,
+      errorMessage: null,
+      metadata: {},
+    });
+
+    await this.repository.update(uuid, {
+      state: 'CONNECTING',
+      errorCode: null,
+      errorMessage: null,
+    });
+
+    const provider = this.findProvider(
+      current.providerKey,
+      current.providerVersion,
+    );
+
+    const started = performance.now();
+    try {
+      if (!provider.reconnect)
+        throw new BadRequestException(
+          'Integration provider does not support reconnect',
+        );
+
+      const reconnectResult = await this.withTimeout(
+        provider.reconnect({
+          metadata: current.metadata,
+          secretRef: current.secretRef,
+        }),
+        RECONNECT_TIMEOUT_MS,
+      );
+
+      if (!reconnectResult.ok) {
+        throw new Error(
+          reconnectResult.message ??
+            reconnectResult.code ??
+            'Integration reconnect failed',
+        );
+      }
+
+      const verification = provider.health
+        ? await this.withTimeout(provider.health(), RECONNECT_TIMEOUT_MS)
+        : await this.withTimeout(
+            provider.testConnection({
+              metadata: current.metadata,
+              secretRef: current.secretRef,
+            }),
+            RECONNECT_TIMEOUT_MS,
+          );
+
+      if (!verification.ok)
+        throw new Error(
+          'Integration reconnect verification failed',
+        );
+
+      await this.repository.update(uuid, {
+        state: 'ACTIVE',
+        lastTestAt: new Date(),
+        errorCode: null,
+        errorMessage: null,
+      });
+      await this.roadmap.operation.update(operationUuid, {
+        state: 'SUCCEEDED',
+        completedAt: new Date(),
+        responsePayload: {
+          ok: true,
+          latencyMs: Math.round(performance.now() - started),
+        },
+      });
+      await this.audit.record({
+        action: 'SYSTEM_INTEGRATION_CONNECTED',
+        actorUuid,
+        subjectUuid: actorUuid,
+        entityType: 'system_integration',
+        entityUuid: uuid,
+        result: 'SUCCESS',
+        reason: 'integration.reconnected',
+      });
+      return {
+        uuid,
+        ok: true,
+        operationUuid,
+        state: 'ACTIVE' as const,
+        latencyMs: Math.round(performance.now() - started),
+        idempotentReplay: false,
+      };
+    } catch (error: unknown) {
+      const code = this.errorCode(error);
+      const message = this.safeErrorMessage(error);
+      await this.repository.update(uuid, {
+        state: 'ERROR',
+        errorCode: code,
+        errorMessage: message,
+      });
+      await this.roadmap.operation.update(operationUuid, {
+        state: 'FAILED',
+        completedAt: new Date(),
+        errorCode: code,
+        errorMessage: message,
+        responsePayload: null,
+      });
+      await this.audit.record({
+        action: 'SYSTEM_INTEGRATION_CONNECTED',
+        actorUuid,
+        subjectUuid: actorUuid,
+        entityType: 'system_integration',
+        entityUuid: uuid,
+        result: 'FAILURE',
+        reason: `integration.reconnect.failed=${code}`,
+      });
+      throw error;
+    }
   }
 
   async sync(actorUuid: string, uuid: string) {
@@ -233,7 +403,7 @@ export class SystemIntegrationService {
           : (result.message ?? 'Integration sync failed'),
     });
     await this.audit.record({
-      action: 'SYSTEM_SETTING_UPDATED',
+      action: 'SYSTEM_INTEGRATION_SYNCED',
       actorUuid,
       subjectUuid: actorUuid,
       entityType: 'system_integration',
@@ -305,6 +475,35 @@ export class SystemIntegrationService {
       if (/secret|token|password|authorization|cookie/i.test(key))
         delete sanitized[key];
     return sanitized;
+  }
+
+  private safeErrorMessage(error: unknown) {
+    if (!(error instanceof Error)) return 'Integration operation failed';
+    return error.message
+      .replace(/bearer\s+[^\s]+/gi, 'Bearer [REDACTED]')
+      .replace(/(token|secret|password|cookie|authorization)\s*[:=]\s*[^,;\s]+/gi, '$1=[REDACTED]')
+      .slice(0, 500);
+  }
+
+  private errorCode(error: unknown) {
+    if (error instanceof BadRequestException) return 'RECONNECT_NOT_SUPPORTED';
+    if (error instanceof Error && /timeout|aborted|deadline/i.test(error.message))
+      return 'RECONNECT_TIMEOUT';
+    if (error instanceof Error && /verification/i.test(error.message))
+      return 'RECONNECT_VERIFICATION_FAILED';
+    return 'RECONNECT_FAILED';
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Integration operation timeout')), timeoutMs);
+    });
+    try {
+      return await Promise.race([promise, timeout]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 
   private toPublic(row: SystemIntegrationRecord) {
