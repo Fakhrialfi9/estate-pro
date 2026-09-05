@@ -5,6 +5,10 @@ import {
 } from '../../../../common/contracts/automation-crm.port.js';
 import type { AutomationActor } from '../../../../common/contracts/automation-actor.js';
 import type { ActionHandler } from '../../domain/automation.ports.js';
+import {
+  CommunicationProviderError,
+  ProviderNotConfiguredError,
+} from '../../../crm/infrastructure/providers/communication-provider.js';
 
 @Injectable()
 export class SendCommunicationAction implements ActionHandler {
@@ -29,6 +33,7 @@ export class SendCommunicationAction implements ActionHandler {
       actorUuid,
       permissions: ['crm.manage'],
     };
+
     try {
       const result = await this.crm.deliverCommunication(value, actor);
       return {
@@ -38,10 +43,17 @@ export class SendCommunicationAction implements ActionHandler {
         output: result,
       };
     } catch (error: unknown) {
+      const retryable =
+        error instanceof CommunicationProviderError
+          ? error.retryable
+          : !(error instanceof ProviderNotConfiguredError);
       return {
         success: false,
-        retryable: true,
-        errorCode: 'COMMUNICATION_DELIVERY_FAILED',
+        retryable,
+        errorCode:
+          error instanceof CommunicationProviderError && error.statusCode
+            ? `COMMUNICATION_PROVIDER_HTTP_${error.statusCode}`
+            : 'COMMUNICATION_DELIVERY_FAILED',
         errorMessage:
           error instanceof Error
             ? error.message.slice(0, 240)
