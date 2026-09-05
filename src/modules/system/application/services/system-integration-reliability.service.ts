@@ -47,7 +47,7 @@ export class SystemIntegrationReliabilityService {
       )
     )
       return false;
-    return /(timeout|timed out|aborted|econn|reset|socket|network|503|502|504|429|temporar|unavailable|circuit)/.test(
+    return /(timeout|timed out|aborted|econn|reset|socket|network|503|502|504|429|temporar|unavailable)/.test(
       message,
     );
   }
@@ -89,15 +89,8 @@ export class SystemIntegrationReliabilityService {
       }
 
       try {
-        const value = await this.withTimeout(
-          operation(provider),
-          remainingMs,
-        );
-        await this.recordSuccess(
-          runtime.integrationId,
-          integrationUuid,
-          runtime,
-        );
+        const value = await this.withTimeout(operation(provider), remainingMs);
+        await this.recordSuccess(runtime.integrationId, integrationUuid, runtime);
         return {
           value,
           retry: {
@@ -113,9 +106,7 @@ export class SystemIntegrationReliabilityService {
         const retryable =
           this.isRetryable(error) && attempt + 1 < policy.maxAttempts;
         const delay = this.delayMs(attempt, policy);
-        const nextAttemptAt = retryable
-          ? new Date(Date.now() + delay)
-          : null;
+        const nextAttemptAt = retryable ? new Date(Date.now() + delay) : null;
         const failures = runtime.failureCount + 1;
         const open = failures >= policy.circuitFailureThreshold;
 
@@ -130,15 +121,7 @@ export class SystemIntegrationReliabilityService {
           lastOperationStatus: 'FAILED',
         });
 
-        if (!retryable) {
-          return this.failure(lastError, {
-            attempt: attempt + 1,
-            maxAttempts: policy.maxAttempts,
-            nextAttemptAt: null,
-            retryable: false,
-            errorCode: this.errorCode(error),
-          });
-        }
+        if (!retryable) throw error instanceof Error ? error : new Error('Integration operation failed');
 
         const waitMs = Math.min(
           delay,
@@ -151,13 +134,9 @@ export class SystemIntegrationReliabilityService {
       }
     }
 
-    return this.failure(lastError ?? new Error('Integration operation failed'), {
-      attempt: policy.maxAttempts,
-      maxAttempts: policy.maxAttempts,
-      nextAttemptAt: null,
-      retryable: false,
-      errorCode: this.errorCode(lastError),
-    });
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('Integration operation failed');
   }
 
   async providerHealth(integrationUuid: string) {
@@ -165,27 +144,24 @@ export class SystemIntegrationReliabilityService {
     const runtime = await this.integrations.runtimeFor(integrationUuid);
     if (!provider.health)
       throw new NotFoundException('Provider health capability is not implemented');
+    const configuration = await this.integrations.providerConfiguration(integrationUuid);
     const started = Date.now();
     try {
-      const result = await this.withTimeout(provider.health(), 3_000);
+      const result = await this.withTimeout(
+        provider.health(configuration),
+        3_000,
+      );
       await this.roadmap.runtime.update(runtime.integrationId, {
         lastHealthAt: new Date(),
         lastOperationStatus: result.ok ? 'HEALTHY' : 'UNHEALTHY',
       });
-      return {
-        ...result,
-        latencyMs: result.latencyMs ?? Date.now() - started,
-      };
+      return { ...result, latencyMs: result.latencyMs ?? Date.now() - started };
     } catch {
       await this.roadmap.runtime.update(runtime.integrationId, {
         lastHealthAt: new Date(),
         lastOperationStatus: 'UNHEALTHY',
       });
-      return {
-        ok: false,
-        latencyMs: Date.now() - started,
-        code: 'HEALTH_TIMEOUT',
-      };
+      return { ok: false, latencyMs: Date.now() - started, code: 'HEALTH_TIMEOUT' };
     }
   }
 
@@ -198,7 +174,6 @@ export class SystemIntegrationReliabilityService {
     if (runtime.circuitState !== 'OPEN') return;
     if (runtime.nextRetryAt && runtime.nextRetryAt.getTime() > now)
       throw new Error('Integration circuit breaker is open');
-
     if (this.halfOpenProbes.has(integrationUuid))
       throw new Error('Integration circuit breaker is half-open');
     this.halfOpenProbes.add(integrationUuid);
@@ -237,16 +212,5 @@ export class SystemIntegrationReliabilityService {
     } finally {
       if (timer) clearTimeout(timer);
     }
-  }
-
-  private errorCode(error: unknown) {
-    if (!(error instanceof Error)) return null;
-    if (/timeout|deadline|aborted/i.test(error.message)) return 'PROVIDER_TIMEOUT';
-    if (/circuit breaker is open/i.test(error.message)) return 'CIRCUIT_OPEN';
-    return 'INTEGRATION_OPERATION_FAILED';
-  }
-
-  private failure<T>(error: unknown, retry: IntegrationRetryMetadata): { value: T; retry: IntegrationRetryMetadata } {
-    throw error instanceof Error ? error : new Error('Integration operation failed');
   }
 }
