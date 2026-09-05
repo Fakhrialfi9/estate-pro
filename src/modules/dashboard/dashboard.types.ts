@@ -94,6 +94,9 @@ export interface CrmAcquisitionKpi {
 }
 
 export interface CrmSlaKpi {
+  readonly leads: number;
+  readonly qualificationCompliant: number;
+  readonly qualificationBreached: number;
   readonly averageResponseHours: number;
   readonly averageQualificationHours: number;
   readonly qualificationThresholdHours: number;
@@ -107,6 +110,23 @@ export interface CrmSlaKpi {
   };
 }
 
+export interface CrmConversionKpi {
+  readonly leadToOpportunity: {
+    readonly leads: number;
+    readonly opportunities: number;
+    readonly rate: number;
+  };
+  readonly opportunityToDeal: {
+    readonly opportunities: number;
+    readonly wonDeals: number;
+    readonly rate: number;
+  };
+  readonly cycleTime: {
+    readonly leadToOpportunityDays: number;
+    readonly opportunityToCloseDays: number;
+  };
+}
+
 export interface CrmDashboardData {
   readonly volume: readonly CrmLeadVolumeKpi[];
   readonly lifecycle: CrmLifecycleKpi;
@@ -115,22 +135,7 @@ export interface CrmDashboardData {
   readonly assignments: readonly CrmAssignmentKpi[];
   readonly sources: readonly CrmAcquisitionKpi[];
   readonly campaigns: readonly CrmAcquisitionKpi[];
-  readonly conversion: {
-    readonly leadToOpportunity: {
-      readonly leads: number;
-      readonly opportunities: number;
-      readonly rate: number;
-    };
-    readonly opportunityToDeal: {
-      readonly opportunities: number;
-      readonly wonDeals: number;
-      readonly rate: number;
-    };
-    readonly cycleTime: {
-      readonly leadToOpportunityDays: number;
-      readonly opportunityToCloseDays: number;
-    };
-  };
+  readonly conversion: CrmConversionKpi;
   readonly sla: CrmSlaKpi;
 }
 
@@ -167,22 +172,27 @@ export interface SalesValueKpi {
 }
 
 export interface SalesVolumeKpi {
-  readonly period?: string;
-  readonly status?: string;
-  readonly count: number;
-  readonly totalAmount?: string;
+  readonly period: string;
+  readonly status: string;
+  readonly opportunities: number;
+  readonly won: number;
+  readonly lost: number;
+  readonly deals: number;
 }
 
 export interface SalesRevenueKpi {
+  readonly period: string;
   readonly currency: string;
-  readonly amount: string;
-  readonly count?: number;
+  readonly closedRevenue: string;
+  readonly deals: number;
 }
 
 export interface SalesAverageDealKpi {
   readonly currency: string;
-  readonly averageAmount: string;
-  readonly deals?: number;
+  readonly deals: number;
+  readonly averageValue: string;
+  readonly minValue: string;
+  readonly maxValue: string;
 }
 
 export interface SalesForecastKpi {
@@ -200,10 +210,10 @@ export interface SalesDashboardData {
   readonly stageVelocity: readonly SalesVelocityKpi[];
   readonly aging: readonly SalesAgingKpi[];
   readonly value: readonly SalesValueKpi[];
-  readonly conversion: CrmDashboardData['conversion'];
+  readonly conversion: CrmConversionKpi;
+  readonly sales?: readonly SalesVolumeKpi[];
   readonly revenue?: readonly SalesRevenueKpi[];
   readonly averageDeal?: readonly SalesAverageDealKpi[];
-  readonly sales?: readonly SalesVolumeKpi[];
   readonly forecast?: SalesForecastKpi;
 }
 
