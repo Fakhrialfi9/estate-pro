@@ -5,10 +5,14 @@ import {
 } from '../../../../common/contracts/automation-crm.port.js';
 import type { AutomationActor } from '../../../../common/contracts/automation-actor.js';
 import type { ActionHandler } from '../../domain/automation.ports.js';
-import {
-  CommunicationProviderError,
-  ProviderNotConfiguredError,
-} from '../../../crm/infrastructure/providers/communication-provider.js';
+
+interface RetryableError {
+  readonly retryable?: unknown;
+}
+
+function hasRetryClassification(error: unknown): error is RetryableError {
+  return error !== null && typeof error === 'object' && 'retryable' in error;
+}
 
 @Injectable()
 export class SendCommunicationAction implements ActionHandler {
@@ -43,17 +47,13 @@ export class SendCommunicationAction implements ActionHandler {
         output: result,
       };
     } catch (error: unknown) {
-      const retryable =
-        error instanceof CommunicationProviderError
-          ? error.retryable
-          : !(error instanceof ProviderNotConfiguredError);
+      const retryable = hasRetryClassification(error)
+        ? error.retryable === true
+        : true;
       return {
         success: false,
         retryable,
-        errorCode:
-          error instanceof CommunicationProviderError && error.statusCode
-            ? `COMMUNICATION_PROVIDER_HTTP_${error.statusCode}`
-            : 'COMMUNICATION_DELIVERY_FAILED',
+        errorCode: 'COMMUNICATION_DELIVERY_FAILED',
         errorMessage:
           error instanceof Error
             ? error.message.slice(0, 240)
