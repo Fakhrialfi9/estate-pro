@@ -1,7 +1,5 @@
 import type { IntegrationState } from '../integration/integration.contracts.js';
-import type {
-  IntegrationCredentialStatus,
-} from '../integration/integration-operation.contracts.js';
+import type { IntegrationCredentialStatus } from '../integration/integration-operation.contracts.js';
 
 export const SYSTEM_ROADMAP_REPOSITORY = Symbol('SYSTEM_ROADMAP_REPOSITORY');
 
@@ -208,7 +206,10 @@ export interface SystemRoadmapRepository {
           >
         >,
     ): Promise<IntegrationCredentialRecord>;
-    revoke(uuid: string, revokedAt: Date): Promise<IntegrationCredentialRecord>;
+    revoke(
+      uuid: string,
+      revokedAt: Date,
+    ): Promise<IntegrationCredentialRecord>;
     markUsed(
       uuid: string,
       lastUsedAt: Date,
