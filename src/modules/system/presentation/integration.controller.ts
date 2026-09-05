@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -79,6 +80,21 @@ export class IntegrationController {
   @RequirePermissions('system.integration.test')
   test(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.integrations.test(this.actor(request), uuid);
+  }
+
+  @Post(':uuid/reconnect')
+  @RequirePermissions('system.integration.test')
+  @ApiOperation({ summary: 'Reconnect an integration and verify its health' })
+  reconnect(
+    @Req() request: Request,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.integrations.reconnect(
+      this.actor(request),
+      uuid,
+      idempotencyKey,
+    );
   }
 
   @Post(':uuid/sync')
