@@ -1,0 +1,177 @@
+model SystemFeatureFlag {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  key String @db.VarChar(160)
+  environment String @db.VarChar(32)
+  description String? @db.VarChar(500)
+  enabled Boolean @default(false)
+  rolloutPercentage Int @default(100)
+  metadata Json
+  createdBy String? @db.Char(36)
+  updatedBy String? @db.Char(36)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  @@unique([key, environment])
+  @@index([environment, enabled])
+  @@map("system_feature_flags")
+}
+
+model SystemImportProfile {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  name String @db.VarChar(160)
+  entity String @db.VarChar(80)
+  version Int @default(1)
+  format String @db.VarChar(8)
+  columnMapping Json @map("column_mapping")
+  fieldMapping Json @map("field_mapping")
+  conflictStrategy String @db.VarChar(32) @map("conflict_strategy")
+  transactionStrategy String @db.VarChar(32) @map("transaction_strategy")
+  active Boolean @default(false)
+  createdBy String @db.Char(36)
+  updatedBy String @db.Char(36)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  @@unique([name, version])
+  @@index([entity, active])
+  @@map("system_import_profiles")
+}
+
+model SystemIntegrationCredential {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  integrationId BigInt @map("integration_id") @db.UnsignedBigInt
+  credentialType String @db.VarChar(32) @map("credential_type")
+  secretRef String @db.VarChar(255) @map("secret_ref")
+  version Int @default(1)
+  status String @db.VarChar(16)
+  issuedAt DateTime @default(now()) @map("issued_at") @db.DateTime(3)
+  accessTokenExpiresAt DateTime? @map("access_token_expires_at") @db.DateTime(3)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.DateTime(3)
+  rotatedAt DateTime? @map("rotated_at") @db.DateTime(3)
+  revokedAt DateTime? @map("revoked_at") @db.DateTime(3)
+  metadata Json
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  @@unique([integrationId, credentialType, version])
+  @@index([integrationId, credentialType, status])
+  @@index([accessTokenExpiresAt])
+  @@map("system_integration_credentials")
+}
+
+model SystemIntegrationRuntime {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  integrationId BigInt @unique @map("integration_id") @db.UnsignedBigInt
+  circuitState String @default("CLOSED") @db.VarChar(16) @map("circuit_state")
+  failureCount Int @default(0) @map("failure_count")
+  successCount Int @default(0) @map("success_count")
+  openedAt DateTime? @map("opened_at") @db.DateTime(3)
+  halfOpenAt DateTime? @map("half_open_at") @db.DateTime(3)
+  nextRetryAt DateTime? @map("next_retry_at") @db.DateTime(3)
+  syncDirection String @default("BIDIRECTIONAL") @db.VarChar(24) @map("sync_direction")
+  syncCursor String? @db.VarChar(255) @map("sync_cursor")
+  lastSyncedAt DateTime? @map("last_synced_at") @db.DateTime(3)
+  requestMapping Json
+  responseMapping Json
+  lastHealthAt DateTime? @map("last_health_at") @db.DateTime(3)
+  lastOperationAt DateTime? @map("last_operation_at") @db.DateTime(3)
+  lastOperationStatus String? @db.VarChar(24) @map("last_operation_status")
+  metadata Json
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  @@index([circuitState, nextRetryAt])
+  @@index([lastHealthAt])
+  @@map("system_integration_runtime")
+}
+
+model SystemIntegrationOperation {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  integrationId BigInt @map("integration_id") @db.UnsignedBigInt
+  operationKey String @db.VarChar(120) @map("operation_key")
+  direction String @db.VarChar(24)
+  idempotencyKey String @db.VarChar(180) @map("idempotency_key")
+  attempt Int @default(0)
+  maxAttempts Int @default(3) @map("max_attempts")
+  state String @db.VarChar(24)
+  requestHash String? @db.Char(64) @map("request_hash")
+  responseHash String? @db.Char(64) @map("response_hash")
+  requestPayload Json? @map("request_payload")
+  responsePayload Json? @map("response_payload")
+  nextAttemptAt DateTime? @map("next_attempt_at") @db.DateTime(3)
+  startedAt DateTime? @map("started_at") @db.DateTime(3)
+  completedAt DateTime? @map("completed_at") @db.DateTime(3)
+  errorCode String? @db.VarChar(80)
+  errorMessage String? @db.VarChar(500)
+  metadata Json
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  @@unique([integrationId, idempotencyKey])
+  @@index([integrationId, state, nextAttemptAt])
+  @@index([operationKey, createdAt])
+  @@map("system_integration_operations")
+}
+
+model SystemIntegrationEvent {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  integrationId BigInt @map("integration_id") @db.UnsignedBigInt
+  eventKey String @db.VarChar(180) @map("event_key")
+  eventName String @db.VarChar(120) @map("event_name")
+  eventVersion Int @default(1) @map("event_version")
+  payload Json
+  payloadHash String @db.Char(64) @map("payload_hash")
+  idempotencyKey String? @db.VarChar(180) @map("idempotency_key")
+  status String @db.VarChar(24)
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.DateTime(3)
+  processedAt DateTime? @map("processed_at") @db.DateTime(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  @@unique([integrationId, eventKey])
+  @@index([integrationId, status, occurredAt])
+  @@index([payloadHash])
+  @@map("system_integration_events")
+}
+
+model SystemIntegrationConflict {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  integrationId BigInt @map("integration_id") @db.UnsignedBigInt
+  operationUuid String? @map("operation_uuid") @db.Char(36)
+  conflictKey String @db.VarChar(180) @map("conflict_key")
+  entityType String @db.VarChar(80) @map("entity_type")
+  localVersion String? @db.VarChar(80) @map("local_version")
+  remoteVersion String? @db.VarChar(80) @map("remote_version")
+  resolution String @db.VarChar(32)
+  status String @db.VarChar(24)
+  localPayload Json? @map("local_payload")
+  remotePayload Json? @map("remote_payload")
+  resolvedBy String? @map("resolved_by") @db.Char(36)
+  resolvedAt DateTime? @map("resolved_at") @db.DateTime(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  @@unique([integrationId, conflictKey])
+  @@index([integrationId, status, createdAt])
+  @@map("system_integration_conflicts")
+}
+
+model SystemOperationalAlert {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid String @unique @db.Char(36)
+  alertKey String @db.VarChar(160) @map("alert_key")
+  severity String @db.VarChar(16)
+  status String @db.VarChar(16)
+  message String @db.VarChar(500)
+  dedupeKey String @unique @map("dedupe_key") @db.VarChar(220)
+  resourceType String? @map("resource_type") @db.VarChar(80)
+  resourceUuid String? @map("resource_uuid") @db.Char(36)
+  metadata Json
+  firstSeenAt DateTime @default(now()) @map("first_seen_at") @db.DateTime(3)
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.DateTime(3)
+  resolvedAt DateTime? @map("resolved_at") @db.DateTime(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  @@index([status, severity, lastSeenAt])
+  @@index([alertKey, status])
+  @@map("system_operational_alerts")
+}
