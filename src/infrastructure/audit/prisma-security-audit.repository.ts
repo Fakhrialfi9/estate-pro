@@ -92,8 +92,9 @@ export class PrismaSecurityAuditRepository
       throw new Error('Unsupported audit action');
 
     const resourceType = normalizeAuditResourceType(
-      event.entityType ?? 'authentication',
+      event.entityType ?? event.resourceType ?? 'authentication',
     );
+    const entityUuid = event.entityUuid ?? event.resourceId;
     if (
       resourceType &&
       !(AUDIT_RESOURCE_TYPES as readonly string[]).includes(resourceType)
@@ -106,7 +107,7 @@ export class PrismaSecurityAuditRepository
       (resourceType === 'authentication'
         ? (event.userUuid ?? actorUuid ?? null)
         : resourceType === 'user'
-          ? (event.entityUuid ?? null)
+          ? (entityUuid ?? null)
           : null);
     const inferredActorType = this.inferActorType(
       event,
@@ -130,7 +131,9 @@ export class PrismaSecurityAuditRepository
     const result =
       event.result ??
       (FAILURE_ACTION_PATTERN.test(event.action) ? 'FAILURE' : 'SUCCESS');
-    const reason = sanitizeAuditReason(event.reason ?? inferredReason);
+    const reason = sanitizeAuditReason(
+      event.reason ?? event.metadata ?? inferredReason,
+    );
 
     const client = this.prisma as unknown as AuditShape;
     await client.$transaction(async (tx) => {
@@ -150,19 +153,19 @@ export class PrismaSecurityAuditRepository
       ]);
 
       let entityId: bigint | null = null;
-      if (event.entityUuid && resourceType === 'role')
+      if (entityUuid && resourceType === 'role')
         entityId =
           (
             await tx.authorizationRole.findFirst({
-              where: { uuid: event.entityUuid },
+              where: { uuid: entityUuid },
               select: { id: true, uuid: true },
             })
           )?.id ?? null;
-      else if (event.entityUuid && resourceType === 'permission')
+      else if (entityUuid && resourceType === 'permission')
         entityId =
           (
             await tx.authorizationPermission.findFirst({
-              where: { uuid: event.entityUuid },
+              where: { uuid: entityUuid },
               select: { id: true, uuid: true },
             })
           )?.id ?? null;
@@ -176,7 +179,7 @@ export class PrismaSecurityAuditRepository
           actorType,
           entityType: resourceType,
           entityId,
-          resourceId: event.entityUuid ?? null,
+          resourceId: entityUuid ?? null,
           result,
           reason,
           ipAddress: safeIp,
