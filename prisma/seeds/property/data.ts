@@ -1,0 +1,128 @@
+export const PROPERTY_TYPES = [
+  { code: 'RESIDENTIAL', name: 'Residential', slug: 'residential', description: 'Residential property.', sortOrder: 10 },
+  { code: 'COMMERCIAL', name: 'Commercial', slug: 'commercial', description: 'Commercial property.', sortOrder: 20 },
+  { code: 'LAND', name: 'Land', slug: 'land', description: 'Land / development parcel.', sortOrder: 30 },
+] as const;
+
+export const PROPERTY_CATEGORIES = [
+  { typeCode: 'RESIDENTIAL', code: 'HOUSE', name: 'House', slug: 'house', sortOrder: 10 },
+  { typeCode: 'RESIDENTIAL', code: 'APARTMENT', name: 'Apartment', slug: 'apartment', sortOrder: 20 },
+  { typeCode: 'RESIDENTIAL', code: 'VILLA', name: 'Villa', slug: 'villa', sortOrder: 30 },
+  { typeCode: 'COMMERCIAL', code: 'OFFICE', name: 'Office', slug: 'office', sortOrder: 10 },
+  { typeCode: 'COMMERCIAL', code: 'RETAIL', name: 'Retail', slug: 'retail', sortOrder: 20 },
+  { typeCode: 'LAND', code: 'DEVELOPMENT_LAND', name: 'Development Land', slug: 'development-land', sortOrder: 10 },
+] as const;
+
+export const PROPERTY_SUBCATEGORIES = [
+  { categoryCode: 'HOUSE', code: 'CLUSTER_HOUSE', name: 'Cluster House', slug: 'cluster-house', sortOrder: 10 },
+  { categoryCode: 'HOUSE', code: 'TOWNHOUSE', name: 'Townhouse', slug: 'townhouse', sortOrder: 20 },
+  { categoryCode: 'APARTMENT', code: 'HIGH_RISE', name: 'High Rise Apartment', slug: 'high-rise', sortOrder: 10 },
+  { categoryCode: 'VILLA', code: 'LUXURY_VILLA', name: 'Luxury Villa', slug: 'luxury-villa', sortOrder: 10 },
+  { categoryCode: 'OFFICE', code: 'OFFICE_BUILDING', name: 'Office Building', slug: 'office-building', sortOrder: 10 },
+  { categoryCode: 'RETAIL', code: 'SHOPHOUSE', name: 'Shophouse', slug: 'shophouse', sortOrder: 10 },
+  { categoryCode: 'DEVELOPMENT_LAND', code: 'RESIDENTIAL_LAND', name: 'Residential Land', slug: 'residential-land', sortOrder: 10 },
+] as const;
+
+export const LOCATIONS = [
+  {
+    country: { code: 'ID', name: 'Indonesia', slug: 'indonesia' },
+    province: { code: 'JK', name: 'DKI Jakarta', slug: 'dki-jakarta' },
+    city: { code: 'JKS', name: 'Jakarta Selatan', slug: 'jakarta-selatan' },
+    district: { code: 'KBY', name: 'Kebayoran Baru', slug: 'kebayoran-baru' },
+    subdistrict: { code: 'SNY', name: 'Senayan', slug: 'senayan' },
+  },
+  {
+    country: { code: 'ID', name: 'Indonesia', slug: 'indonesia' },
+    province: { code: 'JB', name: 'Jawa Barat', slug: 'jawa-barat' },
+    city: { code: 'BDG', name: 'Kota Bandung', slug: 'kota-bandung' },
+    district: { code: 'CB', name: 'Coblong', slug: 'coblong' },
+    subdistrict: { code: 'DGO', name: 'Dago', slug: 'dago' },
+  },
+] as const;
+
+export const FACILITIES = [
+  ['CCTV', 'CCTV', 'SECURITY'],
+  ['SECURITY_GUARD', 'Security Guard', 'SECURITY'],
+  ['GATED_ACCESS', 'Gated Access', 'SECURITY'],
+  ['COVERED_PARKING', 'Covered Parking', 'PARKING'],
+  ['GENERATOR', 'Generator', 'UTILITY'],
+  ['FIBER_INTERNET', 'Fiber Internet', 'TECHNOLOGY'],
+  ['SWIMMING_POOL', 'Swimming Pool', 'RECREATION'],
+  ['GYM', 'Fitness Center', 'RECREATION'],
+  ['PLAYGROUND', 'Children Playground', 'OUTDOOR'],
+  ['ELEVATOR', 'Elevator', 'ACCESSIBILITY'],
+] as const;
+
+export const AMENITIES = [
+  ['AIR_CONDITIONING', 'Air Conditioning', 'UTILITY'],
+  ['BALCONY', 'Balcony', 'OUTDOOR'],
+  ['BUILT_IN_KITCHEN', 'Built-in Kitchen', 'KITCHEN'],
+  ['CCTV', 'CCTV', 'SECURITY'],
+  ['COVERED_PARKING', 'Covered Parking', 'PARKING'],
+  ['GARDEN', 'Garden', 'OUTDOOR'],
+  ['SWIMMING_POOL', 'Swimming Pool', 'RECREATION'],
+  ['WIFI', 'Wi-Fi', 'TECHNOLOGY'],
+  ['SOLAR_POWER', 'Solar Power', 'UTILITY'],
+  ['SMART_HOME', 'Smart Home', 'TECHNOLOGY'],
+] as const;
+
+export const PROPERTY_FIXTURES = [
+  {
+    key: 'senayan-residence',
+    businessCode: 'PROP-SNY-001',
+    referenceNumber: 'EST-SNY-001',
+    typeCode: 'RESIDENTIAL',
+    categoryCode: 'HOUSE',
+    subcategoryCode: 'CLUSTER_HOUSE',
+    locationIndex: 0,
+    title: 'Modern Family Residence Senayan',
+    slug: 'modern-family-residence-senayan',
+    shortDescription: 'Modern family residence in the Senayan area.',
+    description: 'A professionally managed family residence with secure access, garden, parking and modern utilities.',
+    askingPrice: '8750000000',
+    bedrooms: 4,
+    bathrooms: '3.00',
+    landArea: '180.00',
+    buildingArea: '260.00',
+    floors: 2,
+    parkingSpaces: 2,
+    yearBuilt: 2020,
+    agentUserUuid: '00000000-0000-5000-8000-000000000002',
+    agentDisplayName: 'Ahmad Fauzan',
+    addressLine: 'Jl. Asia Afrika',
+    street: 'Jl. Asia Afrika',
+    neighborhood: 'Senayan',
+    postalCode: '12190',
+    latitude: '-6.2251000',
+    longitude: '106.8029000',
+  },
+  {
+    key: 'dago-apartment',
+    businessCode: 'PROP-DGO-001',
+    referenceNumber: 'EST-DGO-001',
+    typeCode: 'RESIDENTIAL',
+    categoryCode: 'APARTMENT',
+    subcategoryCode: 'HIGH_RISE',
+    locationIndex: 1,
+    title: 'Dago Skyline Apartment',
+    slug: 'dago-skyline-apartment',
+    shortDescription: 'High-rise apartment with city and mountain views.',
+    description: 'A furnished apartment fixture for sales, viewing, matching and analytics development flows.',
+    askingPrice: '2350000000',
+    bedrooms: 2,
+    bathrooms: '2.00',
+    landArea: '0.00',
+    buildingArea: '78.00',
+    floors: 18,
+    parkingSpaces: 1,
+    yearBuilt: 2022,
+    agentUserUuid: '00000000-0000-5000-8000-000000000003',
+    agentDisplayName: 'Siti Rahma',
+    addressLine: 'Jl. Ir. H. Djuanda',
+    street: 'Jl. Ir. H. Djuanda',
+    neighborhood: 'Dago',
+    postalCode: '40135',
+    latitude: '-6.8723000',
+    longitude: '107.6139000',
+  },
+] as const;
