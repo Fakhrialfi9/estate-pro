@@ -190,7 +190,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
         : {}),
       data: isRecord(data) ? deepCloneRecord(data) : {},
       errorCode: stringValue(response.errorCode),
-      errorMessage: ok ? null : this.safeProviderError(response.errorMessage),
+      errorMessage: ok ? null : safeProviderError(response.errorMessage),
       providerRequestId: stringValue(response.providerRequestId),
       receivedAt: new Date(),
     };
@@ -212,7 +212,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
       mapped,
       request.idempotencyKey,
       numberValue(metadata.timeoutMs, DEFAULT_TIMEOUT_MS),
-      context?.secretRef,
+      context?.secretRef ?? null,
       metadata,
     );
     const body = await readJson(response, response.ok);
@@ -478,6 +478,16 @@ function numberValue(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value)
     ? Math.min(60_000, Math.max(1, Math.trunc(value)))
     : fallback;
+}
+
+function safeProviderError(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  return value
+    .replace(
+      /(token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+/gi,
+      '$1=[REDACTED]',
+    )
+    .slice(0, 500);
 }
 
 function safeMessage(error: unknown): string {
