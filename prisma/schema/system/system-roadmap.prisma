@@ -42,12 +42,15 @@ model SystemIntegrationCredential {
   uuid String @unique @db.Char(36)
   integrationId BigInt @map("integration_id") @db.UnsignedBigInt
   credentialType String @db.VarChar(32) @map("credential_type")
-  secretRef String @db.VarChar(255) @map("secret_ref")
+  secretRef String? @db.VarChar(255) @map("secret_ref")
+  accessTokenRef String? @map("access_token_ref") @db.VarChar(255)
+  refreshTokenRef String? @map("refresh_token_ref") @db.VarChar(255)
   version Int @default(1)
   status String @db.VarChar(16)
   issuedAt DateTime @default(now()) @map("issued_at") @db.DateTime(3)
   accessTokenExpiresAt DateTime? @map("access_token_expires_at") @db.DateTime(3)
   refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.DateTime(3)
+  lastUsedAt DateTime? @map("last_used_at") @db.DateTime(3)
   rotatedAt DateTime? @map("rotated_at") @db.DateTime(3)
   revokedAt DateTime? @map("revoked_at") @db.DateTime(3)
   metadata Json
@@ -56,6 +59,7 @@ model SystemIntegrationCredential {
   @@unique([integrationId, credentialType, version])
   @@index([integrationId, credentialType, status])
   @@index([accessTokenExpiresAt])
+  @@index([refreshTokenExpiresAt])
   @@map("system_integration_credentials")
 }
 
@@ -139,7 +143,7 @@ model SystemIntegrationConflict {
   integrationId BigInt @map("integration_id") @db.UnsignedBigInt
   operationUuid String? @map("operation_uuid") @db.Char(36)
   conflictKey String @db.VarChar(180) @map("conflict_key")
-  entityType String @db.VarChar(80) @map("entity_type")
+  entityType String @db.VarChar(80)
   localVersion String? @db.VarChar(80) @map("local_version")
   remoteVersion String? @db.VarChar(80) @map("remote_version")
   resolution String @db.VarChar(32)
