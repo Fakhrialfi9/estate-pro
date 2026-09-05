@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Headers,
   Param,
@@ -13,7 +14,7 @@ import type { Request } from 'express';
 import { SystemIntegrationCallbackService } from '../application/services/system-integration-callback.service.js';
 import { SystemIntegrationService } from '../application/services/system-integration.service.js';
 
-@ApiTags('System Integration Callbacks')
+@ApiTags('System Integrations')
 @Controller({ path: 'system/integrations', version: '1' })
 export class IntegrationCallbackController {
   constructor(
@@ -33,7 +34,8 @@ export class IntegrationCallbackController {
     @Headers('x-integration-key-version') keyVersion: string | undefined,
     @Req() request: Request & { rawBody?: Buffer },
   ) {
-    if (contentType?.toLowerCase().split(';')[0].trim() !== 'application/json')
+    const mediaType = (contentType?.split(';')[0] ?? '').trim().toLowerCase();
+    if (mediaType !== 'application/json')
       throw new BadRequestException(
         'Callback Content-Type must be application/json',
       );
@@ -42,17 +44,15 @@ export class IntegrationCallbackController {
     if (!request.rawBody)
       throw new BadRequestException('Raw callback body is required');
     const provider = await this.integrations.providerFor(uuid);
-    return this.callbacks.handle(
-      uuid,
-      {
-        timestamp,
-        signature,
-        eventId,
-        eventName,
-        keyVersion,
-        body: request.rawBody.toString('utf8'),
-      },
+    return this.callbacks.handle({
+      integrationUuid: uuid,
       provider,
-    );
+      rawBody: request.rawBody,
+      timestamp,
+      signature,
+      eventId,
+      eventName,
+      keyVersion,
+    });
   }
 }
