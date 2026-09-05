@@ -132,9 +132,8 @@ export class SystemIntegrationReliabilityService {
 
   async providerHealth(integrationUuid: string) {
     const provider = await this.integrations.providerFor(integrationUuid);
-    const configuration = await this.integrations.providerConfiguration(
-      integrationUuid,
-    );
+    const configuration =
+      await this.integrations.providerConfiguration(integrationUuid);
     if (!provider.testConnection) {
       throw new NotFoundException(
         'Provider health capability is not implemented',
