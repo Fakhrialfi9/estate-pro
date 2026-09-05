@@ -59,7 +59,7 @@ export class SystemIntegrationReliabilityService {
     operation: (provider: IntegrationProviderPort) => Promise<T>,
     policy: RetryPolicy = DEFAULT_INTEGRATION_RETRY_POLICY,
   ): Promise<{ value: T; retry: IntegrationRetryMetadata }> {
-    const provider = this.integrations.providerFor(integrationUuid);
+    const provider = await this.integrations.providerFor(integrationUuid);
     const startedAt = Date.now();
     let lastError: unknown;
     for (let attempt = 0; attempt < policy.maxAttempts; attempt += 1) {
@@ -130,7 +130,7 @@ export class SystemIntegrationReliabilityService {
   }
 
   async providerHealth(integrationUuid: string) {
-    const provider = this.integrations.providerFor(integrationUuid);
+    const provider = await this.integrations.providerFor(integrationUuid);
     if (!provider.health)
       throw new NotFoundException(
         'Provider health capability is not implemented',
