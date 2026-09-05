@@ -26,7 +26,7 @@ export class AutomationNotificationService {
     private readonly repository: AutomationNotificationRepository,
   ) {}
 
-  async createNotification(input: Record<string, unknown>) {
+  createNotification(input: Record<string, unknown>) {
     const userUuid =
       typeof input.userUuid === 'string' ? input.userUuid.trim() : '';
     const type = typeof input.type === 'string' ? input.type.trim() : '';
