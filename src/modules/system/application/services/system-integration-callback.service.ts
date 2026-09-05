@@ -65,6 +65,7 @@ export class SystemIntegrationCallbackService {
         body,
         signature: input.signature,
         keyVersion: input.keyVersion,
+        secretRef: integration.secretRef,
       });
     } catch {
       verified = false;
