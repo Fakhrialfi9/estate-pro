@@ -1,6 +1,7 @@
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import type { CommunicationProvider } from './communication-provider.js';
+import { CommunicationProviderError } from './communication-provider.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -46,7 +47,17 @@ export class HttpCommunicationProvider implements CommunicationProvider {
       });
 
       if (!response.ok) {
-        throw new Error(`Communication provider returned HTTP ${response.status}`);
+        const retryable =
+          response.status === 408 ||
+          response.status === 409 ||
+          response.status === 425 ||
+          response.status === 429 ||
+          response.status >= 500;
+        throw new CommunicationProviderError(
+          `Communication provider returned HTTP ${response.status}`,
+          retryable,
+          response.status,
+        );
       }
 
       const text = await response.text();
@@ -58,10 +69,25 @@ export class HttpCommunicationProvider implements CommunicationProvider {
         response.headers.get('x-message-id');
 
       if (!providerMessageId) {
-        throw new Error('Communication provider response omitted message id');
+        throw new CommunicationProviderError(
+          'Communication provider response omitted message id',
+          false,
+        );
       }
 
       return { providerMessageId };
+    } catch (error: unknown) {
+      if (error instanceof CommunicationProviderError) throw error;
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new CommunicationProviderError(
+          'Communication provider request timed out',
+          true,
+        );
+      }
+      throw new CommunicationProviderError(
+        error instanceof Error ? error.message : 'Communication provider request failed',
+        true,
+      );
     } finally {
       clearTimeout(timer);
     }
@@ -73,27 +99,45 @@ export async function assertPublicHttpsUrl(raw: string): Promise<void> {
   try {
     url = new URL(raw);
   } catch {
-    throw new Error('Communication provider URL is invalid');
+    throw new CommunicationProviderError(
+      'Communication provider URL is invalid',
+      false,
+    );
   }
 
   if (url.protocol !== 'https:') {
-    throw new Error('Communication provider URL must use HTTPS');
+    throw new CommunicationProviderError(
+      'Communication provider URL must use HTTPS',
+      false,
+    );
   }
   if (url.username || url.password) {
-    throw new Error('Communication provider URL cannot contain credentials');
+    throw new CommunicationProviderError(
+      'Communication provider URL cannot contain credentials',
+      false,
+    );
   }
 
   const hostname = url.hostname.toLowerCase();
   if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
-    throw new Error('Communication provider URL cannot target localhost');
+    throw new CommunicationProviderError(
+      'Communication provider URL cannot target localhost',
+      false,
+    );
   }
   if (isPrivateAddress(hostname)) {
-    throw new Error('Communication provider URL cannot target a private network');
+    throw new CommunicationProviderError(
+      'Communication provider URL cannot target a private network',
+      false,
+    );
   }
 
   const addresses = await lookup(hostname, { all: true, verbatim: true });
   if (addresses.some((entry) => isPrivateAddress(entry.address))) {
-    throw new Error('Communication provider URL resolves to a private network');
+    throw new CommunicationProviderError(
+      'Communication provider URL resolves to a private network',
+      false,
+    );
   }
 }
 
@@ -109,8 +153,10 @@ function isPrivateAddress(address: string): boolean {
       (a === 172 && b >= 16 && b <= 31)
     );
   }
-  return version === 6 &&
-    (address === '::1' || /^(fc|fd|fe80:)/i.test(address));
+  return (
+    version === 6 &&
+    (address === '::1' || /^(fc|fd|fe80:)/i.test(address))
+  );
 }
 
 function parseObject(text: string): Record<string, unknown> | null {
