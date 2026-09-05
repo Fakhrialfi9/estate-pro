@@ -66,7 +66,7 @@ model SystemExportJob {
   uuid              String   @unique @db.Char(36)
   actorUuid         String   @map("actor_uuid") @db.Char(36)
   entity            String   @db.VarChar(40)
-  format             String   @db.VarChar(8)
+  format            String  @db.VarChar(8)
   state             String   @db.VarChar(16)
   filters           Json
   artifactPath      String?  @map("artifact_path") @db.VarChar(500)
@@ -81,7 +81,7 @@ model SystemExportJob {
   expiresAt         DateTime @map("expires_at")
   errorMessage      String?  @map("error_message") @db.VarChar(500)
   createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt         DateTime @updatedAt @db.DateTime(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.DateTime(3)
   @@index([actorUuid, createdAt])
   @@index([state, expiresAt])
   @@index([downloadTokenHash])
