@@ -1,8 +1,8 @@
-import { randomUUID } from 'node:crypto';
-
 import argon2 from 'argon2';
+
 import type { SeedTransaction } from '../database.ts';
 import { ARGON2_CONFIG } from '../config.ts';
+import { SEED_REFERENCE_DATE } from '../shared/ids.ts';
 import { ADMIN_USER, SEED_USERS, type UserSeed } from './data.ts';
 
 export type PreparedUserSeed = UserSeed & { passwordHash: string };
@@ -24,11 +24,11 @@ async function upsertSeedUser(
   const [userByEmail, userByUsername] = await Promise.all([
     client.authenticationUser.findUnique({
       where: { email: seed.email },
-      select: { id: true },
+      select: { id: true, uuid: true },
     }),
     client.authenticationUser.findUnique({
       where: { username: seed.username },
-      select: { id: true },
+      select: { id: true, uuid: true },
     }),
   ]);
 
@@ -39,12 +39,11 @@ async function upsertSeedUser(
   }
 
   const existingUserId = userByEmail?.id ?? userByUsername?.id;
-  const now = new Date();
-
   const user = existingUserId
     ? await client.authenticationUser.update({
         where: { id: existingUserId },
         data: {
+          uuid: seed.uuid,
           username: seed.username,
           email: seed.email,
           phone: seed.phone,
@@ -56,7 +55,7 @@ async function upsertSeedUser(
       })
     : await client.authenticationUser.create({
         data: {
-          uuid: randomUUID(),
+          uuid: seed.uuid,
           username: seed.username,
           email: seed.email,
           phone: seed.phone,
@@ -70,12 +69,12 @@ async function upsertSeedUser(
     where: { userId: user.id },
     update: {
       passwordHash: seed.passwordHash,
-      passwordChangedAt: now,
+      passwordChangedAt: SEED_REFERENCE_DATE,
     },
     create: {
       userId: user.id,
       passwordHash: seed.passwordHash,
-      passwordChangedAt: now,
+      passwordChangedAt: SEED_REFERENCE_DATE,
     },
   });
 
@@ -132,7 +131,7 @@ export async function assignAdminRole(
       roleId,
       isActive: true,
       assignedBy: userId,
-      assignedAt: new Date(),
+      assignedAt: SEED_REFERENCE_DATE,
     },
   });
 }
