@@ -43,15 +43,17 @@ export class IntegrationCallbackController {
     if (!request.rawBody)
       throw new BadRequestException('Raw callback body is required');
     const provider = await this.integrations.providerFor(uuid);
-    return this.callbacks.handle({
-      integrationUuid: uuid,
+    return this.callbacks.handle(
+      uuid,
+      {
+        timestamp,
+        signature,
+        body: request.rawBody.toString('utf8'),
+        eventId,
+        eventName,
+        keyVersion,
+      },
       provider,
-      rawBody: request.rawBody,
-      timestamp,
-      signature,
-      eventId,
-      eventName,
-      keyVersion,
-    });
+    );
   }
 }
