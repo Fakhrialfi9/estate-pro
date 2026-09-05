@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
+import { SystemEnvironmentService } from '../application/services/system-environment.service.js';
 import { SystemRoadmapControlService } from '../application/services/system-roadmap-control.service.js';
 import { AlertQueryDto, ConflictQueryDto, CreateConflictDto, CreateCredentialDto, CreateEventDto, CreateImportProfileDto, CreateOperationDto, CredentialQueryDto, EvaluateFeatureFlagDto, EventQueryDto, FailOperationDto, FeatureFlagQueryDto, ImportProfileQueryDto, OperationQueryDto, ResolveConflictDto, RotateCredentialDto, RuntimeUpdateDto, SetFeatureFlagDto, UpdateImportProfileDto } from './dto/system-roadmap.dto.js';
 
@@ -12,10 +13,13 @@ import { AlertQueryDto, ConflictQueryDto, CreateConflictDto, CreateCredentialDto
 @Controller({ path: 'system/control', version: '1' })
 @UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
 export class SystemRoadmapControlController {
-  constructor(private readonly control: SystemRoadmapControlService) {}
+  constructor(
+    private readonly control: SystemRoadmapControlService,
+    private readonly environment: SystemEnvironmentService,
+  ) {}
 
   @Get('dashboard') @RequirePermissions('system.dashboard.read') @ApiOperation({ summary: 'Read system executive dashboard' }) dashboard() { return this.control.dashboard(); }
-  @Get('environment') @RequirePermissions('system.dashboard.read') environment() { return this.control.environment(); }
+  @Get('environment') @RequirePermissions('system.dashboard.read') environmentMetadata() { return this.environment.read(); }
   @Get('flags') @RequirePermissions('system.flags.read') flags(@Query() q: FeatureFlagQueryDto) { return this.control.listFlags(q.environment); }
   @Post('flags') @RequirePermissions('system.flags.update') setFlag(@Req() req: Request, @Body() dto: SetFeatureFlagDto) { return this.control.setFlag(actor(req), dto); }
   @Post('flags/evaluate') @RequirePermissions('system.flags.read') evaluate(@Body() dto: EvaluateFeatureFlagDto) { return this.control.evaluateFlag(dto.key, dto.environment, dto.subjectKey); }
@@ -44,4 +48,8 @@ export class SystemRoadmapControlController {
   @Post('integrations/:uuid/resync') @RequirePermissions('system.integration.sync') resync(@Req() req: Request, @Param('uuid') uuid: string, @Body() body: { direction: string; entityType?: string }) { return this.control.resync(actor(req), uuid, body.direction, body.entityType); }
 }
 
-function actor(req: Request) { const id = (req.user as { sub?: string } | undefined)?.sub; if (!id) throw new Error('Authenticated actor missing'); return id; }
+function actor(req: Request) {
+  const id = (req.user as { sub?: string } | undefined)?.sub;
+  if (!id) throw new UnauthorizedException('Authenticated actor missing');
+  return id;
+}
