@@ -23,7 +23,6 @@ import type {
   AuditLogListQuery,
   AuditLogListResult,
   AuditLogRepository,
-  AuditLogWriteEvent,
 } from '../../modules/audit/domain/repositories/audit-log.repository.js';
 
 const MAX_PAGE_SIZE = 100;
@@ -87,7 +86,7 @@ export class PrismaSecurityAuditRepository
     private readonly config: ConfigService,
   ) {}
 
-  async record(event: SecurityAuditEvent | AuditLogWriteEvent): Promise<void> {
+  async record(event: SecurityAuditEvent): Promise<void> {
     if (!ALLOWED_ACTIONS.has(event.action))
       throw new Error('Unsupported audit action');
 
@@ -293,7 +292,7 @@ export class PrismaSecurityAuditRepository
   }
 
   private inferActorType(
-    event: SecurityAuditEvent | AuditLogWriteEvent,
+    event: SecurityAuditEvent,
     resourceType: string | null,
     actorUuid: string | null,
   ): 'AUTHENTICATED' | 'ADMINISTRATIVE' | 'SYSTEM' | 'ANONYMOUS' {
