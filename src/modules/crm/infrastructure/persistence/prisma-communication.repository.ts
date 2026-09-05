@@ -49,7 +49,10 @@ export class PrismaCommunicationRepository implements CommunicationRepository {
       CANCELLED: [],
     };
 
-    if (status !== current.status && !allowed[current.status]?.includes(status)) {
+    if (
+      status !== current.status &&
+      !allowed[current.status]?.includes(status)
+    ) {
       throw new Error(
         `Invalid communication transition ${current.status} -> ${status}`,
       );
