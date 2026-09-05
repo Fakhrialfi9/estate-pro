@@ -134,7 +134,10 @@ export async function assertPublicHttpsUrl(raw: string): Promise<void> {
     );
   }
 
-  const addresses = await lookup(hostname, { all: true, verbatim: true });
+  const addresses = await lookup(hostname, {
+    all: true,
+    verbatim: true,
+  });
   if (addresses.some((entry) => isPrivateAddress(entry.address))) {
     throw new CommunicationProviderError(
       'Communication provider URL resolves to a private network',
