@@ -10,8 +10,7 @@ export type IntegrationState =
   | 'ACTIVE'
   | 'DISABLED'
   | 'ERROR'
-  | 'DISCONNECTED'
-  | 'CONNECTING';
+  | 'DISCONNECTED';
 
 export interface SystemIntegrationRecord {
   id: bigint;
