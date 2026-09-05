@@ -54,6 +54,10 @@ export interface AutomationCrmPort {
     input: AutomationCommunicationInput,
     actor: AutomationActor,
   ): Promise<Record<string, unknown>>;
+  deliverCommunication(
+    uuid: string,
+    actor: AutomationActor,
+  ): Promise<Record<string, unknown>>;
   changeLeadStatus(
     uuid: string,
     statusUuid: string,
