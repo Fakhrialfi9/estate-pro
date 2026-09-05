@@ -20,7 +20,11 @@ import { seedCrm } from './crm/seed.ts';
 import { seedSales } from './sales/seed.ts';
 import { seedAgentManagement } from './agent-management/seed.ts';
 import { seedProperty } from './property/seed.ts';
+import { seedPropertyMatching } from './property-matching/seed.ts';
+import { seedContent } from './content/seed.ts';
+import { seedAutomation } from './automation/seed.ts';
 import { seedSystem } from './system/seed.ts';
+import { verifySeedState } from './verification.ts';
 
 export async function seedDatabase(): Promise<void> {
   const prisma = createDatabaseClient();
@@ -51,13 +55,18 @@ export async function seedDatabase(): Promise<void> {
       await assignAdminRole(tx, adminUserId, adminRoleId);
       await seedDevelopmentUsers(tx, preparedUsers);
 
-      // Explicit dependency order: identity/RBAC -> agents -> property -> CRM -> sales -> system.
+      // Dependency order is explicit and mirrors bounded-context relationships.
       await seedAgentManagement(tx, adminUserId);
       await seedProperty(tx);
       await seedCrm(tx);
       await seedSales(tx);
+      await seedPropertyMatching(tx);
+      await seedAutomation(tx);
+      await seedContent(tx);
       await seedSystem(tx);
     });
+
+    await verifySeedState(prisma);
   } finally {
     await prisma.$disconnect();
   }
