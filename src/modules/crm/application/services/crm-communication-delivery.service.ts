@@ -7,7 +7,10 @@ import {
   type CommunicationRepository,
 } from '../../domain/repositories/communication.repository.js';
 import type { CommunicationProvider } from '../../infrastructure/providers/communication-provider.js';
-import { ProviderNotConfiguredError } from '../../infrastructure/providers/communication-provider.js';
+import {
+  CommunicationProviderError,
+  ProviderNotConfiguredError,
+} from '../../infrastructure/providers/communication-provider.js';
 import { HttpCommunicationProvider } from '../../infrastructure/providers/http-communication-provider.js';
 
 const CHANNELS = ['EMAIL', 'WHATSAPP', 'SMS'] as const;
@@ -88,9 +91,35 @@ export class CrmCommunicationDeliveryService {
         error instanceof Error
           ? error.message
           : 'Provider delivery failed';
-      await this.fail(uuid, actorUuid, message.slice(0, 240));
+      if (
+        error instanceof CommunicationProviderError &&
+        error.retryable
+      ) {
+        await this.recordRetryableFailure(uuid, actorUuid, message);
+      } else {
+        await this.fail(uuid, actorUuid, message.slice(0, 240));
+      }
       throw error;
     }
+  }
+
+  private async recordRetryableFailure(
+    uuid: string,
+    actorUuid: string | undefined,
+    reason: string,
+  ) {
+    const updated = await this.repository.transitionCommunication(uuid, 'QUEUED', {
+      providerError: reason.slice(0, 240),
+    });
+    await this.audit.record({
+      action: 'CRM_COMMUNICATION_STATUS_CHANGED',
+      actorUuid,
+      entityType: 'communication',
+      entityUuid: uuid,
+      result: 'FAILURE',
+      reason: `communication.delivery_retryable:${reason.slice(0, 160)}`,
+    });
+    return updated;
   }
 
   private async fail(
