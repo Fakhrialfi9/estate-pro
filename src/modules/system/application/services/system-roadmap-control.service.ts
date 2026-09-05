@@ -8,6 +8,9 @@ import { SYSTEM_INTEGRATION_REPOSITORY } from '../../domain/repositories/system-
 import type { SystemRoadmapRepository } from '../../domain/repositories/system-roadmap.repository.js';
 import { SYSTEM_ROADMAP_REPOSITORY } from '../../domain/repositories/system-roadmap.repository.js';
 
+const CREDENTIAL_TYPES = ['API_KEY', 'OAUTH2', 'BEARER', 'BASIC'] as const;
+type CredentialType = (typeof CREDENTIAL_TYPES)[number];
+
 @Injectable()
 export class SystemRoadmapControlService {
   constructor(
@@ -171,14 +174,18 @@ export class SystemRoadmapControlService {
     if (input.columnMapping) validateMapping(asObject(input.columnMapping));
     if (input.fieldMapping) validateMapping(asObject(input.fieldMapping));
     const row = await this.roadmap.importProfile.update(uuid, {
-      ...(input.name !== undefined ? { name: String(input.name).trim() } : {}),
+      ...(input.name !== undefined
+        ? { name: toStringValue(input.name).trim() }
+        : {}),
       ...(input.entity !== undefined
-        ? { entity: String(input.entity).trim() }
+        ? { entity: toStringValue(input.entity).trim() }
         : {}),
       ...(input.version !== undefined
-        ? { version: Number(input.version) }
+        ? { version: toNumberValue(input.version) }
         : {}),
-      ...(input.format !== undefined ? { format: String(input.format) } : {}),
+      ...(input.format !== undefined
+        ? { format: toStringValue(input.format) }
+        : {}),
       ...(input.columnMapping
         ? { columnMapping: sanitize(asObject(input.columnMapping)) }
         : {}),
@@ -186,12 +193,14 @@ export class SystemRoadmapControlService {
         ? { fieldMapping: sanitize(asObject(input.fieldMapping)) }
         : {}),
       ...(input.conflictStrategy !== undefined
-        ? { conflictStrategy: String(input.conflictStrategy) }
+        ? { conflictStrategy: toStringValue(input.conflictStrategy) }
         : {}),
       ...(input.transactionStrategy !== undefined
-        ? { transactionStrategy: String(input.transactionStrategy) }
+        ? { transactionStrategy: toStringValue(input.transactionStrategy) }
         : {}),
-      ...(input.active !== undefined ? { active: Boolean(input.active) } : {}),
+      ...(input.active !== undefined
+        ? { active: toBooleanValue(input.active) }
+        : {}),
       updatedBy: actorUuid,
     });
     await this.auditRecord(actorUuid, row.uuid, 'import-profile-updated');
@@ -224,15 +233,18 @@ export class SystemRoadmapControlService {
   ) {
     const integration = await this.integration(uuid);
     assertVaultRef(input.secretRef);
+    const credentialType = parseCredentialType(input.credentialType);
     const current = await this.roadmap.credential.list(
       integration.id,
-      input.credentialType,
+      credentialType,
     );
     const row = await this.roadmap.credential.create({
       uuid: randomUUID(),
       integrationId: integration.id,
-      credentialType: input.credentialType,
+      credentialType,
       secretRef: input.secretRef,
+      accessTokenRef: null,
+      refreshTokenRef: null,
       version: (current[0]?.version ?? 0) + 1,
       status: 'ACTIVE',
       accessTokenExpiresAt: input.accessTokenExpiresAt ?? null,
@@ -457,17 +469,20 @@ export class SystemRoadmapControlService {
       processedAt: null,
     });
   }
+
   listEvents(uuid: string, status?: string, limit = 50) {
     return this.integration(uuid).then((row) =>
       this.roadmap.event.list(row.id, status, limit),
     );
   }
+
   async processEvent(actorUuid: string, eventUuid: string) {
     return this.roadmap.event.update(eventUuid, {
       status: 'PROCESSED',
       processedAt: new Date(),
     });
   }
+
   async recordConflict(
     actorUuid: string,
     uuid: string,
@@ -498,11 +513,13 @@ export class SystemRoadmapControlService {
       resolvedAt: null,
     });
   }
+
   conflicts(uuid: string, status?: string, limit = 50) {
     return this.integration(uuid).then((row) =>
       this.roadmap.conflict.list(row.id, status, limit),
     );
   }
+
   async resolveConflict(
     actorUuid: string,
     uuid: string,
@@ -515,12 +532,15 @@ export class SystemRoadmapControlService {
       resolvedBy: actorUuid,
     });
   }
+
   alerts(status?: string, severity?: string, limit = 50) {
     return this.roadmap.alert.list(status, severity, limit);
   }
+
   resolveAlert(actorUuid: string, uuid: string) {
     return this.roadmap.alert.resolve(uuid);
   }
+
   resync(
     actorUuid: string,
     uuid: string,
@@ -555,37 +575,81 @@ export class SystemRoadmapControlService {
 function clamp(v: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Math.trunc(v)));
 }
+
 function hashJson(v: Record<string, unknown>) {
   return createHash('sha256').update(JSON.stringify(v)).digest('hex');
 }
+
 function retryAt(attempt: number) {
   return new Date(
     Date.now() + Math.min(300, 2 ** Math.max(0, attempt - 1)) * 1000,
   );
 }
+
 function sanitize(input: Record<string, unknown>) {
   const output: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(input))
-    if (!['__proto__', 'constructor', 'prototype'].includes(key))
+  for (const [key, value] of Object.entries(input)) {
+    if (!['__proto__', 'constructor', 'prototype'].includes(key)) {
       output[key] = value;
+    }
+  }
   return output;
 }
+
 function asObject(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
 }
+
 function validateMapping(input: Record<string, unknown>) {
-  for (const key of Object.keys(input))
-    if (!/^[A-Za-z0-9_.-]{1,160}$/.test(key))
+  for (const key of Object.keys(input)) {
+    if (!/^[A-Za-z0-9_.-]{1,160}$/.test(key)) {
       throw new Error('Invalid import mapping');
+    }
+  }
 }
+
 function assertVaultRef(value: string) {
-  if (!/^vault:[A-Za-z0-9._/-]{1,240}$/.test(value))
+  if (!/^vault:[A-Za-z0-9._/-]{1,240}$/.test(value)) {
     throw new Error(
       'Credential secretRef must reference a configured vault secret',
     );
+  }
 }
-function redact(value: string) {
-  return `vault-ref:${createHash('sha256').update(value).digest('hex').slice(0, 12)}`;
+
+function parseCredentialType(value: string): CredentialType {
+  if ((CREDENTIAL_TYPES as readonly string[]).includes(value)) {
+    return value as CredentialType;
+  }
+  throw new Error('Invalid integration credential type');
+}
+
+function toStringValue(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return value.toString();
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  throw new Error('Expected a primitive string value');
+}
+
+function toNumberValue(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  throw new Error('Expected a numeric value');
+}
+
+function toBooleanValue(value: unknown): boolean {
+  if (typeof value === 'boolean') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new Error('Expected a boolean value');
+}
+
+function redact(value: string | null) {
+  return value
+    ? `vault-ref:${createHash('sha256').update(value).digest('hex').slice(0, 12)}`
+    : null;
 }
