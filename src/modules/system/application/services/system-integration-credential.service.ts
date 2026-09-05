@@ -2,7 +2,6 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
 import type { IntegrationProviderPort } from '../../domain/integration/integration.contracts.js';
-import { SYSTEM_INTEGRATION_REPOSITORY, type SystemIntegrationRepository } from '../../domain/repositories/system-integration.repository.js';
 import { SYSTEM_ROADMAP_REPOSITORY, type SystemRoadmapRepository, type IntegrationCredentialRecord } from '../../domain/repositories/system-roadmap.repository.js';
 
 const REF_PATTERN = /^vault:\/[A-Za-z0-9._\/-]{1,240}$/;
@@ -11,7 +10,6 @@ const REFRESH_SKEW_MS = 60_000;
 @Injectable()
 export class SystemIntegrationCredentialService {
   constructor(
-    @Inject(SYSTEM_INTEGRATION_REPOSITORY) private readonly integrations: SystemIntegrationRepository,
     @Inject(SYSTEM_ROADMAP_REPOSITORY) private readonly roadmap: SystemRoadmapRepository,
     @Inject(SECURITY_AUDIT_REPOSITORY) private readonly audit: SecurityAuditRepository,
   ) {}
@@ -48,8 +46,7 @@ export class SystemIntegrationCredentialService {
   }
 
   private async require(uuid: string): Promise<IntegrationCredentialRecord> {
-    const result = await this.roadmap.credential.list(0n);
-    const credential = result.find((item) => item.uuid === uuid);
+    const credential = await this.roadmap.credential.get(uuid);
     if (!credential) throw new NotFoundException('Integration credential not found');
     return credential;
   }
