@@ -8,6 +8,7 @@ import type {
   AutomationLeadContext,
 } from '../../../../common/contracts/automation-crm.port.js';
 import { CrmService } from '../crm.service.js';
+import { CrmCommunicationDeliveryService } from './crm-communication-delivery.service.js';
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -25,7 +26,10 @@ const toCrmActor = (actor: AutomationActor): CrmActor => ({
 
 @Injectable()
 export class CrmAutomationAdapter implements AutomationCrmPort {
-  constructor(private readonly crm: CrmService) {}
+  constructor(
+    private readonly crm: CrmService,
+    private readonly communicationDelivery: CrmCommunicationDeliveryService,
+  ) {}
   async getLead(uuid: string): Promise<AutomationLeadContext> {
     const lead = asRecord(await this.crm.getLead(uuid));
     return {
@@ -68,6 +72,11 @@ export class CrmAutomationAdapter implements AutomationCrmPort {
   ) {
     return this.crm
       .communicationCreate({ ...input }, toCrmActor(actor))
+      .then(asRecord);
+  }
+  deliverCommunication(uuid: string, actor: AutomationActor) {
+    return this.communicationDelivery
+      .deliver(uuid, actor.actorUuid)
       .then(asRecord);
   }
   changeLeadStatus(uuid: string, statusUuid: string, actor: AutomationActor) {
