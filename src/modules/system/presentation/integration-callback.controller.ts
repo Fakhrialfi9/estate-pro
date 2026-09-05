@@ -34,7 +34,9 @@ export class IntegrationCallbackController {
     @Req() request: Request & { rawBody?: Buffer },
   ) {
     if (contentType?.toLowerCase().split(';')[0].trim() !== 'application/json')
-      throw new BadRequestException('Callback Content-Type must be application/json');
+      throw new BadRequestException(
+        'Callback Content-Type must be application/json',
+      );
     if (!timestamp || !signature)
       throw new UnauthorizedException('Callback authentication required');
     if (!request.rawBody)

@@ -56,7 +56,9 @@ export class SystemIntegrationCallbackService {
       throw new UnauthorizedException('Expired callback');
 
     if (!provider.verifySignature)
-      throw new UnauthorizedException('Callback signature verification is not configured');
+      throw new UnauthorizedException(
+        'Callback signature verification is not configured',
+      );
 
     let verified = false;
     try {
@@ -70,7 +72,8 @@ export class SystemIntegrationCallbackService {
     } catch {
       verified = false;
     }
-    if (!verified) throw new UnauthorizedException('Invalid callback signature');
+    if (!verified)
+      throw new UnauthorizedException('Invalid callback signature');
 
     if (!provider.normalizeInbound)
       throw new BadRequestException(
@@ -84,7 +87,9 @@ export class SystemIntegrationCallbackService {
       throw new BadRequestException('Callback payload is invalid JSON');
     }
 
-    let event: ReturnType<NonNullable<IntegrationProviderPort['normalizeInbound']>>;
+    let event: ReturnType<
+      NonNullable<IntegrationProviderPort['normalizeInbound']>
+    >;
     try {
       event = provider.normalizeInbound(parsed);
     } catch {

@@ -1,11 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
-import type {
-  IntegrationOperationRecord,
-} from '../../domain/repositories/system-roadmap.repository.js';
-import type {
-  SystemIntegrationOperationRetryRepository,
-} from '../../domain/repositories/system-integration-operation-retry.repository.js';
+import type { IntegrationOperationRecord } from '../../domain/repositories/system-roadmap.repository.js';
+import type { SystemIntegrationOperationRetryRepository } from '../../domain/repositories/system-integration-operation-retry.repository.js';
 
 const object = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
@@ -51,9 +47,10 @@ export class PrismaSystemIntegrationOperationRetryRepository
         },
       });
       if (result.count !== 1) continue;
-      const row = await this.prisma.systemIntegrationOperation.findUniqueOrThrow({
-        where: { uuid: candidate.uuid },
-      });
+      const row =
+        await this.prisma.systemIntegrationOperation.findUniqueOrThrow({
+          where: { uuid: candidate.uuid },
+        });
       claimed.push({
         ...row,
         requestPayload: object(row.requestPayload),

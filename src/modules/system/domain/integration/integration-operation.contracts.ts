@@ -14,7 +14,7 @@ export type IntegrationCredentialStatus =
 
 export type IntegrationOperationState =
   | 'QUEUED'
-  |   'RUNNING'
+  | 'RUNNING'
   | 'SUCCEEDED'
   | 'FAILED'
   | 'RETRY_SCHEDULED'

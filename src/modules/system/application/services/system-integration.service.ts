@@ -218,14 +218,12 @@ export class SystemIntegrationService {
     };
   }
 
-  async reconnect(
-    actorUuid: string,
-    uuid: string,
-    idempotencyKey?: string,
-  ) {
+  async reconnect(actorUuid: string, uuid: string, idempotencyKey?: string) {
     const current = await this.require(uuid);
     if (current.state === 'DISABLED')
-      throw new BadRequestException('Disabled integration cannot be reconnected');
+      throw new BadRequestException(
+        'Disabled integration cannot be reconnected',
+      );
     if (current.state === 'CONNECTING')
       throw new ConflictException('Integration reconnect is already running');
 
@@ -252,7 +250,9 @@ export class SystemIntegrationService {
           state: 'ACTIVE',
           idempotentReplay: true,
         };
-      throw new ConflictException('Integration reconnect idempotency key was already used');
+      throw new ConflictException(
+        'Integration reconnect idempotency key was already used',
+      );
     }
 
     const lockKey = `reconnect-lock:${uuid}`;
@@ -262,7 +262,8 @@ export class SystemIntegrationService {
     );
     if (
       lockExisting &&
-      (lockExisting.state === 'RUNNING' || lockExisting.state === 'RETRY_SCHEDULED')
+      (lockExisting.state === 'RUNNING' ||
+        lockExisting.state === 'RETRY_SCHEDULED')
     )
       throw new ConflictException('Integration reconnect is already running');
 
@@ -304,7 +305,9 @@ export class SystemIntegrationService {
           };
         throw new ConflictException('Integration reconnect is already running');
       }
-      throw new ConflictException('Integration reconnect could not be reserved');
+      throw new ConflictException(
+        'Integration reconnect could not be reserved',
+      );
     }
 
     await this.repository.update(uuid, {

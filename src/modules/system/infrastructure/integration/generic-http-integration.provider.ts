@@ -85,7 +85,10 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
           headers: {
             accept: 'application/json',
             'content-type': 'application/json',
-            ...(await this.authorizationHeaders(input.metadata, input.secretRef)),
+            ...(await this.authorizationHeaders(
+              input.metadata,
+              input.secretRef,
+            )),
           },
           body: JSON.stringify({ operation: 'reconnect' }),
           redirect: 'error',
@@ -167,7 +170,9 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
 
   mapResponse(response: unknown): CanonicalIntegrationResponse {
     if (!isRecord(response) || typeof response.operationKey !== 'string')
-      throw new Error('Provider response cannot be mapped to canonical response');
+      throw new Error(
+        'Provider response cannot be mapped to canonical response',
+      );
     const data = response.data;
     if (data !== undefined && !isRecord(data))
       throw new Error('Provider response data is invalid');
@@ -198,7 +203,8 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     const metadata = context?.metadata ?? {};
     const endpoint =
       stringValue(metadata.pushUrl) ?? stringValue(metadata.endpoint);
-    if (!endpoint) throw new Error('Integration push endpoint is not configured');
+    if (!endpoint)
+      throw new Error('Integration push endpoint is not configured');
 
     const mapped = this.mapRequest(request);
     const response = await this.post(
@@ -248,7 +254,9 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
       const supplied = input.signature.trim().replace(/^sha256=/i, '');
       if (!/^[a-f0-9]{64}$/i.test(supplied)) return false;
       const expected = Buffer.from(supplied, 'hex');
-      return expected.length === digest.length && timingSafeEqual(expected, digest);
+      return (
+        expected.length === digest.length && timingSafeEqual(expected, digest)
+      );
     } catch {
       return false;
     }
@@ -281,8 +289,10 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     if (!aggregateType || !aggregateUuid)
       throw new Error('Inbound aggregate identity is missing');
     const eventVersion = numberValue(input.eventVersion, 1);
-    if (eventVersion > 1000) throw new Error('Inbound event version is invalid');
-    const occurredAtRaw = stringValue(input.occurredAt) ?? stringValue(input.timestamp);
+    if (eventVersion > 1000)
+      throw new Error('Inbound event version is invalid');
+    const occurredAtRaw =
+      stringValue(input.occurredAt) ?? stringValue(input.timestamp);
     const occurredAt = occurredAtRaw ? new Date(occurredAtRaw) : new Date();
     if (!Number.isFinite(occurredAt.getTime()))
       throw new Error('Inbound event timestamp is invalid');
@@ -305,7 +315,8 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
   ) {
     const endpoint =
       stringValue(metadata.healthUrl) ?? stringValue(metadata.endpoint);
-    if (!endpoint) throw new Error('Integration health endpoint is not configured');
+    if (!endpoint)
+      throw new Error('Integration health endpoint is not configured');
     const url = await assertPublicHttpsUrl(endpoint);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -386,7 +397,8 @@ function parseRetryAfter(value: string | null): number | null {
 }
 
 function errorCode(error: unknown) {
-  if (error instanceof IntegrationProviderHttpError) return `HTTP_${error.statusCode}`;
+  if (error instanceof IntegrationProviderHttpError)
+    return `HTTP_${error.statusCode}`;
   if (error instanceof Error && /aborted|timeout/i.test(error.message))
     return 'PROVIDER_TIMEOUT';
   return 'PROVIDER_UNAVAILABLE';
@@ -428,12 +440,16 @@ function isPrivateHost(address: string) {
   );
 }
 
-async function readJson(response: Response, requireJson: boolean): Promise<unknown> {
+async function readJson(
+  response: Response,
+  requireJson: boolean,
+): Promise<unknown> {
   const text = await response.text();
   if (Buffer.byteLength(text, 'utf8') > MAX_RESPONSE_BYTES)
     throw new Error('Provider response exceeds limit');
   if (!text.trim()) {
-    if (requireJson) throw new Error('Provider returned an empty JSON response');
+    if (requireJson)
+      throw new Error('Provider returned an empty JSON response');
     return {};
   }
   try {
@@ -448,7 +464,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function deepCloneRecord(value: Record<string, unknown>): Record<string, unknown> {
+function deepCloneRecord(
+  value: Record<string, unknown>,
+): Record<string, unknown> {
   return structuredClone(value);
 }
 

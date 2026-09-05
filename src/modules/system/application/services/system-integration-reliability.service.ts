@@ -101,7 +101,11 @@ export class SystemIntegrationReliabilityService {
 
       try {
         const value = await this.withTimeout(operation(provider), remainingMs);
-        await this.recordSuccess(runtime.integrationId, integrationUuid, runtime);
+        await this.recordSuccess(
+          runtime.integrationId,
+          integrationUuid,
+          runtime,
+        );
         return {
           value,
           retry: {
@@ -140,7 +144,10 @@ export class SystemIntegrationReliabilityService {
           lastOperationStatus: 'FAILED',
         });
 
-        if (!retryable) throw error instanceof Error ? error : new Error('Integration operation failed');
+        if (!retryable)
+          throw error instanceof Error
+            ? error
+            : new Error('Integration operation failed');
 
         const waitMs = Math.min(
           delay,
@@ -162,11 +169,17 @@ export class SystemIntegrationReliabilityService {
     const provider = await this.integrations.providerFor(integrationUuid);
     const runtime = await this.integrations.runtimeFor(integrationUuid);
     if (!provider.health)
-      throw new NotFoundException('Provider health capability is not implemented');
-    const configuration = await this.integrations.providerConfiguration(integrationUuid);
+      throw new NotFoundException(
+        'Provider health capability is not implemented',
+      );
+    const configuration =
+      await this.integrations.providerConfiguration(integrationUuid);
     const started = Date.now();
     try {
-      const result = await this.withTimeout(provider.health(configuration), 3_000);
+      const result = await this.withTimeout(
+        provider.health(configuration),
+        3_000,
+      );
       const status = result.ok
         ? result.latencyMs >= 1_000
           ? 'DEGRADED'
@@ -223,7 +236,10 @@ export class SystemIntegrationReliabilityService {
     const now = Date.now();
     this.failureWindows.set(
       integrationUuid,
-      window.filter((timestamp) => now - timestamp <= DEFAULT_INTEGRATION_RETRY_POLICY.circuitWindowMs),
+      window.filter(
+        (timestamp) =>
+          now - timestamp <= DEFAULT_INTEGRATION_RETRY_POLICY.circuitWindowMs,
+      ),
     );
     await this.roadmap.runtime.update(integrationId, {
       circuitState: 'CLOSED',
@@ -238,10 +254,16 @@ export class SystemIntegrationReliabilityService {
     this.halfOpenProbes.delete(integrationUuid);
   }
 
-  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  private async withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+  ): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('Integration operation timeout')), timeoutMs);
+      timer = setTimeout(
+        () => reject(new Error('Integration operation timeout')),
+        timeoutMs,
+      );
     });
     try {
       return await Promise.race([promise, timeout]);

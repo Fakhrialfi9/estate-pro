@@ -62,7 +62,9 @@ export class IntegrationController {
 
   @Get(':uuid/health')
   @RequirePermissions('system.integration.read')
-  @ApiOperation({ summary: 'Check external provider health for an integration' })
+  @ApiOperation({
+    summary: 'Check external provider health for an integration',
+  })
   health(@Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.reliability.providerHealth(uuid);
   }

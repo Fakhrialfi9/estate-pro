@@ -10,7 +10,8 @@ type MappingRule = Readonly<{
 }>;
 
 const MAX_RULES = 100;
-const PATH_PATTERN = /^(?!.*(?:^|\.)(__proto__|prototype|constructor)(?:\.|$))[A-Za-z0-9_$-]+(?:\.[A-Za-z0-9_$-]+)*$/;
+const PATH_PATTERN =
+  /^(?!.*(?:^|\.)(__proto__|prototype|constructor)(?:\.|$))[A-Za-z0-9_$-]+(?:\.[A-Za-z0-9_$-]+)*$/;
 const TRANSFORMS = new Set<MappingTransform>([
   'string',
   'number',
@@ -76,18 +77,17 @@ export class SystemIntegrationMappingService {
         : configuration;
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return [];
 
-    return Object.entries(raw).filter(([key]) => key !== 'providerVersion').map(
-      ([target, value]) => {
-        if (typeof value === 'string') return [target, { from: value }] as const;
+    return Object.entries(raw)
+      .filter(([key]) => key !== 'providerVersion')
+      .map(([target, value]) => {
+        if (typeof value === 'string')
+          return [target, { from: value }] as const;
         if (!value || typeof value !== 'object' || Array.isArray(value))
           throw new Error(`Invalid integration mapping rule: ${target}`);
         const rule = value as Record<string, unknown>;
         if (rule.from !== undefined && typeof rule.from !== 'string')
           throw new Error(`Invalid integration mapping source: ${target}`);
-        if (
-          rule.transform !== undefined &&
-          typeof rule.transform !== 'string'
-        )
+        if (rule.transform !== undefined && typeof rule.transform !== 'string')
           throw new Error(`Invalid integration mapping transform: ${target}`);
         if (
           rule.omitIfNull !== undefined &&
@@ -97,14 +97,13 @@ export class SystemIntegrationMappingService {
         return [
           target,
           {
-            from: rule.from as string | undefined,
+            from: rule.from,
             default: rule.default,
             transform: rule.transform as MappingTransform | undefined,
-            omitIfNull: rule.omitIfNull as boolean | undefined,
+            omitIfNull: rule.omitIfNull,
           },
         ] as const;
-      },
-    );
+      });
   }
 
   private transform(value: unknown, transform?: MappingTransform) {
@@ -165,7 +164,7 @@ export class SystemIntegrationMappingService {
       }
     }
     if (Array.isArray(current)) current[Number(parts.at(-1)!)] = value;
-    else (current as Record<string, unknown>)[parts.at(-1)!] = value;
+    else current[parts.at(-1)!] = value;
   }
 
   private assertPath(path: string) {

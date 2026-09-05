@@ -238,7 +238,9 @@ export class SystemRoadmapControlController {
   }
   @Post('operations/:uuid/retry')
   @RequirePermissions('system.integration.operation.update')
-  @ApiOperation({ summary: 'Schedule a failed integration operation for retry' })
+  @ApiOperation({
+    summary: 'Schedule a failed integration operation for retry',
+  })
   retryOperation(@Req() req: Request, @Param('uuid') uuid: string) {
     return this.sync.retryOperation(actor(req), uuid);
   }

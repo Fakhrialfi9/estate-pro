@@ -15,10 +15,7 @@ import { RequirePermissions } from '../../../common/security/authorization.decor
 import { SECURITY_AUDIT_REPOSITORY } from '../../../common/audit/security-audit.port.js';
 import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';
 import { Inject } from '@nestjs/common';
-import {
-  SYSTEM_CACHE,
-  type SystemCachePort,
-} from './system-cache.port.js';
+import { SYSTEM_CACHE, type SystemCachePort } from './system-cache.port.js';
 
 @ApiTags('System Cache')
 @ApiBearerAuth()

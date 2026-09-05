@@ -73,8 +73,12 @@ export class SystemIntegrationSyncService
       );
     const runtime = await this.integrations.runtimeFor(integrationUuid);
     this.mapping.validate(runtime.requestMapping, provider.version);
-    const mappedPayload = this.mapping.map(input.payload, runtime.requestMapping);
-    const context = await this.integrations.providerConfiguration(integrationUuid);
+    const mappedPayload = this.mapping.map(
+      input.payload,
+      runtime.requestMapping,
+    );
+    const context =
+      await this.integrations.providerConfiguration(integrationUuid);
     const existing = await this.roadmap.operation.getByIdempotency(
       runtime.integrationId,
       input.idempotencyKey,
@@ -103,7 +107,9 @@ export class SystemIntegrationSyncService
           attempts: existing.attempt,
         };
       if (existing.attempt >= existing.maxAttempts)
-        throw new ConflictException('Integration operation retry limit exhausted');
+        throw new ConflictException(
+          'Integration operation retry limit exhausted',
+        );
     }
 
     let operation = existing;
@@ -142,10 +148,15 @@ export class SystemIntegrationSyncService
           runtime.integrationId,
           input.idempotencyKey,
         );
-        if (!raced) throw new ConflictException('Integration operation could not be reserved');
+        if (!raced)
+          throw new ConflictException(
+            'Integration operation could not be reserved',
+          );
         operation = raced;
         if (raced.state === 'RUNNING')
-          throw new ConflictException('Integration operation is already running');
+          throw new ConflictException(
+            'Integration operation is already running',
+          );
       }
     } else if (operation.state === 'FAILED') {
       operation = await this.roadmap.operation.update(operation.uuid, {
@@ -173,16 +184,13 @@ export class SystemIntegrationSyncService
       );
       const response = {
         ...result.value,
-        data: this.mapping.map(
-          result.value.data as Record<string, unknown>,
-          runtime.responseMapping,
-        ),
+        data: this.mapping.map(result.value.data, runtime.responseMapping),
       };
       await this.roadmap.operation.update(operation.uuid, {
         state: 'SUCCEEDED',
         attempt: operation.attempt,
         responseHash: hashJson(response),
-        responsePayload: response as Record<string, unknown>,
+        responsePayload: response,
         completedAt: new Date(),
         nextAttemptAt: null,
         errorCode: null,
@@ -228,7 +236,8 @@ export class SystemIntegrationSyncService
       );
     const runtime = await this.integrations.runtimeFor(integrationUuid);
     this.mapping.validate(runtime.responseMapping, provider.version);
-    const context = await this.integrations.providerConfiguration(integrationUuid);
+    const context =
+      await this.integrations.providerConfiguration(integrationUuid);
     const limit = Math.min(MAX_PULL, Math.max(1, input.limit ?? 50));
     const cursor = runtime.syncCursor;
     const idempotencyKey = `sync.pull:${integrationUuid}:${cursor ?? 'initial'}:${input.resourceType}`;
@@ -280,7 +289,11 @@ export class SystemIntegrationSyncService
           attempt: 1,
           maxAttempts: OPERATION_MAX_ATTEMPTS,
           state: 'RUNNING',
-          requestHash: hashJson({ resourceType: input.resourceType, limit, cursor }),
+          requestHash: hashJson({
+            resourceType: input.resourceType,
+            limit,
+            cursor,
+          }),
           responseHash: null,
           requestPayload: { resourceType: input.resourceType, limit, cursor },
           responsePayload: null,
@@ -296,12 +309,17 @@ export class SystemIntegrationSyncService
           runtime.integrationId,
           idempotencyKey,
         );
-        if (!raced) throw new ConflictException('Integration operation could not be reserved');
+        if (!raced)
+          throw new ConflictException(
+            'Integration operation could not be reserved',
+          );
         operation = raced;
       }
     } else {
       if (operation.attempt >= operation.maxAttempts)
-        throw new ConflictException('Integration operation retry limit exhausted');
+        throw new ConflictException(
+          'Integration operation retry limit exhausted',
+        );
       operation = await this.roadmap.operation.update(operation.uuid, {
         state: 'RUNNING',
         attempt: operation.attempt + 1,
@@ -314,11 +332,14 @@ export class SystemIntegrationSyncService
 
     try {
       const result = await this.reliability.execute(integrationUuid, () =>
-        provider.pull!({
-          resourceType: input.resourceType,
-          cursor,
-          limit,
-        }, context),
+        provider.pull!(
+          {
+            resourceType: input.resourceType,
+            cursor,
+            limit,
+          },
+          context,
+        ),
       );
       const records = result.value.records.map((record) =>
         this.mapping.map(record, runtime.responseMapping),
@@ -331,7 +352,10 @@ export class SystemIntegrationSyncService
       await this.roadmap.operation.update(operation.uuid, {
         state: 'SUCCEEDED',
         attempt: operation.attempt,
-        responseHash: hashJson({ records, nextCursor: result.value.nextCursor }),
+        responseHash: hashJson({
+          records,
+          nextCursor: result.value.nextCursor,
+        }),
         responsePayload: { records, nextCursor: result.value.nextCursor },
         completedAt: new Date(),
         nextAttemptAt: null,
@@ -359,7 +383,9 @@ export class SystemIntegrationSyncService
         state: nextAttemptAt ? 'RETRY_SCHEDULED' : 'FAILED',
         nextAttemptAt,
         completedAt: nextAttemptAt ? null : new Date(),
-        errorCode: retryable ? 'PROVIDER_TRANSIENT_FAILURE' : 'PROVIDER_PERMANENT_FAILURE',
+        errorCode: retryable
+          ? 'PROVIDER_TRANSIENT_FAILURE'
+          : 'PROVIDER_PERMANENT_FAILURE',
         errorMessage: safeError(error),
       });
       throw error;
@@ -421,7 +447,9 @@ export class SystemIntegrationSyncService
       if (operation.state === 'RUNNING')
         throw new ConflictException('Integration operation is already running');
       if (operation.attempt >= operation.maxAttempts)
-        throw new BadRequestException('Integration operation retry limit exhausted');
+        throw new BadRequestException(
+          'Integration operation retry limit exhausted',
+        );
       const updated = await this.roadmap.operation.update(operationUuid, {
         state: 'RETRY_SCHEDULED',
         nextAttemptAt: new Date(),
@@ -462,12 +490,15 @@ export class SystemIntegrationSyncService
 
   private async executeStoredOperation(
     integrationUuid: string,
-    operation: Awaited<ReturnType<SystemRoadmapRepository['operation']['list']>>[number],
+    operation: Awaited<
+      ReturnType<SystemRoadmapRepository['operation']['list']>
+    >[number],
   ) {
     try {
       const provider = await this.integrations.providerFor(integrationUuid);
       const runtime = await this.integrations.runtimeFor(integrationUuid);
-      const context = await this.integrations.providerConfiguration(integrationUuid);
+      const context =
+        await this.integrations.providerConfiguration(integrationUuid);
       const payload = operation.requestPayload ?? {};
       const result =
         operation.operationKey === 'sync.push'
@@ -546,10 +577,7 @@ export class SystemIntegrationSyncService
     );
     return {
       ...result.value,
-      data: this.mapping.map(
-        result.value.data as Record<string, unknown>,
-        responseMapping,
-      ),
+      data: this.mapping.map(result.value.data, responseMapping),
     } as unknown as Record<string, unknown>;
   }
 
