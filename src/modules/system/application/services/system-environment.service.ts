@@ -13,9 +13,9 @@ export class SystemEnvironmentService {
       nodeVersion: process.version,
       platform: process.platform,
       architecture: process.arch,
-      deploymentId: this.config.get<string>('app.deploymentId', null),
-      buildSha: this.config.get<string>('app.buildSha', null),
-      region: this.config.get<string>('app.region', null),
+      deploymentId: this.config.get<string>('app.deploymentId') ?? null,
+      buildSha: this.config.get<string>('app.buildSha') ?? null,
+      region: this.config.get<string>('app.region') ?? null,
       uptimeSeconds: Math.floor(process.uptime()),
     };
   }
