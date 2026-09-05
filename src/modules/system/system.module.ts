@@ -35,6 +35,7 @@ import { SystemImportMappingService } from './application/services/system-import
 import { SystemEnvironmentService } from './application/services/system-environment.service.js';
 import { SystemIntegrationCallbackService } from './application/services/system-integration-callback.service.js';
 import { SystemIntegrationCredentialService } from './application/services/system-integration-credential.service.js';
+import { SystemIntegrationMappingService } from './application/services/system-integration-mapping.service.js';
 import { SystemIntegrationReliabilityService } from './application/services/system-integration-reliability.service.js';
 import { SystemIntegrationSyncService } from './application/services/system-integration-sync.service.js';
 import { SystemOperationalAlertService } from './application/services/system-operational-alert.service.js';
@@ -120,6 +121,7 @@ import {
     SystemEnvironmentService,
     SystemIntegrationCallbackService,
     SystemIntegrationCredentialService,
+    SystemIntegrationMappingService,
     SystemIntegrationReliabilityService,
     SystemIntegrationSyncService,
     SystemOperationalAlertService,
