@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ExecutiveDashboardService } from '../../../src/modules/dashboard/executive-dashboard.service.js';
 
+const AGENT_UUID = '00000000-0000-0000-0000-000000000001';
+
 const user = (permissions: string[] = ['analytics.read']) => ({
-  sub: '00000000-0000-0000-0000-000000000001',
+  sub: AGENT_UUID,
   permissions,
 });
 
@@ -97,7 +99,12 @@ describe('ExecutiveDashboardService', () => {
           sales: [],
           cycle: {},
           revenue: [
-            { period: query.from, currency: 'USD', closedRevenue: '100.00', deals: 1 },
+            {
+              period: query.from,
+              currency: 'USD',
+              closedRevenue: '100.00',
+              deals: 1,
+            },
           ],
           averageDeal: [
             {
@@ -125,7 +132,7 @@ describe('ExecutiveDashboardService', () => {
         report({
           workload: [
             {
-              agentUuid: user()[0],
+              agentUuid: AGENT_UUID,
               displayName: 'Agent',
               leads: 1,
               opportunities: 2,
@@ -136,7 +143,7 @@ describe('ExecutiveDashboardService', () => {
           activity: [],
           conversion: [
             {
-              agentUuid: '00000000-0000-0000-0000-000000000001',
+              agentUuid: AGENT_UUID,
               opportunities: 2,
               wonDeals: 1,
               revenue: '100.00',
@@ -145,7 +152,7 @@ describe('ExecutiveDashboardService', () => {
           propertiesByAgent: [],
           scorecards: [
             {
-              agentUuid: '00000000-0000-0000-0000-000000000001',
+              agentUuid: AGENT_UUID,
               displayName: 'Agent',
               leads: 1,
               opportunities: 2,
