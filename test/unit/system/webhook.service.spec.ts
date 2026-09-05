@@ -74,7 +74,7 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
       ...input,
     }),
   );
-  const listRecentDeliveries = vi.fn((_input: RecentDeliveriesInput) =>
+  const listRecentDeliveries = vi.fn(() =>
     Promise.resolve([] as readonly WebhookDeliveryRecord[]),
   );
   const repository = {
