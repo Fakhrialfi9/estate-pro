@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import type {
   NotificationChannel,
@@ -85,6 +86,41 @@ export class PrismaAutomationNotificationRepository
   implements AutomationNotificationRepository
 {
   constructor(private readonly prisma: PrismaService) {}
+
+  async createNotification(input: Record<string, unknown>) {
+    const priority =
+      typeof input.priority === 'string' ? input.priority : 'NORMAL';
+    const metadata =
+      input.metadata &&
+      typeof input.metadata === 'object' &&
+      !Array.isArray(input.metadata)
+        ? input.metadata
+        : {};
+    const notification = await this.prisma.automationNotification.create({
+      data: {
+        uuid: String(input.uuid),
+        userUuid: String(input.userUuid),
+        type: String(input.type),
+        title: String(input.title),
+        body: String(input.body),
+        entityType:
+          typeof input.entityType === 'string' ? input.entityType : null,
+        entityUuid:
+          typeof input.entityUuid === 'string' ? input.entityUuid : null,
+        status: typeof input.status === 'string' ? input.status : 'UNREAD',
+      },
+    });
+    await this.prisma.automationNotificationPolicy.create({
+      data: {
+        uuid: randomUUID(),
+        notificationUuid: notification.uuid,
+        priority,
+        templateUuid: null,
+        expiresAt: null,
+      },
+    });
+    return { ...clean(notification), priority, metadata };
+  }
 
   async listPreferences(userUuid: string) {
     const rows = await this.prisma.automationNotificationPreference.findMany({
