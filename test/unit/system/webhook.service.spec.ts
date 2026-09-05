@@ -102,13 +102,14 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
   };
   const validateTarget = vi.fn<(endpoint: string) => Promise<URL>>();
   validateTarget.mockResolvedValue(new URL('https://example.test/webhook'));
-  const send = vi.fn<
-    (
-      endpoint: string,
-      payload: string,
-      headers: Record<string, string>,
-    ) => Promise<{ status: number }>
-  >();
+  const send =
+    vi.fn<
+      (
+        endpoint: string,
+        payload: string,
+        headers: Record<string, string>,
+      ) => Promise<{ status: number }>
+    >();
   send.mockResolvedValue({ status: 200 });
   const network = { validateTarget, send };
   const config = {
