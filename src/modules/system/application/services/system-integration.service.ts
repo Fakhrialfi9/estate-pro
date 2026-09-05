@@ -11,6 +11,10 @@ import {
   SYSTEM_INTEGRATION_REPOSITORY,
   type SystemIntegrationRepository,
 } from '../../domain/repositories/system-integration.repository.js';
+import {
+  SYSTEM_ROADMAP_REPOSITORY,
+  type SystemRoadmapRepository,
+} from '../../domain/repositories/system-roadmap.repository.js';
 
 const MAX_PAGE_SIZE = 100;
 
@@ -21,13 +25,14 @@ export class SystemIntegrationService {
   constructor(
     @Inject(SYSTEM_INTEGRATION_REPOSITORY)
     private readonly repository: SystemIntegrationRepository,
+    @Inject(SYSTEM_ROADMAP_REPOSITORY)
+    private readonly roadmap: SystemRoadmapRepository,
     @Inject(SECURITY_AUDIT_REPOSITORY)
     private readonly audit: SecurityAuditRepository,
   ) {}
 
   registerProvider(provider: IntegrationProviderPort): void {
-    if (!provider.key || !provider.version)
-      throw new Error('Integration provider identity is required');
+    if (!provider.key || !provider.version) throw new Error('Integration provider identity is required');
     this.providers.set(this.providerId(provider.key, provider.version), provider);
   }
 
@@ -46,35 +51,18 @@ export class SystemIntegrationService {
 
   async runtimeFor(uuid: string) {
     const row = await this.require(uuid);
-    return this.repositoryRuntime(row.id);
+    return this.roadmap.runtime.getOrCreate(row.id);
   }
 
-  async create(
-    actorUuid: string,
-    input: {
-      providerKey: string;
-      providerVersion: string;
-      metadata: Record<string, unknown>;
-      secretRef?: string;
-    },
-  ) {
+  async create(actorUuid: string, input: { providerKey: string; providerVersion: string; metadata: Record<string, unknown>; secretRef?: string }) {
     const provider = this.findProvider(input.providerKey, input.providerVersion);
     const existing = await this.findByProvider(input.providerKey, input.providerVersion);
     if (existing) return this.toPublic(existing);
     const row = await this.repository.create({
-      uuid: randomUUID(),
-      providerKey: provider.key,
-      providerVersion: provider.version,
-      capabilities: provider.capabilities,
-      state: 'CONFIGURED',
-      metadata: this.safeMetadata(input.metadata),
-      secretRef: input.secretRef ?? null,
+      uuid: randomUUID(), providerKey: provider.key, providerVersion: provider.version,
+      capabilities: provider.capabilities, state: 'CONFIGURED', metadata: this.safeMetadata(input.metadata), secretRef: input.secretRef ?? null,
     });
-    await this.audit.record({
-      action: 'SYSTEM_SETTING_UPDATED', actorUuid, subjectUuid: actorUuid,
-      entityType: 'system_integration', entityUuid: row.uuid, result: 'SUCCESS',
-      reason: `integration.connected=${provider.key}@${provider.version}`,
-    });
+    await this.audit.record({ action: 'SYSTEM_SETTING_UPDATED', actorUuid, subjectUuid: actorUuid, entityType: 'system_integration', entityUuid: row.uuid, result: 'SUCCESS', reason: `integration.connected=${provider.key}@${provider.version}` });
     return this.toPublic(row);
   }
 
@@ -98,22 +86,14 @@ export class SystemIntegrationService {
       ...(input.secretRef !== undefined ? { secretRef: input.secretRef } : {}),
       ...(input.enabled !== undefined ? { state: input.enabled ? 'ACTIVE' : 'DISABLED' } : {}),
     });
-    await this.audit.record({
-      action: 'SYSTEM_SETTING_UPDATED', actorUuid, subjectUuid: actorUuid,
-      entityType: 'system_integration', entityUuid: current.uuid, result: 'SUCCESS',
-      reason: 'integration.updated',
-    });
+    await this.audit.record({ action: 'SYSTEM_SETTING_UPDATED', actorUuid, subjectUuid: actorUuid, entityType: 'system_integration', entityUuid: current.uuid, result: 'SUCCESS', reason: 'integration.updated' });
     return this.toPublic(row);
   }
 
   async remove(actorUuid: string, uuid: string) {
     await this.require(uuid);
     await this.repository.delete(uuid);
-    await this.audit.record({
-      action: 'SYSTEM_SETTING_UPDATED', actorUuid, subjectUuid: actorUuid,
-      entityType: 'system_integration', entityUuid: uuid, result: 'SUCCESS',
-      reason: 'integration.disconnected',
-    });
+    await this.audit.record({ action: 'SYSTEM_SETTING_UPDATED', actorUuid, subjectUuid: actorUuid, entityType: 'system_integration', entityUuid: uuid, result: 'SUCCESS', reason: 'integration.disconnected' });
   }
 
   async test(actorUuid: string, uuid: string) {
@@ -127,11 +107,7 @@ export class SystemIntegrationService {
       errorCode: result.ok ? null : result.code ?? 'CONNECTION_TEST_FAILED',
       errorMessage: result.ok ? null : result.message ?? 'Connection test failed',
     });
-    await this.audit.record({
-      action: 'SYSTEM_SETTING_UPDATED', actorUuid, subjectUuid: actorUuid,
-      entityType: 'system_integration', entityUuid: uuid,
-      result: result.ok ? 'SUCCESS' : 'FAILURE', reason: `integration.test.latencyMs=${latencyMs}`,
-    });
+    await this.audit.record({ action: 'SYSTEM_SETTING_UPDATED', actorUuid, subjectUuid: actorUuid, entityType: 'system_integration', entityUuid: uuid, result: result.ok ? 'SUCCESS' : 'FAILURE', reason: `integration.test.latencyMs=${latencyMs}` });
     return { uuid: updated.uuid, ok: result.ok, latencyMs, code: result.code ?? null, message: result.ok ? null : result.message ?? 'Connection test failed' };
   }
 
@@ -145,19 +121,14 @@ export class SystemIntegrationService {
       errorCode: result.state === 'SUCCEEDED' ? null : result.code ?? 'SYNC_FAILED',
       errorMessage: result.state === 'SUCCEEDED' ? null : result.message ?? 'Integration sync failed',
     });
-    await this.audit.record({
-      action: 'SYSTEM_SETTING_UPDATED', actorUuid, subjectUuid: actorUuid,
-      entityType: 'system_integration', entityUuid: uuid,
-      result: result.state === 'SUCCEEDED' ? 'SUCCESS' : 'FAILURE',
-      reason: `integration.sync.recordsRead=${result.recordsRead ?? 0};recordsChanged=${result.recordsChanged ?? 0}`,
-    });
+    await this.audit.record({ action: 'SYSTEM_SETTING_UPDATED', actorUuid, subjectUuid: actorUuid, entityType: 'system_integration', entityUuid: uuid, result: result.state === 'SUCCEEDED' ? 'SUCCESS' : 'FAILURE', reason: `integration.sync.recordsRead=${result.recordsRead ?? 0};recordsChanged=${result.recordsChanged ?? 0}` });
     return { uuid: updated.uuid, state: result.state, recordsRead: result.recordsRead ?? 0, recordsChanged: result.recordsChanged ?? 0, code: result.code ?? null, message: result.message ?? null };
   }
 
   async reconciliation(uuid: string) {
     const row = await this.require(uuid);
-    const conflicts = await this.repositoryConflictList(row.id);
-    const runtime = await this.repositoryRuntime(row.id);
+    const conflicts = await this.roadmap.conflict.list(row.id, undefined, 100);
+    const runtime = await this.roadmap.runtime.getOrCreate(row.id);
     return {
       uuid: row.uuid,
       providerKey: row.providerKey,
@@ -169,24 +140,6 @@ export class SystemIntegrationService {
       lastSyncedAt: runtime.lastSyncedAt,
       destructiveChanges: false,
     };
-  }
-
-  private async repositoryRuntime(integrationId: bigint) {
-    return this.roadmapRuntime.getOrCreate(integrationId);
-  }
-
-  private async repositoryConflictList(integrationId: bigint) {
-    return this.roadmapConflict.list(integrationId, undefined, 100);
-  }
-
-  private get roadmapRuntime() {
-    const candidate = this.repository as SystemIntegrationRepository & { roadmapRuntime?: never };
-    void candidate;
-    return (this as unknown as { _roadmap?: { runtime: { getOrCreate: (id: bigint) => Promise<unknown> }; conflict: { list: (id: bigint, s?: string, l?: number) => Promise<readonly unknown[]> } }})._roadmap;
-  }
-
-  private get roadmapConflict() {
-    throw new Error('roadmap conflict adapter is not configured');
   }
 
   private async require(uuid: string) {
