@@ -73,7 +73,7 @@ model SystemExportJob {
   downloadTokenHash String?  @map("download_token_hash") @db.Char(64)
   rows              Int      @default(0)
   estimatedRows     Int?     @map("estimated_rows")
-  processedRows     Int      @default(0) @map("processed_rows")
+  processedRows     Int      @default(0)
   completedAt       DateTime? @map("completed_at") @db.DateTime(3)
   cancelledAt       DateTime? @map("cancelled_at") @db.DateTime(3)
   cancelRequested   Boolean  @default(false) @map("cancel_requested")
@@ -95,10 +95,10 @@ model SystemWebhookSubscription {
   endpoint          String   @db.VarChar(2048)
   status            String   @db.VarChar(16)
   events            Json
-  filters           Json
+  filters            Json
   secretCiphertext  String   @map("secret_ciphertext") @db.Text
   secretVersion     Int      @default(1) @map("secret_version")
-  secretCreatedAt   DateTime @default(now()) @map("secret_created_at")
+  secretCreatedAt   DateTime @default(now()) @map("secret_created_at") @db.DateTime(3)
   createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.DateTime(3)
   deliveries        SystemWebhookDelivery[]
@@ -143,7 +143,7 @@ model SystemIntegration {
   metadata          Json
   secretRef         String?  @map("secret_ref") @db.VarChar(255)
   lastTestAt        DateTime? @map("last_test_at") @db.DateTime(3)
-  lastSyncAt        DateTime? @map("last_sync_at") @db.DateTime(3)
+  lastSyncAt         DateTime? @map("last_sync_at") @db.DateTime(3)
   errorCode         String?  @db.VarChar(80)
   errorMessage      String?  @db.VarChar(500)
   createdAt         DateTime @default(now()) @db.DateTime(3)
