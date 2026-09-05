@@ -59,6 +59,9 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     vi.fn<(uuid: string) => Promise<WebhookDeliveryRecord | null>>();
   const findSubscriptionByDelivery =
     vi.fn<(uuid: string) => Promise<WebhookSubscriptionRecord | null>>();
+  const findSubscription = vi.fn((uuid: string) =>
+    Promise.resolve(rows.find((row) => row.uuid === uuid) ?? null),
+  );
   let createdDeliveryInput: CreateDeliveryInput | undefined;
   const createDelivery = vi.fn((input: CreateDeliveryInput) => {
     createdDeliveryInput = input;
@@ -86,6 +89,7 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     listRecentDeliveries,
     findDelivery,
     findSubscriptionByDelivery,
+    findSubscription,
   } as unknown as SystemWebhookRepository;
   const audit = { record: vi.fn().mockResolvedValue(undefined) };
   const secrets = {
