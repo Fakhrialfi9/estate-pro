@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
+import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { SystemWebhookService } from '../application/services/system-webhook.service.js';
@@ -27,7 +27,7 @@ import {
 @ApiTags('System Webhooks')
 @ApiBearerAuth()
 @Controller({ path: 'system/webhooks', version: '1' })
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
 export class WebhookController {
   constructor(private readonly webhooks: SystemWebhookService) {}
 
@@ -84,7 +84,6 @@ export class WebhookController {
 
   @Delete(':uuid')
   @RequirePermissions('system.webhook.delete')
-  @ApiOperation({ summary: 'Delete a webhook subscription' })
   async remove(
     @Req() request: Request,
     @Param('uuid', ParseUUIDPipe) uuid: string,
