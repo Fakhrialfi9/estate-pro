@@ -206,10 +206,7 @@ export interface SystemRoadmapRepository {
           >
         >,
     ): Promise<IntegrationCredentialRecord>;
-    revoke(
-      uuid: string,
-      revokedAt: Date,
-    ): Promise<IntegrationCredentialRecord>;
+    revoke(uuid: string, revokedAt: Date): Promise<IntegrationCredentialRecord>;
     markUsed(
       uuid: string,
       lastUsedAt: Date,
