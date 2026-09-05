@@ -74,8 +74,8 @@ model SystemExportJob {
   cancelledAt       DateTime? @map("cancelled_at") @db.DateTime(3)
   cancelRequested   Boolean  @default(false) @map("cancel_requested")
   artifactBytes     BigInt?  @map("artifact_bytes") @db.UnsignedBigInt
-  expiresAt         DateTime @map("expires_at")
-  errorMessage      String?  @db.VarChar(500)
+  expiresAt         DateTime @map("expires_at") @db.DateTime(3)
+  errorMessage      String?  @map("error_message") @db.VarChar(500)
   createdAt         DateTime @default(now()) @db.DateTime(3)
   updatedAt         DateTime @updatedAt @db.DateTime(3)
   @@index([actorUuid, createdAt])
@@ -96,7 +96,7 @@ model SystemWebhookSubscription {
   secretVersion     Int      @default(1) @map("secret_version")
   secretCreatedAt   DateTime @default(now()) @map("secret_created_at") @db.DateTime(3)
   createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt         DateTime @updatedAt @db.DateTime(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.DateTime(3)
   deliveries        SystemWebhookDelivery[]
   @@index([status, createdAt])
   @@map("system_webhook_subscriptions")
