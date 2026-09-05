@@ -627,7 +627,9 @@ function parseCredentialType(value: string): CredentialType {
 
 function toStringValue(value: unknown): string {
   if (typeof value === 'string') return value;
-  if (typeof value === 'number' && Number.isFinite(value)) return value.toString();
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value.toString();
+  }
   if (typeof value === 'boolean') return value ? 'true' : 'false';
   throw new Error('Expected a primitive string value');
 }
@@ -650,6 +652,9 @@ function toBooleanValue(value: unknown): boolean {
 
 function redact(value: string | null) {
   return value
-    ? `vault-ref:${createHash('sha256').update(value).digest('hex').slice(0, 12)}`
+    ? `vault-ref:${createHash('sha256')
+        .update(value)
+        .digest('hex')
+        .slice(0, 12)}`
     : null;
 }
