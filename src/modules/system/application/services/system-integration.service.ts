@@ -99,7 +99,7 @@ export class SystemIntegrationService {
       entityType: 'system_integration',
       entityUuid: row.uuid,
       result: 'SUCCESS',
-      reason: `integration.connected=${provider.key}@${provider.version}`,
+      reason: `integration.created=${provider.key}@${provider.version}`,
     });
     return this.toPublic(row);
   }
@@ -229,6 +229,15 @@ export class SystemIntegrationService {
     if (current.state === 'CONNECTING')
       throw new ConflictException('Integration reconnect is already running');
 
+    const provider = this.findProvider(
+      current.providerKey,
+      current.providerVersion,
+    );
+    if (!provider.reconnect)
+      throw new BadRequestException(
+        'Integration provider does not support reconnect',
+      );
+
     const key = idempotencyKey?.trim() || `reconnect:${uuid}:${randomUUID()}`;
     const existing = await this.roadmap.operation.getByIdempotency(
       current.id,
@@ -243,35 +252,60 @@ export class SystemIntegrationService {
           state: 'ACTIVE',
           idempotentReplay: true,
         };
-      if (
-        existing.state === 'RUNNING' ||
-        existing.state === 'RETRY_SCHEDULED'
-      )
-        throw new ConflictException('Integration reconnect is already running');
       throw new ConflictException('Integration reconnect idempotency key was already used');
     }
 
+    const lockKey = `reconnect-lock:${uuid}`;
+    const lockExisting = await this.roadmap.operation.getByIdempotency(
+      current.id,
+      lockKey,
+    );
+    if (
+      lockExisting &&
+      (lockExisting.state === 'RUNNING' || lockExisting.state === 'RETRY_SCHEDULED')
+    )
+      throw new ConflictException('Integration reconnect is already running');
+
     const operationUuid = randomUUID();
-    await this.roadmap.operation.create({
-      uuid: operationUuid,
-      integrationId: current.id,
-      operationKey: 'integration.reconnect',
-      direction: 'BIDIRECTIONAL',
-      idempotencyKey: key,
-      attempt: 1,
-      maxAttempts: 1,
-      state: 'RUNNING',
-      requestHash: null,
-      responseHash: null,
-      requestPayload: null,
-      responsePayload: null,
-      nextAttemptAt: null,
-      startedAt: new Date(),
-      completedAt: null,
-      errorCode: null,
-      errorMessage: null,
-      metadata: {},
-    });
+    try {
+      await this.roadmap.operation.create({
+        uuid: operationUuid,
+        integrationId: current.id,
+        operationKey: 'integration.reconnect',
+        direction: 'BIDIRECTIONAL',
+        idempotencyKey: key,
+        attempt: 1,
+        maxAttempts: 1,
+        state: 'RUNNING',
+        requestHash: null,
+        responseHash: null,
+        requestPayload: null,
+        responsePayload: null,
+        nextAttemptAt: null,
+        startedAt: new Date(),
+        completedAt: null,
+        errorCode: null,
+        errorMessage: null,
+        metadata: {},
+      });
+    } catch {
+      const raced = await this.roadmap.operation.getByIdempotency(
+        current.id,
+        key,
+      );
+      if (raced) {
+        if (raced.state === 'SUCCEEDED')
+          return {
+            uuid,
+            ok: true,
+            operationUuid: raced.uuid,
+            state: 'ACTIVE',
+            idempotentReplay: true,
+          };
+        throw new ConflictException('Integration reconnect is already running');
+      }
+      throw new ConflictException('Integration reconnect could not be reserved');
+    }
 
     await this.repository.update(uuid, {
       state: 'CONNECTING',
@@ -279,18 +313,8 @@ export class SystemIntegrationService {
       errorMessage: null,
     });
 
-    const provider = this.findProvider(
-      current.providerKey,
-      current.providerVersion,
-    );
-
     const started = performance.now();
     try {
-      if (!provider.reconnect)
-        throw new BadRequestException(
-          'Integration provider does not support reconnect',
-        );
-
       const reconnectResult = await this.withTimeout(
         provider.reconnect({
           metadata: current.metadata,
@@ -299,16 +323,21 @@ export class SystemIntegrationService {
         RECONNECT_TIMEOUT_MS,
       );
 
-      if (!reconnectResult.ok) {
+      if (!reconnectResult.ok)
         throw new Error(
           reconnectResult.message ??
             reconnectResult.code ??
             'Integration reconnect failed',
         );
-      }
 
       const verification = provider.health
-        ? await this.withTimeout(provider.health(), RECONNECT_TIMEOUT_MS)
+        ? await this.withTimeout(
+            provider.health({
+              metadata: current.metadata,
+              secretRef: current.secretRef,
+            }),
+            RECONNECT_TIMEOUT_MS,
+          )
         : await this.withTimeout(
             provider.testConnection({
               metadata: current.metadata,
@@ -318,9 +347,7 @@ export class SystemIntegrationService {
           );
 
       if (!verification.ok)
-        throw new Error(
-          'Integration reconnect verification failed',
-        );
+        throw new Error('Integration reconnect verification failed');
 
       await this.repository.update(uuid, {
         state: 'ACTIVE',
@@ -481,23 +508,35 @@ export class SystemIntegrationService {
     if (!(error instanceof Error)) return 'Integration operation failed';
     return error.message
       .replace(/bearer\s+[^\s]+/gi, 'Bearer [REDACTED]')
-      .replace(/(token|secret|password|cookie|authorization)\s*[:=]\s*[^,;\s]+/gi, '$1=[REDACTED]')
+      .replace(
+        /(token|secret|password|cookie|authorization)\s*[:=]\s*[^,;\s]+/gi,
+        '$1=[REDACTED]',
+      )
       .slice(0, 500);
   }
 
   private errorCode(error: unknown) {
     if (error instanceof BadRequestException) return 'RECONNECT_NOT_SUPPORTED';
-    if (error instanceof Error && /timeout|aborted|deadline/i.test(error.message))
+    if (
+      error instanceof Error &&
+      /timeout|aborted|deadline/i.test(error.message)
+    )
       return 'RECONNECT_TIMEOUT';
     if (error instanceof Error && /verification/i.test(error.message))
       return 'RECONNECT_VERIFICATION_FAILED';
     return 'RECONNECT_FAILED';
   }
 
-  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  private async withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+  ): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('Integration operation timeout')), timeoutMs);
+      timer = setTimeout(
+        () => reject(new Error('Integration operation timeout')),
+        timeoutMs,
+      );
     });
     try {
       return await Promise.race([promise, timeout]);
