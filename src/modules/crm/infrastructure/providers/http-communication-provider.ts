@@ -155,7 +155,9 @@ function isPrivateAddress(address: string): boolean {
       (a === 172 && b >= 16 && b <= 31)
     );
   }
-  return version === 6 && (address === '::1' || /^(fc|fd|fe80:)/i.test(address));
+  return (
+    version === 6 && (address === '::1' || /^(fc|fd|fe80:)/i.test(address))
+  );
 }
 
 function parseObject(text: string): Record<string, unknown> | null {
