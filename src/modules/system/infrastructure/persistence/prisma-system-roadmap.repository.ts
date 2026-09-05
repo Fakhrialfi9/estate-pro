@@ -4,6 +4,9 @@ import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import type { IntegrationState } from '../../domain/integration/integration.contracts.js';
 import type {
+  IntegrationCredentialStatus,
+} from '../../domain/integration/integration-operation.contracts.js';
+import type {
   FeatureFlagRecord,
   ImportProfileRecord,
   IntegrationConflictRecord,
@@ -21,6 +24,27 @@ const object = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+
+const CREDENTIAL_STATUSES = [
+  'ACTIVE',
+  'EXPIRED',
+  'REVOKED',
+  'ROTATED',
+] as const satisfies readonly IntegrationCredentialStatus[];
+
+const credentialStatus = (value: string): IntegrationCredentialStatus => {
+  if ((CREDENTIAL_STATUSES as readonly string[]).includes(value))
+    return value as IntegrationCredentialStatus;
+  throw new Error(`Invalid integration credential status: ${value}`);
+};
+
+const credentialRecord = <
+  T extends { status: string; metadata: unknown },
+>(row: T) => ({
+  ...row,
+  status: credentialStatus(row.status),
+  metadata: object(row.metadata),
+});
 
 @Injectable()
 export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
@@ -120,7 +144,7 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
       const row = await this.prisma.systemIntegrationCredential.findUnique({
         where: { uuid },
       });
-      return row ? { ...row, metadata: object(row.metadata) } : null;
+      return row ? credentialRecord(row) : null;
     },
     list: async (integrationId: bigint, credentialType?: string) => {
       const rows = await this.prisma.systemIntegrationCredential.findMany({
@@ -130,7 +154,7 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
         },
         orderBy: [{ credentialType: 'asc' }, { version: 'desc' }],
       });
-      return rows.map((row) => ({ ...row, metadata: object(row.metadata) }));
+      return rows.map(credentialRecord);
     },
     create: async (
       input: Omit<IntegrationCredentialRecord, 'issuedAt' | 'lastUsedAt'> &
@@ -144,21 +168,21 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
       const row = await this.prisma.systemIntegrationCredential.create({
         data: input as never,
       });
-      return { ...row, metadata: object(row.metadata) };
+      return credentialRecord(row);
     },
     revoke: async (uuid: string, revokedAt: Date) => {
       const row = await this.prisma.systemIntegrationCredential.update({
         where: { uuid },
         data: { status: 'REVOKED', revokedAt },
       });
-      return { ...row, metadata: object(row.metadata) };
+      return credentialRecord(row);
     },
     markUsed: async (uuid: string, lastUsedAt: Date) => {
       const row = await this.prisma.systemIntegrationCredential.update({
         where: { uuid },
         data: { lastUsedAt },
       });
-      return { ...row, metadata: object(row.metadata) };
+      return credentialRecord(row);
     },
     rotate: async (
       uuid: string,
@@ -172,9 +196,10 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
       },
     ) => {
       const row = await this.prisma.$transaction(async (tx) => {
-        const current = await tx.systemIntegrationCredential.findUniqueOrThrow({
-          where: { uuid },
-        });
+        const current =
+          await tx.systemIntegrationCredential.findUniqueOrThrow({
+            where: { uuid },
+          });
         await tx.systemIntegrationCredential.update({
           where: { uuid },
           data: { status: 'ROTATED', rotatedAt: new Date() },
@@ -195,7 +220,7 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
           },
         });
       });
-      return { ...row, metadata: object(row.metadata) };
+      return credentialRecord(row);
     },
   };
 
