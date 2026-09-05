@@ -1,4 +1,10 @@
 import type { ImportState } from '../system-public.contracts.js';
+import type {
+  ImportColumnMapping,
+  ImportConflictStrategy,
+  ImportFieldMapping,
+  ImportTransactionStrategy,
+} from '../import/import-mapping.contracts.js';
 
 export const SYSTEM_IMPORT_REPOSITORY = Symbol('SYSTEM_IMPORT_REPOSITORY');
 
@@ -10,6 +16,10 @@ export interface SystemImportJobRecord {
   state: ImportState;
   preview: boolean;
   idempotencyKey: string | null;
+  columnMapping: readonly ImportColumnMapping[];
+  fieldMapping: readonly ImportFieldMapping[];
+  conflictStrategy: ImportConflictStrategy;
+  transactionStrategy: ImportTransactionStrategy;
   totalRows: number;
   processedRows: number;
   failedRows: number;
@@ -28,17 +38,15 @@ export interface SystemImportRepository {
     format: 'csv' | 'json';
     preview: boolean;
     idempotencyKey?: string | null;
+    columnMapping: readonly ImportColumnMapping[];
+    fieldMapping: readonly ImportFieldMapping[];
+    conflictStrategy: ImportConflictStrategy;
+    transactionStrategy: ImportTransactionStrategy;
     sourcePath: string | null;
     expiresAt: Date;
   }): Promise<SystemImportJobRecord>;
-  findByUuid(
-    uuid: string,
-    actorUuid?: string,
-  ): Promise<SystemImportJobRecord | null>;
-  findByIdempotencyKey(
-    key: string,
-    actorUuid: string,
-  ): Promise<SystemImportJobRecord | null>;
+  findByUuid(uuid: string, actorUuid?: string): Promise<SystemImportJobRecord | null>;
+  findByIdempotencyKey(key: string, actorUuid: string): Promise<SystemImportJobRecord | null>;
   update(
     uuid: string,
     input: Partial<
@@ -59,13 +67,7 @@ export interface SystemImportRepository {
     page: number;
     limit: number;
     state?: ImportState;
-  }): Promise<{
-    items: readonly SystemImportJobRecord[];
-    total: number;
-  }>;
-  listExpired(
-    now: Date,
-    limit: number,
-  ): Promise<readonly SystemImportJobRecord[]>;
+  }): Promise<{ items: readonly SystemImportJobRecord[]; total: number }>;
+  listExpired(now: Date, limit: number): Promise<readonly SystemImportJobRecord[]>;
   deleteMany(uuids: readonly string[]): Promise<void>;
 }
