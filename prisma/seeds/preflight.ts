@@ -8,7 +8,7 @@ function prismaCliCommand(): { command: string; prefix: string[] } {
   return { command: 'npx', prefix: ['--no-install', 'prisma'] };
 }
 
-export function assertDatabaseSchemaMatchesMigrations(): void {
+export function assertDatabaseSchemaMatchesSchema(): void {
   const { command, prefix } = prismaCliCommand();
   const result = spawnSync(
     command,
@@ -17,9 +17,9 @@ export function assertDatabaseSchemaMatchesMigrations(): void {
       'migrate',
       'diff',
       '--exit-code',
-      '--from-migrations',
-      './prisma/migrations',
-      '--to-config-datasource',
+      '--from-config-datasource',
+      '--to-schema',
+      './prisma/schema',
     ],
     {
       encoding: 'utf8',
@@ -38,7 +38,7 @@ export function assertDatabaseSchemaMatchesMigrations(): void {
   if (result.status === 2) {
     throw new Error(
       [
-        'Database schema does not match the committed Prisma migration history.',
+        'Database schema does not match the Prisma schema used by this repository.',
         'Run `npx prisma migrate reset` for the local development database, then rerun the seed.',
         output,
       ]
