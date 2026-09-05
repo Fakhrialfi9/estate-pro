@@ -179,12 +179,10 @@ describe('SystemWebhookService', () => {
     await service.replay('actor-uuid', 'original-delivery');
 
     expect(network.send).toHaveBeenCalledOnce();
-    expect(createDelivery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventId: 'event-1',
-        deliveryKey: expect.stringMatching(/^replay:/),
-      }),
-    );
+    expect(createDelivery).toHaveBeenCalledOnce();
+    const [createdDelivery] = createDelivery.mock.calls[0] ?? [];
+    expect(createdDelivery?.eventId).toBe('event-1');
+    expect(createdDelivery?.deliveryKey).toMatch(/^replay:/);
     expect(updateDelivery).toHaveBeenCalled();
     expect(findDelivery).toHaveBeenCalledWith('original-delivery');
     expect(findSubscriptionByDelivery).toHaveBeenCalledWith(
