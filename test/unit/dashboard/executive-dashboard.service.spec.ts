@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  ExecutiveDashboardService,
-} from '../../../src/modules/dashboard/executive-dashboard.service.js';
+import { ExecutiveDashboardService } from '../../../src/modules/dashboard/executive-dashboard.service.js';
 
 const AGENT_UUID = '00000000-0000-0000-0000-000000000001';
 
@@ -71,9 +69,9 @@ describe('ExecutiveDashboardService', () => {
           assignments: [],
         }),
       ),
-      acquisition: vi.fn().mockResolvedValue(
-        report({ sources: [], campaigns: [] }),
-      ),
+      acquisition: vi
+        .fn()
+        .mockResolvedValue(report({ sources: [], campaigns: [] })),
       conversion: vi.fn().mockResolvedValue(
         report({
           leadToOpportunity: { leads: 1, opportunities: 1, rate: 100 },
@@ -93,9 +91,11 @@ describe('ExecutiveDashboardService', () => {
           qualificationSla: { averageHours: 2, thresholdHours: 48 },
         }),
       ),
-      pipeline: vi.fn().mockResolvedValue(
-        report({ pipeline: [], stageVelocity: [], aging: [], value: [] }),
-      ),
+      pipeline: vi
+        .fn()
+        .mockResolvedValue(
+          report({ pipeline: [], stageVelocity: [], aging: [], value: [] }),
+        ),
       salesAndRevenue: vi.fn().mockResolvedValue(
         report({
           sales: [],
@@ -234,11 +234,7 @@ describe('ExecutiveDashboardService', () => {
 
     await service.getSales(
       query,
-      user([
-        'analytics.read',
-        'analytics.revenue.read',
-        'analytics.forecast',
-      ]),
+      user(['analytics.read', 'analytics.revenue.read', 'analytics.forecast']),
     );
 
     expect(analytics.salesAndRevenue).toHaveBeenCalledOnce();

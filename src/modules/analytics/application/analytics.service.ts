@@ -254,9 +254,7 @@ export class AnalyticsService {
           ? Number(((won / opportunities) * 100).toFixed(4))
           : 0,
       };
-      return canReadRevenue
-        ? { ...base, revenue: c.revenue ?? '0' }
-        : base;
+      return canReadRevenue ? { ...base, revenue: c.revenue ?? '0' } : base;
     });
     const safeConversion = this.normalizeRows(conversion).map((row) => {
       if (canReadRevenue) return row;
@@ -327,9 +325,7 @@ export class AnalyticsService {
           ? Number(((won / opportunities) * 100).toFixed(4))
           : 0,
       };
-      return canReadRevenue
-        ? { ...base, revenue: c.revenue ?? '0' }
-        : base;
+      return canReadRevenue ? { ...base, revenue: c.revenue ?? '0' } : base;
     });
     const safeConversion = this.normalizeRows(conversion).map((row) => {
       if (canReadRevenue) return row;
@@ -577,9 +573,7 @@ export class AnalyticsService {
     const converted = this.numberValue(row.converted);
     return {
       ...row,
-      qualifiedRate: leads
-        ? Number(((qualified / leads) * 100).toFixed(4))
-        : 0,
+      qualifiedRate: leads ? Number(((qualified / leads) * 100).toFixed(4)) : 0,
       conversionRate: leads
         ? Number(((converted / leads) * 100).toFixed(4))
         : 0,

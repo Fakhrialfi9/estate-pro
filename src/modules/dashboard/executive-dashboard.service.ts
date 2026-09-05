@@ -262,7 +262,8 @@ export class ExecutiveDashboardService {
 
   private money(value: unknown): string {
     if (typeof value === 'string') return value;
-    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    if (typeof value === 'number' && Number.isFinite(value))
+      return String(value);
     if (typeof value === 'bigint') return value.toString();
     return '0';
   }
@@ -493,8 +494,7 @@ export class ExecutiveDashboardService {
       target: 'expected-revenue',
       forecast: this.number(row.forecast),
       methodology: this.string(row.methodology),
-      confidence:
-        row.confidence === 'NORMAL' ? 'NORMAL' : 'INSUFFICIENT_DATA',
+      confidence: row.confidence === 'NORMAL' ? 'NORMAL' : 'INSUFFICIENT_DATA',
       minimumHistoricalDeals: this.number(row.minimumHistoricalDeals),
       historicalAverageDeal: this.number(row.historicalAverageDeal),
       weightedPipeline: this.number(row.weightedPipeline),
