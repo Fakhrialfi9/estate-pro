@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { IntegrationProviderPort } from '../../domain/integration/integration.contracts.js';
 import type { IntegrationRetryMetadata } from '../../domain/integration/integration-operation.contracts.js';
-import type { SystemRoadmapRepository } from '../../domain/repositories/system-roadmap.repository.js';
-import type { SystemIntegrationService } from './system-integration.service.js';
+import {
+  SYSTEM_ROADMAP_REPOSITORY,
+  type SystemRoadmapRepository,
+} from '../../domain/repositories/system-roadmap.repository.js';
+import { SystemIntegrationService } from './system-integration.service.js';
 
 export type RetryPolicy = Readonly<{
   maxAttempts: number;
@@ -24,6 +31,7 @@ export const DEFAULT_INTEGRATION_RETRY_POLICY: RetryPolicy = {
 export class SystemIntegrationReliabilityService {
   constructor(
     private readonly integrations: SystemIntegrationService,
+    @Inject(SYSTEM_ROADMAP_REPOSITORY)
     private readonly roadmap: SystemRoadmapRepository,
   ) {}
 
