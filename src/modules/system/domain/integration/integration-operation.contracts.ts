@@ -123,7 +123,10 @@ export interface IntegrationProviderInboundPort {
 }
 
 export interface IntegrationProviderHealthPort {
-  health?(): Promise<{
+  health?(input?: {
+    metadata: Record<string, unknown>;
+    secretRef?: string | null;
+  }): Promise<{
     ok: boolean;
     latencyMs: number;
     code?: string;
