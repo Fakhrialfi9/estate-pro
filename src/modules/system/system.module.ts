@@ -189,7 +189,13 @@ import {
     {
       provide: SYSTEM_DATABASE_HEALTH_PORT,
       useFactory: (health: SystemHealthPort) => ({
-        check: health.checkDatabase,
+        check: async (): Promise<'up' | 'down'> => {
+          try {
+            return await health.checkDatabase();
+          } catch {
+            return 'down';
+          }
+        },
       }),
       inject: [SYSTEM_HEALTH_PORT],
     },
