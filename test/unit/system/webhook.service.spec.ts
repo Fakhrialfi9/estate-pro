@@ -13,9 +13,6 @@ type CreateDeliveryInput = Parameters<
 type UpdateDeliveryInput = Parameters<
   SystemWebhookRepository['updateDelivery']
 >[1];
-type RecentDeliveriesInput = Parameters<
-  SystemWebhookRepository['listRecentDeliveries']
->[0];
 
 const subscription = (
   filters: WebhookSubscriptionRecord['filters'] = [],
