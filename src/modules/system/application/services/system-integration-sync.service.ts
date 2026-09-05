@@ -4,8 +4,8 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-  OnModuleDestroy,
-  OnModuleInit,
+  type OnModuleDestroy,
+  type OnModuleInit,
 } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
