@@ -16,6 +16,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { AutomationModule } from '../automation/automation.module.js';
 import { HealthModule } from '../health/health.module.js';
 import { PermissionsModule } from '../permissions/permissions.module.js';
+import { SystemCacheModule } from './cache/system-cache.module.js';
 import { AuditLogsController } from './presentation/audit-logs.controller.js';
 import { ActivityController } from './presentation/activity.controller.js';
 import { ExportController } from './presentation/export.controller.js';
@@ -96,6 +97,7 @@ import {
     AuthorizationModule,
     AutomationModule,
     HealthModule,
+    SystemCacheModule,
   ],
   controllers: [
     AuditLogsController,
