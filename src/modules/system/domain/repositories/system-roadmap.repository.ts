@@ -284,7 +284,9 @@ export interface SystemRoadmapRepository {
     ): Promise<IntegrationIdempotencyRecord>;
   };
   conflict: {
-    upsert(input: IntegrationConflictRecord): Promise<IntegrationConflictRecord>;
+    upsert(
+      input: IntegrationConflictRecord,
+    ): Promise<IntegrationConflictRecord>;
     get(
       integrationId: bigint,
       conflictKey: string,
