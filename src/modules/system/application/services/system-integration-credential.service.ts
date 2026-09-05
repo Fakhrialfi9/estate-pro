@@ -73,8 +73,8 @@ export class SystemIntegrationCredentialService {
     await this.audit.record({
       actorUuid,
       action: 'integration-credential-refreshed',
-      resourceType: 'system_integration_credential',
-      resourceUuid: rotated.uuid,
+      entityType: 'system_integration_credential',
+      entityUuid: rotated.uuid,
     });
     return this.redact(rotated);
   }
