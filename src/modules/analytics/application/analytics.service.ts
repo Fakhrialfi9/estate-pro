@@ -258,7 +258,8 @@ export class AnalyticsService {
     });
     const safeConversion = this.normalizeRows(conversion).map((row) => {
       if (canReadRevenue) return row;
-      const { revenue: _revenue, ...safeRow } = row;
+      const safeRow = { ...row };
+      delete safeRow.revenue;
       return safeRow;
     });
     return this.report(query, {
@@ -329,7 +330,8 @@ export class AnalyticsService {
     });
     const safeConversion = this.normalizeRows(conversion).map((row) => {
       if (canReadRevenue) return row;
-      const { revenue: _revenue, ...safeRow } = row;
+      const safeRow = { ...row };
+      delete safeRow.revenue;
       return safeRow;
     });
     return this.report(query, {
