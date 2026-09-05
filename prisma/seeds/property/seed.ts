@@ -233,15 +233,15 @@ async function seedPropertyAggregate(
     create: { uuid: seedUuid('property-seo', fixture.key), propertyId: property.id, title: fixture.title, description: fixture.shortDescription, keywords: ['property', fixture.categoryCode.toLowerCase(), 'estate-pro'], canonicalUrl: `https://estate-pro.example.test/properties/${fixture.slug}`, ogImageUrl: `https://images.example.test/properties/${fixture.slug}.jpg`, robots: 'INDEX_FOLLOW', metadataVersion: '1.0', schemaType: 'Residence', source: 'SEED' },
   });
 
-  for (const [index, room] of [
+  for (const [index, [roomType, name, floor, area]] of [
     ['MASTER_BEDROOM', 'Master Bedroom', 2, '28.00'],
     ['BEDROOM', 'Bedroom 2', 2, '18.00'],
     ['LIVING_ROOM', 'Living Room', 1, '35.00'],
   ] as const) {
     await tx.propertyRoom.upsert({
       where: { uuid: seedUuid('property-room', `${fixture.key}:${index}`) },
-      update: { propertyId: property.id, roomType: room[0], name: room[1], floor: room[2], area: room[3], areaUnit: 'SQM', hasBathroom: room[0] === 'MASTER_BEDROOM', hasWalkInCloset: room[0] === 'MASTER_BEDROOM', hasBalcony: fixture.key === 'dago-apartment' && room[0] === 'MASTER_BEDROOM', hasAirConditioning: true, sortOrder: index },
-      create: { uuid: seedUuid('property-room', `${fixture.key}:${index}`), propertyId: property.id, roomType: room[0], name: room[1], floor: room[2], area: room[3], areaUnit: 'SQM', hasBathroom: room[0] === 'MASTER_BEDROOM', hasWalkInCloset: room[0] === 'MASTER_BEDROOM', hasBalcony: fixture.key === 'dago-apartment' && room[0] === 'MASTER_BEDROOM', hasAirConditioning: true, sortOrder: index },
+      update: { propertyId: property.id, roomType, name, floor, area, areaUnit: 'SQM', hasBathroom: roomType === 'MASTER_BEDROOM', hasWalkInCloset: roomType === 'MASTER_BEDROOM', hasBalcony: fixture.key === 'dago-apartment' && roomType === 'MASTER_BEDROOM', hasAirConditioning: true, sortOrder: index },
+      create: { uuid: seedUuid('property-room', `${fixture.key}:${index}`), propertyId: property.id, roomType, name, floor, area, areaUnit: 'SQM', hasBathroom: roomType === 'MASTER_BEDROOM', hasWalkInCloset: roomType === 'MASTER_BEDROOM', hasBalcony: fixture.key === 'dago-apartment' && roomType === 'MASTER_BEDROOM', hasAirConditioning: true, sortOrder: index },
     });
   }
 
