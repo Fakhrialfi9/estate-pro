@@ -119,6 +119,17 @@ export class SystemIntegrationService {
     return this.toPublic(row);
   }
 
+  async providerConfiguration(uuid: string): Promise<{
+    metadata: Record<string, unknown>;
+    secretRef: string | null;
+  }> {
+    const row = await this.require(uuid);
+    return {
+      metadata: row.metadata,
+      secretRef: row.secretRef,
+    };
+  }
+
   async update(
     actorUuid: string,
     uuid: string,
