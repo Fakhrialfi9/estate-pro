@@ -17,6 +17,7 @@ import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
+import { SystemIntegrationReliabilityService } from '../application/services/system-integration-reliability.service.js';
 import { SystemIntegrationService } from '../application/services/system-integration.service.js';
 import {
   CreateIntegrationDto,
@@ -29,7 +30,10 @@ import {
 @Controller({ path: 'system/integrations', version: '1' })
 @UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
 export class IntegrationController {
-  constructor(private readonly integrations: SystemIntegrationService) {}
+  constructor(
+    private readonly integrations: SystemIntegrationService,
+    private readonly reliability: SystemIntegrationReliabilityService,
+  ) {}
 
   @Get('registry')
   @RequirePermissions('system.integration.read')
@@ -54,6 +58,13 @@ export class IntegrationController {
   @RequirePermissions('system.integration.read')
   get(@Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.integrations.get(uuid);
+  }
+
+  @Get(':uuid/health')
+  @RequirePermissions('system.integration.read')
+  @ApiOperation({ summary: 'Check external provider health for an integration' })
+  health(@Param('uuid', ParseUUIDPipe) uuid: string) {
+    return this.reliability.providerHealth(uuid);
   }
 
   @Patch(':uuid')
