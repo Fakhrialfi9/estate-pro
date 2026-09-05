@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
-import { assertDatabaseSchemaMatchesMigrations } from './seeds/preflight.ts';
+import { assertDatabaseSchemaMatchesSchema } from './seeds/preflight.ts';
 import { seedDatabase } from './seeds/runner.ts';
 
-assertDatabaseSchemaMatchesMigrations();
+assertDatabaseSchemaMatchesSchema();
 await seedDatabase();
