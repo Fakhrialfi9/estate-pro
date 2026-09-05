@@ -18,6 +18,7 @@ import {
   type SystemJobHealthPort,
   type SystemStorageHealthPort,
 } from '../../domain/operations/system-operations.port.js';
+import { SystemIntegrationService } from './system-integration.service.js';
 
 const MAINTENANCE_KEY = 'system.maintenance_mode';
 const READ_ONLY_KEY = 'system.read_only_mode';
@@ -35,6 +36,7 @@ export class SystemOperationsService {
     private readonly jobHealth: SystemJobHealthPort,
     @Inject(SYSTEM_DATABASE_HEALTH_PORT)
     private readonly databaseHealth: SystemDatabaseHealthPort,
+    private readonly integrations: SystemIntegrationService,
   ) {}
 
   async state(): Promise<SystemOperationalState> {
@@ -104,12 +106,13 @@ export class SystemOperationsService {
 
   async diagnostics(): Promise<SystemOperationalDiagnostics> {
     const state = await this.state();
-    const [database, storage, jobs] = await Promise.all([
+    const [database, storage, jobs, integrations] = await Promise.all([
       this.databaseHealth.check(),
       this.storageHealth.check(),
       this.jobHealth.check(),
+      this.integrationHealth(),
     ]);
-    const components = { database, storage, jobs };
+    const components = { database, storage, jobs, integrations } as const;
     const degraded = Object.values(components).some(
       (value) => value === 'down',
     );
@@ -119,5 +122,18 @@ export class SystemOperationsService {
       readOnlyMode: state.readOnlyMode,
       components,
     };
+  }
+
+  private async integrationHealth(): Promise<'up' | 'down' | 'unknown'> {
+    try {
+      const result = await this.integrations.list(1, 100);
+      if (result.total === 0) return 'up';
+      const hasBroken = result.items.some(
+        (integration) => integration.state === 'ERROR',
+      );
+      return hasBroken ? 'down' : 'up';
+    } catch {
+      return 'unknown';
+    }
   }
 }
