@@ -11,7 +11,7 @@ const SPECIALIZATIONS = [
   { code: 'LEASING', name: 'Leasing', sortOrder: 50 },
 ] as const;
 
-export async function seedAgentManagement(client: SeedTransaction): Promise<void> {
+export async function seedAgentManagement(client: SeedTransaction, assignedByUserId: bigint): Promise<void> {
   const specializationIds = new Map<string, bigint>();
   for (const item of SPECIALIZATIONS) {
     const specialization = await client.agentSpecialization.upsert({
@@ -69,8 +69,7 @@ export async function seedAgentManagement(client: SeedTransaction): Promise<void
       create: { uuid: seedUuid('agent-availability', fixture.userUuid), agentId: profile.id, status: 'ACTIVE', timeZone: fixture.timeZone, effectiveAt: SEED_REFERENCE_DATE },
     });
 
-    const weekdays = [1, 2, 3, 4, 5];
-    for (const weekday of weekdays) {
+    for (const weekday of [1, 2, 3, 4, 5]) {
       await client.agentWeeklySchedule.upsert({
         where: { agentId_weekday_startTime_endTime: { agentId: profile.id, weekday, startTime: '09:00', endTime: '17:00' } },
         update: { isActive: true },
@@ -83,10 +82,11 @@ export async function seedAgentManagement(client: SeedTransaction): Promise<void
       create: { uuid: seedUuid('agent-target', `${fixture.userUuid}:q1-2026`), agentId: profile.id, metricType: 'CLOSED_DEALS', periodType: 'QUARTER', periodStart: new Date('2026-01-01'), periodEnd: new Date('2026-03-31'), targetValue: '6', scope: 'ALL', status: 'ACTIVE', createdBy: '00000000-0000-5000-8000-000000000001', updatedBy: '00000000-0000-5000-8000-000000000001' },
     });
 
-    const roleLink = await client.authorizationUserRole.findUnique({ where: { userId_roleId: { userId: user.id, roleId: agentRole.id } }, select: { userId: true } });
-    if (!roleLink) {
-      await client.authorizationUserRole.create({ userId: user.id, roleId: agentRole.id, isActive: true, assignedBy: 1n, assignedAt: SEED_REFERENCE_DATE });
-    }
+    await client.authorizationUserRole.upsert({
+      where: { userId_roleId: { userId: user.id, roleId: agentRole.id } },
+      update: { isActive: true, revokedAt: null },
+      create: { userId: user.id, roleId: agentRole.id, isActive: true, assignedBy: assignedByUserId, assignedAt: SEED_REFERENCE_DATE },
+    });
   }
 }
 
