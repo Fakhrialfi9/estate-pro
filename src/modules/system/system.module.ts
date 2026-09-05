@@ -60,6 +60,7 @@ import { SystemMetricsService } from './infrastructure/observability/system-metr
 import { WebhookNetworkService } from './infrastructure/webhook/webhook-network.service.js';
 import { WebhookSecretService } from './infrastructure/webhook/webhook-secret.service.js';
 import { WebhookSignerService } from './infrastructure/webhook/webhook-signer.service.js';
+import { GenericHttpIntegrationProvider } from './infrastructure/integration/generic-http-integration.provider.js';
 import { SYSTEM_ACTIVITY_REPOSITORY } from './domain/repositories/system-activity.repository.js';
 import { SYSTEM_ARTIFACT_STORAGE } from './domain/repositories/system-artifact.storage.js';
 import { SYSTEM_EXPORT_REPOSITORY } from './domain/repositories/system-export.repository.js';
@@ -125,6 +126,7 @@ import {
     SystemXlsxExporterAdapter,
     SystemWebhookService,
     SystemIntegrationService,
+    GenericHttpIntegrationProvider,
     SystemOperationsService,
     SystemRoadmapControlService,
     SystemReadOnlyGuard,
@@ -211,7 +213,18 @@ import {
       }),
       inject: [SYSTEM_HEALTH_PORT],
     },
-    { provide: SYSTEM_OPERATIONS_PORT, useExisting: SystemOperationsService },
+    {
+      provide: SYSTEM_OPERATIONS_PORT,
+      useExisting: SystemOperationsService,
+    },
+    {
+      provide: 'SYSTEM_INTEGRATION_PROVIDER_REGISTRATION',
+      inject: [SystemIntegrationService, GenericHttpIntegrationProvider],
+      useFactory: (
+        integrations: SystemIntegrationService,
+        provider: GenericHttpIntegrationProvider,
+      ) => integrations.registerProvider(provider),
+    },
   ],
   exports: [
     SystemSettingsService,
