@@ -4,8 +4,10 @@ export interface CommunicationProvider {
     destination: string;
     subject?: string;
     body: string;
+    idempotencyKey: string;
   }): Promise<{ providerMessageId: string }>;
 }
+
 export class ProviderNotConfiguredError extends Error {
   constructor(channel: string) {
     super(`No ${channel} communication provider is configured`);
