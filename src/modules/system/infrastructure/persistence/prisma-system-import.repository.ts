@@ -86,8 +86,8 @@ export class PrismaSystemImportRepository implements SystemImportRepository {
         format: input.format,
         preview: input.preview,
         idempotencyKey: input.idempotencyKey ?? null,
-        columnMapping: input.columnMapping as Prisma.InputJsonValue,
-        fieldMapping: input.fieldMapping as Prisma.InputJsonValue,
+        columnMapping: input.columnMapping as unknown as Prisma.InputJsonValue,
+        fieldMapping: input.fieldMapping as unknown as Prisma.InputJsonValue,
         conflictStrategy: input.conflictStrategy,
         transactionStrategy: input.transactionStrategy,
         sourcePath: input.sourcePath,
@@ -135,7 +135,9 @@ export class PrismaSystemImportRepository implements SystemImportRepository {
       where: { uuid },
       data: {
         ...input,
-        ...(input.errors ? { errors: input.errors } : {}),
+        ...(input.errors
+          ? { errors: input.errors as unknown as Prisma.InputJsonValue }
+          : {}),
       },
     });
     return toRecord(row);
