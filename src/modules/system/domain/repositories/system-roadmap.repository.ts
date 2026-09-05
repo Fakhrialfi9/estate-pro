@@ -1,7 +1,6 @@
 import type { IntegrationState } from '../integration/integration.contracts.js';
 import type {
   IntegrationCredentialStatus,
-  IntegrationCredentialType,
 } from '../integration/integration-operation.contracts.js';
 
 export const SYSTEM_ROADMAP_REPOSITORY = Symbol('SYSTEM_ROADMAP_REPOSITORY');
@@ -40,7 +39,7 @@ export type ImportProfileRecord = {
 export type IntegrationCredentialRecord = {
   uuid: string;
   integrationId: bigint;
-  credentialType: IntegrationCredentialType;
+  credentialType: string;
   secretRef: string | null;
   accessTokenRef: string | null;
   refreshTokenRef: string | null;
