@@ -5,6 +5,7 @@ import { PrismaService } from '../../../../infrastructure/database/prisma/prisma
 import type {
   SystemActivityRepository,
   SystemActivitySort,
+  SystemActivityWrite,
 } from '../../domain/repositories/system-activity.repository.js';
 import type { SystemActivityRecord } from '../../domain/system.types.js';
 
@@ -21,6 +22,7 @@ type PersistedActivity = {
   requestId: string | null;
   createdAt: Date;
 };
+
 const toRecord = (row: PersistedActivity): SystemActivityRecord => ({
   uuid: row.uuid,
   actorUuid: row.actorUuid,
@@ -39,39 +41,77 @@ const toRecord = (row: PersistedActivity): SystemActivityRecord => ({
   createdAt: row.createdAt,
 });
 
+const toData = (input: SystemActivityWrite): Prisma.SystemActivityCreateInput => ({
+  uuid: input.uuid ?? randomUUID(),
+  actorUuid: input.actorUuid,
+  eventType: input.eventType,
+  category: input.category,
+  resourceType: input.resourceType,
+  resourceUuid: input.resourceUuid,
+  summary: input.summary,
+  metadata: input.metadata as Prisma.InputJsonValue,
+  requestId: input.requestId,
+  ...(input.createdAt ? { createdAt: input.createdAt } : {}),
+});
+
+const toUpdate = (input: SystemActivityWrite): Prisma.SystemActivityUpdateInput => ({
+  actorUuid: input.actorUuid,
+  eventType: input.eventType,
+  category: input.category,
+  resourceType: input.resourceType,
+  resourceUuid: input.resourceUuid,
+  summary: input.summary,
+  metadata: input.metadata as Prisma.InputJsonValue,
+  requestId: input.requestId,
+});
+
 @Injectable()
-export class PrismaSystemActivityRepository
-  implements SystemActivityRepository
-{
+export class PrismaSystemActivityRepository implements SystemActivityRepository {
   constructor(private readonly prisma: PrismaService) {}
-  async append(
-    input: Omit<SystemActivityRecord, 'uuid' | 'createdAt'> & {
-      uuid?: string;
-      createdAt?: Date;
-    },
-  ) {
-    const row = await this.prisma.systemActivity.create({
-      data: {
-        uuid: input.uuid ?? randomUUID(),
-        actorUuid: input.actorUuid,
-        eventType: input.eventType,
-        category: input.category,
-        resourceType: input.resourceType,
-        resourceUuid: input.resourceUuid,
-        summary: input.summary,
-        metadata: input.metadata as Prisma.InputJsonValue,
-        requestId: input.requestId,
-        ...(input.createdAt ? { createdAt: input.createdAt } : {}),
-      },
-    });
-    return toRecord(row);
+
+  async append(input: SystemActivityWrite) {
+    return toRecord(await this.prisma.systemActivity.create({ data: toData(input) }));
   }
+
+  async upsert(input: SystemActivityWrite) {
+    const uuid = input.uuid ?? randomUUID();
+    return toRecord(
+      await this.prisma.systemActivity.upsert({
+        where: { uuid },
+        create: toData({ ...input, uuid }),
+        update: toUpdate(input),
+      }),
+    );
+  }
+
+  async appendBatch(input: readonly SystemActivityWrite[]) {
+    if (input.length === 0) return [];
+    const rows = await this.prisma.$transaction(
+      input.map((item) => this.prisma.systemActivity.create({ data: toData(item) })),
+    );
+    return rows.map(toRecord);
+  }
+
+  async upsertBatch(input: readonly SystemActivityWrite[]) {
+    if (input.length === 0) return [];
+    const rows = await this.prisma.$transaction(
+      input.map((item) => {
+        const uuid = item.uuid ?? randomUUID();
+        return this.prisma.systemActivity.upsert({
+          where: { uuid },
+          create: toData({ ...item, uuid }),
+          update: toUpdate(item),
+        });
+      }),
+    );
+    return rows.map(toRecord);
+  }
+
   async get(uuid: string) {
-    const row = await this.prisma.systemActivity.findUnique({
-      where: { uuid },
-    });
+    const row = await this.prisma.systemActivity.findUnique({ where: { uuid } });
     return row ? toRecord(row) : null;
   }
+
   async list(input: {
     page: number;
     limit: number;
@@ -90,11 +130,10 @@ export class PrismaSystemActivityRepository
       ...(input.resourceUuid ? { resourceUuid: input.resourceUuid } : {}),
     };
     const direction = input.sort === 'createdAt_asc' ? 'asc' : 'desc';
-    const idDirection = direction;
     const [items, total] = await Promise.all([
       this.prisma.systemActivity.findMany({
         where,
-        orderBy: [{ createdAt: direction }, { id: idDirection }],
+        orderBy: [{ createdAt: direction }, { id: direction }],
         skip: (input.page - 1) * input.limit,
         take: input.limit,
       }),
