@@ -17,7 +17,6 @@
     "prisma:status": "prisma migrate status",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
-    "fresh": "bash scripts/fresh-install.sh",
     "clean:hard": "bash scripts/hard-clean.sh",
     "clean:soft": "bash scripts/soft-clean.sh",
     "clean": "npm run clean:soft",
