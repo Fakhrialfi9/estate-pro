@@ -18,7 +18,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
+import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { SystemImportService } from '../application/services/system-import.service.js';
@@ -27,7 +27,7 @@ import { ImportDto, ImportQueryDto } from './dto/import.dto.js';
 @ApiTags('System Import')
 @ApiBearerAuth()
 @Controller({ path: 'system/imports', version: '1' })
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
 export class ImportController {
   constructor(private readonly imports: SystemImportService) {}
 
