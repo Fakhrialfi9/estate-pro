@@ -1,6 +1,5 @@
-import { randomUUID } from 'node:crypto';
-
 import type { SeedTransaction } from '../database.ts';
+import { seedUuid } from '../shared/ids.ts';
 import { PERMISSIONS } from './data.ts';
 
 export async function seedPermissions(
@@ -12,13 +11,14 @@ export async function seedPermissions(
     const record = await client.authorizationPermission.upsert({
       where: { code: permission.code },
       update: {
+        uuid: seedUuid('permission', permission.code),
         name: permission.name,
         module: permission.module,
         domain: permission.domain,
         action: permission.action,
       },
       create: {
-        uuid: randomUUID(),
+        uuid: seedUuid('permission', permission.code),
         name: permission.name,
         code: permission.code,
         module: permission.module,
