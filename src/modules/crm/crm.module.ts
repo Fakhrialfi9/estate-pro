@@ -8,6 +8,7 @@ import { SalesModule } from '../sales/sales.module.js';
 import { CRM_REPOSITORY } from './domain/repositories/crm.repository.js';
 import { COMMUNICATION_REPOSITORY } from './domain/repositories/communication.repository.js';
 import { PrismaCrmRepository } from './infrastructure/persistence/prisma-crm.repository.js';
+import { PrismaCommunicationRepository } from './infrastructure/persistence/prisma-communication.repository.js';
 import { PrismaCrmLifecycleRepository } from './infrastructure/persistence/prisma-crm-lifecycle.repository.js';
 import { CrmService } from './application/crm.service.js';
 import { CrmLifecycleService } from './application/crm-lifecycle.service.js';
@@ -48,6 +49,7 @@ import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
     CrmCommunicationDeliveryService,
     CrmLifecycleService,
     PrismaCrmLifecycleRepository,
+    PrismaCommunicationRepository,
     ScoreDomainService,
     DuplicateDetector,
     LeadMergePolicy,
@@ -55,7 +57,7 @@ import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
     QualificationPolicy,
     ClosurePolicy,
     { provide: CRM_REPOSITORY, useClass: PrismaCrmRepository },
-    { provide: COMMUNICATION_REPOSITORY, useExisting: PrismaCrmRepository },
+    { provide: COMMUNICATION_REPOSITORY, useExisting: PrismaCommunicationRepository },
     { provide: CRM_AUTOMATION_PORT, useExisting: CrmAutomationAdapter },
     {
       provide: CRM_AGENT_WORKLOAD_PORT,
