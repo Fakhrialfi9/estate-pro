@@ -2,7 +2,7 @@ import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsBoolean } from 'class-validator';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../../auth/security/jwt-auth.guard.js';
+import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
 import { SystemOperationsService } from '../application/services/system-operations.service.js';
@@ -15,7 +15,7 @@ class ToggleOperationDto {
 @ApiTags('System Operations')
 @ApiBearerAuth()
 @Controller({ path: 'system/operations', version: '1' })
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
 export class OperationsController {
   constructor(private readonly operations: SystemOperationsService) {}
 
