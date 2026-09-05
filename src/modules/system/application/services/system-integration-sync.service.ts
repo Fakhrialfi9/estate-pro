@@ -1,5 +1,15 @@
-import { BadRequestException, ConflictException, Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
+import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
+import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
 import type { CanonicalIntegrationRequest } from '../../domain/integration/integration-operation.contracts.js';
 import {
   SYSTEM_ROADMAP_REPOSITORY,
@@ -26,6 +36,8 @@ export class SystemIntegrationSyncService
     private readonly mapping: SystemIntegrationMappingService,
     @Inject(SYSTEM_ROADMAP_REPOSITORY)
     private readonly roadmap: SystemRoadmapRepository,
+    @Inject(SECURITY_AUDIT_REPOSITORY)
+    private readonly audit: SecurityAuditRepository,
   ) {}
 
   onModuleInit(): void {
@@ -152,7 +164,7 @@ export class SystemIntegrationSyncService
       };
       await this.roadmap.operation.update(operation.uuid, {
         state: 'SUCCEEDED',
-        attempt: result.retry.attempt,
+        attempt: operation.attempt,
         responseHash: hashJson(response),
         responsePayload: response as Record<string, unknown>,
         completedAt: new Date(),
@@ -180,7 +192,9 @@ export class SystemIntegrationSyncService
         state: nextAttemptAt ? 'RETRY_SCHEDULED' : 'FAILED',
         nextAttemptAt,
         completedAt: nextAttemptAt ? null : new Date(),
-        errorCode: retryable ? 'PROVIDER_TRANSIENT_FAILURE' : 'PROVIDER_PERMANENT_FAILURE',
+        errorCode: retryable
+          ? 'PROVIDER_TRANSIENT_FAILURE'
+          : 'PROVIDER_PERMANENT_FAILURE',
         errorMessage: safeError(error),
       });
       throw error;
@@ -268,6 +282,17 @@ export class SystemIntegrationSyncService
         metadata: { actorUuid },
       }));
 
+    if (existing?.state === 'FAILED') {
+      await this.roadmap.operation.update(operation.uuid, {
+        state: 'RUNNING',
+        attempt: existing.attempt + 1,
+        startedAt: new Date(),
+        nextAttemptAt: null,
+        errorCode: null,
+        errorMessage: null,
+      });
+    }
+
     try {
       const result = await this.reliability.execute(integrationUuid, () =>
         provider.pull!({
@@ -286,7 +311,7 @@ export class SystemIntegrationSyncService
       });
       await this.roadmap.operation.update(operation.uuid, {
         state: 'SUCCEEDED',
-        attempt: result.retry.attempt,
+        attempt: operation.attempt,
         responseHash: hashJson({ records, nextCursor: result.value.nextCursor }),
         responsePayload: {
           records,
@@ -318,7 +343,9 @@ export class SystemIntegrationSyncService
         state: nextAttemptAt ? 'RETRY_SCHEDULED' : 'FAILED',
         nextAttemptAt,
         completedAt: nextAttemptAt ? null : new Date(),
-        errorCode: retryable ? 'PROVIDER_TRANSIENT_FAILURE' : 'PROVIDER_PERMANENT_FAILURE',
+        errorCode: retryable
+          ? 'PROVIDER_TRANSIENT_FAILURE'
+          : 'PROVIDER_PERMANENT_FAILURE',
         errorMessage: safeError(error),
       });
       throw error;
@@ -364,6 +391,42 @@ export class SystemIntegrationSyncService
       .digest('hex');
   }
 
+  async retryOperation(actorUuid: string, operationUuid: string) {
+    const integrations = await this.integrations.list(1, 100);
+    for (const integration of integrations.items) {
+      const runtime = await this.integrations.runtimeFor(integration.uuid);
+      const operations = await this.roadmap.operation.list(
+        runtime.integrationId,
+        undefined,
+        100,
+      );
+      const operation = operations.find((item) => item.uuid === operationUuid);
+      if (!operation) continue;
+      if (operation.state === 'SUCCEEDED')
+        throw new ConflictException('Integration operation already succeeded');
+      if (operation.state === 'RUNNING')
+        throw new ConflictException('Integration operation is already running');
+      if (operation.attempt >= operation.maxAttempts)
+        throw new BadRequestException('Integration operation retry limit exhausted');
+      const updated = await this.roadmap.operation.update(operationUuid, {
+        state: 'RETRY_SCHEDULED',
+        nextAttemptAt: new Date(),
+        completedAt: null,
+      });
+      await this.audit.record({
+        action: 'SYSTEM_INTEGRATION_SYNCED',
+        actorUuid,
+        subjectUuid: actorUuid,
+        entityType: 'system_integration_operation',
+        entityUuid: operationUuid,
+        result: 'SUCCESS',
+        reason: 'integration.operation.retry.scheduled',
+      });
+      return updated;
+    }
+    throw new NotFoundException('Integration operation not found');
+  }
+
   private async recoverDueOperations(): Promise<void> {
     const integrations = await this.integrations.list(1, 100);
     const now = Date.now();
@@ -400,6 +463,7 @@ export class SystemIntegrationSyncService
     operation: Awaited<ReturnType<SystemRoadmapRepository['operation']['list']>>[number],
   ) {
     const provider = await this.integrations.providerFor(integrationUuid);
+    const runtime = await this.integrations.runtimeFor(integrationUuid);
     await this.roadmap.operation.update(operation.uuid, {
       state: 'RUNNING',
       attempt: operation.attempt + 1,
@@ -410,15 +474,15 @@ export class SystemIntegrationSyncService
       const payload = operation.requestPayload ?? {};
       const result =
         operation.operationKey === 'sync.push'
-          ? await this.retryPush(integrationUuid, provider, payload)
+          ? await this.retryPush(integrationUuid, provider, payload, operation.idempotencyKey, runtime.responseMapping)
           : operation.operationKey === 'sync.pull'
-            ? await this.retryPull(integrationUuid, provider, payload)
+            ? await this.retryPull(integrationUuid, provider, payload, runtime.responseMapping)
             : null;
       if (result === null) throw new Error('Unsupported operation retry key');
       await this.roadmap.operation.update(operation.uuid, {
         state: 'SUCCEEDED',
-        responseHash: hashJson(result as Record<string, unknown>),
-        responsePayload: result as Record<string, unknown>,
+        responseHash: hashJson(result),
+        responsePayload: result,
         completedAt: new Date(),
         errorCode: null,
         errorMessage: null,
@@ -434,7 +498,9 @@ export class SystemIntegrationSyncService
         state: nextAttemptAt ? 'RETRY_SCHEDULED' : 'FAILED',
         nextAttemptAt,
         completedAt: nextAttemptAt ? null : new Date(),
-        errorCode: retryable ? 'PROVIDER_TRANSIENT_FAILURE' : 'OPERATION_RETRY_EXHAUSTED',
+        errorCode: retryable
+          ? 'PROVIDER_TRANSIENT_FAILURE'
+          : 'OPERATION_RETRY_EXHAUSTED',
         errorMessage: safeError(error),
       });
     }
@@ -444,8 +510,11 @@ export class SystemIntegrationSyncService
     integrationUuid: string,
     provider: Awaited<ReturnType<SystemIntegrationService['providerFor']>>,
     payload: Record<string, unknown>,
+    idempotencyKey: string,
+    responseMapping: Record<string, unknown>,
   ) {
-    if (!provider.push) throw new Error('Provider does not support push synchronization');
+    if (!provider.push)
+      throw new Error('Provider does not support push synchronization');
     const input = payload as {
       resourceType?: string;
       resourceUuid?: string;
@@ -457,19 +526,29 @@ export class SystemIntegrationSyncService
       resourceType: input.resourceType ?? 'unknown',
       ...(input.resourceUuid ? { resourceUuid: input.resourceUuid } : {}),
       payload: input.payload ?? {},
-      idempotencyKey: `operation-retry:${randomUUID()}`,
+      idempotencyKey,
       occurredAt: new Date(),
     };
-    const result = await this.reliability.execute(integrationUuid, () => provider.push!(request));
-    return result.value as unknown as Record<string, unknown>;
+    const result = await this.reliability.execute(integrationUuid, () =>
+      provider.push!(request),
+    );
+    return {
+      ...result.value,
+      data: this.mapping.map(
+        result.value.data as Record<string, unknown>,
+        responseMapping,
+      ),
+    } as unknown as Record<string, unknown>;
   }
 
   private async retryPull(
     integrationUuid: string,
     provider: Awaited<ReturnType<SystemIntegrationService['providerFor']>>,
     payload: Record<string, unknown>,
+    responseMapping: Record<string, unknown>,
   ) {
-    if (!provider.pull) throw new Error('Provider does not support pull synchronization');
+    if (!provider.pull)
+      throw new Error('Provider does not support pull synchronization');
     const input = payload as {
       resourceType?: string;
       limit?: number;
@@ -482,7 +561,9 @@ export class SystemIntegrationSyncService
         cursor: input.cursor ?? null,
       }),
     );
-    const records = result.value.records;
+    const records = result.value.records.map((record) =>
+      this.mapping.map(record, responseMapping),
+    );
     const runtime = await this.integrations.runtimeFor(integrationUuid);
     await this.roadmap.runtime.update(runtime.integrationId, {
       syncCursor: result.value.nextCursor,
@@ -490,7 +571,7 @@ export class SystemIntegrationSyncService
       lastOperationStatus: 'PULL_SUCCEEDED',
     });
     return {
-      records: records as ReadonlyArray<Readonly<Record<string, unknown>>>,
+      records,
       nextCursor: result.value.nextCursor,
     };
   }
@@ -503,6 +584,9 @@ function hashJson(value: unknown): string {
 function safeError(error: unknown): string {
   if (!(error instanceof Error)) return 'Integration operation failed';
   return error.message
-    .replace(/(token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+/gi, '$1=[REDACTED]')
+    .replace(
+      /(token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+/gi,
+      '$1=[REDACTED]',
+    )
     .slice(0, 500);
 }
