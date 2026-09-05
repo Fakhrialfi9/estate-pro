@@ -44,7 +44,6 @@
     "validate:all": "node scripts/validate-all.mjs",
 
     "test": "vitest run --config vitest.config.ts",
-    "test:unit": "npm test",
     "test:watch": "vitest --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
