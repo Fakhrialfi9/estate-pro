@@ -4,16 +4,16 @@ import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import type { IntegrationState } from '../../domain/integration/integration.contracts.js';
 import type {
+  FeatureFlagRecord,
+  ImportProfileRecord,
+  IntegrationConflictRecord,
   IntegrationCredentialRecord,
   IntegrationEventRecord,
-  IntegrationConflictRecord,
   IntegrationIdempotencyRecord,
   IntegrationOperationRecord,
   IntegrationRuntimeRecord,
   OperationalAlertRecord,
   OperationalAlertRuleRecord,
-  FeatureFlagRecord,
-  ImportProfileRecord,
   SystemRoadmapRepository,
 } from '../../domain/repositories/system-roadmap.repository.js';
 
@@ -23,7 +23,9 @@ const object = (value: unknown): Record<string, unknown> =>
     : {};
 
 @Injectable()
-export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
+export class PrismaSystemRoadmapRepository
+  implements SystemRoadmapRepository
+{
   constructor(private readonly prisma: PrismaService) {}
 
   featureFlag = {
@@ -48,7 +50,11 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
           key_environment: { key: input.key, environment: input.environment },
         },
         create: input as never,
-        update: { ...input, uuid: undefined, createdBy: undefined } as never,
+        update: {
+          ...input,
+          uuid: undefined,
+          createdBy: undefined,
+        } as never,
       });
       return { ...row, metadata: object(row.metadata) };
     },
@@ -95,7 +101,9 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
     },
     update: async (
       uuid: string,
-      input: Partial<Omit<ImportProfileRecord, 'uuid' | 'createdAt' | 'updatedAt'>>,
+      input: Partial<
+        Omit<ImportProfileRecord, 'uuid' | 'createdAt' | 'updatedAt'>
+      >,
     ) => {
       const row = await this.prisma.systemImportProfile.update({
         where: { uuid },
@@ -128,7 +136,12 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
     },
     create: async (
       input: Omit<IntegrationCredentialRecord, 'issuedAt' | 'lastUsedAt'> &
-        Partial<Pick<IntegrationCredentialRecord, 'accessTokenRef' | 'refreshTokenRef'>>,
+        Partial<
+          Pick<
+            IntegrationCredentialRecord,
+            'accessTokenRef' | 'refreshTokenRef'
+          >
+        >,
     ) => {
       const row = await this.prisma.systemIntegrationCredential.create({
         data: input as never,
@@ -161,9 +174,10 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
       },
     ) => {
       const row = await this.prisma.$transaction(async (tx) => {
-        const current = await tx.systemIntegrationCredential.findUniqueOrThrow({
-          where: { uuid },
-        });
+        const current =
+          await tx.systemIntegrationCredential.findUniqueOrThrow({
+            where: { uuid },
+          });
         await tx.systemIntegrationCredential.update({
           where: { uuid },
           data: { status: 'ROTATED', rotatedAt: new Date() },
@@ -219,7 +233,9 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
     },
     update: async (
       integrationId: bigint,
-      input: Partial<Omit<IntegrationRuntimeRecord, 'uuid' | 'integrationId'>>,
+      input: Partial<
+        Omit<IntegrationRuntimeRecord, 'uuid' | 'integrationId'>
+      >,
     ) => {
       const row = await this.prisma.systemIntegrationRuntime.update({
         where: { integrationId },
@@ -235,9 +251,17 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
   };
 
   operation = {
-    getByIdempotency: async (integrationId: bigint, idempotencyKey: string) => {
+    getByIdempotency: async (
+      integrationId: bigint,
+      idempotencyKey: string,
+    ) => {
       const row = await this.prisma.systemIntegrationOperation.findUnique({
-        where: { integrationId_idempotencyKey: { integrationId, idempotencyKey } },
+        where: {
+          integrationId_idempotencyKey: {
+            integrationId,
+            idempotencyKey,
+          },
+        },
       });
       return row
         ? {
@@ -354,7 +378,9 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
     },
     update: async (
       uuid: string,
-      input: Partial<Omit<IntegrationIdempotencyRecord, 'uuid' | 'integrationId'>>,
+      input: Partial<
+        Omit<IntegrationIdempotencyRecord, 'uuid' | 'integrationId'>
+      >,
     ) =>
       this.prisma.systemIntegrationIdempotency.update({
         where: { uuid },
@@ -485,9 +511,16 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
     ] = await Promise.all([
       this.prisma.systemFeatureFlag.count(),
       this.prisma.systemImportProfile.count(),
-      this.prisma.systemIntegration.groupBy({ by: ['state'], _count: { _all: true } }),
-      this.prisma.systemIntegrationConflict.count({ where: { status: 'OPEN' } }),
-      this.prisma.systemOperationalAlert.count({ where: { status: 'OPEN' } }),
+      this.prisma.systemIntegration.groupBy({
+        by: ['state'],
+        _count: { _all: true },
+      }),
+      this.prisma.systemIntegrationConflict.count({
+        where: { status: 'OPEN' },
+      }),
+      this.prisma.systemOperationalAlert.count({
+        where: { status: 'OPEN' },
+      }),
       this.prisma.systemIntegrationOperation.count({
         where: { state: { in: ['QUEUED', 'RUNNING', 'RETRY_SCHEDULED'] } },
       }),
