@@ -14,10 +14,6 @@ type UpdateDeliveryInput = Parameters<
   SystemWebhookRepository['updateDelivery']
 >[1];
 
-type ReplayResult = {
-  eventId: string;
-};
-
 const subscription = (
   filters: WebhookSubscriptionRecord['filters'] = [],
 ): WebhookSubscriptionRecord => ({
@@ -174,10 +170,7 @@ describe('SystemWebhookService', () => {
     findDelivery.mockResolvedValue(delivery('event-1', 'original-delivery'));
     findSubscriptionByDelivery.mockResolvedValue(row);
 
-    const result = (await service.replay(
-      'actor-uuid',
-      'original-delivery',
-    )) as ReplayResult;
+    await service.replay('actor-uuid', 'original-delivery');
 
     expect(network.send).toHaveBeenCalledOnce();
     expect(createDelivery).toHaveBeenCalledWith(
@@ -187,7 +180,10 @@ describe('SystemWebhookService', () => {
       }),
     );
     expect(updateDelivery).toHaveBeenCalled();
-    expect(result.eventId).toBe('event-1');
+    expect(findDelivery).toHaveBeenCalledWith('original-delivery');
+    expect(findSubscriptionByDelivery).toHaveBeenCalledWith(
+      'original-delivery',
+    );
   });
 
   it('reports bounded operational delivery health without exposing secrets', async () => {
