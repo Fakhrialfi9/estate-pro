@@ -31,6 +31,7 @@ import { SystemRoadmapControlController } from './presentation/system-roadmap-co
 import { SystemActivityService } from './application/services/system-activity.service.js';
 import { SystemExportService } from './application/services/system-export.service.js';
 import { SystemImportService } from './application/services/system-import.service.js';
+import { SystemImportMappingService } from './application/services/system-import-mapping.service.js';
 import { SystemJobOperationsService } from './application/services/system-job-operations.service.js';
 import { SystemNotificationService } from './application/services/system-notification.service.js';
 import { SystemSettingsService } from './application/services/system-settings.service.js';
@@ -105,6 +106,7 @@ import {
     SystemNotificationService,
     SystemJobOperationsService,
     SystemImportService,
+    SystemImportMappingService,
     SystemExportService,
     SystemExportScheduler,
     SystemXlsxExporterAdapter,
