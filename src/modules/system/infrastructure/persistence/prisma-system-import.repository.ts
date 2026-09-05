@@ -1,10 +1,20 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
+import type {
+  ImportColumnMapping,
+  ImportConflictStrategy,
+  ImportFieldMapping,
+  ImportTransactionStrategy,
+} from '../../domain/import/import-mapping.contracts.js';
 import type { ImportState } from '../../domain/system-public.contracts.js';
 import type {
   SystemImportJobRecord,
   SystemImportRepository,
 } from '../../domain/repositories/system-import.repository.js';
+
+const objectArray = <T>(value: unknown): readonly T[] =>
+  Array.isArray(value) ? (value as readonly T[]) : [];
 
 const toRecord = (row: {
   uuid: string;
@@ -14,10 +24,14 @@ const toRecord = (row: {
   state: string;
   preview: boolean;
   idempotencyKey: string | null;
+  columnMapping: Prisma.JsonValue;
+  fieldMapping: Prisma.JsonValue;
+  conflictStrategy: string;
+  transactionStrategy: string;
   totalRows: number;
   processedRows: number;
   failedRows: number;
-  errors: unknown;
+  errors: Prisma.JsonValue;
   sourcePath: string | null;
   expiresAt: Date;
   createdAt: Date;
@@ -30,12 +44,16 @@ const toRecord = (row: {
   state: row.state as ImportState,
   preview: row.preview,
   idempotencyKey: row.idempotencyKey,
+  columnMapping: objectArray<ImportColumnMapping>(row.columnMapping),
+  fieldMapping: objectArray<ImportFieldMapping>(row.fieldMapping),
+  conflictStrategy: row.conflictStrategy as ImportConflictStrategy,
+  transactionStrategy: row.transactionStrategy as ImportTransactionStrategy,
   totalRows: row.totalRows,
   processedRows: row.processedRows,
   failedRows: row.failedRows,
-  errors: Array.isArray(row.errors)
-    ? (row.errors as SystemImportJobRecord['errors'])
-    : [],
+  errors: objectArray<{ row: number; field?: string; message: string }>(
+    row.errors,
+  ),
   sourcePath: row.sourcePath,
   expiresAt: row.expiresAt,
   createdAt: row.createdAt,
@@ -53,12 +71,27 @@ export class PrismaSystemImportRepository implements SystemImportRepository {
     format: 'csv' | 'json';
     preview: boolean;
     idempotencyKey?: string | null;
+    columnMapping: readonly ImportColumnMapping[];
+    fieldMapping: readonly ImportFieldMapping[];
+    conflictStrategy: ImportConflictStrategy;
+    transactionStrategy: ImportTransactionStrategy;
     sourcePath: string | null;
     expiresAt: Date;
   }): Promise<SystemImportJobRecord> {
     const row = await this.prisma.systemImportJob.create({
       data: {
-        ...input,
+        uuid: input.uuid,
+        actorUuid: input.actorUuid,
+        filename: input.filename,
+        format: input.format,
+        preview: input.preview,
+        idempotencyKey: input.idempotencyKey ?? null,
+        columnMapping: input.columnMapping as Prisma.InputJsonValue,
+        fieldMapping: input.fieldMapping as Prisma.InputJsonValue,
+        conflictStrategy: input.conflictStrategy,
+        transactionStrategy: input.transactionStrategy,
+        sourcePath: input.sourcePath,
+        expiresAt: input.expiresAt,
         state: 'QUEUED',
         totalRows: 0,
         processedRows: 0,
@@ -100,7 +133,10 @@ export class PrismaSystemImportRepository implements SystemImportRepository {
   ) {
     const row = await this.prisma.systemImportJob.update({
       where: { uuid },
-      data: input,
+      data: {
+        ...input,
+        ...(input.errors ? { errors: input.errors as Prisma.InputJsonValue } : {}),
+      },
     });
     return toRecord(row);
   }
