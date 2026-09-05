@@ -55,10 +55,10 @@ jobs:
         run: npm ci
 
       - name: Production dependency security gate
-        run: node scripts/check-production-dependencies.mjs
+        run: npm run check:production-dependencies
 
       - name: Prisma schema validation
-        run: npx prisma validate
+        run: npm run prisma:validate
 
       - name: Generate Prisma client
         run: npm run prisma:generate
@@ -83,7 +83,7 @@ jobs:
         run: npm run test:security:baseline
 
       - name: Secret scan
-        run: bash scripts/check-secrets.sh
+        run: npm run check:secrets
 
       - name: Format check
         run: npm run format:check
@@ -97,11 +97,8 @@ jobs:
       - name: Architecture validation
         run: npm run check:architecture
 
-      - name: Complete test suite
-        run: npm run test
-
       - name: Unit tests
-        run: npm run test:unit
+        run: npm test
 
       - name: Integration tests
         run: npm run test:integration
