@@ -146,7 +146,7 @@ export async function assertPublicHttpsUrl(raw: string): Promise<void> {
 function isPrivateAddress(address: string): boolean {
   const version = isIP(address);
   if (version === 4) {
-    const [a, b] = address.split('.').map(Number);
+    const [a = Number.NaN, b = Number.NaN] = address.split('.').map(Number);
     return (
       a === 10 ||
       a === 127 ||
