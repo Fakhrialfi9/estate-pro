@@ -98,11 +98,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     if (!endpoint) {
       throw new Error('Integration push endpoint is not configured');
     }
-    const response = await this.post(
-      endpoint,
-      request,
-      request.idempotencyKey,
-    );
+    const response = await this.post(endpoint, request, request.idempotencyKey);
     const body = await readJson(response);
     return this.mapResponse({
       ok: response.ok,
@@ -191,10 +187,7 @@ export async function assertPublicHttpsUrl(raw: string): Promise<string> {
   if (isPrivateHost(url.hostname)) {
     throw new Error('Integration provider URL targets a private network');
   }
-  const addresses = await lookup(url.hostname, {
-    all: true,
-    verbatim: true,
-  });
+  const addresses = await lookup(url.hostname, { all: true, verbatim: true });
   if (addresses.some((entry) => isPrivateHost(entry.address))) {
     throw new Error('Integration provider URL resolves to a private network');
   }
@@ -213,10 +206,7 @@ function isPrivateHost(address: string) {
       (a === 172 && b >= 16 && b <= 31)
     );
   }
-  return (
-    version === 6 &&
-    (address === '::1' || /^(fc|fd|fe80:)/i.test(address))
-  );
+  return version === 6 && (address === '::1' || /^(fc|fd|fe80:)/i.test(address));
 }
 
 async function readJson(response: Response): Promise<unknown> {
