@@ -171,6 +171,7 @@ async function seedPropertyAggregate(
       createdBy: '00000000-0000-5000-8000-000000000001',
       updatedBy: '00000000-0000-5000-8000-000000000001',
       verifiedBy: '00000000-0000-5000-8000-000000000001',
+      verifiedBy: '00000000-0000-5000-8000-000000000001',
     },
   });
 
@@ -233,11 +234,13 @@ async function seedPropertyAggregate(
     create: { uuid: seedUuid('property-seo', fixture.key), propertyId: property.id, title: fixture.title, description: fixture.shortDescription, keywords: ['property', fixture.categoryCode.toLowerCase(), 'estate-pro'], canonicalUrl: `https://estate-pro.example.test/properties/${fixture.slug}`, ogImageUrl: `https://images.example.test/properties/${fixture.slug}.jpg`, robots: 'INDEX_FOLLOW', metadataVersion: '1.0', schemaType: 'Residence', source: 'SEED' },
   });
 
-  for (const [index, [roomType, name, floor, area]] of [
+  const rooms = [
     ['MASTER_BEDROOM', 'Master Bedroom', 2, '28.00'],
     ['BEDROOM', 'Bedroom 2', 2, '18.00'],
     ['LIVING_ROOM', 'Living Room', 1, '35.00'],
-  ] as const) {
+  ] as const;
+
+  for (const [index, [roomType, name, floor, area]] of rooms.entries()) {
     await tx.propertyRoom.upsert({
       where: { uuid: seedUuid('property-room', `${fixture.key}:${index}`) },
       update: { propertyId: property.id, roomType, name, floor, area, areaUnit: 'SQM', hasBathroom: roomType === 'MASTER_BEDROOM', hasWalkInCloset: roomType === 'MASTER_BEDROOM', hasBalcony: fixture.key === 'dago-apartment' && roomType === 'MASTER_BEDROOM', hasAirConditioning: true, sortOrder: index },
