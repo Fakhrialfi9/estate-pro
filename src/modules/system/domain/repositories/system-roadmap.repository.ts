@@ -199,7 +199,12 @@ export interface SystemRoadmapRepository {
     ): Promise<readonly IntegrationCredentialRecord[]>;
     create(
       input: Omit<IntegrationCredentialRecord, 'issuedAt' | 'lastUsedAt'> &
-        Partial<Pick<IntegrationCredentialRecord, 'accessTokenRef' | 'refreshTokenRef'>>,
+        Partial<
+          Pick<
+            IntegrationCredentialRecord,
+            'accessTokenRef' | 'refreshTokenRef'
+          >
+        >,
     ): Promise<IntegrationCredentialRecord>;
     revoke(uuid: string, revokedAt: Date): Promise<IntegrationCredentialRecord>;
     markUsed(
