@@ -45,6 +45,7 @@ export type IntegrationCredentialRecord = {
   status: IntegrationCredentialStatus;
   issuedAt: Date;
   accessTokenExpiresAt: Date | null;
+  refreshTokenExpiresAt: Date | null;
   lastUsedAt: Date | null;
   rotatedAt: Date | null;
   revokedAt: Date | null;
@@ -198,12 +199,7 @@ export interface SystemRoadmapRepository {
     ): Promise<readonly IntegrationCredentialRecord[]>;
     create(
       input: Omit<IntegrationCredentialRecord, 'issuedAt' | 'lastUsedAt'> &
-        Partial<
-          Pick<
-            IntegrationCredentialRecord,
-            'accessTokenRef' | 'refreshTokenRef'
-          >
-        >,
+        Partial<Pick<IntegrationCredentialRecord, 'accessTokenRef' | 'refreshTokenRef'>>,
     ): Promise<IntegrationCredentialRecord>;
     revoke(uuid: string, revokedAt: Date): Promise<IntegrationCredentialRecord>;
     markUsed(
