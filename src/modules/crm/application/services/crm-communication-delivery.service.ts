@@ -52,7 +52,8 @@ export class CrmCommunicationDeliveryService {
       return this.toPublic(communication);
     }
 
-    const channel = communication.channel.toUpperCase() as CommunicationChannel;
+    const channel =
+      communication.channel.toUpperCase() as CommunicationChannel;
     if (!CHANNELS.includes(channel)) {
       throw new Error(
         `Unsupported communication channel: ${communication.channel}`,
@@ -108,9 +109,11 @@ export class CrmCommunicationDeliveryService {
     actorUuid: string | undefined,
     reason: string,
   ) {
-    const updated = await this.repository.transitionCommunication(uuid, 'QUEUED', {
-      providerError: reason.slice(0, 240),
-    });
+    const updated = await this.repository.transitionCommunication(
+      uuid,
+      'QUEUED',
+      { providerError: reason.slice(0, 240) },
+    );
     await this.audit.record({
       action: 'CRM_COMMUNICATION_STATUS_CHANGED',
       actorUuid,
