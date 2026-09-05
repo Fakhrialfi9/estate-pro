@@ -75,7 +75,6 @@ export class SystemIntegrationCredentialService {
       action: 'integration-credential-refreshed',
       resourceType: 'system_integration_credential',
       resourceUuid: rotated.uuid,
-      metadata: {},
     });
     return this.redact(rotated);
   }
