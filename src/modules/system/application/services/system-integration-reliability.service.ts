@@ -14,6 +14,7 @@ export type RetryPolicy = Readonly<{
   jitterRatio: number;
   deadlineMs: number;
   circuitFailureThreshold: number;
+  circuitWindowMs: number;
   circuitOpenMs: number;
 }>;
 
@@ -24,12 +25,14 @@ export const DEFAULT_INTEGRATION_RETRY_POLICY: RetryPolicy = {
   jitterRatio: 0.2,
   deadlineMs: 15_000,
   circuitFailureThreshold: 5,
+  circuitWindowMs: 60_000,
   circuitOpenMs: 30_000,
 };
 
 @Injectable()
 export class SystemIntegrationReliabilityService {
   private readonly halfOpenProbes = new Set<string>();
+  private readonly failureWindows = new Map<string, number[]>();
 
   constructor(
     private readonly integrations: SystemIntegrationService,
@@ -64,6 +67,14 @@ export class SystemIntegrationReliabilityService {
     );
     const jitter = exponential * Math.min(1, Math.max(0, policy.jitterRatio));
     return Math.max(0, Math.round(exponential - jitter + random * jitter * 2));
+  }
+
+  retryAfterMs(error: unknown): number | null {
+    if (!error || typeof error !== 'object') return null;
+    const value = (error as { retryAfterMs?: unknown }).retryAfterMs;
+    return typeof value === 'number' && Number.isFinite(value)
+      ? Math.min(60_000, Math.max(0, Math.trunc(value)))
+      : null;
   }
 
   async execute<T>(
@@ -103,19 +114,27 @@ export class SystemIntegrationReliabilityService {
         };
       } catch (error: unknown) {
         lastError = error;
+        const window = this.failureWindows.get(integrationUuid) ?? [];
+        const now = Date.now();
+        const active = window.filter(
+          (timestamp) => now - timestamp <= policy.circuitWindowMs,
+        );
+        active.push(now);
+        this.failureWindows.set(integrationUuid, active);
+
         const retryable =
           this.isRetryable(error) && attempt + 1 < policy.maxAttempts;
-        const delay = this.delayMs(attempt, policy);
-        const nextAttemptAt = retryable ? new Date(Date.now() + delay) : null;
-        const failures = runtime.failureCount + 1;
-        const open = failures >= policy.circuitFailureThreshold;
+        const retryAfter = this.retryAfterMs(error);
+        const delay = retryAfter ?? this.delayMs(attempt, policy);
+        const nextAttemptAt = retryable ? new Date(now + delay) : null;
+        const open = active.length >= policy.circuitFailureThreshold;
 
         await this.roadmap.runtime.update(runtime.integrationId, {
-          failureCount: failures,
+          failureCount: active.length,
           circuitState: open ? 'OPEN' : runtime.circuitState,
           openedAt: open ? new Date() : runtime.openedAt,
           nextRetryAt: open
-            ? new Date(Date.now() + policy.circuitOpenMs)
+            ? new Date(now + policy.circuitOpenMs)
             : nextAttemptAt,
           lastOperationAt: new Date(),
           lastOperationStatus: 'FAILED',
@@ -147,21 +166,32 @@ export class SystemIntegrationReliabilityService {
     const configuration = await this.integrations.providerConfiguration(integrationUuid);
     const started = Date.now();
     try {
-      const result = await this.withTimeout(
-        provider.health(configuration),
-        3_000,
-      );
+      const result = await this.withTimeout(provider.health(configuration), 3_000);
+      const status = result.ok
+        ? result.latencyMs >= 1_000
+          ? 'DEGRADED'
+          : 'UP'
+        : 'DOWN';
       await this.roadmap.runtime.update(runtime.integrationId, {
         lastHealthAt: new Date(),
-        lastOperationStatus: result.ok ? 'HEALTHY' : 'UNHEALTHY',
+        lastOperationStatus: status,
       });
-      return { ...result, latencyMs: result.latencyMs ?? Date.now() - started };
+      return {
+        ...result,
+        status,
+        latencyMs: result.latencyMs ?? Date.now() - started,
+      };
     } catch {
       await this.roadmap.runtime.update(runtime.integrationId, {
         lastHealthAt: new Date(),
-        lastOperationStatus: 'UNHEALTHY',
+        lastOperationStatus: 'UNKNOWN',
       });
-      return { ok: false, latencyMs: Date.now() - started, code: 'HEALTH_TIMEOUT' };
+      return {
+        ok: false,
+        status: 'UNKNOWN',
+        latencyMs: Date.now() - started,
+        code: 'HEALTH_TIMEOUT',
+      };
     }
   }
 
@@ -189,6 +219,12 @@ export class SystemIntegrationReliabilityService {
     integrationUuid: string,
     runtime: Awaited<ReturnType<SystemIntegrationService['runtimeFor']>>,
   ) {
+    const window = this.failureWindows.get(integrationUuid) ?? [];
+    const now = Date.now();
+    this.failureWindows.set(
+      integrationUuid,
+      window.filter((timestamp) => now - timestamp <= DEFAULT_INTEGRATION_RETRY_POLICY.circuitWindowMs),
+    );
     await this.roadmap.runtime.update(integrationId, {
       circuitState: 'CLOSED',
       failureCount: 0,
