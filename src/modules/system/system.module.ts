@@ -22,11 +22,13 @@ import { WebhookController } from './presentation/webhook.controller.js';
 import { IntegrationController } from './presentation/integration.controller.js';
 import { OperationsController } from './presentation/operations.controller.js';
 import { SystemRoadmapControlController } from './presentation/system-roadmap-control.controller.js';
+import { IntegrationCallbackController } from './presentation/integration-callback.controller.js';
 import { SystemActivityService } from './application/services/system-activity.service.js';
 import { SystemExportService } from './application/services/system-export.service.js';
 import { SystemImportService } from './application/services/system-import.service.js';
 import { SystemImportMappingService } from './application/services/system-import-mapping.service.js';
 import { SystemEnvironmentService } from './application/services/system-environment.service.js';
+import { SystemIntegrationCallbackService } from './application/services/system-integration-callback.service.js';
 import { SystemIntegrationReliabilityService } from './application/services/system-integration-reliability.service.js';
 import { SystemJobOperationsService } from './application/services/system-job-operations.service.js';
 import { SystemNotificationService } from './application/services/system-notification.service.js';
@@ -64,7 +66,7 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthModule, PermissionsModule, AuthorizationModule, AutomationModule, HealthModule],
-  controllers: [AuditLogsController, ActivityController, ExportController, ImportController, JobsController, NotificationsController, SettingsController, WebhookController, IntegrationController, OperationsController, SystemRoadmapControlController],
+  controllers: [AuditLogsController, ActivityController, ExportController, ImportController, JobsController, NotificationsController, SettingsController, WebhookController, IntegrationController, OperationsController, SystemRoadmapControlController, IntegrationCallbackController],
   providers: [
     AuthenticatedAccessGuard,
     AuthorizationGuard,
@@ -75,6 +77,7 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     SystemImportService,
     SystemImportMappingService,
     SystemEnvironmentService,
+    SystemIntegrationCallbackService,
     SystemIntegrationReliabilityService,
     SystemExportService,
     SystemExportScheduler,
@@ -108,25 +111,9 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     { provide: SYSTEM_WEBHOOK_SECRET_PORT, useExisting: WebhookSecretService },
     { provide: SYSTEM_WEBHOOK_SIGNER_PORT, useExisting: WebhookSignerService },
     { provide: SYSTEM_WEBHOOK_NETWORK_PORT, useExisting: WebhookNetworkService },
-    {
-      provide: SYSTEM_STORAGE_HEALTH_PORT,
-      useFactory: (storage: LocalSystemArtifactStorage) => ({
-        check: async () => {
-          try { await storage.health(); return 'up' as const; } catch { return 'down' as const; }
-        },
-      }),
-      inject: [LocalSystemArtifactStorage],
-    },
+    { provide: SYSTEM_STORAGE_HEALTH_PORT, useFactory: (storage: LocalSystemArtifactStorage) => ({ check: async () => { try { await storage.health(); return 'up' as const; } catch { return 'down' as const; } } }), inject: [LocalSystemArtifactStorage] },
     { provide: SYSTEM_JOB_HEALTH_PORT, useFactory: (automation: AutomationHealthPort) => automation, inject: [AUTOMATION_HEALTH_PORT] },
-    {
-      provide: SYSTEM_DATABASE_HEALTH_PORT,
-      useFactory: (health: SystemHealthPort) => ({
-        check: async (): Promise<'up' | 'down'> => {
-          try { return await health.checkDatabase(); } catch { return 'down'; }
-        },
-      }),
-      inject: [SYSTEM_HEALTH_PORT],
-    },
+    { provide: SYSTEM_DATABASE_HEALTH_PORT, useFactory: (health: SystemHealthPort) => ({ check: async (): Promise<'up' | 'down'> => { try { return await health.checkDatabase(); } catch { return 'down'; } } }), inject: [SYSTEM_HEALTH_PORT] },
     { provide: SYSTEM_OPERATIONS_PORT, useExisting: SystemOperationsService },
     { provide: APP_GUARD, useExisting: SystemReadOnlyGuard },
   ],
