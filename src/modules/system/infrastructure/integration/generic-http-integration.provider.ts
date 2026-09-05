@@ -6,6 +6,7 @@ import type { IntegrationProviderPort } from '../../domain/integration/integrati
 import type {
   CanonicalIntegrationRequest,
   CanonicalIntegrationResponse,
+  IntegrationProviderExecutionContext,
 } from '../../domain/integration/integration-operation.contracts.js';
 import {
   SYSTEM_INTEGRATION_SECRET_RESOLVER,
@@ -50,10 +51,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     private readonly secrets: IntegrationSecretResolverPort,
   ) {}
 
-  async testConnection(input: {
-    metadata: Record<string, unknown>;
-    secretRef?: string | null;
-  }) {
+  async testConnection(input: IntegrationProviderExecutionContext) {
     const result = await this.health(input);
     return {
       ok: result.ok,
@@ -63,10 +61,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     };
   }
 
-  async reconnect(input: {
-    metadata: Record<string, unknown>;
-    secretRef?: string | null;
-  }) {
+  async reconnect(input: IntegrationProviderExecutionContext) {
     try {
       const endpoint =
         stringValue(input.metadata.reconnectUrl) ??
@@ -102,11 +97,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
             'Provider reconnect request failed',
             parseRetryAfter(response.headers.get('retry-after')),
           );
-        return {
-          ok: true,
-          code: undefined,
-          message: undefined,
-        };
+        return { ok: true, code: undefined, message: undefined };
       } finally {
         clearTimeout(timer);
       }
@@ -123,10 +114,7 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     return Promise.resolve();
   }
 
-  async health(input?: {
-    metadata: Record<string, unknown>;
-    secretRef?: string | null;
-  }): Promise<{
+  async health(input?: IntegrationProviderExecutionContext): Promise<{
     ok: boolean;
     latencyMs: number;
     code: string;
@@ -205,8 +193,9 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
 
   async push(
     request: CanonicalIntegrationRequest,
+    context?: IntegrationProviderExecutionContext,
   ): Promise<CanonicalIntegrationResponse> {
-    const metadata = request.payload;
+    const metadata = context?.metadata ?? {};
     const endpoint =
       stringValue(metadata.pushUrl) ?? stringValue(metadata.endpoint);
     if (!endpoint) throw new Error('Integration push endpoint is not configured');
@@ -217,10 +206,10 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
       mapped,
       request.idempotencyKey,
       numberValue(metadata.timeoutMs, DEFAULT_TIMEOUT_MS),
-      stringValue(metadata.secretRef),
+      context?.secretRef,
       metadata,
     );
-    const body = await readJson(response);
+    const body = await readJson(response, response.ok);
     const canonical = this.mapResponse({
       ok: response.ok,
       operationKey: request.operationKey,
@@ -263,6 +252,49 @@ export class GenericHttpIntegrationProvider implements IntegrationProviderPort {
     } catch {
       return false;
     }
+  }
+
+  normalizeInbound(input: unknown) {
+    if (!isRecord(input)) throw new Error('Inbound payload must be an object');
+    const eventKey =
+      stringValue(input.eventId) ??
+      stringValue(input.event_id) ??
+      stringValue(input.idempotencyKey) ??
+      stringValue(input.id);
+    const eventName =
+      stringValue(input.eventType) ??
+      stringValue(input.event_type) ??
+      stringValue(input.type) ??
+      stringValue(input.name);
+    const aggregateType =
+      stringValue(input.aggregateType) ??
+      stringValue(input.resourceType) ??
+      stringValue(input.entityType);
+    const aggregateUuid =
+      stringValue(input.aggregateUuid) ??
+      stringValue(input.resourceUuid) ??
+      stringValue(input.entityId);
+    if (!eventKey || eventKey.length > 180)
+      throw new Error('Inbound event identity is missing');
+    if (!eventName || eventName.length > 120)
+      throw new Error('Inbound event name is missing');
+    if (!aggregateType || !aggregateUuid)
+      throw new Error('Inbound aggregate identity is missing');
+    const eventVersion = numberValue(input.eventVersion, 1);
+    if (eventVersion > 1000) throw new Error('Inbound event version is invalid');
+    const occurredAtRaw = stringValue(input.occurredAt) ?? stringValue(input.timestamp);
+    const occurredAt = occurredAtRaw ? new Date(occurredAtRaw) : new Date();
+    if (!Number.isFinite(occurredAt.getTime()))
+      throw new Error('Inbound event timestamp is invalid');
+    return {
+      eventKey,
+      eventName,
+      eventVersion,
+      aggregateType,
+      aggregateUuid,
+      occurredAt,
+      payload: deepCloneRecord(input),
+    };
   }
 
   private async request(
@@ -346,7 +378,8 @@ function versionedReference(baseReference: string, keyVersion: string): string {
 function parseRetryAfter(value: string | null): number | null {
   if (!value) return null;
   const seconds = Number(value.trim());
-  if (Number.isFinite(seconds)) return Math.min(60_000, Math.max(0, Math.round(seconds * 1_000)));
+  if (Number.isFinite(seconds))
+    return Math.min(60_000, Math.max(0, Math.round(seconds * 1_000)));
   const date = Date.parse(value);
   if (!Number.isFinite(date)) return null;
   return Math.min(60_000, Math.max(0, date - Date.now()));
@@ -395,14 +428,18 @@ function isPrivateHost(address: string) {
   );
 }
 
-async function readJson(response: Response): Promise<unknown> {
+async function readJson(response: Response, requireJson: boolean): Promise<unknown> {
   const text = await response.text();
   if (Buffer.byteLength(text, 'utf8') > MAX_RESPONSE_BYTES)
     throw new Error('Provider response exceeds limit');
-  if (!text.trim()) return {};
+  if (!text.trim()) {
+    if (requireJson) throw new Error('Provider returned an empty JSON response');
+    return {};
+  }
   try {
     return JSON.parse(text) as unknown;
   } catch {
+    if (requireJson) throw new Error('Provider returned malformed JSON');
     return { bodyHash: createHash('sha256').update(text).digest('hex') };
   }
 }
@@ -412,7 +449,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function deepCloneRecord(value: Record<string, unknown>): Record<string, unknown> {
-  return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+  return structuredClone(value);
 }
 
 function stringValue(value: unknown): string | null {
@@ -421,7 +458,7 @@ function stringValue(value: unknown): string | null {
 
 function numberValue(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value)
-    ? Math.min(60_000, Math.max(250, Math.trunc(value)))
+    ? Math.min(60_000, Math.max(1, Math.trunc(value)))
     : fallback;
 }
 
