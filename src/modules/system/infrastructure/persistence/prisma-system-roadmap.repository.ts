@@ -29,12 +29,14 @@ export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
     list: async (integrationId: bigint, credentialType?: string) => this.prisma.systemIntegrationCredential.findMany({ where: { integrationId, ...(credentialType ? { credentialType } : {}) }, orderBy: [{ credentialType: 'asc' }, { version: 'desc' }] }).then((rows) => rows.map((row) => ({ ...row, metadata: object(row.metadata) }))),
     create: async (input: any) => this.prisma.systemIntegrationCredential.create({ data: input }).then((row) => ({ ...row, metadata: object(row.metadata) })),
     revoke: async (uuid: string, revokedAt: Date) => this.prisma.systemIntegrationCredential.update({ where: { uuid }, data: { status: 'REVOKED', revokedAt } }).then((row) => ({ ...row, metadata: object(row.metadata) })),
+    markUsed: async (uuid: string, lastUsedAt: Date) => this.prisma.systemIntegrationCredential.update({ where: { uuid }, data: { lastUsedAt } }).then((row) => ({ ...row, metadata: object(row.metadata) })),
     rotate: async (uuid: string, input: any) => this.prisma.$transaction(async (tx) => {
       const current = await tx.systemIntegrationCredential.findUniqueOrThrow({ where: { uuid } });
       await tx.systemIntegrationCredential.update({ where: { uuid }, data: { status: 'ROTATED', rotatedAt: new Date() } });
       return tx.systemIntegrationCredential.create({ data: {
         uuid: randomUUID(), integrationId: current.integrationId, credentialType: current.credentialType,
-        secretRef: input.secretRef, version: current.version + 1, status: 'ACTIVE',
+        secretRef: input.secretRef ?? current.secretRef, accessTokenRef: input.accessTokenRef ?? null, refreshTokenRef: input.refreshTokenRef ?? null,
+        version: current.version + 1, status: 'ACTIVE',
         accessTokenExpiresAt: input.accessTokenExpiresAt ?? null, refreshTokenExpiresAt: input.refreshTokenExpiresAt ?? null,
         metadata: input.metadata ?? {},
       } });
