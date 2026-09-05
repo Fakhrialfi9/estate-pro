@@ -56,6 +56,19 @@ class ExportCancelledError extends Error {
   }
 }
 
+type ExportRow = {
+  uuid: string;
+  actorUuid: string | null;
+  eventType: string;
+  category: string;
+  resourceType: string | null;
+  resourceUuid: string | null;
+  summary: string;
+  metadata: Record<string, unknown>;
+  requestId: string | null;
+  createdAt: Date;
+};
+
 @Injectable()
 export class SystemExportService {
   constructor(
@@ -73,14 +86,22 @@ export class SystemExportService {
   ) {}
 
   async execute(request: ExportRequest): Promise<ExportResult> {
-    const maxRows = this.config.get<number>('system.export.maxRows', DEFAULT_MAX_ROWS);
-    const maxConcurrent = this.config.get<number>('system.export.maxConcurrent', 2);
-    if ((await this.jobs.countRunning()) >= maxConcurrent) {
-      throw new HttpException('Export concurrency limit reached', HttpStatus.TOO_MANY_REQUESTS);
-    }
+    const maxRows = this.config.get<number>(
+      'system.export.maxRows',
+      DEFAULT_MAX_ROWS,
+    );
+    const maxConcurrent = this.config.get<number>(
+      'system.export.maxConcurrent',
+      2,
+    );
+    if ((await this.jobs.countRunning()) >= maxConcurrent)
+      throw new HttpException(
+        'Export concurrency limit reached',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     const requestedLimit = Math.min(request.limit ?? maxRows, maxRows);
-    if (requestedLimit < 1) throw new ForbiddenException('Export row limit must be positive');
-
+    if (requestedLimit < 1)
+      throw new ForbiddenException('Export row limit must be positive');
     const estimated = await this.activity.list({
       page: 1,
       limit: 1,
@@ -90,8 +111,13 @@ export class SystemExportService {
       sort: request.sort ?? 'createdAt_desc',
     });
     const estimatedRows = Math.min(estimated.total, requestedLimit);
-    const retentionHours = this.config.get<number>('system.export.retentionHours', 24);
-    const expiresAt = new Date(Date.now() + Math.max(1, retentionHours) * 3_600_000);
+    const retentionHours = this.config.get<number>(
+      'system.export.retentionHours',
+      24,
+    );
+    const expiresAt = new Date(
+      Date.now() + Math.max(1, retentionHours) * 3_600_000,
+    );
     const uuid = randomUUID();
     const token = randomBytes(32).toString('base64url');
     const filters: Record<string, unknown> = {
@@ -104,9 +130,10 @@ export class SystemExportService {
       ...(request.category ? { category: request.category } : {}),
       ...(request.eventType ? { eventType: request.eventType } : {}),
       sort: request.sort ?? 'createdAt_desc',
-      columns: request.columns?.length ? [...request.columns] : [...ALL_COLUMNS],
+      columns: request.columns?.length
+        ? [...request.columns]
+        : [...ALL_COLUMNS],
     };
-
     const job = await this.jobs.create({
       uuid,
       actorUuid: request.actorUuid,
@@ -115,9 +142,16 @@ export class SystemExportService {
       filters,
       expiresAt,
       estimatedRows,
-      downloadTokenHash: hashToken(token),
+      downloadTokenHash: createHash('sha256')
+        .update(token, 'utf8')
+        .digest('hex'),
     });
-    await this.auditLifecycle(request.actorUuid, uuid, 'created', `estimated=${estimatedRows}`);
+    await this.auditLifecycle(
+      request.actorUuid,
+      uuid,
+      'created',
+      `estimated=${estimatedRows}`,
+    );
     return { ...this.publicResult(job), downloadToken: token };
   }
 
@@ -134,10 +168,20 @@ export class SystemExportService {
     return this.publicJob(row);
   }
 
-  async list(actorUuid: string, page = 1, limit = 20, state?: SystemExportJobRecord['state']) {
+  async list(
+    actorUuid: string,
+    page = 1,
+    limit = 20,
+    state?: SystemExportJobRecord['state'],
+  ) {
     const normalizedPage = Math.max(1, page);
     const normalizedLimit = Math.min(100, Math.max(1, limit));
-    const result = await this.jobs.list({ actorUuid, page: normalizedPage, limit: normalizedLimit, state });
+    const result = await this.jobs.list({
+      actorUuid,
+      page: normalizedPage,
+      limit: normalizedLimit,
+      state,
+    });
     return {
       items: result.items.map((row) => this.publicJob(row)),
       total: result.total,
@@ -149,16 +193,24 @@ export class SystemExportService {
   async retry(actorUuid: string, uuid: string): Promise<ExportResult> {
     const row = await this.jobs.findByUuid(uuid, actorUuid);
     if (!row) throw new NotFoundException('Export job not found');
-    if (row.state !== 'FAILED') throw new ForbiddenException('Only failed exports can be retried');
-    if ((await this.jobs.countRunning()) >= this.config.get<number>('system.export.maxConcurrent', 2)) {
-      throw new HttpException('Export concurrency limit reached', HttpStatus.TOO_MANY_REQUESTS);
-    }
+    if (row.state !== 'FAILED')
+      throw new ForbiddenException('Only failed exports can be retried');
+    if (
+      (await this.jobs.countRunning()) >=
+      this.config.get<number>('system.export.maxConcurrent', 2)
+    )
+      throw new HttpException(
+        'Export concurrency limit reached',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     if (row.artifactPath) await this.storage.remove(row.artifactPath);
     const token = randomBytes(32).toString('base64url');
     const reset = await this.jobs.update(uuid, {
       state: 'QUEUED',
       artifactPath: null,
-      downloadTokenHash: hashToken(token),
+      downloadTokenHash: createHash('sha256')
+        .update(token, 'utf8')
+        .digest('hex'),
       rows: 0,
       processedRows: 0,
       completedAt: null,
@@ -174,41 +226,64 @@ export class SystemExportService {
   async cancel(actorUuid: string, uuid: string): Promise<ExportResult> {
     const row = await this.jobs.findByUuid(uuid, actorUuid);
     if (!row) throw new NotFoundException('Export job not found');
-    if (['SUCCEEDED', 'FAILED', 'CANCELLED'].includes(row.state)) {
+    if (['SUCCEEDED', 'FAILED', 'CANCELLED'].includes(row.state))
       throw new ForbiddenException('Export job is no longer cancellable');
-    }
     const updated = await this.jobs.update(
       uuid,
       row.state === 'QUEUED'
         ? { state: 'CANCELLED', cancelledAt: new Date() }
         : { cancelRequested: true },
     );
-    await this.auditLifecycle(actorUuid, uuid, 'cancelled', 'cancelRequested=true');
+    await this.auditLifecycle(
+      actorUuid,
+      uuid,
+      'cancelled',
+      'cancelRequested=true',
+    );
     return this.publicResult(updated);
   }
 
   async cleanup(limit = 100) {
-    const expired = await this.jobs.listExpired(new Date(), Math.min(500, Math.max(1, limit)));
-    for (const row of expired) if (row.artifactPath) await this.storage.remove(row.artifactPath);
-    await this.jobs.deleteMany(expired.map((row) => row.uuid));
-    return { scanned: expired.length, deleted: expired.length };
+    const expired = await this.jobs.listExpired(
+      new Date(),
+      Math.min(500, Math.max(1, limit)),
+    );
+    const removable: string[] = [];
+    for (const row of expired) {
+      if (row.artifactPath) await this.storage.remove(row.artifactPath);
+      removable.push(row.uuid);
+    }
+    await this.jobs.deleteMany(removable);
+    return { scanned: expired.length, deleted: removable.length };
   }
 
   async download(actorUuid: string, uuid: string, token: string) {
     const row = await this.jobs.findByUuid(uuid, actorUuid);
-    if (!row || row.state !== 'SUCCEEDED' || !row.artifactPath || !row.downloadTokenHash) {
+    if (
+      !row ||
+      row.state !== 'SUCCEEDED' ||
+      !row.artifactPath ||
+      !row.downloadTokenHash
+    )
       throw new NotFoundException('Export artifact not found');
-    }
     if (row.expiresAt.getTime() <= Date.now()) {
       await this.storage.remove(row.artifactPath);
       throw new ForbiddenException('Export download has expired');
     }
-    const provided = Buffer.from(hashToken(token));
+    const hash = Buffer.from(
+      createHash('sha256')
+        .update(token ?? '', 'utf8')
+        .digest('hex'),
+    );
     const expected = Buffer.from(row.downloadTokenHash);
-    if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+    if (hash.length !== expected.length || !timingSafeEqual(hash, expected))
       throw new ForbiddenException('Invalid export download token');
-    }
-    await this.auditLifecycle(actorUuid, uuid, 'downloaded', `rows=${row.rows}`);
+    await this.auditLifecycle(
+      actorUuid,
+      uuid,
+      'downloaded',
+      `rows=${row.rows}`,
+    );
     return {
       filename: `${row.uuid}.${row.format}`,
       stream: this.storage.stream(row.artifactPath),
@@ -223,20 +298,33 @@ export class SystemExportService {
 
   private async processJob(job: SystemExportJobRecord): Promise<void> {
     await this.jobs.update(job.uuid, { state: 'RUNNING', processedRows: 0 });
-    await this.auditLifecycle(job.actorUuid, job.uuid, 'started', `estimated=${job.estimatedRows ?? 0}`);
+    await this.auditLifecycle(
+      job.actorUuid,
+      job.uuid,
+      'started',
+      `estimated=${job.estimatedRows ?? 0}`,
+    );
     try {
       const input =
         job.format === 'xlsx'
           ? Readable.from([await this.xlsxBuffer(job)])
-          : Readable.from(job.format === 'json' ? this.jsonStream(job) : this.csvStream(job));
+          : Readable.from(
+              job.format === 'json'
+                ? this.jsonStream(job)
+                : this.csvStream(job),
+            );
       const stored = await this.storage.putStream(job.uuid, input, job.format);
       const bytes = await this.storage.size(stored.path);
-      const maxBytes = this.config.get<number>('system.export.maxArtifactBytes', 25 * 1024 * 1024);
+      const maxBytes = this.config.get<number>(
+        'system.export.maxArtifactBytes',
+        25 * 1024 * 1024,
+      );
       if (bytes > maxBytes) {
         await this.storage.remove(stored.path);
         throw new Error('Export artifact exceeds configured size limit');
       }
-      const processedRows = (await this.jobs.findByUuid(job.uuid))?.processedRows ?? 0;
+      const processedRows =
+        (await this.jobs.findByUuid(job.uuid))?.processedRows ?? 0;
       await this.jobs.update(job.uuid, {
         state: 'SUCCEEDED',
         artifactPath: stored.path,
@@ -245,9 +333,15 @@ export class SystemExportService {
         completedAt: new Date(),
         artifactBytes: BigInt(bytes),
       });
-      await this.auditLifecycle(job.actorUuid, job.uuid, 'completed', `rows=${processedRows};bytes=${bytes}`);
+      await this.auditLifecycle(
+        job.actorUuid,
+        job.uuid,
+        'completed',
+        `rows=${processedRows};bytes=${bytes}`,
+      );
     } catch (error: unknown) {
-      const processedRows = (await this.jobs.findByUuid(job.uuid))?.processedRows ?? 0;
+      const processedRows =
+        (await this.jobs.findByUuid(job.uuid))?.processedRows ?? 0;
       if (error instanceof ExportCancelledError) {
         await this.jobs.update(job.uuid, {
           state: 'CANCELLED',
@@ -255,15 +349,28 @@ export class SystemExportService {
           processedRows,
           errorMessage: null,
         });
-        await this.auditLifecycle(job.actorUuid, job.uuid, 'cancelled', `processed=${processedRows}`);
+        await this.auditLifecycle(
+          job.actorUuid,
+          job.uuid,
+          'cancelled',
+          `processed=${processedRows}`,
+        );
         return;
       }
       await this.jobs.update(job.uuid, {
         state: 'FAILED',
         processedRows,
-        errorMessage: error instanceof Error ? error.message.slice(0, 500) : 'Export failed',
+        errorMessage:
+          error instanceof Error
+            ? error.message.slice(0, 500)
+            : 'Export failed',
       });
-      await this.auditLifecycle(job.actorUuid, job.uuid, 'failed', 'failure=true');
+      await this.auditLifecycle(
+        job.actorUuid,
+        job.uuid,
+        'failed',
+        'failure=true',
+      );
     }
   }
 
@@ -272,7 +379,8 @@ export class SystemExportService {
     if (!Array.isArray(raw)) return ALL_COLUMNS;
     const selected = raw.filter(
       (value): value is ExportColumn =>
-        typeof value === 'string' && (ALL_COLUMNS as readonly string[]).includes(value),
+        typeof value === 'string' &&
+        (ALL_COLUMNS as readonly string[]).includes(value),
     );
     return selected.length ? [...new Set(selected)] : ALL_COLUMNS;
   }
@@ -286,7 +394,7 @@ export class SystemExportService {
     while (emitted < limit) {
       await this.throwIfCancelled(job.uuid);
       const result = await this.readActivityBatch(job, page++);
-      if (!result.items.length) break;
+      if (result.items.length === 0) break;
       for (const row of result.items) {
         await this.throwIfCancelled(job.uuid);
         const output = this.exportRow(row);
@@ -295,7 +403,7 @@ export class SystemExportService {
         await this.jobs.update(job.uuid, { processedRows: emitted });
         if (emitted >= limit) break;
       }
-      if (page > 1 + Math.ceil(result.total / PAGE_SIZE) || emitted >= limit) break;
+      if (!result.hasMore || emitted >= limit) break;
     }
     return this.xlsx.build(headers, rows);
   }
@@ -309,18 +417,20 @@ export class SystemExportService {
     while (emitted < limit) {
       await this.throwIfCancelled(job.uuid);
       const result = await this.readActivityBatch(job, page++);
-      if (!result.items.length) break;
+      if (result.items.length === 0) break;
       for (const row of result.items) {
         await this.throwIfCancelled(job.uuid);
         const output = this.exportRow(row);
-        const selected = Object.fromEntries(columns.map((key) => [key, output[key]]));
+        const selected = Object.fromEntries(
+          columns.map((key) => [key, output[key]]),
+        );
         if (emitted > 0) yield ',';
         yield JSON.stringify(selected);
         emitted += 1;
         await this.jobs.update(job.uuid, { processedRows: emitted });
         if (emitted >= limit) break;
       }
-      if (emitted >= limit || result.items.length < PAGE_SIZE) break;
+      if (!result.hasMore || emitted >= limit) break;
     }
     yield ']';
   }
@@ -334,49 +444,57 @@ export class SystemExportService {
     while (emitted < limit) {
       await this.throwIfCancelled(job.uuid);
       const result = await this.readActivityBatch(job, page++);
-      if (!result.items.length) break;
+      if (result.items.length === 0) break;
       for (const row of result.items) {
         await this.throwIfCancelled(job.uuid);
         const output = this.exportRow(row);
-        const values = headers.map((header) => csvCell(stringifyExportValue(output[header])));
+        const values = headers.map((header) => {
+          const value = output[header];
+          return csvCell(stringifyExportValue(value));
+        });
         yield `${values.join(',')}\n`;
         emitted += 1;
         await this.jobs.update(job.uuid, { processedRows: emitted });
         if (emitted >= limit) break;
       }
-      if (emitted >= limit || result.items.length < PAGE_SIZE) break;
+      if (!result.hasMore || emitted >= limit) break;
     }
   }
 
   private async readActivityBatch(job: SystemExportJobRecord, page: number) {
     const filters = job.filters;
-    return this.activity.list({
+    const result = await this.activity.list({
       page,
       limit: PAGE_SIZE,
-      actorUuid: asString(filters.actorUuid),
-      eventType: asString(filters.eventType),
-      category: asString(filters.category),
-      sort: filters.sort === 'createdAt_asc' ? 'createdAt_asc' : 'createdAt_desc',
+      actorUuid: job.actorUuid,
+      eventType:
+        typeof filters.eventType === 'string' ? filters.eventType : undefined,
+      category:
+        typeof filters.category === 'string' ? filters.category : undefined,
+      sort:
+        filters.sort === 'createdAt_asc' ? 'createdAt_asc' : 'createdAt_desc',
     });
+    const from =
+      typeof filters.from === 'string' ? new Date(filters.from) : undefined;
+    const to =
+      typeof filters.to === 'string' ? new Date(filters.to) : undefined;
+    return {
+      items: result.items
+        .filter(
+          (row) =>
+            (!from || row.createdAt >= from) && (!to || row.createdAt <= to),
+        )
+        .slice(0, Number(filters.limit ?? DEFAULT_MAX_ROWS)),
+      hasMore: page * PAGE_SIZE < result.total,
+    };
   }
 
   private async throwIfCancelled(uuid: string) {
-    const row = await this.jobs.findByUuid(uuid);
-    if (row?.cancelRequested) throw new ExportCancelledError();
+    if ((await this.jobs.findByUuid(uuid))?.cancelRequested)
+      throw new ExportCancelledError();
   }
 
-  private exportRow(row: {
-    uuid: string;
-    actorUuid: string | null;
-    eventType: string;
-    category: string;
-    resourceType: string | null;
-    resourceUuid: string | null;
-    summary: string;
-    metadata: Record<string, unknown>;
-    requestId: string | null;
-    createdAt: Date;
-  }): Record<ExportColumn, unknown> {
+  private exportRow(row: ExportRow): Record<ExportColumn, unknown> {
     return {
       uuid: row.uuid,
       actorUuid: row.actorUuid,
@@ -390,7 +508,6 @@ export class SystemExportService {
       createdAt: row.createdAt.toISOString(),
     };
   }
-
   private publicJob(row: SystemExportJobRecord) {
     return {
       uuid: row.uuid,
@@ -398,19 +515,18 @@ export class SystemExportService {
       entity: row.entity,
       format: row.format,
       state: row.state,
+      filters: row.filters,
       rows: row.rows,
       processedRows: row.processedRows,
       estimatedRows: row.estimatedRows,
-      artifactBytes: row.artifactBytes?.toString() ?? null,
-      errorMessage: row.errorMessage,
       expiresAt: row.expiresAt,
+      errorMessage: row.errorMessage,
       completedAt: row.completedAt,
       cancelledAt: row.cancelledAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
   }
-
   private publicResult(row: SystemExportJobRecord): ExportResult {
     return {
       uuid: row.uuid,
@@ -422,55 +538,45 @@ export class SystemExportService {
       expiresAt: row.expiresAt,
     };
   }
-
   private async auditLifecycle(
     actorUuid: string,
-    resourceUuid: string,
-    action: 'created' | 'started' | 'completed' | 'failed' | 'retry' | 'cancelled' | 'downloaded',
-    summary: string,
+    uuid: string,
+    operation: string,
+    reason: string,
   ) {
-    const event =
-      action === 'created'
-        ? AUDIT_ACTIONS.SYSTEM_EXPORT_CREATED
-        : action === 'started'
-          ? AUDIT_ACTIONS.SYSTEM_EXPORT_STARTED
-          : action === 'completed'
-            ? AUDIT_ACTIONS.SYSTEM_EXPORT_COMPLETED
-            : action === 'failed'
-              ? AUDIT_ACTIONS.SYSTEM_EXPORT_FAILED
-              : action === 'retry'
-                ? AUDIT_ACTIONS.SYSTEM_EXPORT_RETRIED
-                : action === 'cancelled'
-                  ? AUDIT_ACTIONS.SYSTEM_EXPORT_CANCELLED
-                  : AUDIT_ACTIONS.SYSTEM_EXPORT_DOWNLOADED;
+    const map: Record<string, string> = {
+      created: AUDIT_ACTIONS.SYSTEM_EXPORT_CREATED,
+      started: AUDIT_ACTIONS.SYSTEM_EXPORT_STARTED,
+      completed: AUDIT_ACTIONS.SYSTEM_EXPORT_COMPLETED,
+      failed: AUDIT_ACTIONS.SYSTEM_EXPORT_FAILED,
+      downloaded: AUDIT_ACTIONS.SYSTEM_EXPORT_DOWNLOADED,
+      retry: AUDIT_ACTIONS.SYSTEM_EXPORT_RETRY,
+      cancelled: AUDIT_ACTIONS.SYSTEM_EXPORT_CANCELLED,
+    };
     await this.audit.record({
+      action: map[operation] ?? AUDIT_ACTIONS.SYSTEM_EXPORT_FAILED,
       actorUuid,
-      action: event,
-      resourceType: 'system_export',
-      resourceId: resourceUuid,
-      reason: summary,
-      system: false,
+      subjectUuid: actorUuid,
+      entityType: 'system_export',
+      entityUuid: uuid,
+      result: operation === 'failed' ? 'FAILURE' : 'SUCCESS',
+      reason,
     });
   }
 }
 
-function hashToken(token: string): string {
-  return createHash('sha256').update(token, 'utf8').digest('hex');
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function stringifyExportValue(value: unknown): string {
+const stringifyExportValue = (value: unknown): string => {
   if (value == null) return '';
   if (value instanceof Date) return value.toISOString();
   if (typeof value === 'bigint') return value.toString();
   if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'number' || typeof value === 'boolean')
+    return String(value);
   return JSON.stringify(value) ?? '';
-}
+};
 
-function csvCell(value: string): string {
-  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-}
+const csvCell = (value: string): string => {
+  let text = value;
+  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
