@@ -16,6 +16,7 @@ import { CrmCommunicationDeliveryService } from './application/services/crm-comm
 import { CrmController } from './presentation/crm.controller.js';
 import { CrmPublicInquiryController } from './presentation/crm-public-inquiry.controller.js';
 import { CrmLifecycleController } from './presentation/crm-lifecycle.controller.js';
+import { CrmCommunicationDeliveryController } from './presentation/crm-communication-delivery.controller.js';
 import { ScoreDomainService } from './application/ports/score-domain.service.js';
 import { DuplicateDetector } from './application/ports/duplicate-detector.js';
 import { LeadMergePolicy } from './application/ports/merge.policy.js';
@@ -39,6 +40,7 @@ import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
     CrmController,
     CrmPublicInquiryController,
     CrmLifecycleController,
+    CrmCommunicationDeliveryController,
   ],
   providers: [
     CrmService,
