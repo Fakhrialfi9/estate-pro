@@ -49,7 +49,10 @@ import {
 } from '../../common/audit/security-audit.port.js';
 import { AutomationScheduler } from './infrastructure/scheduler/automation.scheduler.js';
 
-const ACTION_HANDLERS = [...AUTOMATION_ACTION_PROVIDERS, SendCommunicationAction] as const;
+const ACTION_HANDLERS = [
+  ...AUTOMATION_ACTION_PROVIDERS,
+  SendCommunicationAction,
+] as const;
 
 @Module({
   imports: [
