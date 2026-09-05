@@ -22,6 +22,9 @@ import {
   SystemSettingConflictError,
   SystemSettingImmutableError,
 } from '../../domain/errors/system.errors.js';
+import { SYSTEM_CACHE, type SystemCachePort } from '../cache/system-cache.port.js';
+
+const SETTINGS_CACHE_TTL_MS = 30_000;
 
 @Injectable()
 export class SystemSettingsService implements SystemSettingsContract {
@@ -32,6 +35,8 @@ export class SystemSettingsService implements SystemSettingsContract {
     private readonly audit: SecurityAuditRepository,
     @Inject(SYSTEM_ACTIVITY_REPOSITORY)
     private readonly activity: SystemActivityRepository,
+    @Inject(SYSTEM_CACHE)
+    private readonly cache: SystemCachePort,
   ) {}
 
   async list(page: number, limit: number) {
@@ -70,6 +75,23 @@ export class SystemSettingsService implements SystemSettingsContract {
         message: 'Unknown system setting.',
       });
     }
+
+    const cacheKey = `system:settings:${normalizedKey}`;
+    try {
+      const cached = await this.cache.get<{
+        key: string;
+        scope: 'GLOBAL';
+        scopeKey: 'global';
+        valueType: string;
+        value: string | number | boolean;
+        version?: number;
+        updatedAt?: Date | string;
+      }>(cacheKey);
+      if (cached) return cached;
+    } catch {
+      // Cache is an optimization; the database remains authoritative.
+    }
+
     const stored = await this.repository.get(normalizedKey, 'GLOBAL', 'global');
     if (!stored && !(normalizedKey in SETTING_DEFAULTS)) {
       throw new NotFoundException({
@@ -78,16 +100,22 @@ export class SystemSettingsService implements SystemSettingsContract {
       });
     }
     const raw = stored?.value ?? SETTING_DEFAULTS[normalizedKey];
-    return {
+    const result = {
       key: normalizedKey,
-      scope: 'GLOBAL',
-      scopeKey: 'global',
+      scope: 'GLOBAL' as const,
+      scopeKey: 'global' as const,
       valueType: definition.valueType,
       value: this.deserialize(definition.valueType, raw),
       ...(stored
         ? { version: stored.version, updatedAt: stored.updatedAt }
         : {}),
     };
+    try {
+      await this.cache.set(cacheKey, result, SETTINGS_CACHE_TTL_MS);
+    } catch {
+      // Preserve correctness when cache backend is unavailable.
+    }
+    return result;
   }
 
   async update(
@@ -146,6 +174,13 @@ export class SystemSettingsService implements SystemSettingsContract {
       }
       throw error;
     }
+
+    try {
+      await this.cache.delete(`system:settings:${normalizedKey}`);
+    } catch {
+      // Stale cache cannot override the authoritative database value.
+    }
+
     await this.audit.record({
       action: 'SYSTEM_SETTING_UPDATED',
       actorUuid,
