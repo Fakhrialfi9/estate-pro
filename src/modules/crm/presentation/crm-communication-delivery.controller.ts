@@ -26,7 +26,9 @@ export class CrmCommunicationDeliveryController {
   @ApiOperation({ summary: 'Deliver a queued CRM communication' })
   send(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     const actorUuid = (request.user as { sub?: string } | undefined)?.sub;
-    if (!actorUuid) throw new UnauthorizedException('Authenticated actor missing');
+    if (!actorUuid) {
+      throw new UnauthorizedException('Authenticated actor missing');
+    }
     return this.delivery.deliver(uuid, actorUuid);
   }
 }
