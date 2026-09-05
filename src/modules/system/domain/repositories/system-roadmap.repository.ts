@@ -209,10 +209,7 @@ export interface SystemRoadmapRepository {
           >
         >,
     ): Promise<IntegrationCredentialRecord>;
-    revoke(
-      uuid: string,
-      revokedAt: Date,
-    ): Promise<IntegrationCredentialRecord>;
+    revoke(uuid: string, revokedAt: Date): Promise<IntegrationCredentialRecord>;
     markUsed(
       uuid: string,
       lastUsedAt: Date,
@@ -233,9 +230,7 @@ export interface SystemRoadmapRepository {
     getOrCreate(integrationId: bigint): Promise<IntegrationRuntimeRecord>;
     update(
       integrationId: bigint,
-      patch: Partial<
-        Omit<IntegrationRuntimeRecord, 'uuid' | 'integrationId'>
-      >,
+      patch: Partial<Omit<IntegrationRuntimeRecord, 'uuid' | 'integrationId'>>,
     ): Promise<IntegrationRuntimeRecord>;
   };
   operation: {

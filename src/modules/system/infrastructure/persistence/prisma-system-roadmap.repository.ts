@@ -23,9 +23,7 @@ const object = (value: unknown): Record<string, unknown> =>
     : {};
 
 @Injectable()
-export class PrismaSystemRoadmapRepository
-  implements SystemRoadmapRepository
-{
+export class PrismaSystemRoadmapRepository implements SystemRoadmapRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   featureFlag = {
@@ -174,10 +172,9 @@ export class PrismaSystemRoadmapRepository
       },
     ) => {
       const row = await this.prisma.$transaction(async (tx) => {
-        const current =
-          await tx.systemIntegrationCredential.findUniqueOrThrow({
-            where: { uuid },
-          });
+        const current = await tx.systemIntegrationCredential.findUniqueOrThrow({
+          where: { uuid },
+        });
         await tx.systemIntegrationCredential.update({
           where: { uuid },
           data: { status: 'ROTATED', rotatedAt: new Date() },
@@ -233,9 +230,7 @@ export class PrismaSystemRoadmapRepository
     },
     update: async (
       integrationId: bigint,
-      input: Partial<
-        Omit<IntegrationRuntimeRecord, 'uuid' | 'integrationId'>
-      >,
+      input: Partial<Omit<IntegrationRuntimeRecord, 'uuid' | 'integrationId'>>,
     ) => {
       const row = await this.prisma.systemIntegrationRuntime.update({
         where: { integrationId },
@@ -251,10 +246,7 @@ export class PrismaSystemRoadmapRepository
   };
 
   operation = {
-    getByIdempotency: async (
-      integrationId: bigint,
-      idempotencyKey: string,
-    ) => {
+    getByIdempotency: async (integrationId: bigint, idempotencyKey: string) => {
       const row = await this.prisma.systemIntegrationOperation.findUnique({
         where: {
           integrationId_idempotencyKey: {
