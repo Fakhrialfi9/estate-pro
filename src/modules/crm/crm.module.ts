@@ -6,11 +6,13 @@ import { PropertyModule } from '../property/property.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { SalesModule } from '../sales/sales.module.js';
 import { CRM_REPOSITORY } from './domain/repositories/crm.repository.js';
+import { COMMUNICATION_REPOSITORY } from './domain/repositories/communication.repository.js';
 import { PrismaCrmRepository } from './infrastructure/persistence/prisma-crm.repository.js';
 import { PrismaCrmLifecycleRepository } from './infrastructure/persistence/prisma-crm-lifecycle.repository.js';
 import { CrmService } from './application/crm.service.js';
 import { CrmLifecycleService } from './application/crm-lifecycle.service.js';
 import { CrmAutomationAdapter } from './application/services/crm-automation.adapter.js';
+import { CrmCommunicationDeliveryService } from './application/services/crm-communication-delivery.service.js';
 import { CrmController } from './presentation/crm.controller.js';
 import { CrmPublicInquiryController } from './presentation/crm-public-inquiry.controller.js';
 import { CrmLifecycleController } from './presentation/crm-lifecycle.controller.js';
@@ -41,6 +43,7 @@ import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
   providers: [
     CrmService,
     CrmAutomationAdapter,
+    CrmCommunicationDeliveryService,
     CrmLifecycleService,
     PrismaCrmLifecycleRepository,
     ScoreDomainService,
@@ -50,6 +53,7 @@ import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
     QualificationPolicy,
     ClosurePolicy,
     { provide: CRM_REPOSITORY, useClass: PrismaCrmRepository },
+    { provide: COMMUNICATION_REPOSITORY, useExisting: PrismaCrmRepository },
     { provide: CRM_AUTOMATION_PORT, useExisting: CrmAutomationAdapter },
     {
       provide: CRM_AGENT_WORKLOAD_PORT,
@@ -61,6 +65,7 @@ import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
     CrmService,
     CRM_AUTOMATION_PORT,
     CRM_AGENT_WORKLOAD_PORT,
+    CrmCommunicationDeliveryService,
   ],
 })
 export class CrmModule {}
