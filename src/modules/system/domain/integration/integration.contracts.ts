@@ -12,13 +12,15 @@ export type IntegrationState =
   | 'ERROR'
   | 'DISCONNECTED';
 
+export type IntegrationLifecycleState = IntegrationState | 'CONNECTING';
+
 export interface SystemIntegrationRecord {
   id: bigint;
   uuid: string;
   providerKey: string;
   providerVersion: string;
   capabilities: readonly string[];
-  state: IntegrationState;
+  state: IntegrationLifecycleState;
   metadata: Record<string, unknown>;
   secretRef: string | null;
   lastTestAt: Date | null;
