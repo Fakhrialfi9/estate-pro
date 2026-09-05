@@ -10,6 +10,9 @@ export const IMPORT_TARGET_FIELDS = [
 
 export type ImportTargetField = (typeof IMPORT_TARGET_FIELDS)[number];
 
+export type ImportConflictStrategy = 'FAIL' | 'SKIP' | 'UPDATE' | 'UPSERT';
+export type ImportTransactionStrategy = 'ROW' | 'BATCH' | 'ALL_OR_NOTHING';
+
 export type ImportTransform =
   | 'trim'
   | 'lowercase'
