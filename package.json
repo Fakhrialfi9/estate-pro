@@ -44,6 +44,7 @@
     "validate:all": "node scripts/validate-all.mjs",
 
     "test": "vitest run --config vitest.config.ts",
+    "test:unit": "npm test",
     "test:watch": "vitest --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
@@ -63,7 +64,7 @@
     "@nestjs/passport": "12.0.0",
     "@nestjs/platform-express": "12.0.1",
     "@nestjs/swagger": "12.0.1",
-    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/api": "1.9.0",
     "@opentelemetry/auto-instrumentations-node": "0.79.0",
     "@opentelemetry/resources": "2.10.0",
     "@opentelemetry/sdk-metrics": "2.10.0",
