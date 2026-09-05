@@ -13,7 +13,7 @@ import {
   type IntegrationCredentialRecord,
 } from '../../domain/repositories/system-roadmap.repository.js';
 
-const REF_PATTERN = /^vault:\/[A-Za-z0-9._\/-]{1,240}$/;
+const REF_PATTERN = /^vault:\/[A-Za-z0-9._/-]{1,240}$/;
 const REFRESH_SKEW_MS = 60_000;
 
 @Injectable()
@@ -33,91 +33,58 @@ export class SystemIntegrationCredentialService {
     const credential = await this.require(uuid);
     if (credential.status === 'REVOKED' || credential.status === 'ROTATED')
       throw new BadRequestException('Credential is not active');
-    if (
-      credential.credentialType !== 'OAUTH2' &&
-      credential.credentialType !== 'oauth2'
-    )
-      throw new BadRequestException(
-        'Credential does not support token refresh',
-      );
     if (!credential.refreshTokenRef)
-      throw new BadRequestException(
-        'Refresh token reference is not configured',
-      );
-    if (!provider.refreshAccessToken)
-      throw new BadRequestException('Provider token refresh is not configured');
+      throw new BadRequestException('Credential has no refresh token');
     if (
-      credential.refreshTokenExpiresAt &&
-      credential.refreshTokenExpiresAt.getTime() <= Date.now()
+      credential.accessTokenExpiresAt &&
+      credential.accessTokenExpiresAt.getTime() > Date.now() + REFRESH_SKEW_MS
     ) {
-      await this.roadmap.credential.revoke(uuid, new Date());
-      throw new BadRequestException('Refresh credential has expired');
+      return this.redact(credential);
     }
-    const result = await provider.refreshAccessToken({
-      clientReference: credential.secretRef ?? '',
-      refreshTokenReference: credential.refreshTokenRef,
-      scopes: this.scopes(credential.metadata),
+    if (!provider.refreshAccessToken)
+      throw new BadRequestException('Provider does not support OAuth refresh');
+    const tokens = await provider.refreshAccessToken({
+      refreshTokenRef: credential.refreshTokenRef,
     });
-    this.assertRef(result.accessTokenReference);
-    if (result.refreshTokenReference)
-      this.assertRef(result.refreshTokenReference);
+    if (!tokens.accessTokenRef || !REF_PATTERN.test(tokens.accessTokenRef))
+      throw new BadRequestException('Provider returned an invalid access token reference');
+    if (!tokens.refreshTokenRef || !REF_PATTERN.test(tokens.refreshTokenRef))
+      throw new BadRequestException('Provider returned an invalid refresh token reference');
     const rotated = await this.roadmap.credential.rotate(uuid, {
       secretRef: credential.secretRef,
-      accessTokenRef: result.accessTokenReference,
-      refreshTokenRef:
-        result.refreshTokenReference ?? credential.refreshTokenRef,
-      accessTokenExpiresAt: result.accessTokenExpiresAt,
-      refreshTokenExpiresAt:
-        result.refreshTokenExpiresAt ?? credential.refreshTokenExpiresAt,
+      accessTokenRef: tokens.accessTokenRef,
+      refreshTokenRef: tokens.refreshTokenRef,
+      accessTokenExpiresAt: tokens.accessTokenExpiresAt,
+      refreshTokenExpiresAt: tokens.refreshTokenExpiresAt,
       metadata: credential.metadata,
     });
+    await this.roadmap.credential.markUsed(rotated.uuid, new Date());
     await this.audit.record({
-      action: 'SYSTEM_SETTING_UPDATED',
       actorUuid,
-      subjectUuid: actorUuid,
-      entityType: 'system_integration_credential',
-      entityUuid: rotated.uuid,
-      result: 'SUCCESS',
-      reason: 'oauth-access-token-refreshed',
+      action: 'integration-credential-refreshed',
+      resourceType: 'system_integration_credential',
+      resourceUuid: rotated.uuid,
+      metadata: {},
     });
-    return this.safe(rotated);
+    return this.redact(rotated);
   }
 
-  async shouldRefresh(credentialUuid: string) {
-    const credential = await this.require(credentialUuid);
-    if (!credential.accessTokenExpiresAt) return false;
-    return (
-      credential.accessTokenExpiresAt.getTime() - Date.now() <= REFRESH_SKEW_MS
-    );
+  async get(uuid: string) {
+    return this.redact(await this.require(uuid));
   }
 
   private async require(uuid: string): Promise<IntegrationCredentialRecord> {
-    const credential = await this.roadmap.credential.get(uuid);
-    if (!credential)
-      throw new NotFoundException('Integration credential not found');
-    return credential;
+    const row = await this.roadmap.credential.get(uuid);
+    if (!row) throw new NotFoundException('Integration credential not found');
+    return row;
   }
 
-  private scopes(metadata: Record<string, unknown>): readonly string[] {
-    const value = metadata.scopes;
-    if (!Array.isArray(value)) return [];
-    return value
-      .filter((item): item is string => typeof item === 'string')
-      .slice(0, 50);
-  }
-
-  private assertRef(value: string) {
-    if (!REF_PATTERN.test(value))
-      throw new BadRequestException(
-        'Credential provider returned invalid reference',
-      );
-  }
-  private safe(row: IntegrationCredentialRecord) {
+  private redact(row: IntegrationCredentialRecord) {
     return {
       ...row,
-      secretRef: row.secretRef ? 'vault://redacted' : null,
-      accessTokenRef: row.accessTokenRef ? 'vault://redacted' : null,
-      refreshTokenRef: row.refreshTokenRef ? 'vault://redacted' : null,
+      secretRef: row.secretRef ? 'vault://***' : null,
+      accessTokenRef: row.accessTokenRef ? 'vault://***' : null,
+      refreshTokenRef: row.refreshTokenRef ? 'vault://***' : null,
     };
   }
 }
