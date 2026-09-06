@@ -120,7 +120,7 @@ describe('AutomationService', () => {
   );
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     users.getUser.mockResolvedValue({
       uuid: actorUuid,
       status: 'ACTIVE',
@@ -351,7 +351,7 @@ describe('AutomationService', () => {
 
     await service.publishActivate(workflowUuid, versionUuid, actorUuid);
 
-    const [activatedVersionInput] = repo.updateVersion.mock.calls[0] ?? [];
+    const [, activatedVersionInput] = repo.updateVersion.mock.calls[0] ?? [];
     expect(activatedVersionInput?.status).toBe('ACTIVE');
     expect(activatedVersionInput?.activatedAt).toBeInstanceOf(Date);
     expect(repo.updateVersion).toHaveBeenNthCalledWith(
