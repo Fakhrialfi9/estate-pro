@@ -130,10 +130,10 @@ describe('CrmLifecycleService coverage', () => {
   });
 
   it('covers nurture workflow and reactivation', async () => {
-    await expect(service.nurtureWorkflow('lead-1', actor)).resolves.toEqual({
-      lead: expect.anything(),
-      activity: { uuid: 'activity-1' },
-    });
+    const workflow = await service.nurtureWorkflow('lead-1', actor);
+    expect(workflow.lead).toBeDefined();
+    expect(workflow.activity).toEqual({ uuid: 'activity-1' });
+
     await expect(service.reactivate('lead-1', actor)).resolves.toEqual(
       expect.objectContaining({ uuid: 'lead-1' }),
     );
