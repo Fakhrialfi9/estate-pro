@@ -350,9 +350,7 @@ describe('SalesService coverage', () => {
         actor,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
-    await expect(s.reopenDeal(uuid, ' ', actor)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    expect(() => s.reopenDeal(uuid, ' ', actor)).toThrow(BadRequestException);
     await expect(
       s.closeDeal(
         uuid,

@@ -431,14 +431,14 @@ describe('AutomationService coverage', () => {
     await expect(
       service.markNotificationRead('notification-1', actorUuid),
     ).resolves.toEqual({ success: true });
-    await expect(
+    expect(() =>
       service.listNotifications({
         userUuid: '',
         page: 1,
         limit: 10,
         unreadOnly: false,
       }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).toThrow(BadRequestException);
   });
 
   it('covers assignment, SLA, escalation and dashboard rules', async () => {
