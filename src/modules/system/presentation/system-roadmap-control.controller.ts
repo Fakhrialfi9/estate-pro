@@ -16,7 +16,6 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { IsBoolean } from 'class-validator';
 import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -111,11 +110,6 @@ const dashboardSchema = {
     },
   },
 };
-
-class ToggleOperationDto {
-  @IsBoolean()
-  enabled!: boolean;
-}
 
 @ApiTags('System Control Plane')
 @ApiBearerAuth()
