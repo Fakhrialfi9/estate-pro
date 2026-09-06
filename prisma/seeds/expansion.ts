@@ -123,15 +123,24 @@ function varyScalar(column: InformationSchemaColumn, value: unknown, variant: nu
   }
 }
 
+function resolveRuntimeModel(runtimeModels: Record<string, RuntimeModel>, delegateName: string): RuntimeModel | undefined {
+  const direct = runtimeModels[delegateName];
+  if (direct) return direct;
+
+  const modelName = delegateName.charAt(0).toUpperCase() + delegateName.slice(1);
+  return runtimeModels[modelName];
+}
+
 async function loadTableMetadata(tx: SeedTransaction, prisma: PrismaClient): Promise<Map<string, TableMeta>> {
   const runtimeModels = (prisma as PrismaWithRuntimeDataModel)._runtimeDataModel?.models;
   if (!runtimeModels) throw new Error('Unable to inspect Prisma runtime model metadata');
 
   const modelToTable = new Map<string, string>();
-  for (const modelName of SEEDED_BASELINE_TABLES) {
-    const tableName = runtimeModels[modelName]?.dbName;
-    if (!tableName) throw new Error(`Missing database table mapping for Prisma model ${modelName}`);
-    modelToTable.set(modelName, tableName);
+  for (const delegateName of SEEDED_BASELINE_TABLES) {
+    const runtimeModel = resolveRuntimeModel(runtimeModels, delegateName);
+    const tableName = runtimeModel?.dbName;
+    if (!tableName) throw new Error(`Missing database table mapping for Prisma model delegate ${delegateName}`);
+    modelToTable.set(delegateName, tableName);
   }
 
   const schema = await tx.$queryRawUnsafe<{ tableName: string }[]>('SELECT DATABASE() AS tableName');
@@ -153,8 +162,8 @@ async function loadTableMetadata(tx: SeedTransaction, prisma: PrismaClient): Pro
   );
 
   const result = new Map<string, TableMeta>();
-  for (const modelName of SEEDED_BASELINE_TABLES) {
-    const tableName = modelToTable.get(modelName)!;
+  for (const delegateName of SEEDED_BASELINE_TABLES) {
+    const tableName = modelToTable.get(delegateName)!;
     const tableColumns = columns.filter((column) => column.TABLE_NAME === tableName);
     const tableIndexes = indexes.filter((index) => index.TABLE_NAME === tableName);
     const primaryIndex = tableIndexes.filter((index) => index.INDEX_NAME === 'PRIMARY');
@@ -171,7 +180,7 @@ async function loadTableMetadata(tx: SeedTransaction, prisma: PrismaClient): Pro
         }, new Map<string, string[]>()),
     ).map(([, uniqueColumns]) => uniqueColumns);
 
-    result.set(modelName, {
+    result.set(delegateName, {
       tableName,
       columns: tableColumns,
       primaryKey: primaryIndex[0].COLUMN_NAME,
