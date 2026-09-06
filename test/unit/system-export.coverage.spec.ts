@@ -39,14 +39,20 @@ const job = {
 
 const dependencies = () => ({
   jobs: {
-    countRunning: vi.fn<SystemExportRepository['countRunning']>().mockResolvedValue(0),
+    countRunning: vi
+      .fn<SystemExportRepository['countRunning']>()
+      .mockResolvedValue(0),
     create: vi.fn<SystemExportRepository['create']>().mockResolvedValue({
       ...job,
       state: 'QUEUED',
       downloadTokenHash: 'unused',
     }),
-    claimQueued: vi.fn<SystemExportRepository['claimQueued']>().mockResolvedValue(null),
-    findByUuid: vi.fn<SystemExportRepository['findByUuid']>().mockResolvedValue(job),
+    claimQueued: vi
+      .fn<SystemExportRepository['claimQueued']>()
+      .mockResolvedValue(null),
+    findByUuid: vi
+      .fn<SystemExportRepository['findByUuid']>()
+      .mockResolvedValue(job),
     list: vi.fn<SystemExportRepository['list']>().mockResolvedValue({
       items: [job],
       total: 1,
@@ -56,7 +62,9 @@ const dependencies = () => ({
       .mockResolvedValue([job]),
     update: vi
       .fn<SystemExportRepository['update']>()
-      .mockImplementation((_uuid, input) => Promise.resolve({ ...job, ...input })),
+      .mockImplementation((_uuid, input) =>
+        Promise.resolve({ ...job, ...input }),
+      ),
     deleteMany: vi
       .fn<SystemExportRepository['deleteMany']>()
       .mockResolvedValue(undefined),
