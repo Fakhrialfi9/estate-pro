@@ -55,9 +55,11 @@ const makeRepo = () =>
         if (
           name === 'getInquiry' ||
           name === 'getActivity' ||
-          name === 'getCommunication' ||
-          name === 'getContact'
+          name === 'getCommunication'
         ) {
+          return vi.fn(() => Promise.resolve({ uuid: 'row-1' }));
+        }
+        if (name === 'getContact') {
           return vi.fn(() => Promise.resolve({ uuid: 'row-1' }));
         }
         if (name === 'getLeadScore') {
