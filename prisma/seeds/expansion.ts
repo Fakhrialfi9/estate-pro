@@ -239,6 +239,79 @@ function varyPrimaryKeyColumns(
   }
 }
 
+function buildUniqueKey(row: RawRow, columns: string[]): string | null {
+  const values = columns.map((columnName) => row[columnName]);
+  if (values.some((value) => value === null || value === undefined)) return null;
+  return values.map(asComparableKey).join('\u001f');
+}
+
+function addOccupiedUniqueKeys(
+  occupiedKeys: Map<string, Set<string>>,
+  row: RawRow,
+  indexes: string[][],
+): void {
+  for (const columns of indexes) {
+    const key = buildUniqueKey(row, columns);
+    if (!key) continue;
+    const indexKey = columns.join('\u001f');
+    const keys = occupiedKeys.get(indexKey) ?? new Set<string>();
+    keys.add(key);
+    occupiedKeys.set(indexKey, keys);
+  }
+}
+
+function ensureUniqueIndexes(
+  row: RawRow,
+  meta: TableMeta,
+  source: RawRow,
+  tableRows: Map<string, RawRow[]>,
+  occupiedKeys: Map<string, Set<string>>,
+  variant: number,
+): void {
+  const indexes = meta.primaryKeys.length > 1 ? [meta.primaryKeys, ...meta.uniqueIndexes] : meta.uniqueIndexes;
+
+  for (const uniqueIndex of indexes) {
+    const indexKey = uniqueIndex.join('\u001f');
+    const keys = occupiedKeys.get(indexKey) ?? new Set<string>();
+    const currentKey = buildUniqueKey(row, uniqueIndex);
+    if (!currentKey || !keys.has(currentKey)) continue;
+
+    let resolved = false;
+    for (let attempt = 0; attempt < SEED_MIN_RECORDS * 4 && !resolved; attempt += 1) {
+      for (const columnName of uniqueIndex) {
+        const column = meta.columns.find((item) => item.COLUMN_NAME === columnName);
+        if (!column || row[columnName] === null || row[columnName] === undefined) continue;
+
+        const foreignKey = meta.foreignKeys.get(columnName);
+        if (foreignKey) {
+          const parentRows = tableRows.get(foreignKey.REFERENCED_TABLE_NAME);
+          if (!parentRows || parentRows.length === 0) continue;
+          const parentRow = parentRows[(variant + attempt) % parentRows.length];
+          row[columnName] = parentRow[foreignKey.REFERENCED_COLUMN_NAME];
+        } else {
+          row[columnName] = varyScalar(column, source[columnName], variant + attempt + 1, meta.tableName);
+        }
+
+        const candidateKey = buildUniqueKey(row, uniqueIndex);
+        if (!candidateKey || !keys.has(candidateKey)) {
+          resolved = true;
+          break;
+        }
+      }
+    }
+
+    if (!resolved) {
+      const key = buildUniqueKey(row, uniqueIndex);
+      throw new Error(
+        `Unable to generate a unique seed row for ${meta.tableName} on index (${uniqueIndex.join(', ')})` +
+          (key ? `; conflicting key ${key}` : ''),
+      );
+    }
+  }
+
+  addOccupiedUniqueKeys(occupiedKeys, row, indexes);
+}
+
 async function expandModel(
   tx: SeedTransaction,
   meta: TableMeta,
@@ -256,6 +329,10 @@ async function expandModel(
   const insertColumns = meta.columns.filter((column) => !column.EXTRA.includes('auto_increment'));
   const fkValues = new Map<string, InformationSchemaForeignKey>();
   for (const [columnName, foreignKey] of meta.foreignKeys) fkValues.set(columnName, foreignKey);
+
+  const occupiedKeys = new Map<string, Set<string>>();
+  const trackedIndexes = meta.primaryKeys.length > 1 ? [meta.primaryKeys, ...meta.uniqueIndexes] : meta.uniqueIndexes;
+  for (const existingRow of rows) addOccupiedUniqueKeys(occupiedKeys, existingRow, trackedIndexes);
 
   const newRows: RawRow[] = [];
   for (let variant = 1; variant <= rowsToCreate; variant += 1) {
@@ -284,23 +361,7 @@ async function expandModel(
       varyPrimaryKeyColumns(source, row, meta, fkValues, tableRows, variant);
     }
 
-    const changedUniqueColumns = new Set<string>();
-    for (const uniqueIndex of meta.uniqueIndexes) {
-      const hasChangedForeignKey = uniqueIndex.some((columnName) => row[columnName] !== source[columnName] && fkValues.has(columnName));
-      if (hasChangedForeignKey) continue;
-
-      const candidate = uniqueIndex.find((columnName) => {
-        const column = meta.columns.find((item) => item.COLUMN_NAME === columnName);
-        return column && !fkValues.has(columnName) && row[columnName] !== null && row[columnName] !== undefined;
-      });
-      if (!candidate || changedUniqueColumns.has(candidate)) continue;
-
-      const column = meta.columns.find((item) => item.COLUMN_NAME === candidate);
-      if (!column) continue;
-      row[candidate] = varyScalar(column, source[candidate], variant, meta.tableName);
-      changedUniqueColumns.add(candidate);
-    }
-
+    ensureUniqueIndexes(row, meta, source, tableRows, occupiedKeys, variant);
     newRows.push(row);
   }
 
