@@ -22,10 +22,10 @@ function createService() {
 }
 
 describe('AutomationNotificationService', () => {
-  it('validates and creates notifications with normalized optional fields', () => {
+  it('validates and creates notifications with normalized optional fields', async () => {
     const { service, repository } = createService();
-    repository.createNotification.mockReturnValue({ uuid: 'n-1' });
-    service.createNotification({
+    repository.createNotification.mockResolvedValue({ uuid: 'n-1' });
+    await service.createNotification({
       userUuid: ' user-1 ',
       type: ' property.updated ',
       title: ' Title ',
@@ -151,8 +151,8 @@ describe('AutomationNotificationService', () => {
     await expect(service.getPolicy('notification-1')).rejects.toThrow(
       NotFoundException,
     );
-    repository.createDelivery.mockReturnValue({ uuid: 'delivery-1' });
-    service.createDelivery('notification-1', 'EMAIL', 99);
+    repository.createDelivery.mockResolvedValue({ uuid: 'delivery-1' });
+    await service.createDelivery('notification-1', 'EMAIL', 99);
     expect(repository.createDelivery).toHaveBeenCalledWith({
       notificationUuid: 'notification-1',
       channel: 'EMAIL',
@@ -166,11 +166,11 @@ describe('AutomationNotificationService', () => {
     );
   });
 
-  it('delegates read operations', () => {
+  it('delegates read operations', async () => {
     const { service, repository } = createService();
-    service.listPreferences('u');
-    service.listTemplates({ activeOnly: true });
-    service.listDeliveries('n');
+    await service.listPreferences('u');
+    await service.listTemplates({ activeOnly: true });
+    await service.listDeliveries('n');
     expect(repository.listPreferences).toHaveBeenCalledWith('u');
     expect(repository.listTemplates).toHaveBeenCalledWith({ activeOnly: true });
     expect(repository.listNotificationDeliveries).toHaveBeenCalledWith('n');
