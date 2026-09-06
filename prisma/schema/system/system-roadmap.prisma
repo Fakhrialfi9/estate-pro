@@ -145,7 +145,7 @@ model SystemIntegrationConflict {
   conflictKey String @db.VarChar(180) @map("conflict_key")
   entityType String @db.VarChar(80)
   localVersion String? @db.VarChar(80) @map("local_version")
-  remoteVersion String? @db.VarChar(80) @db.VarChar(80) @map("remote_version")
+  remoteVersion String? @db.VarChar(80) @map("remote_version")
   resolution String @db.VarChar(32)
   status String @db.VarChar(24)
   localPayload Json? @map("local_payload")
