@@ -30,6 +30,121 @@ import {
   NotificationTemplateUpdateDto,
 } from './dto/notification-management.dto.js';
 
+const notificationSchema = {
+  type: 'object',
+  required: [
+    'uuid',
+    'userUuid',
+    'type',
+    'title',
+    'body',
+    'status',
+    'createdAt',
+  ],
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    userUuid: { type: 'string', format: 'uuid' },
+    type: { type: 'string' },
+    title: { type: 'string' },
+    body: { type: 'string' },
+    entityType: { type: 'string', nullable: true },
+    entityUuid: { type: 'string', format: 'uuid', nullable: true },
+    status: { type: 'string' },
+    readAt: { type: 'string', format: 'date-time', nullable: true },
+    createdAt: { type: 'string', format: 'date-time' },
+  },
+};
+
+const notificationListSchema = {
+  type: 'object',
+  required: ['items', 'total', 'page', 'limit'],
+  properties: {
+    items: { type: 'array', items: notificationSchema },
+    total: { type: 'integer', minimum: 0 },
+    page: { type: 'integer', minimum: 1 },
+    limit: { type: 'integer', minimum: 1 },
+  },
+};
+
+const notificationPreferenceSchema = {
+  type: 'object',
+  required: [
+    'uuid',
+    'userUuid',
+    'notificationType',
+    'channel',
+    'enabled',
+    'createdAt',
+    'updatedAt',
+  ],
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    userUuid: { type: 'string', format: 'uuid' },
+    notificationType: { type: 'string' },
+    channel: {
+      type: 'string',
+      enum: ['IN_APP', 'EMAIL', 'WHATSAPP', 'SMS'],
+    },
+    enabled: { type: 'boolean' },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+};
+
+const notificationTemplateSchema = {
+  type: 'object',
+  required: [
+    'uuid',
+    'code',
+    'version',
+    'titleTemplate',
+    'bodyTemplate',
+    'variables',
+    'isActive',
+    'createdAt',
+    'updatedAt',
+  ],
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    code: { type: 'string' },
+    version: { type: 'integer', minimum: 1 },
+    titleTemplate: { type: 'string' },
+    bodyTemplate: { type: 'string' },
+    variables: { type: 'array', items: { type: 'string' } },
+    isActive: { type: 'boolean' },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+};
+
+const notificationPolicySchema = {
+  type: 'object',
+  required: [
+    'uuid',
+    'notificationUuid',
+    'priority',
+    'createdAt',
+    'updatedAt',
+  ],
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    notificationUuid: { type: 'string', format: 'uuid' },
+    templateUuid: { type: 'string', format: 'uuid', nullable: true },
+    priority: {
+      type: 'string',
+      enum: ['LOW', 'NORMAL', 'HIGH', 'URGENT'],
+    },
+    expiresAt: { type: 'string', format: 'date-time', nullable: true },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+};
+
+const genericObjectSchema = {
+  type: 'object',
+  additionalProperties: true,
+};
+
 @ApiTags('System Notifications')
 @ApiBearerAuth()
 @Controller({ path: 'system/notifications', version: '1' })
@@ -40,6 +155,11 @@ export class NotificationsController {
   @Get()
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'List current-user notifications' })
+  @ApiResponse({
+    status: 200,
+    description: 'Current-user notifications returned.',
+    schema: notificationListSchema,
+  })
   list(@Req() request: Request, @Query() query: NotificationQueryDto) {
     const userUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.notifications.list(
@@ -53,6 +173,15 @@ export class NotificationsController {
   @Patch('read-all')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'Mark all current-user notifications as read' })
+  @ApiResponse({
+    status: 200,
+    description: 'Current-user notifications marked as read.',
+    schema: {
+      type: 'object',
+      required: ['updated'],
+      properties: { updated: { type: 'integer', minimum: 0 } },
+    },
+  })
   markAllRead(@Req() request: Request) {
     const userUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.notifications.markAllRead(userUuid);
@@ -61,7 +190,11 @@ export class NotificationsController {
   @Patch(':uuid/read')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'Mark a current-user notification as read' })
-  @ApiResponse({ status: 200, description: 'Notification marked as read.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification marked as read.',
+    schema: notificationSchema,
+  })
   markRead(
     @Req() request: Request,
     @Param('uuid', ParseUUIDPipe) uuid: string,
@@ -73,6 +206,11 @@ export class NotificationsController {
   @Get('preferences')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'List current-user notification preferences' })
+  @ApiResponse({
+    status: 200,
+    description: 'Current-user notification preferences returned.',
+    schema: { type: 'array', items: notificationPreferenceSchema },
+  })
   preferences(@Req() request: Request) {
     const userUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.notifications.preferences(userUuid);
@@ -81,6 +219,11 @@ export class NotificationsController {
   @Patch('preferences')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'Update a current-user notification preference' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification preference updated.',
+    schema: notificationPreferenceSchema,
+  })
   setPreference(
     @Req() request: Request,
     @Body() dto: NotificationPreferenceDto,
@@ -92,6 +235,11 @@ export class NotificationsController {
   @Get('templates')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'List notification templates' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification templates returned.',
+    schema: { type: 'array', items: notificationTemplateSchema },
+  })
   templates() {
     return this.notifications.templates({ activeOnly: false });
   }
@@ -99,6 +247,11 @@ export class NotificationsController {
   @Post('templates')
   @RequirePermissions('system.settings.update')
   @ApiOperation({ summary: 'Create a versioned notification template' })
+  @ApiResponse({
+    status: 201,
+    description: 'Notification template created.',
+    schema: notificationTemplateSchema,
+  })
   createTemplate(
     @Req() request: Request,
     @Body() dto: NotificationTemplateDto,
@@ -114,6 +267,11 @@ export class NotificationsController {
   @Patch('templates/:uuid')
   @RequirePermissions('system.settings.update')
   @ApiOperation({ summary: 'Update a notification template' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification template updated.',
+    schema: notificationTemplateSchema,
+  })
   updateTemplate(
     @Param('uuid', ParseUUIDPipe) uuid: string,
     @Body() dto: NotificationTemplateUpdateDto,
@@ -124,6 +282,11 @@ export class NotificationsController {
   @Get(':uuid/policy')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'Get notification delivery policy' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification delivery policy returned.',
+    schema: notificationPolicySchema,
+  })
   policy(@Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.notifications.policy(uuid);
   }
@@ -132,6 +295,11 @@ export class NotificationsController {
   @RequirePermissions('system.settings.update')
   @ApiOperation({
     summary: 'Update notification priority and expiration policy',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification delivery policy updated.',
+    schema: notificationPolicySchema,
   })
   setPolicy(
     @Param('uuid', ParseUUIDPipe) uuid: string,
@@ -149,6 +317,11 @@ export class NotificationsController {
   @Get(':uuid/deliveries')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'List notification delivery states' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification delivery states returned.',
+    schema: { type: 'array', items: genericObjectSchema },
+  })
   deliveries(@Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.notifications.deliveries(uuid);
   }
@@ -156,6 +329,11 @@ export class NotificationsController {
   @Post(':uuid/deliveries')
   @RequirePermissions('system.settings.update')
   @ApiOperation({ summary: 'Queue a notification delivery' })
+  @ApiResponse({
+    status: 201,
+    description: 'Notification delivery queued.',
+    schema: genericObjectSchema,
+  })
   createDelivery(
     @Param('uuid', ParseUUIDPipe) uuid: string,
     @Body() dto: NotificationDeliveryDto,
