@@ -20,7 +20,9 @@ const actor: SalesActor = {
   userAgent: 'unit-test',
 };
 
-const opportunity = (overrides: Partial<SalesOpportunityRow> = {}) => ({
+const opportunity = (
+  overrides: Partial<SalesOpportunityRow> = {},
+): SalesOpportunityRow => ({
   uuid: '22222222-2222-4222-8222-222222222222',
   leadUuid: '33333333-3333-4333-8333-333333333333',
   contactUuid: '44444444-4444-4444-8444-444444444444',
@@ -28,7 +30,7 @@ const opportunity = (overrides: Partial<SalesOpportunityRow> = {}) => ({
   teamUuid: null,
   pipelineUuid: null,
   stageUuid: null,
-  status: 'OPEN' as const,
+  status: 'OPEN',
   propertyUuid: null,
   title: 'Qualified lead',
   valueAmount: '100.00',
@@ -53,7 +55,10 @@ describe('SalesService', () => {
     transitionNegotiation: vi.fn(),
     getDeal: vi.fn(),
     listDeals: vi.fn(),
-  } satisfies Record<keyof SalesRepository, ReturnType<typeof vi.fn>>;
+  } satisfies Record<
+    keyof SalesRepository,
+    ReturnType<typeof vi.fn>
+  >;
   const auditRecord = vi.fn().mockResolvedValue(undefined);
   const service = new SalesService(repository, {
     record: auditRecord,
