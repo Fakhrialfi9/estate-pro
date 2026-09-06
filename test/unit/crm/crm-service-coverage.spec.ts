@@ -118,22 +118,22 @@ const makeRepo = () =>
     },
   ) as never;
 
-const makeAudit = () =>
+const makeAudit = ()
   ({
     record: vi.fn(() => Promise.resolve(undefined)),
   }) as never;
 
-const makeUserPort = () =>
+const makeUserPort = ()
   ({
     getUser: vi.fn(() => Promise.resolve(activeUser)),
   }) as never;
 
-const makePropertyPort = () =>
+const makePropertyPort = ()
   ({
     getProperty: vi.fn(() => Promise.resolve({ uuid: 'property-1' })),
   }) as never;
 
-const service = () =>
+const service = ()
   new CrmService(makeRepo(), makeAudit(), makePropertyPort(), makeUserPort());
 
 describe('CrmService coverage', () => {
@@ -260,9 +260,9 @@ describe('CrmService coverage', () => {
       'row-1',
     );
     expect((await s.merge('source', 'target', actor)).uuid).toBe('row-1');
-    expect(() => s.configList('invalid', { page: 1, limit: 10 })).toThrow(
-      BadRequestException,
-    );
+    expect(() =>
+      s.configList('invalid', { page: 1, limit: 10 }),
+    ).toThrow(BadRequestException);
     expect(await s.configList('source', { page: 1, limit: 10 })).toEqual([]);
     expect((await s.configCreate('source', { code: 'web' }, actor)).uuid).toBe(
       'row-1',
