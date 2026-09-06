@@ -5,7 +5,7 @@ model SystemFeatureFlag {
   environment String @db.VarChar(32)
   description String? @db.VarChar(500)
   enabled Boolean @default(false)
-  rolloutPercentage Int @default(100)
+  rolloutPercentage Int @default(100) @map("rollout_percentage")
   metadata Json
   createdBy String? @db.Char(36)
   updatedBy String? @db.Char(36)
