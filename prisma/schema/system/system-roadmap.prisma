@@ -143,7 +143,7 @@ model SystemIntegrationConflict {
   integrationId BigInt @map("integration_id") @db.UnsignedBigInt
   operationUuid String? @map("operation_uuid") @db.Char(36)
   conflictKey String @db.VarChar(180) @map("conflict_key")
-  entityType String @db.VarChar(80)
+  entityType String @db.VarChar(80) @map("entity_type")
   localVersion String? @db.VarChar(80) @map("local_version")
   remoteVersion String? @db.VarChar(80) @map("remote_version")
   resolution String @db.VarChar(32)
