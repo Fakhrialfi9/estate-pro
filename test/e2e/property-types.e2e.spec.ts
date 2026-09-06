@@ -8,6 +8,7 @@ import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.s
 import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
 import { SessionService } from '../../src/modules/auth/application/services/session.service.js';
 import { httpRequest } from './helpers/http.js';
+import { cleanupPropertyGraph } from './helpers/cleanup-property-graph.js';
 
 const permissions = [
   'property-types.create',
@@ -104,6 +105,10 @@ describe('Property Types HTTP API', () => {
   beforeEach(async () => {
     await prisma.auditLogChange.deleteMany();
     await prisma.auditLog.deleteMany();
+    await cleanupPropertyGraph(prisma);
+    await prisma.propertySubcategory.deleteMany();
+    await prisma.propertyCategory.deleteMany();
+    await prisma.propertyType.deleteMany();
     await prisma.authorizationUserRole.deleteMany();
     await prisma.authorizationRolePermission.deleteMany();
     await prisma.authorizationRole.deleteMany();
@@ -112,10 +117,6 @@ describe('Property Types HTTP API', () => {
     await prisma.authenticationRefreshTokenFamily.deleteMany();
     await prisma.authenticationUserSession.deleteMany();
     await prisma.authenticationUser.deleteMany();
-    await prisma.property.deleteMany();
-    await prisma.propertySubcategory.deleteMany();
-    await prisma.propertyCategory.deleteMany();
-    await prisma.propertyType.deleteMany();
     admin = await makeActor(prisma, tokens, true);
     denied = await makeActor(prisma, tokens, false);
   });
