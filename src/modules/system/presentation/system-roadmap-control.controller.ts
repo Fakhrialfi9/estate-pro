@@ -10,7 +10,13 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { IsBoolean } from 'class-validator';
 import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -43,6 +49,74 @@ import {
   UpdateImportProfileDto,
 } from './dto/system-roadmap.dto.js';
 
+const dashboardSchema = {
+  type: 'object',
+  required: [
+    'generatedAt',
+    'environment',
+    'featureFlags',
+    'importProfiles',
+    'integrations',
+    'openConflicts',
+    'openAlerts',
+    'runningOperations',
+    'pendingEvents',
+    'integrationHealth',
+  ],
+  properties: {
+    generatedAt: { type: 'string', format: 'date-time' },
+    environment: {
+      type: 'object',
+      additionalProperties: true,
+    },
+    featureFlags: { type: 'integer', minimum: 0 },
+    importProfiles: { type: 'integer', minimum: 0 },
+    integrations: {
+      type: 'object',
+      required: ['CONFIGURED', 'ACTIVE', 'DISABLED', 'ERROR', 'DISCONNECTED'],
+      properties: {
+        CONFIGURED: { type: 'integer', minimum: 0 },
+        ACTIVE: { type: 'integer', minimum: 0 },
+        DISABLED: { type: 'integer', minimum: 0 },
+        ERROR: { type: 'integer', minimum: 0 },
+        DISCONNECTED: { type: 'integer', minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    openConflicts: { type: 'integer', minimum: 0 },
+    openAlerts: { type: 'integer', minimum: 0 },
+    runningOperations: { type: 'integer', minimum: 0 },
+    pendingEvents: { type: 'integer', minimum: 0 },
+    integrationHealth: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: [
+          'uuid',
+          'providerKey',
+          'state',
+          'lastTestAt',
+          'lastSyncAt',
+          'errorCode',
+        ],
+        properties: {
+          uuid: { type: 'string', format: 'uuid' },
+          providerKey: { type: 'string' },
+          state: { type: 'string' },
+          lastTestAt: { type: 'string', format: 'date-time', nullable: true },
+          lastSyncAt: { type: 'string', format: 'date-time', nullable: true },
+          errorCode: { type: 'string', nullable: true },
+        },
+      },
+    },
+  },
+};
+
+class ToggleOperationDto {
+  @IsBoolean()
+  enabled!: boolean;
+}
+
 @ApiTags('System Control Plane')
 @ApiBearerAuth()
 @Controller({ path: 'system/control', version: '1' })
@@ -60,6 +134,11 @@ export class SystemRoadmapControlController {
   @Get('dashboard')
   @RequirePermissions('system.dashboard.read')
   @ApiOperation({ summary: 'Read system executive dashboard' })
+  @ApiResponse({
+    status: 200,
+    description: 'System executive dashboard returned.',
+    schema: dashboardSchema,
+  })
   dashboard() {
     return this.control.dashboard();
   }
