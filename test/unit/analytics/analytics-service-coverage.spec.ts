@@ -303,7 +303,7 @@ describe('AnalyticsService coverage', () => {
     const failing = new Proxy(
       {},
       {
-        get: () => vi.fn(() => Promise.reject('failure')),
+        get: () => vi.fn(() => Promise.reject(new Error('failure'))),
       },
     ) as AnalyticsQueryPort;
     const failingService = new AnalyticsService(failing, makePolicy() as never);
