@@ -169,6 +169,42 @@ const featureFlagSchema = {
   },
 };
 
+const importProfileSchema = {
+  type: 'object',
+  required: [
+    'uuid',
+    'name',
+    'entity',
+    'version',
+    'format',
+    'columnMapping',
+    'fieldMapping',
+    'conflictStrategy',
+    'transactionStrategy',
+    'active',
+    'createdBy',
+    'updatedBy',
+    'createdAt',
+    'updatedAt',
+  ],
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    name: { type: 'string' },
+    entity: { type: 'string' },
+    version: { type: 'integer', minimum: 1 },
+    format: { type: 'string' },
+    columnMapping: { type: 'object', additionalProperties: true },
+    fieldMapping: { type: 'object', additionalProperties: true },
+    conflictStrategy: { type: 'string' },
+    transactionStrategy: { type: 'string' },
+    active: { type: 'boolean' },
+    createdBy: { type: 'string', format: 'uuid' },
+    updatedBy: { type: 'string', format: 'uuid' },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+};
+
 @ApiTags('System Control Plane')
 @ApiBearerAuth()
 @Controller({ path: 'system/control', version: '1' })
@@ -244,6 +280,14 @@ export class SystemRoadmapControlController {
 
   @Get('import-profiles')
   @RequirePermissions('system.import.profile.read')
+  @ApiResponse({
+    status: 200,
+    description: 'System import profiles returned.',
+    schema: {
+      type: 'array',
+      items: importProfileSchema,
+    },
+  })
   profiles(@Query() q: ImportProfileQueryDto) {
     return this.control.listImportProfiles(q.entity, q.active);
   }
