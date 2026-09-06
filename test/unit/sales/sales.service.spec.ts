@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SalesService } from '../../../src/modules/sales/application/sales.service.js';
-import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
 import type { SalesRepository } from '../../../src/modules/sales/domain/repositories/sales.repository.js';
 import type {
   SalesActor,
@@ -54,7 +53,7 @@ describe('SalesService', () => {
     transitionNegotiation: vi.fn(),
     getDeal: vi.fn(),
     listDeals: vi.fn(),
-  } as unknown as SalesRepository;
+  } satisfies Record<keyof SalesRepository, ReturnType<typeof vi.fn>>;
   const auditRecord = vi.fn().mockResolvedValue(undefined);
   const service = new SalesService(repository, {
     record: auditRecord,
