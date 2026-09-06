@@ -32,8 +32,8 @@ type InformationSchemaForeignKey = {
 type TableMeta = {
   tableName: string;
   columns: InformationSchemaColumn[];
-  primaryKey: string;
-  autoIncrement: boolean;
+  primaryKeys: string[];
+  autoIncrementPrimaryKey: string | null;
   uniqueIndexes: string[][];
   foreignKeys: Map<string, InformationSchemaForeignKey>;
 };
@@ -167,7 +167,16 @@ async function loadTableMetadata(tx: SeedTransaction, prisma: PrismaClient): Pro
     const tableColumns = columns.filter((column) => column.TABLE_NAME === tableName);
     const tableIndexes = indexes.filter((index) => index.TABLE_NAME === tableName);
     const primaryIndex = tableIndexes.filter((index) => index.INDEX_NAME === 'PRIMARY');
-    if (primaryIndex.length !== 1) throw new Error(`Seed expansion requires a single-column primary key: ${tableName}`);
+    if (primaryIndex.length === 0) throw new Error(`Seed expansion requires a primary key: ${tableName}`);
+
+    const primaryKeys = primaryIndex
+      .sort((left, right) => Number(left.SEQ_IN_INDEX) - Number(right.SEQ_IN_INDEX))
+      .map((index) => index.COLUMN_NAME);
+    const autoIncrementPrimaryKey =
+      primaryKeys.length === 1 &&
+      tableColumns.some((column) => column.COLUMN_NAME === primaryKeys[0] && column.EXTRA.includes('auto_increment'))
+        ? primaryKeys[0]
+        : null;
 
     const uniqueIndexes = Array.from(
       tableIndexes
@@ -184,10 +193,14 @@ async function loadTableMetadata(tx: SeedTransaction, prisma: PrismaClient): Pro
     result.set(delegateName, {
       tableName,
       columns: tableColumns,
-      primaryKey: primaryIndex[0].COLUMN_NAME,
-      autoIncrement: tableColumns.some((column) => column.COLUMN_NAME === primaryIndex[0].COLUMN_NAME && column.EXTRA.includes('auto_increment')),
+      primaryKeys,
+      autoIncrementPrimaryKey,
       uniqueIndexes,
-      foreignKeys: new Map(foreignKeys.filter((foreignKey) => foreignKey.TABLE_NAME === tableName).map((foreignKey) => [foreignKey.COLUMN_NAME, foreignKey])),
+      foreignKeys: new Map(
+        foreignKeys
+          .filter((foreignKey) => foreignKey.TABLE_NAME === tableName)
+          .map((foreignKey) => [foreignKey.COLUMN_NAME, foreignKey]),
+      ),
     });
   }
 
@@ -201,6 +214,31 @@ function serializeValue(column: InformationSchemaColumn, value: unknown): unknow
   return value;
 }
 
+function varyPrimaryKeyColumns(
+  source: RawRow,
+  row: RawRow,
+  meta: TableMeta,
+  fkValues: Map<string, InformationSchemaForeignKey>,
+  tableRows: Map<string, RawRow[]>,
+  variant: number,
+): void {
+  for (const primaryKey of meta.primaryKeys) {
+    const foreignKey = fkValues.get(primaryKey);
+    if (foreignKey) {
+      const parentRows = tableRows.get(foreignKey.REFERENCED_TABLE_NAME);
+      if (parentRows && parentRows.length > 0) {
+        const parentRow = parentRows[(variant - 1) % parentRows.length];
+        row[primaryKey] = parentRow[foreignKey.REFERENCED_COLUMN_NAME];
+        continue;
+      }
+    }
+
+    const column = meta.columns.find((item) => item.COLUMN_NAME === primaryKey);
+    if (!column) continue;
+    row[primaryKey] = varyScalar(column, source[primaryKey], variant, meta.tableName);
+  }
+}
+
 async function expandModel(
   tx: SeedTransaction,
   meta: TableMeta,
@@ -212,7 +250,6 @@ async function expandModel(
 
   if (rows.length === 0) throw new Error(`Seed expansion found no baseline records for ${meta.tableName}`);
   if (rows.length >= SEED_MIN_RECORDS) return;
-  if (!meta.autoIncrement) throw new Error(`Seed expansion requires an auto-increment primary key for ${meta.tableName}`);
 
   const rowsToCreate = SEED_MIN_RECORDS - rows.length;
   const sourceRows = rows.slice(0, rows.length);
@@ -241,6 +278,10 @@ async function expandModel(
         const parentRow = parentRows[(variant - 1) % parentRows.length];
         row[columnName] = parentRow[foreignKey.REFERENCED_COLUMN_NAME];
       }
+    }
+
+    if (meta.primaryKeys.length > 1) {
+      varyPrimaryKeyColumns(source, row, meta, fkValues, tableRows, variant);
     }
 
     const changedUniqueColumns = new Set<string>();
@@ -272,17 +313,18 @@ async function expandModel(
     ...values,
   );
 
-  const [identity] = await tx.$queryRawUnsafe<{ insertId: bigint }[]>('SELECT LAST_INSERT_ID() AS insertId');
-  if (!identity?.insertId) throw new Error(`Unable to resolve generated primary keys for ${meta.tableName}`);
+  if (meta.autoIncrementPrimaryKey) {
+    const [identity] = await tx.$queryRawUnsafe<{ insertId: bigint }[]>('SELECT LAST_INSERT_ID() AS insertId');
+    if (!identity?.insertId) throw new Error(`Unable to resolve generated primary keys for ${meta.tableName}`);
 
-  const modelCloneMap = clonePrimaryKeys.get(meta.tableName) ?? new Map<string, bigint>();
-  const primaryKey = meta.primaryKey;
-  for (let index = 0; index < newRows.length; index += 1) {
-    const source = sourceRows[index % sourceRows.length];
-    const newPrimaryKey = identity.insertId + BigInt(index);
-    modelCloneMap.set(`${asComparableKey(source[primaryKey])}:${index + 1}`, newPrimaryKey);
+    const modelCloneMap = clonePrimaryKeys.get(meta.tableName) ?? new Map<string, bigint>();
+    for (let index = 0; index < newRows.length; index += 1) {
+      const source = sourceRows[index % sourceRows.length];
+      const newPrimaryKey = identity.insertId + BigInt(index);
+      modelCloneMap.set(`${asComparableKey(source[meta.autoIncrementPrimaryKey])}:${index + 1}`, newPrimaryKey);
+    }
+    clonePrimaryKeys.set(meta.tableName, modelCloneMap);
   }
-  clonePrimaryKeys.set(meta.tableName, modelCloneMap);
 
   const refreshedRows = await tx.$queryRawUnsafe<RawRow[]>(`SELECT * FROM ${quoteIdentifier(meta.tableName)}`);
   tableRows.set(meta.tableName, refreshedRows);
