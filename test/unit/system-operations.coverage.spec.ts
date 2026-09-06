@@ -119,23 +119,20 @@ describe('SystemOperationsService coverage', () => {
     });
 
     d.storageHealth.check.mockResolvedValueOnce('down');
-    await expect(service.diagnostics()).resolves.toMatchObject({
-      status: 'degraded',
-      components: expect.objectContaining({ storage: 'down' }),
-    });
+    const storageDegraded = await service.diagnostics();
+    expect(storageDegraded.status).toBe('degraded');
+    expect(storageDegraded.components.storage).toBe('down');
 
     d.integrations.list.mockResolvedValueOnce({
       total: 1,
       items: [{ state: 'ERROR' }],
     });
-    await expect(service.diagnostics()).resolves.toMatchObject({
-      status: 'degraded',
-      components: expect.objectContaining({ integrations: 'down' }),
-    });
+    const integrationsDegraded = await service.diagnostics();
+    expect(integrationsDegraded.status).toBe('degraded');
+    expect(integrationsDegraded.components.integrations).toBe('down');
 
     d.integrations.list.mockRejectedValueOnce(new Error('integration timeout'));
-    await expect(service.diagnostics()).resolves.toMatchObject({
-      components: expect.objectContaining({ integrations: 'unknown' }),
-    });
+    const integrationsUnknown = await service.diagnostics();
+    expect(integrationsUnknown.components.integrations).toBe('unknown');
   });
 });
