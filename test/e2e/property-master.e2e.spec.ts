@@ -9,6 +9,7 @@ import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
 import { SessionService } from '../../src/modules/auth/application/services/session.service.js';
+import { cleanupPropertyGraph } from './helpers/cleanup-property-graph.js';
 
 const PERMISSIONS = [
   'property-categories.create',
@@ -101,8 +102,7 @@ async function makeActor(grant: boolean) {
 }
 
 async function cleanup() {
-  await prisma.propertyFacility.deleteMany();
-  await prisma.property.deleteMany();
+  await cleanupPropertyGraph(prisma);
   await prisma.propertySubcategory.deleteMany();
   await prisma.propertyCategory.deleteMany();
   await prisma.propertyType.deleteMany();
