@@ -208,22 +208,16 @@ describe('CrmLifecycleService coverage', () => {
     });
     expect(d.crm.merge).toHaveBeenCalledWith('source', 'target', actor);
 
-    const result = (await service.timeline(
-      'lead-1',
-      { page: 1, limit: 3 },
-      actor,
-    )) as {
-      total: number;
-      items: Array<Record<string, unknown>>;
-    };
-    expect(result.total).toBe(5);
-    expect(result.items).toHaveLength(3);
-    expect(result.items[0]).toMatchObject({ source: 'ACTIVITY', uuid: 'a1' });
-    expect(result.items[1]).toMatchObject({
-      source: 'COMMUNICATION',
-      uuid: 'c1',
+    await expect(
+      service.timeline('lead-1', { page: 1, limit: 3 }, actor),
+    ).resolves.toMatchObject({
+      total: 5,
+      items: [
+        expect.objectContaining({ source: 'ACTIVITY', uuid: 'a1' }),
+        expect.objectContaining({ source: 'COMMUNICATION', uuid: 'c1' }),
+        expect.objectContaining({ source: 'LEAD', uuid: 'lead-1' }),
+      ],
     });
-    expect(result.items[2]).toMatchObject({ source: 'LEAD', uuid: 'lead-1' });
 
     await expect(
       service.timeline('lead-1', { page: 2, limit: 2 }, actor),
