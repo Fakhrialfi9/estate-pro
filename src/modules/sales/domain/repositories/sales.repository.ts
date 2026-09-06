@@ -224,10 +224,7 @@ export interface SalesRepository {
     status: NegotiationStatus,
     actor: SalesActor,
   ): Promise<SalesRecord | null>;
-  listNegotiationHistory(
-    this: void,
-    uuid: string,
-  ): Promise<SalesRecord[]>;
+  listNegotiationHistory(this: void, uuid: string): Promise<SalesRecord[]>;
   createOffer(this: void, input: OfferInput): Promise<SalesRecord>;
   transitionOffer(
     this: void,
@@ -235,10 +232,7 @@ export interface SalesRepository {
     status: OfferStatus,
     actor: SalesActor,
   ): Promise<SalesRecord | null>;
-  listOffers(
-    this: void,
-    negotiationUuid: string,
-  ): Promise<SalesRecord[]>;
+  listOffers(this: void, negotiationUuid: string): Promise<SalesRecord[]>;
   createDeal(
     this: void,
     input: DealInput,
@@ -313,17 +307,25 @@ export interface SalesRepository {
     actor: SalesActor,
     idempotencyKey: string,
   ): Promise<SalesRecord>;
-  approveCommission(this: void, uuid: string, actor: SalesActor): Promise<SalesRecord>;
-  settleCommission(this: void, uuid: string, actor: SalesActor): Promise<SalesRecord>;
+  approveCommission(
+    this: void,
+    uuid: string,
+    actor: SalesActor,
+  ): Promise<SalesRecord>;
+  settleCommission(
+    this: void,
+    uuid: string,
+    actor: SalesActor,
+  ): Promise<SalesRecord>;
   commissionReport(
     this: void,
     query: Record<string, unknown>,
   ): Promise<SalesRecord>;
-  forecast(
+  forecast(this: void, query: Record<string, unknown>): Promise<SalesRecord>;
+  findConversion(
     this: void,
-    query: Record<string, unknown>,
-  ): Promise<SalesRecord>;
-  findConversion(this: void, leadUuid: string): Promise<SalesOpportunityRow | null>;
+    leadUuid: string,
+  ): Promise<SalesOpportunityRow | null>;
 }
 
 export const SALES_REPOSITORY = Symbol('SALES_REPOSITORY');
