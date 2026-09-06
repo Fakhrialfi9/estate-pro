@@ -3,7 +3,14 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { beforeEach, describe, expect, it, vi, type Mocked } from 'vitest';
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type MockedFunction,
+} from 'vitest';
 import { PropertyCapabilitiesService } from '../../../src/modules/property/application/property-capabilities.service.js';
 import type {
   PropertyCapabilitiesRepository,
@@ -33,8 +40,16 @@ const document: DocumentRecord = {
   versions: [],
 };
 
+type PropertyCapabilitiesRepositoryMock = {
+  [K in keyof PropertyCapabilitiesRepository]: PropertyCapabilitiesRepository[K] extends (
+    ...args: infer Args
+  ) => infer Return
+    ? MockedFunction<(...args: Args) => Return>
+    : never;
+};
+
 describe('PropertyCapabilitiesService', () => {
-  const repository: Mocked<PropertyCapabilitiesRepository> = {
+  const repository: PropertyCapabilitiesRepositoryMock = {
     listAmenities: vi.fn(),
     getAmenity: vi.fn(),
     createAmenity: vi.fn(),
