@@ -44,7 +44,10 @@ const dependencies = () => ({
     listExpired: vi.fn().mockResolvedValue([job]),
     update: vi
       .fn()
-      .mockImplementation(async (_uuid, input) => ({ ...job, ...input })),
+      .mockImplementation((_uuid: string, input: Record<string, unknown>) => ({
+        ...job,
+        ...input,
+      })),
     deleteMany: vi.fn().mockResolvedValue(undefined),
   },
   activity: {
@@ -187,9 +190,12 @@ describe('SystemExportService coverage', () => {
   });
 
   it('validates download state and token expiration', async () => {
-    const valid = await service.download('actor-1', 'job-1', 'token');
-    expect(valid.filename).toBe('job-1.csv');
-    expect(valid.stream).toBe('stream');
+    await expect(
+      service.download('actor-1', 'job-1', 'token'),
+    ).resolves.toMatchObject({
+      filename: 'job-1.csv',
+      stream: 'stream',
+    });
 
     d.jobs.findByUuid.mockResolvedValueOnce(null);
     await expect(
