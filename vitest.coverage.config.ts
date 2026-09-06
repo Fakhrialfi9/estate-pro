@@ -5,7 +5,6 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     maxWorkers: 1,
-    minWorkers: 1,
     sequence: {
       concurrent: false,
     },
