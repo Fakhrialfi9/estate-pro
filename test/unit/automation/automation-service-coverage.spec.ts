@@ -46,10 +46,12 @@ const makeRepo = (overrides: Record<string, unknown> = {}) => {
       activeVersionUuid: null,
       versions: [],
     })),
-    updateWorkflow: vi.fn(async (_uuid: string, patch: Record<string, unknown>) => ({
-      uuid: workflowUuid,
-      ...patch,
-    })),
+    updateWorkflow: vi.fn(
+      async (_uuid: string, patch: Record<string, unknown>) => ({
+        uuid: workflowUuid,
+        ...patch,
+      }),
+    ),
     createVersion: vi.fn(async (input: Record<string, unknown>) => input),
     getVersion: vi.fn(async () => ({
       uuid: versionUuid,
@@ -59,10 +61,12 @@ const makeRepo = (overrides: Record<string, unknown> = {}) => {
       triggerDefinition: definition.trigger,
       version: 1,
     })),
-    updateVersion: vi.fn(async (_uuid: string, patch: Record<string, unknown>) => ({
-      uuid: versionUuid,
-      ...patch,
-    })),
+    updateVersion: vi.fn(
+      async (_uuid: string, patch: Record<string, unknown>) => ({
+        uuid: versionUuid,
+        ...patch,
+      }),
+    ),
     listActiveVersions: vi.fn(async () => []),
     createExecution: vi.fn(async (input: Record<string, unknown>) => input),
     claimDueExecution: vi.fn(async () => null),
@@ -75,27 +79,35 @@ const makeRepo = (overrides: Record<string, unknown> = {}) => {
       contextSnapshot: {},
       actorUuid,
     })),
-    updateExecution: vi.fn(async (_uuid: string, patch: Record<string, unknown>) => ({
-      uuid: executionUuid,
-      state: patch.state ?? 'PENDING',
-      ...patch,
-    })),
+    updateExecution: vi.fn(
+      async (_uuid: string, patch: Record<string, unknown>) => ({
+        uuid: executionUuid,
+        state: patch.state ?? 'PENDING',
+        ...patch,
+      }),
+    ),
     createAction: vi.fn(async (input: Record<string, unknown>) => ({
       uuid: actionUuid,
       ...input,
     })),
     listActions: vi.fn(async () => []),
-    updateAction: vi.fn(async (_uuid: string, patch: Record<string, unknown>) => ({
-      uuid: actionUuid,
-      ...patch,
-    })),
+    updateAction: vi.fn(
+      async (_uuid: string, patch: Record<string, unknown>) => ({
+        uuid: actionUuid,
+        ...patch,
+      }),
+    ),
     listWorkflows: vi.fn(async () => ({ items: [], total: 0 })),
     listExecutions: vi.fn(async () => ({ items: [], total: 0 })),
     listNotifications: vi.fn(async () => []),
     markNotificationRead: vi.fn(async () => ({ success: true })),
-    createAssignmentRule: vi.fn(async (input: Record<string, unknown>) => input),
+    createAssignmentRule: vi.fn(
+      async (input: Record<string, unknown>) => input,
+    ),
     createSlaPolicy: vi.fn(async (input: Record<string, unknown>) => input),
-    createEscalationPolicy: vi.fn(async (input: Record<string, unknown>) => input),
+    createEscalationPolicy: vi.fn(
+      async (input: Record<string, unknown>) => input,
+    ),
     ...overrides,
   };
   return base;
@@ -137,7 +149,10 @@ const makeSales = () => ({
   })),
 });
 
-const makeAudit = () => ({ record: vi.fn(async () => undefined) });
+const makeAudit = () => ({
+  record: vi.fn(async () => undefined),
+});
+
 const makeValidator = () => ({
   checksum: vi.fn(() => 'checksum'),
   validate: vi.fn(() => undefined),
@@ -145,7 +160,10 @@ const makeValidator = () => ({
 
 const makeService = (
   repoOverrides: Record<string, unknown> = {},
-  handlerResult: Record<string, unknown> = { success: true, output: { ok: true } },
+  handlerResult: Record<string, unknown> = {
+    success: true,
+    output: { ok: true },
+  },
 ) => {
   const repo = makeRepo(repoOverrides);
   const users = makeUsers();
@@ -173,13 +191,18 @@ describe('AutomationService coverage', () => {
   it('covers workflow lifecycle, ownership and draft versioning', async () => {
     const { service, repo } = makeService();
     expect(
-      (await service.createWorkflow(
-        { name: ' Main ', description: 'Desc', ownerUserUuid: actorUuid },
-        actorUuid,
-      )).ownerUserUuid,
+      (
+        await service.createWorkflow(
+          { name: ' Main ', description: 'Desc', ownerUserUuid: actorUuid },
+          actorUuid,
+        )
+      ).ownerUserUuid,
     ).toBe(actorUuid);
     await expect(
-      service.createWorkflow({ name: ' ', ownerUserUuid: actorUuid }, actorUuid),
+      service.createWorkflow(
+        { name: ' ', ownerUserUuid: actorUuid },
+        actorUuid,
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
       service.createWorkflow(
@@ -189,7 +212,13 @@ describe('AutomationService coverage', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
 
     expect(
-      (await service.updateWorkflow(workflowUuid, { name: 'Updated' }, actorUuid)).name,
+      (
+        await service.updateWorkflow(
+          workflowUuid,
+          { name: 'Updated' },
+          actorUuid,
+        )
+      ).name,
     ).toBe('Updated');
     repo.getWorkflow.mockResolvedValueOnce({
       uuid: workflowUuid,
@@ -198,10 +227,18 @@ describe('AutomationService coverage', () => {
       versions: [],
     });
     await expect(
-      service.updateWorkflow(workflowUuid, { name: 'Updated' }, actorUuid),
+      service.updateWorkflow(
+        workflowUuid,
+        { name: 'Updated' },
+        actorUuid,
+      ),
     ).rejects.toBeInstanceOf(ConflictException);
 
-    const draft = await service.createDraftVersion(workflowUuid, definition, actorUuid);
+    const draft = await service.createDraftVersion(
+      workflowUuid,
+      definition,
+      actorUuid,
+    );
     expect(draft.version).toBe(1);
     repo.getWorkflow.mockResolvedValueOnce({
       uuid: workflowUuid,
@@ -209,17 +246,25 @@ describe('AutomationService coverage', () => {
       status: 'DRAFT',
       versions: [{ version: 2 }, { version: 5 }],
     });
-    const nextDraft = await service.createDraftVersion(workflowUuid, definition, actorUuid);
+    const nextDraft = await service.createDraftVersion(
+      workflowUuid,
+      definition,
+      actorUuid,
+    );
     expect(nextDraft.version).toBe(6);
 
-    const active = await service.publishActivate(workflowUuid, versionUuid, actorUuid);
+    const active = await service.publishActivate(
+      workflowUuid,
+      versionUuid,
+      actorUuid,
+    );
     expect(active.activeVersionUuid).toBe(versionUuid);
     await service.pauseWorkflow(workflowUuid, actorUuid);
     await service.archiveWorkflow(workflowUuid, actorUuid);
     expect(repo.updateWorkflow).toHaveBeenCalled();
   });
 
-  it('covers dispatch trigger matching, context resolution, depth and execution creation', async () => {
+  it('covers dispatch trigger matching, context resolution and execution creation', async () => {
     const version = {
       uuid: versionUuid,
       workflowUuid,
@@ -282,15 +327,25 @@ describe('AutomationService coverage', () => {
       service.cancelExecution(executionUuid, actorUuid),
     ).rejects.toBeInstanceOf(BadRequestException);
 
-    expect(await service.listWorkflows({}, actorUuid)).toEqual({ items: [], total: 0 });
-    expect(await service.listExecutions({}, actorUuid)).toEqual({ items: [], total: 0 });
-    expect(await service.listNotifications({
-      userUuid: actorUuid,
-      page: 1,
-      limit: 10,
-      unreadOnly: true,
-    })).toEqual([]);
-    expect(await service.markNotificationRead('notification-1', actorUuid)).toEqual({ success: true });
+    expect(await service.listWorkflows({}, actorUuid)).toEqual({
+      items: [],
+      total: 0,
+    });
+    expect(await service.listExecutions({}, actorUuid)).toEqual({
+      items: [],
+      total: 0,
+    });
+    expect(
+      await service.listNotifications({
+        userUuid: actorUuid,
+        page: 1,
+        limit: 10,
+        unreadOnly: true,
+      }),
+    ).toEqual([]);
+    expect(
+      await service.markNotificationRead('notification-1', actorUuid),
+    ).toEqual({ success: true });
     await expect(
       service.listNotifications({
         userUuid: '',
@@ -304,39 +359,67 @@ describe('AutomationService coverage', () => {
   it('covers assignment, SLA, escalation and dashboard rules', async () => {
     const { service, repo } = makeService();
     expect(
-      (await service.createAssignmentRule(workflowUuid, {
-        name: 'Round robin',
-        strategy: 'ROUND_ROBIN',
-        criteria: { source: 'WEB' },
-      }, actorUuid)).strategy,
+      (
+        await service.createAssignmentRule(
+          workflowUuid,
+          {
+            name: 'Round robin',
+            strategy: 'ROUND_ROBIN',
+            criteria: { source: 'WEB' },
+          },
+          actorUuid,
+        )
+      ).strategy,
     ).toBe('ROUND_ROBIN');
     await expect(
-      service.createAssignmentRule(workflowUuid, { strategy: 'INVALID' }, actorUuid),
+      service.createAssignmentRule(
+        workflowUuid,
+        { strategy: 'INVALID' },
+        actorUuid,
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(
-      (await service.createSlaPolicy(workflowUuid, {
-        durationMinutes: 60,
-        targetEntityType: 'LEAD',
-        startEventType: 'created',
-        stopEventTypes: ['qualified'],
-      }, actorUuid)).durationMinutes,
+      (
+        await service.createSlaPolicy(
+          workflowUuid,
+          {
+            durationMinutes: 60,
+            targetEntityType: 'LEAD',
+            startEventType: 'created',
+            stopEventTypes: ['qualified'],
+          },
+          actorUuid,
+        )
+      ).durationMinutes,
     ).toBe(60);
     await expect(
-      service.createSlaPolicy(workflowUuid, {
-        durationMinutes: 0,
-        targetEntityType: 'LEAD',
-        startEventType: 'created',
-      }, actorUuid),
+      service.createSlaPolicy(
+        workflowUuid,
+        {
+          durationMinutes: 0,
+          targetEntityType: 'LEAD',
+          startEventType: 'created',
+        },
+        actorUuid,
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(
-      (await service.createEscalationPolicy(workflowUuid, {
-        levels: [{ afterMinutes: 10 }],
-      }, actorUuid)).maxAttempts,
+      (
+        await service.createEscalationPolicy(
+          workflowUuid,
+          { levels: [{ afterMinutes: 10 }] },
+          actorUuid,
+        )
+      ).maxAttempts,
     ).toBe(3);
     await expect(
-      service.createEscalationPolicy(workflowUuid, { levels: [] }, actorUuid),
+      service.createEscalationPolicy(
+        workflowUuid,
+        { levels: [] },
+        actorUuid,
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     repo.listWorkflows.mockResolvedValueOnce({ items: [], total: 7 });
@@ -375,26 +458,33 @@ describe('AutomationService coverage', () => {
     const success = makeService({
       getExecution: vi.fn(async () => baseExecution),
       listActions: vi.fn(async () => []),
+      claimDueExecution: vi.fn(async () => baseExecution),
     });
-    const processed = await success.service.processDue;
-    expect(processed).toBeDefined();
+    const processed = await success.service.processDue('worker-1');
+    expect(processed).toMatchObject({ state: 'SUCCEEDED' });
 
-    const retry = makeService({}, {
-      success: false,
-      retryable: true,
-      errorCode: 'TEMPORARY',
-      errorMessage: 'temporary failure',
-    });
+    const retry = makeService(
+      {},
+      {
+        success: false,
+        retryable: true,
+        errorCode: 'TEMPORARY',
+        errorMessage: 'temporary failure',
+      },
+    );
     retry.repo.claimDueExecution.mockResolvedValueOnce(baseExecution);
     const retryResult = await retry.service.processDue('worker-1');
     expect(retryResult).toMatchObject({ state: 'WAITING' });
 
-    const fail = makeService({}, {
-      success: false,
-      retryable: false,
-      errorCode: 'FAILED',
-      errorMessage: 'permanent failure',
-    });
+    const fail = makeService(
+      {},
+      {
+        success: false,
+        retryable: false,
+        errorCode: 'FAILED',
+        errorMessage: 'permanent failure',
+      },
+    );
     fail.repo.claimDueExecution.mockResolvedValueOnce(baseExecution);
     const failResult = await fail.service.processDue('worker-1');
     expect(failResult).toMatchObject({ state: 'FAILED' });
@@ -422,21 +512,19 @@ describe('AutomationService coverage', () => {
       getWorkflow: vi.fn(async () => null),
       getExecution: vi.fn(async () => null),
     });
-    await expect(missing.service.getWorkflow(workflowUuid, actorUuid)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
-    await expect(missing.service.getExecution(executionUuid, actorUuid)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      missing.service.getWorkflow(workflowUuid, actorUuid),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      missing.service.getExecution(executionUuid, actorUuid),
+    ).rejects.toBeInstanceOf(NotFoundException);
 
-    const users = makeUsers();
-    users.getUser.mockResolvedValueOnce({
+    const inactive = makeService();
+    inactive.users.getUser.mockResolvedValueOnce({
       uuid: actorUuid,
       isActive: false,
       deletedAt: null,
     });
-    const inactive = makeService();
-    inactive.users.getUser = users.getUser;
     await expect(
       inactive.service.createWorkflow(
         { name: 'Flow', ownerUserUuid: actorUuid },
