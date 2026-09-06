@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 
 import {
   PropertyExtrasConflictError,
@@ -126,7 +127,7 @@ describe('PropertyExtrasService coverage', () => {
     expect(money.currency).toBe('IDR');
     expect(money.toMinorUnits()).toBe(1230n);
     expect(money.round(2).amount).toBe('12.30');
-    expect(new rules.Money('12.345', 'IDR')).not.toBeDefined;
+    expect(() => new rules.Money('12.345', 'IDR')).toThrow();
     expect(() => new rules.Money('x', 'IDR')).toThrow();
     expect(() => new rules.Money('10', 'id')).toThrow();
     expect(() => money.round(3)).toThrow();
