@@ -137,7 +137,7 @@ const makeQueries = (): AnalyticsQueryPort =>
   new Proxy(
     {},
     {
-      get: (_target, property) => vi.fn(async () => rows(String(property))),
+      get: () => vi.fn(() => rows(String(''))),
     },
   ) as AnalyticsQueryPort;
 
@@ -282,7 +282,7 @@ describe('AnalyticsService coverage', () => {
     );
 
     const noRows = new Proxy(makeQueries(), {
-      get: (_target, property) => vi.fn(async () => []),
+      get: () => vi.fn(() => []),
     });
     const emptyService = new AnalyticsService(
       noRows,
@@ -303,8 +303,8 @@ describe('AnalyticsService coverage', () => {
       {},
       {
         get: () =>
-          vi.fn(async () => {
-            throw 'failure';
+          vi.fn(() => {
+            throw new Error('failure');
           }),
       },
     ) as AnalyticsQueryPort;
