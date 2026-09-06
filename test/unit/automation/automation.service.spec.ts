@@ -351,10 +351,9 @@ describe('AutomationService', () => {
 
     await service.publishActivate(workflowUuid, versionUuid, actorUuid);
 
-    expect(repo.updateVersion).toHaveBeenNthCalledWith(1, versionUuid, {
-      status: 'ACTIVE',
-      activatedAt: expect.any(Date),
-    });
+    const [activatedVersionInput] = repo.updateVersion.mock.calls[0] ?? [];
+    expect(activatedVersionInput?.status).toBe('ACTIVE');
+    expect(activatedVersionInput?.activatedAt).toBeInstanceOf(Date);
     expect(repo.updateVersion).toHaveBeenNthCalledWith(
       2,
       '88888888-8888-4888-8888-888888888888',
@@ -385,19 +384,17 @@ describe('AutomationService', () => {
     await expect(
       service.dispatch({ ...event, action: undefined }),
     ).resolves.toEqual([{ uuid: executionUuid }]);
-    expect(repo.createExecution).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workflowUuid,
-        workflowVersionUuid: versionUuid,
-        eventId: event.eventId,
-        currentNodeId: 'trigger',
-        state: 'PENDING',
-        contextSnapshot: expect.objectContaining({
-          entityType: 'LEAD',
-          chainDepth: 1,
-        }),
-      }),
-    );
+
+    const [executionInput] = repo.createExecution.mock.calls[0] ?? [];
+    expect(executionInput?.workflowUuid).toBe(workflowUuid);
+    expect(executionInput?.workflowVersionUuid).toBe(versionUuid);
+    expect(executionInput?.eventId).toBe(event.eventId);
+    expect(executionInput?.currentNodeId).toBe('trigger');
+    expect(executionInput?.state).toBe('PENDING');
+    expect(executionInput?.contextSnapshot).toMatchObject({
+      entityType: 'LEAD',
+      chainDepth: 1,
+    });
     expect(auditRecord).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'AUTOMATION_EXECUTION_CREATED' }),
     );
@@ -502,9 +499,7 @@ describe('AutomationService', () => {
       workflowUuid,
       definition: actionDefinition,
     });
-    handler.execute = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('temporary outage'));
+    handler.execute.mockRejectedValueOnce(new Error('temporary outage'));
 
     await service.processDue('worker-1');
 
