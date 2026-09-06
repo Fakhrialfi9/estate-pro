@@ -131,18 +131,23 @@ export interface SalesRepository {
     uuid: string,
     input: Partial<PipelineInput>,
   ): Promise<SalesRecord>;
-  createStage(input: StageInput): Promise<SalesRecord>;
-  listStages(pipelineUuid: string): Promise<SalesRecord[]>;
-  getStage(uuid: string): Promise<SalesRecord | null>;
+  createStage(this: void, input: StageInput): Promise<SalesRecord>;
+  listStages(this: void, pipelineUuid: string): Promise<SalesRecord[]>;
+  getStage(this: void, uuid: string): Promise<SalesRecord | null>;
   updateStage(
+    this: void,
     uuid: string,
     input: Partial<Omit<StageInput, 'pipelineUuid'>>,
   ): Promise<SalesRecord>;
   reorderStages(
+    this: void,
     pipelineUuid: string,
     orderedStageUuids: string[],
   ): Promise<SalesRecord[]>;
-  createOpportunity(input: OpportunityInput): Promise<SalesOpportunityRow>;
+  createOpportunity(
+    this: void,
+    input: OpportunityInput,
+  ): Promise<SalesOpportunityRow>;
   getOpportunity(this: void, uuid: string): Promise<SalesOpportunityRow | null>;
   listOpportunities(
     this: void,
@@ -162,68 +167,108 @@ export interface SalesRepository {
     reason?: string,
   ): Promise<SalesOpportunityRow>;
   assignOpportunity(
+    this: void,
     uuid: string,
     ownerUserUuid: string | null,
     teamUuid: string | null,
     actor: SalesActor,
   ): Promise<SalesOpportunityRow>;
   listStageHistory(
+    this: void,
     uuid: string,
     query: Record<string, unknown>,
   ): Promise<PageResult<SalesRecord>>;
-  createActivity(input: ActivityInput, actor: SalesActor): Promise<SalesRecord>;
+  createActivity(
+    this: void,
+    input: ActivityInput,
+    actor: SalesActor,
+  ): Promise<SalesRecord>;
   updateActivityStatus(
+    this: void,
     uuid: string,
     status: ActivityStatus,
     actor: SalesActor,
   ): Promise<SalesRecord>;
   listActivities(
+    this: void,
     query: Record<string, unknown>,
   ): Promise<PageResult<SalesRecord>>;
-  createViewing(input: ViewingInput, actor: SalesActor): Promise<SalesRecord>;
+  createViewing(
+    this: void,
+    input: ViewingInput,
+    actor: SalesActor,
+  ): Promise<SalesRecord>;
   updateViewingStatus(
+    this: void,
     uuid: string,
     status: ViewingStatus,
     scheduledAt: Date | null,
     actor?: SalesActor,
   ): Promise<SalesRecord | null>;
   listViewings(
+    this: void,
     query: Record<string, unknown>,
   ): Promise<PageResult<SalesRecord>>;
   createNegotiation(
+    this: void,
     input: NegotiationInput,
     actor: SalesActor,
   ): Promise<SalesRecord>;
-  getNegotiation(uuid: string): Promise<SalesNegotiationRecord | null>;
+  getNegotiation(
+    this: void,
+    uuid: string,
+  ): Promise<SalesNegotiationRecord | null>;
   transitionNegotiation(
+    this: void,
     uuid: string,
     status: NegotiationStatus,
     actor: SalesActor,
   ): Promise<SalesRecord | null>;
-  listNegotiationHistory(uuid: string): Promise<SalesRecord[]>;
-  createOffer(input: OfferInput): Promise<SalesRecord>;
+  listNegotiationHistory(
+    this: void,
+    uuid: string,
+  ): Promise<SalesRecord[]>;
+  createOffer(this: void, input: OfferInput): Promise<SalesRecord>;
   transitionOffer(
+    this: void,
     uuid: string,
     status: OfferStatus,
     actor: SalesActor,
   ): Promise<SalesRecord | null>;
-  listOffers(negotiationUuid: string): Promise<SalesRecord[]>;
-  createDeal(input: DealInput, actor: SalesActor): Promise<SalesRecord>;
-  getDeal(uuid: string): Promise<SalesDealRecord | null>;
-  listDeals(query: Record<string, unknown>): Promise<PageResult<SalesRecord>>;
-  addDealItem(input: DealItemInput, actor: SalesActor): Promise<SalesRecord>;
+  listOffers(
+    this: void,
+    negotiationUuid: string,
+  ): Promise<SalesRecord[]>;
+  createDeal(
+    this: void,
+    input: DealInput,
+    actor: SalesActor,
+  ): Promise<SalesRecord>;
+  getDeal(this: void, uuid: string): Promise<SalesDealRecord | null>;
+  listDeals(
+    this: void,
+    query: Record<string, unknown>,
+  ): Promise<PageResult<SalesRecord>>;
+  addDealItem(
+    this: void,
+    input: DealItemInput,
+    actor: SalesActor,
+  ): Promise<SalesRecord>;
   updateDealItem(
+    this: void,
     uuid: string,
     input: Partial<DealItemInput>,
     actor: SalesActor,
   ): Promise<SalesRecord>;
-  removeDealItem(uuid: string, actor: SalesActor): Promise<void>;
+  removeDealItem(this: void, uuid: string, actor: SalesActor): Promise<void>;
   transitionDeal(
+    this: void,
     uuid: string,
     status: DealStatus,
     actor: SalesActor,
   ): Promise<SalesRecord | null>;
   closeDeal(
+    this: void,
     uuid: string,
     method: string,
     closedAt: Date,
@@ -231,39 +276,54 @@ export interface SalesRepository {
     idempotencyKey: string,
   ): Promise<SalesRecord>;
   markLost(
+    this: void,
     targetType: 'OPPORTUNITY' | 'DEAL',
     uuid: string,
     reasonUuid: string,
     actor: SalesActor,
   ): Promise<SalesRecord | null>;
-  reopenDeal(uuid: string, actor: SalesActor): void;
-  listLostReasons(): Promise<SalesRecord[]>;
-  createLostReason(input: {
-    code: string;
-    name: string;
-    isActive?: boolean;
-  }): Promise<SalesRecord>;
+  reopenDeal(this: void, uuid: string, actor: SalesActor): void;
+  listLostReasons(this: void): Promise<SalesRecord[]>;
+  createLostReason(
+    this: void,
+    input: {
+      code: string;
+      name: string;
+      isActive?: boolean;
+    },
+  ): Promise<SalesRecord>;
   updateLostReason(
+    this: void,
     uuid: string,
     input: { name?: string; isActive?: boolean },
   ): Promise<SalesRecord>;
-  createCommissionRule(input: {
-    code: string;
-    name: string;
-    ratePercent: string;
-    isActive?: boolean;
-  }): Promise<SalesRecord>;
+  createCommissionRule(
+    this: void,
+    input: {
+      code: string;
+      name: string;
+      ratePercent: string;
+      isActive?: boolean;
+    },
+  ): Promise<SalesRecord>;
   calculateCommission(
+    this: void,
     dealUuid: string,
     ruleUuid: string,
     actor: SalesActor,
     idempotencyKey: string,
   ): Promise<SalesRecord>;
-  approveCommission(uuid: string, actor: SalesActor): Promise<SalesRecord>;
-  settleCommission(uuid: string, actor: SalesActor): Promise<SalesRecord>;
-  commissionReport(query: Record<string, unknown>): Promise<SalesRecord>;
-  forecast(query: Record<string, unknown>): Promise<SalesRecord>;
-  findConversion(leadUuid: string): Promise<SalesOpportunityRow | null>;
+  approveCommission(this: void, uuid: string, actor: SalesActor): Promise<SalesRecord>;
+  settleCommission(this: void, uuid: string, actor: SalesActor): Promise<SalesRecord>;
+  commissionReport(
+    this: void,
+    query: Record<string, unknown>,
+  ): Promise<SalesRecord>;
+  forecast(
+    this: void,
+    query: Record<string, unknown>,
+  ): Promise<SalesRecord>;
+  findConversion(this: void, leadUuid: string): Promise<SalesOpportunityRow | null>;
 }
 
 export const SALES_REPOSITORY = Symbol('SALES_REPOSITORY');
