@@ -7,7 +7,6 @@ import {
 import { SystemSettingsService } from '../../../src/modules/system/application/services/system-settings.service.js';
 import type { SystemSettingsRepository } from '../../../src/modules/system/domain/repositories/system-settings.repository.js';
 import type { SystemActivityRepository } from '../../../src/modules/system/domain/repositories/system-activity.repository.js';
-import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
 import type { SystemCachePort } from '../../../src/modules/system/cache/system-cache.port.js';
 import type { SystemSettingRecord } from '../../../src/modules/system/domain/system.types.js';
 import { SystemSettingConflictError } from '../../../src/modules/system/domain/errors/system.errors.js';
@@ -34,28 +33,28 @@ describe('SystemSettingsService', () => {
     get: vi.fn(),
     list: vi.fn(),
     upsert: vi.fn(),
-  } as unknown as SystemSettingsRepository;
+  } satisfies Record<keyof SystemSettingsRepository, ReturnType<typeof vi.fn>>;
   const audit = {
     record: vi.fn().mockResolvedValue(undefined),
-  } as SecurityAuditRepository;
+  };
   const activity = {
     append: vi.fn().mockResolvedValue(undefined),
-  } as unknown as SystemActivityRepository;
+  } satisfies Record<keyof SystemActivityRepository, ReturnType<typeof vi.fn>>;
   const cache = {
     get: vi.fn(),
     set: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
-  } as unknown as SystemCachePort;
+  } satisfies Record<keyof SystemCachePort, ReturnType<typeof vi.fn>>;
   const service = new SystemSettingsService(repository, audit, activity, cache);
 
   beforeEach(() => {
     vi.clearAllMocks();
-    repository.get = vi.fn();
-    repository.list = vi.fn();
-    repository.upsert = vi.fn();
-    cache.get = vi.fn();
-    cache.set = vi.fn().mockResolvedValue(undefined);
-    cache.delete = vi.fn().mockResolvedValue(undefined);
+    repository.get.mockReset();
+    repository.list.mockReset();
+    repository.upsert.mockReset();
+    cache.get.mockReset();
+    cache.set.mockResolvedValue(undefined);
+    cache.delete.mockResolvedValue(undefined);
   });
 
   it('clamps list pagination and deserializes stored values', async () => {
