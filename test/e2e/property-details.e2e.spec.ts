@@ -8,6 +8,7 @@ import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
 import { JwtTokenService } from '../../src/modules/auth/application/services/jwt-token.service.js';
 import { SessionService } from '../../src/modules/auth/application/services/session.service.js';
+import { cleanupPropertyGraph } from './helpers/cleanup-property-graph.js';
 
 type AuthContext = { uuid: string; token: string };
 type Body = { data?: { uuid?: string } };
@@ -173,12 +174,7 @@ describe('Property detail child APIs', () => {
   });
 
   afterAll(async () => {
-    await prisma.propertyFacility.deleteMany();
-    await prisma.propertyRoom.deleteMany();
-    await prisma.propertyBuilding.deleteMany();
-    await prisma.propertyLocation.deleteMany();
-    await prisma.propertySpecification.deleteMany();
-    await prisma.property.deleteMany();
+    await cleanupPropertyGraph(prisma);
     await prisma.propertyCategory.deleteMany({ where: { id: categoryId } });
     await prisma.propertyType.deleteMany({ where: { id: typeId } });
     await prisma.facility.deleteMany({
@@ -297,7 +293,6 @@ describe('Property detail child APIs', () => {
       .patch(`/api/v1/property/properties/${propertyUuid}/location`)
       .set('Authorization', `Bearer ${actor.token}`)
       .send({ latitude: '95', longitude: '106' })
-      // .expect(400);
       .expect((response) => {
         console.log('=== COORDINATE FAILURE ===');
         console.log('STATUS:', response.status);
