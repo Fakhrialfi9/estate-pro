@@ -96,7 +96,8 @@ const makeRepo = () =>
           name === 'removeDealItem'
         )
           return vi.fn(() => Promise.resolve({ uuid, version: 2 }));
-        if (name === 'listOpportunities') return vi.fn(() => Promise.resolve([]));
+        if (name === 'listOpportunities')
+          return vi.fn(() => Promise.resolve([]));
         if (name === 'forecast')
           return vi.fn(() => Promise.resolve({ total: '0.0000' }));
         return vi.fn(() => Promise.resolve({ uuid }));
@@ -304,7 +305,9 @@ describe('SalesService coverage', () => {
     ).toBe(uuid);
     expect((await s.lostOpportunity(uuid, uuid, actor)).uuid).toBe(uuid);
     expect((await s.lostDeal(uuid, uuid, actor)).uuid).toBe(uuid);
-    expect(s.reopenDeal(uuid, 'Customer request', actor)).toEqual({ uuid });
+    expect(await s.reopenDeal(uuid, 'Customer request', actor)).toEqual({
+      uuid,
+    });
     expect(await s.lostReasons(actor)).toEqual([]);
     expect(
       (await s.createLostReason({ code: 'PRICE', name: 'Price' }, actor)).uuid,
@@ -370,20 +373,26 @@ describe('SalesService coverage', () => {
     } as const;
     expect(await s.listOpportunities({}, ownerScoped)).toEqual([]);
     expect(await s.listDeals({}, ownerScoped)).toEqual([]);
-    const repo = makeRepo() as Record<string, ReturnType<typeof vi.fn>>;
-    repo.getOpportunity = vi.fn(() =>
-      Promise.resolve({
-        uuid,
-        ownerUserUuid: '22222222-2222-4222-8222-222222222222',
-        status: 'OPEN',
-        version: 1,
-      }),
-    );
-    const isolated = new SalesService(repo as never, makeAudit());
+    let ownedByOther = true;
+    const isolatedRepo = {
+      getOpportunity: vi.fn(() =>
+        Promise.resolve(
+          ownedByOther
+            ? {
+                uuid,
+                ownerUserUuid: '22222222-2222-4222-8222-222222222222',
+                status: 'OPEN',
+                version: 1,
+              }
+            : null,
+        ),
+      ),
+    };
+    const isolated = new SalesService(isolatedRepo as never, makeAudit());
     await expect(
       isolated.getOpportunity(uuid, ownerScoped),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    repo.getOpportunity = vi.fn(() => Promise.resolve(null));
+    ownedByOther = false;
     await expect(isolated.getOpportunity(uuid, actor)).rejects.toBeInstanceOf(
       NotFoundException,
     );
