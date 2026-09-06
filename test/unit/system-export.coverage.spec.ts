@@ -6,6 +6,10 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SystemExportService } from '../../src/modules/system/application/services/system-export.service.js';
+import type {
+  SystemExportJobRecord,
+  SystemExportRepository,
+} from '../../src/modules/system/domain/repositories/system-export.repository.js';
 
 const config = {
   get: vi.fn((key: string, fallback?: unknown) => fallback),
@@ -14,7 +18,7 @@ const config = {
 const job = {
   uuid: 'job-1',
   actorUuid: 'actor-1',
-  entity: 'activity',
+  entity: 'system_activity',
   format: 'csv',
   state: 'FAILED',
   filters: { limit: 10, columns: ['uuid', 'summary'] },
@@ -28,24 +32,34 @@ const job = {
   cancelledAt: null,
   cancelRequested: false,
   artifactBytes: null,
-};
+  errorMessage: null,
+  createdAt: new Date('2026-01-01T00:00:00Z'),
+  updatedAt: new Date('2026-01-01T00:00:00Z'),
+} satisfies SystemExportJobRecord;
 
 const dependencies = () => ({
   jobs: {
-    countRunning: vi.fn().mockResolvedValue(0),
-    create: vi.fn().mockResolvedValue({
+    countRunning: vi.fn<SystemExportRepository['countRunning']>().mockResolvedValue(0),
+    create: vi.fn<SystemExportRepository['create']>().mockResolvedValue({
       ...job,
       state: 'QUEUED',
       downloadTokenHash: 'unused',
     }),
-    claimQueued: vi.fn().mockResolvedValue(null),
-    findByUuid: vi.fn().mockResolvedValue(job),
-    list: vi.fn().mockResolvedValue({ items: [job], total: 1 }),
-    listExpired: vi.fn().mockResolvedValue([job]),
+    claimQueued: vi.fn<SystemExportRepository['claimQueued']>().mockResolvedValue(null),
+    findByUuid: vi.fn<SystemExportRepository['findByUuid']>().mockResolvedValue(job),
+    list: vi.fn<SystemExportRepository['list']>().mockResolvedValue({
+      items: [job],
+      total: 1,
+    }),
+    listExpired: vi
+      .fn<SystemExportRepository['listExpired']>()
+      .mockResolvedValue([job]),
     update: vi
-      .fn()
-      .mockImplementation(async (_uuid, input) => ({ ...job, ...input })),
-    deleteMany: vi.fn().mockResolvedValue(undefined),
+      .fn<SystemExportRepository['update']>()
+      .mockImplementation((_uuid, input) => Promise.resolve({ ...job, ...input })),
+    deleteMany: vi
+      .fn<SystemExportRepository['deleteMany']>()
+      .mockResolvedValue(undefined),
   },
   activity: {
     list: vi.fn().mockResolvedValue({
@@ -96,28 +110,27 @@ describe('SystemExportService coverage', () => {
   });
 
   it('creates export jobs with bounded filters and a download token', async () => {
-    await expect(
-      service.execute({
-        actorUuid: 'actor-1',
-        entity: 'activity',
-        format: 'csv',
-        limit: 50_000,
-        columns: ['uuid', 'summary'],
-        from: new Date('2026-01-01T00:00:00Z'),
-        to: new Date('2026-01-02T00:00:00Z'),
-        sort: 'createdAt_desc',
-      } as never),
-    ).resolves.toMatchObject({ downloadToken: expect.any(String) });
-    expect(d.jobs.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        actorUuid: 'actor-1',
-        estimatedRows: 2,
-        filters: expect.objectContaining({
-          limit: 10_000,
-          columns: ['uuid', 'summary'],
-        }),
-      }),
-    );
+    const result = await service.execute({
+      actorUuid: 'actor-1',
+      entity: 'system_activity',
+      format: 'csv',
+      limit: 50_000,
+      columns: ['uuid', 'summary'],
+      from: new Date('2026-01-01T00:00:00Z'),
+      to: new Date('2026-01-02T00:00:00Z'),
+      sort: 'createdAt_desc',
+    } as never);
+    expect(typeof result.downloadToken).toBe('string');
+    expect(result.downloadToken.length).toBeGreaterThan(0);
+
+    expect(d.jobs.create).toHaveBeenCalled();
+    const createInput = d.jobs.create.mock.calls[0]?.[0];
+    expect(createInput).toBeDefined();
+    if (!createInput) throw new Error('Expected export create input');
+    expect(createInput.actorUuid).toBe('actor-1');
+    expect(createInput.estimatedRows).toBe(2);
+    expect(createInput.filters.limit).toBe(10_000);
+    expect(createInput.filters.columns).toEqual(['uuid', 'summary']);
     expect(d.audit.record).toHaveBeenCalled();
   });
 
@@ -155,9 +168,9 @@ describe('SystemExportService coverage', () => {
       total: 1,
     });
 
-    await expect(service.retry('actor-1', 'job-1')).resolves.toEqual(
-      expect.objectContaining({ downloadToken: expect.any(String) }),
-    );
+    const retryResult = await service.retry('actor-1', 'job-1');
+    expect(typeof retryResult.downloadToken).toBe('string');
+    expect(retryResult.downloadToken.length).toBeGreaterThan(0);
     expect(d.storage.remove).toHaveBeenCalledWith(job.artifactPath);
 
     d.jobs.findByUuid.mockResolvedValueOnce({ ...job, state: 'SUCCEEDED' });
@@ -187,12 +200,9 @@ describe('SystemExportService coverage', () => {
   });
 
   it('validates download state and token expiration', async () => {
-    await expect(
-      service.download('actor-1', 'job-1', 'token'),
-    ).resolves.toMatchObject({
-      filename: 'job-1.csv',
-      stream: 'stream',
-    });
+    const result = await service.download('actor-1', 'job-1', 'token');
+    expect(result.filename).toBe('job-1.csv');
+    expect(result.stream).toBe('stream');
 
     d.jobs.findByUuid.mockResolvedValueOnce(null);
     await expect(
