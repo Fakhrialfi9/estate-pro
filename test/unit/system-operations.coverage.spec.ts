@@ -76,7 +76,9 @@ describe('SystemOperationsService coverage', () => {
   });
 
   it('updates maintenance and read-only modes with optimistic version and audit', async () => {
-    await expect(service.setMaintenance('actor-1', false)).resolves.toMatchObject({
+    await expect(
+      service.setMaintenance('actor-1', false),
+    ).resolves.toMatchObject({
       maintenanceMode: true,
     });
     expect(d.settings.upsert).toHaveBeenCalledWith(
