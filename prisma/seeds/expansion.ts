@@ -18,8 +18,8 @@ type InformationSchemaIndex = {
   TABLE_NAME: string;
   INDEX_NAME: string;
   COLUMN_NAME: string;
-  SEQ_IN_INDEX: number;
-  NON_UNIQUE: 0 | 1;
+  SEQ_IN_INDEX: number | bigint;
+  NON_UNIQUE: 0 | 1 | bigint;
 };
 
 type InformationSchemaForeignKey = {
@@ -59,7 +59,7 @@ function deterministicUuid(namespace: string, value: string): string {
 
 function quoteIdentifier(value: string): string {
   if (!/^[A-Za-z0-9_]+$/.test(value)) throw new Error(`Unsafe SQL identifier: ${value}`);
-  return `\`${value}\``;
+  return `\\`${value}\\``;
 }
 
 function isStringType(dataType: string): boolean {
@@ -171,10 +171,11 @@ async function loadTableMetadata(tx: SeedTransaction, prisma: PrismaClient): Pro
 
     const uniqueIndexes = Array.from(
       tableIndexes
-        .filter((index) => index.NON_UNIQUE === 0 && index.INDEX_NAME !== 'PRIMARY')
+        .filter((index) => index.NON_UNIQUE === 0 || index.NON_UNIQUE === BigInt(0))
+        .filter((index) => index.INDEX_NAME !== 'PRIMARY')
         .reduce((groups, index) => {
           const columnsForIndex = groups.get(index.INDEX_NAME) ?? [];
-          columnsForIndex[index.SEQ_IN_INDEX - 1] = index.COLUMN_NAME;
+          columnsForIndex[Number(index.SEQ_IN_INDEX) - 1] = index.COLUMN_NAME;
           groups.set(index.INDEX_NAME, columnsForIndex);
           return groups;
         }, new Map<string, string[]>()),
