@@ -207,7 +207,7 @@ describe('CrmService coverage', () => {
     expect((await s.createLead({ ownerUserUuid: 'user-1' }, actor)).uuid).toBe(
       'row-1',
     );
-    expect((await s.getLead('lead')).uuid).toBe('row-1');
+    expect((await s.getLead('lead')).uuid).toBe('lead-1');
     expect(await s.listLeads({ page: 1, limit: 10 })).toEqual([]);
     expect((await s.updateLead('lead', { status: 'NEW' }, actor)).uuid).toBe(
       'row-1',
@@ -351,8 +351,9 @@ describe('CrmService coverage', () => {
   });
 
   it('maps repository errors to stable HTTP exceptions', async () => {
-    const repo = makeRepo() as Record<string, ReturnType<typeof vi.fn>>;
-    repo.getContact = vi.fn(() => Promise.reject(new Error('already exists')));
+    const repo = {
+      getContact: vi.fn(() => Promise.reject(new Error('already exists'))),
+    };
     const s = new CrmService(
       repo as never,
       makeAudit(),
@@ -360,11 +361,17 @@ describe('CrmService coverage', () => {
       makeUserPort(),
     );
     await expect(s.getContact('c')).rejects.toBeInstanceOf(ConflictException);
-    repo.getContact = vi.fn(() => Promise.reject(new Error('not found')));
+    repo.getContact.mockImplementationOnce(() =>
+      Promise.reject(new Error('not found')),
+    );
     await expect(s.getContact('c')).rejects.toBeInstanceOf(NotFoundException);
-    repo.getContact = vi.fn(() => Promise.reject(new Error('bad input')));
+    repo.getContact.mockImplementationOnce(() =>
+      Promise.reject(new Error('bad input')),
+    );
     await expect(s.getContact('c')).rejects.toBeInstanceOf(BadRequestException);
-    repo.getContact = vi.fn(() => Promise.reject(new ForbiddenException()));
+    repo.getContact.mockImplementationOnce(() =>
+      Promise.reject(new ForbiddenException()),
+    );
     await expect(s.getContact('c')).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
