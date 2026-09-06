@@ -21,21 +21,25 @@ const makeRepo = () =>
       get: (_target, property) => {
         const name = String(property);
         if (name === 'getOpportunity')
-          return vi.fn(() => ({
-            uuid,
-            ownerUserUuid: uuid,
-            status: 'OPEN',
-            version: 1,
-          }));
+          return vi.fn(() =>
+            Promise.resolve({
+              uuid,
+              ownerUserUuid: uuid,
+              status: 'OPEN',
+              version: 1,
+            }),
+          );
         if (name === 'getDeal')
-          return vi.fn(() => ({
-            uuid,
-            ownerUserUuid: uuid,
-            status: 'OPEN',
-            version: 1,
-          }));
+          return vi.fn(() =>
+            Promise.resolve({
+              uuid,
+              ownerUserUuid: uuid,
+              status: 'OPEN',
+              version: 1,
+            }),
+          );
         if (name === 'getNegotiation')
-          return vi.fn(() => ({ uuid, status: 'OPEN' }));
+          return vi.fn(() => Promise.resolve({ uuid, status: 'OPEN' }));
         if (
           name === 'createPipeline' ||
           name === 'createStage' ||
@@ -63,12 +67,14 @@ const makeRepo = () =>
           name === 'reopenDeal' ||
           name === 'assignOpportunity'
         )
-          return vi.fn(() => ({
-            uuid,
-            version: 2,
-            status: 'OPEN',
-            ownerUserUuid: uuid,
-          }));
+          return vi.fn(() =>
+            Promise.resolve({
+              uuid,
+              version: 2,
+              status: 'OPEN',
+              ownerUserUuid: uuid,
+            }),
+          );
         if (
           name === 'listPipelines' ||
           name === 'listStages' ||
@@ -77,10 +83,11 @@ const makeRepo = () =>
           name === 'listViewings' ||
           name === 'listOffers' ||
           name === 'listDeals' ||
+          name === 'listNegotiationHistory' ||
           name === 'listLostReasons' ||
           name === 'commissionReport'
         )
-          return vi.fn(() => []);
+          return vi.fn(() => Promise.resolve([]));
         if (
           name === 'updateOpportunity' ||
           name === 'updateViewingStatus' ||
@@ -88,15 +95,17 @@ const makeRepo = () =>
           name === 'reorderStages' ||
           name === 'removeDealItem'
         )
-          return vi.fn(() => ({ uuid, version: 2 }));
-        if (name === 'listOpportunities') return vi.fn(() => []);
-        if (name === 'forecast') return vi.fn(() => ({ total: '0.0000' }));
-        return vi.fn(() => ({ uuid }));
+          return vi.fn(() => Promise.resolve({ uuid, version: 2 }));
+        if (name === 'listOpportunities') return vi.fn(() => Promise.resolve([]));
+        if (name === 'forecast')
+          return vi.fn(() => Promise.resolve({ total: '0.0000' }));
+        return vi.fn(() => Promise.resolve({ uuid }));
       },
     },
   ) as never;
 
-const makeAudit = () => ({ record: vi.fn(() => undefined) }) as never;
+const makeAudit = () =>
+  ({ record: vi.fn(() => Promise.resolve(undefined)) }) as never;
 const service = () => new SalesService(makeRepo(), makeAudit());
 
 const noPermission = { actorUuid: uuid, permissions: [] } as const;
@@ -357,22 +366,24 @@ describe('SalesService coverage', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
     const ownerScoped = {
       actorUuid: uuid,
-      permissions: ['sales.opportunities.read'],
+      permissions: ['sales.opportunities.read', 'sales.deals.read'],
     } as const;
     expect(await s.listOpportunities({}, ownerScoped)).toEqual([]);
     expect(await s.listDeals({}, ownerScoped)).toEqual([]);
     const repo = makeRepo() as Record<string, ReturnType<typeof vi.fn>>;
-    repo.getOpportunity = vi.fn(() => ({
-      uuid,
-      ownerUserUuid: '22222222-2222-4222-8222-222222222222',
-      status: 'OPEN',
-      version: 1,
-    }));
+    repo.getOpportunity = vi.fn(() =>
+      Promise.resolve({
+        uuid,
+        ownerUserUuid: '22222222-2222-4222-8222-222222222222',
+        status: 'OPEN',
+        version: 1,
+      }),
+    );
     const isolated = new SalesService(repo as never, makeAudit());
     await expect(
       isolated.getOpportunity(uuid, ownerScoped),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    repo.getOpportunity = vi.fn(() => null);
+    repo.getOpportunity = vi.fn(() => Promise.resolve(null));
     await expect(isolated.getOpportunity(uuid, actor)).rejects.toBeInstanceOf(
       NotFoundException,
     );
