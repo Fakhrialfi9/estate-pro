@@ -76,8 +76,8 @@ model SystemIntegrationRuntime {
   syncDirection String @default("BIDIRECTIONAL") @db.VarChar(24) @map("sync_direction")
   syncCursor String? @db.VarChar(255) @map("sync_cursor")
   lastSyncedAt DateTime? @map("last_synced_at") @db.DateTime(3)
-  requestMapping Json
-  responseMapping Json
+  requestMapping Json @map("request_mapping")
+  responseMapping Json @map("response_mapping")
   lastHealthAt DateTime? @map("last_health_at") @db.DateTime(3)
   lastOperationAt DateTime? @map("last_operation_at") @db.DateTime(3)
   lastOperationStatus String? @db.VarChar(24) @map("last_operation_status")
@@ -106,8 +106,8 @@ model SystemIntegrationOperation {
   nextAttemptAt DateTime? @map("next_attempt_at") @db.DateTime(3)
   startedAt DateTime? @map("started_at") @db.DateTime(3)
   completedAt DateTime? @map("completed_at") @db.DateTime(3)
-  errorCode String? @db.VarChar(80)
-  errorMessage String? @db.VarChar(500)
+  errorCode String? @db.VarChar(80) @map("error_code")
+  errorMessage String? @db.VarChar(500) @map("error_message")
   metadata Json
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
@@ -145,7 +145,7 @@ model SystemIntegrationConflict {
   conflictKey String @db.VarChar(180) @map("conflict_key")
   entityType String @db.VarChar(80)
   localVersion String? @db.VarChar(80) @map("local_version")
-  remoteVersion String? @db.VarChar(80) @map("remote_version")
+  remoteVersion String? @db.VarChar(80) @db.VarChar(80) @map("remote_version")
   resolution String @db.VarChar(32)
   status String @db.VarChar(24)
   localPayload Json? @map("local_payload")
