@@ -3,7 +3,6 @@ import {
   AnalyticsInvalidQueryException,
   AnalyticsQueryTimeoutException,
   AnalyticsScopeException,
-  AnalyticsUnavailableException,
 } from '../../../src/modules/analytics/domain/errors/analytics.errors.js';
 import type { AnalyticsQueryPort } from '../../../src/modules/analytics/domain/analytics.types.js';
 import type { AccessTokenClaims } from '../../../src/common/security/access-token-verifier.port.js';
