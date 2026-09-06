@@ -44,10 +44,7 @@ const dependencies = () => ({
     listExpired: vi.fn().mockResolvedValue([job]),
     update: vi
       .fn()
-      .mockImplementation((_uuid: string, input: Record<string, unknown>) => ({
-        ...job,
-        ...input,
-      })),
+      .mockImplementation(async (_uuid, input) => ({ ...job, ...input })),
     deleteMany: vi.fn().mockResolvedValue(undefined),
   },
   activity: {
@@ -99,18 +96,18 @@ describe('SystemExportService coverage', () => {
   });
 
   it('creates export jobs with bounded filters and a download token', async () => {
-    const result = await service.execute({
-      actorUuid: 'actor-1',
-      entity: 'activity',
-      format: 'csv',
-      limit: 50_000,
-      columns: ['uuid', 'summary'],
-      from: new Date('2026-01-01T00:00:00Z'),
-      to: new Date('2026-01-02T00:00:00Z'),
-      sort: 'createdAt_desc',
-    } as never);
-
-    expect(result.downloadToken).toEqual(expect.any(String));
+    await expect(
+      service.execute({
+        actorUuid: 'actor-1',
+        entity: 'activity',
+        format: 'csv',
+        limit: 50_000,
+        columns: ['uuid', 'summary'],
+        from: new Date('2026-01-01T00:00:00Z'),
+        to: new Date('2026-01-02T00:00:00Z'),
+        sort: 'createdAt_desc',
+      } as never),
+    ).resolves.toMatchObject({ downloadToken: expect.any(String) });
     expect(d.jobs.create).toHaveBeenCalledWith(
       expect.objectContaining({
         actorUuid: 'actor-1',
