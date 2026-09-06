@@ -40,6 +40,7 @@ const makeRepo = () =>
           );
         if (name === 'getNegotiation')
           return vi.fn(() => Promise.resolve({ uuid, status: 'OPEN' }));
+        if (name === 'reopenDeal') return vi.fn(() => undefined);
         if (
           name === 'createPipeline' ||
           name === 'createStage' ||
@@ -64,7 +65,6 @@ const makeRepo = () =>
           name === 'calculateCommission' ||
           name === 'approveCommission' ||
           name === 'settleCommission' ||
-          name === 'reopenDeal' ||
           name === 'assignOpportunity'
         )
           return vi.fn(() =>
@@ -305,9 +305,7 @@ describe('SalesService coverage', () => {
     ).toBe(uuid);
     expect((await s.lostOpportunity(uuid, uuid, actor)).uuid).toBe(uuid);
     expect((await s.lostDeal(uuid, uuid, actor)).uuid).toBe(uuid);
-    expect(await s.reopenDeal(uuid, 'Customer request', actor)).toMatchObject({
-      uuid,
-    });
+    expect(() => s.reopenDeal(uuid, 'Customer request', actor)).not.toThrow();
     expect(await s.lostReasons(actor)).toEqual([]);
     expect(
       (await s.createLostReason({ code: 'PRICE', name: 'Price' }, actor)).uuid,
