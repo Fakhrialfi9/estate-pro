@@ -1,14 +1,7 @@
 import type { SeedTransaction } from '../database.ts';
 import { seedUuid } from '../shared/ids.ts';
+import type { PermissionSeed } from './types.ts';
 import { PERMISSIONS } from './data.ts';
-
-type PermissionSeed = {
-  name: string;
-  code: string;
-  module: string;
-  domain: string;
-  action: string;
-};
 
 export async function seedPermissions(
   client: SeedTransaction,
