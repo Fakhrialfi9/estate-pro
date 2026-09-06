@@ -137,7 +137,8 @@ const makeQueries = (): AnalyticsQueryPort =>
   new Proxy(
     {},
     {
-      get: (_target, property) => vi.fn(() => rows(String(property))),
+      get: (_target, property) =>
+        vi.fn(() => Promise.resolve(rows(String(property)))),
     },
   ) as AnalyticsQueryPort;
 
@@ -273,7 +274,7 @@ describe('AnalyticsService coverage', () => {
     );
     const csv = await service.exportCsv(dto, user(), 'leads');
     expect(csv.filename).toBe('analytics-leads.csv');
-    expect(csv.content).toContain('volume');
+    expect(csv.content).toContain('count');
 
     const acquisition = await service.exportCsv(dto, user(), 'acquisition');
     expect(acquisition.content).toContain('"web,paid"');
@@ -282,7 +283,7 @@ describe('AnalyticsService coverage', () => {
     );
 
     const noRows = new Proxy(makeQueries(), {
-      get: () => vi.fn(() => []),
+      get: () => vi.fn(() => Promise.resolve([])),
     });
     const emptyService = new AnalyticsService(
       noRows,
@@ -303,9 +304,7 @@ describe('AnalyticsService coverage', () => {
       {},
       {
         get: () =>
-          vi.fn(() => {
-            throw new Error('failure');
-          }),
+          vi.fn(() => Promise.reject('failure')),
       },
     ) as AnalyticsQueryPort;
     const failingService = new AnalyticsService(failing, makePolicy() as never);
