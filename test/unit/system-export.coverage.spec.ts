@@ -42,7 +42,12 @@ const dependencies = () => ({
     findByUuid: vi.fn().mockResolvedValue(job),
     list: vi.fn().mockResolvedValue({ items: [job], total: 1 }),
     listExpired: vi.fn().mockResolvedValue([job]),
-    update: vi.fn().mockImplementation(async (_uuid, input) => ({ ...job, ...input })),
+    update: vi.fn().mockImplementation(
+      (_uuid: string, input: Record<string, unknown>) => ({
+        ...job,
+        ...input,
+      }),
+    ),
     deleteMany: vi.fn().mockResolvedValue(undefined),
   },
   activity: {
@@ -151,8 +156,9 @@ describe('SystemExportService coverage', () => {
       total: 1,
     });
 
-    const retry = await service.retry('actor-1', 'job-1');
-    expect(retry.downloadToken).toEqual(expect.any(String));
+    await expect(service.retry('actor-1', 'job-1')).resolves.toEqual(
+      expect.objectContaining({ downloadToken: expect.any(String) }),
+    );
     expect(d.storage.remove).toHaveBeenCalledWith(job.artifactPath);
 
     d.jobs.findByUuid.mockResolvedValueOnce({ ...job, state: 'SUCCEEDED' });
