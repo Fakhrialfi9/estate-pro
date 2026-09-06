@@ -300,12 +300,15 @@ describe('AutomationService coverage', () => {
     );
     expect(draft.version).toBe(1);
 
-    repo.getWorkflow.mockResolvedValueOnce({
+    const workflowWithVersions = {
       uuid: workflowUuid,
       ownerUserUuid: actorUuid,
       status: 'DRAFT',
       versions: [{ version: 2 }, { version: 5 }],
-    });
+    };
+    repo.getWorkflow
+      .mockResolvedValueOnce(workflowWithVersions)
+      .mockResolvedValueOnce(workflowWithVersions);
     const nextDraft = await service.createDraftVersion(
       workflowUuid,
       definition,
@@ -364,6 +367,15 @@ describe('AutomationService coverage', () => {
     const { service, repo, audit } = makeService();
 
     await expect(service.processDue('worker-1')).resolves.toBeNull();
+    repo.getExecution.mockResolvedValueOnce({
+      uuid: executionUuid,
+      workflowUuid,
+      workflowVersionUuid: versionUuid,
+      state: 'FAILED',
+      currentNodeId: 'action-1',
+      contextSnapshot: {},
+      actorUuid,
+    });
     await expect(
       service.retryExecution(executionUuid, actorUuid),
     ).resolves.toMatchObject({ state: 'WAITING' });
