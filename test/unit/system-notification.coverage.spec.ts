@@ -7,13 +7,13 @@ const depsFactory = () => ({
   listNotifications: vi
     .fn()
     .mockResolvedValue({ items: [{ uuid: 'n1' }], total: 1 }),
-  markNotificationRead: vi.fn().mockResolvedValue({ uuid: 'n1', read: true }),
-  markAllNotificationsRead: vi.fn().mockResolvedValue({ updated: 2 }),
-  listPreferences: vi
+  markNotificationRead: vi
     .fn()
-    .mockResolvedValue([
-      { notificationType: 'LEAD', channel: 'EMAIL', enabled: true },
-    ]),
+    .mockResolvedValue({ uuid: 'n1', read: true }),
+  markAllNotificationsRead: vi.fn().mockResolvedValue({ updated: 2 }),
+  listPreferences: vi.fn().mockResolvedValue([
+    { notificationType: 'LEAD', channel: 'EMAIL', enabled: true },
+  ]),
   setPreference: vi
     .fn()
     .mockImplementation((input: Record<string, unknown>) => input),
@@ -36,9 +36,9 @@ describe('SystemNotificationService coverage', () => {
   });
 
   it('covers notification listing and read operations', async () => {
-    await expect(service.list('user-1', 0, 200, true)).resolves.toMatchObject({
-      total: 1,
-    });
+    await expect(
+      service.list('user-1', 0, 200, true),
+    ).resolves.toMatchObject({ total: 1 });
     expect(d.listNotifications).toHaveBeenCalledWith({
       page: 1,
       limit: 100,
@@ -54,9 +54,9 @@ describe('SystemNotificationService coverage', () => {
     });
 
     d.markNotificationRead.mockResolvedValueOnce(null);
-    await expect(service.markRead('user-1', 'missing')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.markRead('user-1', 'missing'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('validates authenticated user and delegates preferences', async () => {
