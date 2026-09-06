@@ -1,6 +1,4 @@
-import {
-  NotFoundException,
-} from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SystemImportService } from '../../src/modules/system/application/services/system-import.service.js';
@@ -37,10 +35,12 @@ const dependencies = () => ({
       totalRows: 0,
       processedRows: 0,
     }),
-    update: vi.fn().mockImplementation(async (_uuid, input) => ({
-      ...baseJob,
-      ...input,
-    })),
+    update: vi.fn().mockImplementation(
+      (_uuid: string, input: Record<string, unknown>) => ({
+        ...baseJob,
+        ...input,
+      }),
+    ),
     findByUuid: vi.fn().mockResolvedValue(baseJob),
     list: vi.fn().mockResolvedValue({ items: [baseJob], total: 1 }),
   },
@@ -54,17 +54,15 @@ const dependencies = () => ({
   storage: {
     put: vi.fn().mockResolvedValue({ path: 'job-1/source' }),
     read: vi.fn().mockResolvedValue(
-      Buffer.from(
-        'eventType,category,summary\nFOLLOW_UP,CRM,hello\n',
-      ),
+      Buffer.from('eventType,category,summary\nFOLLOW_UP,CRM,hello\n'),
     ),
   },
   audit: { record: vi.fn().mockResolvedValue(undefined) },
   mapping: {
     validateFieldMapping: vi.fn(),
     validateColumnMapping: vi.fn(),
-    applyColumnMapping: vi.fn((row) => row),
-    applyFieldMapping: vi.fn((row) => row),
+    applyColumnMapping: vi.fn((row: Record<string, unknown>) => row),
+    applyFieldMapping: vi.fn((row: Record<string, unknown>) => row),
   },
 });
 
