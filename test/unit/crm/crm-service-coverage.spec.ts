@@ -260,7 +260,7 @@ describe('CrmService coverage', () => {
       'row-1',
     );
     expect((await s.merge('source', 'target', actor)).uuid).toBe('row-1');
-    await expect(
+    expect(() =>
       s.configList('invalid', { page: 1, limit: 10 }),
     ).toThrow(BadRequestException);
     expect(await s.configList('source', { page: 1, limit: 10 })).toEqual([]);
