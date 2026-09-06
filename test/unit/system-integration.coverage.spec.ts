@@ -40,11 +40,18 @@ const dependencies = () => ({
   repository: {
     get: vi.fn().mockResolvedValue(row),
     list: vi.fn().mockResolvedValue({ items: [row], total: 1 }),
-    create: vi.fn().mockImplementation(async (input) => ({ ...row, ...input })),
-    update: vi.fn().mockImplementation(async (_uuid, input) => ({
-      ...row,
-      ...input,
-    })),
+    create: vi.fn().mockImplementation(
+      (input: Record<string, unknown>) => ({
+        ...row,
+        ...input,
+      }),
+    ),
+    update: vi.fn().mockImplementation(
+      (_uuid: string, input: Record<string, unknown>) => ({
+        ...row,
+        ...input,
+      }),
+    ),
     delete: vi.fn().mockResolvedValue(undefined),
   },
   roadmap: {
@@ -138,7 +145,9 @@ describe('SystemIntegrationService coverage', () => {
     await expect(service.get('missing')).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    await expect(service.providerConfiguration('integration-1')).resolves.toEqual({
+    await expect(
+      service.providerConfiguration('integration-1'),
+    ).resolves.toEqual({
       metadata: row.metadata,
       secretRef: row.secretRef,
     });
@@ -191,12 +200,9 @@ describe('SystemIntegrationService coverage', () => {
     ).resolves.toMatchObject({ idempotentReplay: true });
 
     d.roadmap.operation.getByIdempotency.mockResolvedValueOnce(null);
-    const result = await service.reconnect(
-      'actor-1',
-      'integration-1',
-      'key-2',
-    );
-    expect(result).toMatchObject({
+    await expect(
+      service.reconnect('actor-1', 'integration-1', 'key-2'),
+    ).resolves.toMatchObject({
       ok: true,
       state: 'ACTIVE',
       idempotentReplay: false,
@@ -230,12 +236,16 @@ describe('SystemIntegrationService coverage', () => {
       recordsRead: 10,
       recordsChanged: 2,
     });
-    await expect(service.reconciliation('integration-1')).resolves.toMatchObject({
+    await expect(
+      service.reconciliation('integration-1'),
+    ).resolves.toMatchObject({
       status: 'IN_SYNC',
       destructiveChanges: false,
     });
     d.roadmap.conflict.list.mockResolvedValueOnce([{ status: 'OPEN' }]);
-    await expect(service.reconciliation('integration-1')).resolves.toMatchObject({
+    await expect(
+      service.reconciliation('integration-1'),
+    ).resolves.toMatchObject({
       status: 'CONFLICTS_FOUND',
     });
   });
