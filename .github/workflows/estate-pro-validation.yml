@@ -86,16 +86,7 @@ jobs:
         run: npm run check:secrets
 
       - name: Format check
-        id: format-check
-        continue-on-error: true
         run: npm run format:check
-
-      - name: Format diagnostics
-        if: steps.format-check.outcome == 'failure'
-        run: |
-          npx prettier --write "test/unit/analytics/analytics-service-coverage.spec.ts" "test/unit/crm/crm-service-coverage.spec.ts"
-          git diff -- test/unit/analytics/analytics-service-coverage.spec.ts test/unit/crm/crm-service-coverage.spec.ts
-          exit 1
 
       - name: Lint
         run: npm run lint
