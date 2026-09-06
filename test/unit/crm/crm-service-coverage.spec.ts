@@ -7,6 +7,7 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 
 import { CrmService } from '../../../src/modules/crm/application/crm.service.js';
+import type { CrmRepository } from '../../../src/modules/crm/domain/repositories/crm.repository.js';
 
 const actor = {
   actorUuid: 'actor-1',
@@ -20,7 +21,7 @@ const activeUser = {
   deletedAt: null,
 };
 
-const makeRepo = () =>
+const makeRepo = (): CrmRepository =>
   new Proxy<Record<string, unknown>>(
     {},
     {
@@ -118,7 +119,7 @@ const makeRepo = () =>
         return vi.fn(() => Promise.resolve({ uuid: 'row-1' }));
       },
     },
-  ) as never;
+  ) as unknown as CrmRepository;
 
 const makeAudit = () =>
   ({
@@ -355,20 +356,23 @@ describe('CrmService coverage', () => {
   });
 
   it('maps repository errors to stable HTTP exceptions', async () => {
-    const repo = makeRepo() as Record<string, ReturnType<typeof vi.fn>>;
-    repo.getContact = vi.fn(() => Promise.reject(new Error('already exists')));
+    const repo = makeRepo();
+    const rejectGetContact = (error: Error): CrmRepository['getContact'] =>
+      () => Promise.reject(error);
+
+    repo.getContact = rejectGetContact(new Error('already exists'));
     const s = new CrmService(
-      repo as never,
+      repo,
       makeAudit(),
       makePropertyPort(),
       makeUserPort(),
     );
     await expect(s.getContact('c')).rejects.toBeInstanceOf(ConflictException);
-    repo.getContact = vi.fn(() => Promise.reject(new Error('not found')));
+    repo.getContact = rejectGetContact(new Error('not found'));
     await expect(s.getContact('c')).rejects.toBeInstanceOf(NotFoundException);
-    repo.getContact = vi.fn(() => Promise.reject(new Error('bad input')));
+    repo.getContact = rejectGetContact(new Error('bad input'));
     await expect(s.getContact('c')).rejects.toBeInstanceOf(BadRequestException);
-    repo.getContact = vi.fn(() => Promise.reject(new ForbiddenException()));
+    repo.getContact = rejectGetContact(new ForbiddenException());
     await expect(s.getContact('c')).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
