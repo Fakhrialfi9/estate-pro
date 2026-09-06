@@ -12,9 +12,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 const make = () => {
   const repository = {
-    list: vi.fn(async () => ({ items: [], total: 0 })),
-    get: vi.fn(async () => null),
-    upsert: vi.fn(async (input: Record<string, unknown>) => ({
+    list: vi.fn(() => ({ items: [], total: 0 })),
+    get: vi.fn(() => null),
+    upsert: vi.fn((input: Record<string, unknown>) => ({
       uuid: 'setting-1',
       key: input.key,
       valueType: input.valueType,
@@ -24,12 +24,12 @@ const make = () => {
     })),
   };
   const cache = {
-    get: vi.fn(async () => null),
-    set: vi.fn(async () => undefined),
-    delete: vi.fn(async () => undefined),
+    get: vi.fn(() => null),
+    set: vi.fn(() => undefined),
+    delete: vi.fn(() => undefined),
   };
-  const audit = { record: vi.fn(async () => undefined) };
-  const activity = { append: vi.fn(async () => undefined) };
+  const audit = { record: vi.fn(() => undefined) };
+  const activity = { append: vi.fn(() => undefined) };
   return {
     service: new SystemSettingsService(
       repository as never,
