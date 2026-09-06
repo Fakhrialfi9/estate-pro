@@ -7,7 +7,9 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 
 import { CrmService } from '../../../src/modules/crm/application/crm.service.js';
-import type { CrmRepository } from '../../../src/modules/crm/domain/repositories/crm.repository.js';
+import type {
+  CrmRepository,
+} from '../../../src/modules/crm/domain/repositories/crm.repository.js';
 
 const actor = {
   actorUuid: 'actor-1',
