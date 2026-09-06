@@ -18,6 +18,7 @@ import { seedPropertyMatching } from './property-matching/seed.ts';
 import { seedAutomation } from './automation/seed.ts';
 import { seedContent } from './content/seed.ts';
 import { seedSystem } from './system/seed.ts';
+import { expandSeedDataset, verifyExpandedSeedState } from './expansion.ts';
 import { verifySeedState } from './verification.ts';
 
 export async function seedDatabase(): Promise<void> {
@@ -47,9 +48,11 @@ export async function seedDatabase(): Promise<void> {
       await seedAutomation(tx);
       await seedContent(tx);
       await seedSystem(tx);
+      await expandSeedDataset(prisma, tx);
     });
 
     await verifySeedState(prisma);
+    await verifyExpandedSeedState(prisma);
   } finally {
     await prisma.$disconnect();
   }
