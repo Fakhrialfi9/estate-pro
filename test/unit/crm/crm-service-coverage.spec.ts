@@ -27,26 +27,30 @@ const makeRepo = () =>
       get: (_target, property) => {
         const name = String(property);
         if (name === 'findProfileByUserUuid') {
-          return vi.fn(() => null);
+          return vi.fn(() => Promise.resolve(null));
         }
         if (name === 'getLead') {
-          return vi.fn(() => ({
-            uuid: 'lead-1',
-            ownerUserUuid: 'user-1',
-            score: 10,
-            contact: { displayName: 'Alice' },
-            source: { code: 'WEB' },
-            status: { code: 'NEW' },
-            type: { code: 'BUYER' },
-          }));
+          return vi.fn(() =>
+            Promise.resolve({
+              uuid: 'lead-1',
+              ownerUserUuid: 'user-1',
+              score: 10,
+              contact: { displayName: 'Alice' },
+              source: { code: 'WEB' },
+              status: { code: 'NEW' },
+              type: { code: 'BUYER' },
+            }),
+          );
         }
         if (name === 'listScoreRules') {
-          return vi.fn(() => [
-            { field: 'score', operator: 'GT', value: 5, points: 10 },
-          ]);
+          return vi.fn(() =>
+            Promise.resolve([
+              { field: 'score', operator: 'GT', value: 5, points: 10 },
+            ]),
+          );
         }
         if (name === 'saveScore') {
-          return vi.fn(() => ({ uuid: 'lead-1', score: 20 }));
+          return vi.fn(() => Promise.resolve({ uuid: 'lead-1', score: 20 }));
         }
         if (
           name === 'getInquiry' ||
@@ -54,19 +58,19 @@ const makeRepo = () =>
           name === 'getCommunication' ||
           name === 'getContact'
         ) {
-          return vi.fn(() => ({ uuid: 'row-1' }));
+          return vi.fn(() => Promise.resolve({ uuid: 'row-1' }));
         }
         if (name === 'getLeadScore') {
-          return vi.fn(() => ({ score: 20 }));
+          return vi.fn(() => Promise.resolve({ score: 20 }));
         }
         if (name === 'detectDuplicates') {
-          return vi.fn(() => []);
+          return vi.fn(() => Promise.resolve([]));
         }
         if (name === 'relationship') {
-          return vi.fn(() => ({ uuid: 'rel-1' }));
+          return vi.fn(() => Promise.resolve({ uuid: 'rel-1' }));
         }
         if (name.startsWith('list')) {
-          return vi.fn(() => []);
+          return vi.fn(() => Promise.resolve([]));
         }
         if (
           name.startsWith('delete') ||
@@ -74,7 +78,7 @@ const makeRepo = () =>
           name.startsWith('untag') ||
           name.startsWith('remove')
         ) {
-          return vi.fn(() => undefined);
+          return vi.fn(() => Promise.resolve(undefined));
         }
         if (
           name.startsWith('add') ||
@@ -97,34 +101,34 @@ const makeRepo = () =>
               last !== null && typeof last === 'object' && !Array.isArray(last)
                 ? (last as Record<string, unknown>)
                 : {};
-            return {
+            return Promise.resolve({
               uuid: 'row-1',
               version: 1,
               valueType: 'STRING',
               value: 'ok',
               updatedAt: new Date(),
               ...patch,
-            };
+            });
           });
         }
-        return vi.fn(() => ({ uuid: 'row-1' }));
+        return vi.fn(() => Promise.resolve({ uuid: 'row-1' }));
       },
     },
   ) as never;
 
 const makeAudit = () =>
   ({
-    record: vi.fn(() => undefined),
+    record: vi.fn(() => Promise.resolve(undefined)),
   }) as never;
 
 const makeUserPort = () =>
   ({
-    getUser: vi.fn(() => activeUser),
+    getUser: vi.fn(() => Promise.resolve(activeUser)),
   }) as never;
 
 const makePropertyPort = () =>
   ({
-    getProperty: vi.fn(() => ({ uuid: 'property-1' })),
+    getProperty: vi.fn(() => Promise.resolve({ uuid: 'property-1' })),
   }) as never;
 
 const service = () =>
@@ -348,9 +352,7 @@ describe('CrmService coverage', () => {
 
   it('maps repository errors to stable HTTP exceptions', async () => {
     const repo = makeRepo() as Record<string, ReturnType<typeof vi.fn>>;
-    repo.getContact = vi.fn(() => {
-      throw new Error('already exists');
-    });
+    repo.getContact = vi.fn(() => Promise.reject(new Error('already exists')));
     const s = new CrmService(
       repo as never,
       makeAudit(),
@@ -358,17 +360,11 @@ describe('CrmService coverage', () => {
       makeUserPort(),
     );
     await expect(s.getContact('c')).rejects.toBeInstanceOf(ConflictException);
-    repo.getContact = vi.fn(() => {
-      throw new Error('not found');
-    });
+    repo.getContact = vi.fn(() => Promise.reject(new Error('not found')));
     await expect(s.getContact('c')).rejects.toBeInstanceOf(NotFoundException);
-    repo.getContact = vi.fn(() => {
-      throw new Error('bad input');
-    });
+    repo.getContact = vi.fn(() => Promise.reject(new Error('bad input')));
     await expect(s.getContact('c')).rejects.toBeInstanceOf(BadRequestException);
-    repo.getContact = vi.fn(() => {
-      throw new ForbiddenException();
-    });
+    repo.getContact = vi.fn(() => Promise.reject(new ForbiddenException()));
     await expect(s.getContact('c')).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
