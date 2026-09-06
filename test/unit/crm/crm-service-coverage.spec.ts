@@ -133,7 +133,7 @@ const makePropertyPort = () =>
     getProperty: vi.fn(() => Promise.resolve({ uuid: 'property-1' })),
   }) as never;
 
-const service = ()
+const service = () =>
   new CrmService(makeRepo(), makeAudit(), makePropertyPort(), makeUserPort());
 
 describe('CrmService coverage', () => {
