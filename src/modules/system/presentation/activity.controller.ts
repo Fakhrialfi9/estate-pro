@@ -28,6 +28,27 @@ export class ActivityController {
   @Get()
   @RequirePermissions('system.activity.read')
   @ApiOperation({ summary: 'Query system activity' })
+  @ApiResponse({
+    status: 200,
+    description: 'System activity list returned.',
+    schema: {
+      type: 'object',
+      required: ['items', 'meta'],
+      properties: {
+        items: { type: 'array', items: { type: 'object', additionalProperties: true } },
+        meta: {
+          type: 'object',
+          required: ['page', 'limit', 'total', 'totalPages'],
+          properties: {
+            page: { type: 'integer', minimum: 1 },
+            limit: { type: 'integer', minimum: 1 },
+            total: { type: 'integer', minimum: 0 },
+            totalPages: { type: 'integer', minimum: 0 },
+          },
+        },
+      },
+    },
+  })
   async list(@Query() query: ActivityQueryDto) {
     const result = await this.activity.list(query);
     return {
