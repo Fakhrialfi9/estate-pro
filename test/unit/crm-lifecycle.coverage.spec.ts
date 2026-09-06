@@ -113,8 +113,9 @@ describe('CrmLifecycleService coverage', () => {
   });
 
   it('covers qualification allow and reject paths', async () => {
-    const result = await service.qualify('lead-1', 'ready for sale', actor);
-    expect(result).toEqual(expect.objectContaining({ uuid: 'lead-1' }));
+    await expect(
+      service.qualify('lead-1', 'ready for sale', actor),
+    ).resolves.toEqual(expect.objectContaining({ uuid: 'lead-1' }));
     expect(d.crm.score).toHaveBeenCalledWith('lead-1');
     expect(d.qualification.evaluate).toHaveBeenCalledWith(
       90,
@@ -177,8 +178,9 @@ describe('CrmLifecycleService coverage', () => {
       ...lead,
       statusCode: 'QUALIFIED',
     });
-    const result = await service.convert('lead-1', actor, ' conversion-key ');
-    expect(result).toEqual({
+    await expect(
+      service.convert('lead-1', actor, ' conversion-key '),
+    ).resolves.toEqual({
       leadUuid: 'lead-1',
       opportunityUuid: 'opp-1',
       created: true,
@@ -209,11 +211,14 @@ describe('CrmLifecycleService coverage', () => {
     });
     expect(d.crm.merge).toHaveBeenCalledWith('source', 'target', actor);
 
-    const result = await service.timeline(
+    const result = (await service.timeline(
       'lead-1',
       { page: 1, limit: 3 },
       actor,
-    );
+    )) as {
+      total: number;
+      items: Array<Record<string, unknown>>;
+    };
     expect(result.total).toBe(5);
     expect(result.items).toHaveLength(3);
     expect(result.items[0]).toMatchObject({ source: 'ACTIVITY', uuid: 'a1' });
@@ -223,12 +228,8 @@ describe('CrmLifecycleService coverage', () => {
     });
     expect(result.items[2]).toMatchObject({ source: 'LEAD', uuid: 'lead-1' });
 
-    const pageTwo = await service.timeline(
-      'lead-1',
-      { page: 2, limit: 2 },
-      actor,
-    );
-    expect(pageTwo.page).toBe(2);
-    expect(pageTwo.limit).toBe(2);
+    await expect(
+      service.timeline('lead-1', { page: 2, limit: 2 }, actor),
+    ).resolves.toMatchObject({ page: 2, limit: 2 });
   });
 });
