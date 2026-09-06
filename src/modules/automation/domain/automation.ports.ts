@@ -26,42 +26,56 @@ export interface AutomationEvent {
 }
 
 export interface AutomationRepository {
-  createWorkflow(this: void, input: {
-    uuid: string;
-    name: string;
-    description?: string | null;
-    ownerUserUuid: string;
-    createdBy: string;
-    updatedBy: string;
-  }): Promise<Record<string, unknown>>;
+  createWorkflow(
+    this: void,
+    input: {
+      uuid: string;
+      name: string;
+      description?: string | null;
+      ownerUserUuid: string;
+      createdBy: string;
+      updatedBy: string;
+    },
+  ): Promise<Record<string, unknown>>;
   updateWorkflow(
     this: void,
     uuid: string,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
-  getWorkflow(this: void, uuid: string): Promise<Record<string, unknown> | null>;
-  listWorkflows(this: void, input: Record<string, unknown>): Promise<{
+  getWorkflow(
+    this: void,
+    uuid: string,
+  ): Promise<Record<string, unknown> | null>;
+  listWorkflows(
+    this: void,
+    input: Record<string, unknown>,
+  ): Promise<{
     items: readonly Record<string, unknown>[];
     total: number;
     page: number;
     limit: number;
   }>;
-  createVersion(this: void, input: {
-    uuid: string;
-    workflowUuid: string;
-    version: number;
-    status: string;
-    triggerDefinition: TriggerDefinition;
-    definition: WorkflowDefinition;
-    checksum: string;
-    createdBy: string;
-    activatedAt?: Date | null;
-  }): Promise<Record<string, unknown>>;
+  createVersion(
+    this: void,
+    input: {
+      uuid: string;
+      workflowUuid: string;
+      version: number;
+      status: string;
+      triggerDefinition: TriggerDefinition;
+      definition: WorkflowDefinition;
+      checksum: string;
+      createdBy: string;
+      activatedAt?: Date | null;
+    },
+  ): Promise<Record<string, unknown>>;
   getVersion(
     this: void,
     uuid: string,
   ): Promise<Record<string, unknown> | null>;
-  listActiveVersions(this: void): Promise<readonly Record<string, unknown>[]>;
+  listActiveVersions(
+    this: void,
+  ): Promise<readonly Record<string, unknown>[]>;
   updateVersion(
     this: void,
     uuid: string,
@@ -75,7 +89,10 @@ export interface AutomationRepository {
     this: void,
     uuid: string,
   ): Promise<Record<string, unknown> | null>;
-  listExecutions(this: void, input: Record<string, unknown>): Promise<{
+  listExecutions(
+    this: void,
+    input: Record<string, unknown>,
+  ): Promise<{
     items: readonly Record<string, unknown>[];
     total: number;
     page: number;
@@ -90,7 +107,10 @@ export interface AutomationRepository {
     this: void,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
-  getAction(this: void, uuid: string): Promise<Record<string, unknown> | null>;
+  getAction(
+    this: void,
+    uuid: string,
+  ): Promise<Record<string, unknown> | null>;
   listActions(
     this: void,
     executionUuid: string,
@@ -110,7 +130,11 @@ export interface AutomationRepository {
     workerId: string,
     leaseMs: number,
   ): Promise<Record<string, unknown> | null>;
-  reclaimExpired(this: void, workerId: string, now: Date): Promise<number>;
+  reclaimExpired(
+    this: void,
+    workerId: string,
+    now: Date,
+  ): Promise<number>;
   countRecentActionExecutions(
     this: void,
     workflowUuid: string,
@@ -151,12 +175,18 @@ export interface AutomationRepository {
     this: void,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
-  listNotifications(this: void, input: {
-    userUuid: string;
-    page: number;
-    limit: number;
-    unreadOnly: boolean;
-  }): Promise<{ items: readonly Record<string, unknown>[]; total: number }>;
+  listNotifications(
+    this: void,
+    input: {
+      userUuid: string;
+      page: number;
+      limit: number;
+      unreadOnly: boolean;
+    },
+  ): Promise<{
+    items: readonly Record<string, unknown>[];
+    total: number;
+  }>;
   markNotificationRead(
     this: void,
     uuid: string,
