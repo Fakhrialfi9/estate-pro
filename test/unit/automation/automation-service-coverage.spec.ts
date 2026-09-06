@@ -14,6 +14,7 @@ import type {
   AutomationRepository,
 } from '../../../src/modules/automation/domain/automation.ports.js';
 import { AutomationService } from '../../../src/modules/automation/application/services/automation.service.js';
+import type { WorkflowValidator } from '../../../src/modules/automation/application/validation/workflow-validator.js';
 
 type HandlerResult = {
   success: boolean;
@@ -145,9 +146,7 @@ const makeRepo = (overrides: Record<string, unknown> = {}) => {
       Promise.resolve({ items: [], total: 0, page: 1, limit: 25 }),
     ),
     listNotifications: vi.fn(() => Promise.resolve({ items: [], total: 0 })),
-    markNotificationRead: vi.fn(() =>
-      Promise.resolve({ success: true }),
-    ),
+    markNotificationRead: vi.fn(() => Promise.resolve({ success: true })),
     createAssignmentRule: vi.fn((input: Record<string, unknown>) =>
       Promise.resolve(input),
     ),
@@ -237,7 +236,7 @@ const makeService = (
   const crm = makeCrm();
   const sales = makeSales();
   const audit = makeAudit();
-  const validator = makeValidator();
+  const validator = makeValidator() as unknown as WorkflowValidator;
   const handler: ActionHandler = {
     actionType: 'NOTIFY',
     execute: vi.fn(() => Promise.resolve(handlerResult)),
@@ -249,7 +248,7 @@ const makeService = (
     sales as unknown as AutomationSalesPort,
     users as unknown as UserPublicPort,
     audit,
-    validator as never,
+    validator,
     [handler],
   );
 
@@ -537,23 +536,29 @@ describe('AutomationService coverage', () => {
       state: 'SUCCEEDED',
     });
 
-    const retry = makeService({}, {
-      success: false,
-      retryable: true,
-      errorCode: 'TEMPORARY',
-      errorMessage: 'temporary failure',
-    });
+    const retry = makeService(
+      {},
+      {
+        success: false,
+        retryable: true,
+        errorCode: 'TEMPORARY',
+        errorMessage: 'temporary failure',
+      },
+    );
     retry.repo.claimDueExecution.mockResolvedValueOnce(baseExecution);
     await expect(retry.service.processDue('worker-1')).resolves.toMatchObject({
       state: 'WAITING',
     });
 
-    const fail = makeService({}, {
-      success: false,
-      retryable: false,
-      errorCode: 'FAILED',
-      errorMessage: 'permanent failure',
-    });
+    const fail = makeService(
+      {},
+      {
+        success: false,
+        retryable: false,
+        errorCode: 'FAILED',
+        errorMessage: 'permanent failure',
+      },
+    );
     fail.repo.claimDueExecution.mockResolvedValueOnce(baseExecution);
     await expect(fail.service.processDue('worker-1')).resolves.toMatchObject({
       state: 'FAILED',
