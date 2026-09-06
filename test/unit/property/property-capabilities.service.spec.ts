@@ -10,7 +10,6 @@ import type {
   AmenityRecord,
   DocumentRecord,
 } from '../../../src/modules/property/domain/repositories/property-capabilities.repository.js';
-import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
 
 const actorUuid = '11111111-1111-4111-8111-111111111111';
 const amenity: AmenityRecord = {
@@ -52,7 +51,7 @@ describe('PropertyCapabilitiesService', () => {
     deleteDocument: vi.fn(),
     recordHistory: vi.fn(),
     listHistory: vi.fn(),
-  } as unknown as PropertyCapabilitiesRepository;
+  } satisfies Record<keyof PropertyCapabilitiesRepository, ReturnType<typeof vi.fn>>;
   const auditRecord = vi.fn().mockResolvedValue(undefined);
   const service = new PropertyCapabilitiesService(repository, {
     record: auditRecord,
