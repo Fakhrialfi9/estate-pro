@@ -276,9 +276,9 @@ describe('coverage foundation', () => {
     expect(PRIVILEGED_ROLE_ASSIGNMENT_PERMISSION).toBe(
       'roles:manage:protected',
     );
-    expect(() => UserRoleEntity.create({ ...snapshot, userUuid: 'bad' })).toThrow(
-      'Invalid user UUID',
-    );
+    expect(() =>
+      UserRoleEntity.create({ ...snapshot, userUuid: 'bad' }),
+    ).toThrow('Invalid user UUID');
     expect(() =>
       UserRoleEntity.create({ ...snapshot, roleName: ' ' }),
     ).toThrow('Invalid role identity');
