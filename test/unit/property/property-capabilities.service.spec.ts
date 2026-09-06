@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BadRequestException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { beforeEach, describe, expect, it, vi, type Mocked } from 'vitest';
 import { PropertyCapabilitiesService } from '../../../src/modules/property/application/property-capabilities.service.js';
 import type {
   PropertyCapabilitiesRepository,
@@ -34,7 +34,7 @@ const document: DocumentRecord = {
 };
 
 describe('PropertyCapabilitiesService', () => {
-  const repository = {
+  const repository: Mocked<PropertyCapabilitiesRepository> = {
     listAmenities: vi.fn(),
     getAmenity: vi.fn(),
     createAmenity: vi.fn(),
@@ -45,16 +45,13 @@ describe('PropertyCapabilitiesService', () => {
     unassignAmenity: vi.fn(),
     listDocuments: vi.fn(),
     getDocument: vi.fn(),
-    createDocument: vi.fn<PropertyCapabilitiesRepository['createDocument']>(),
+    createDocument: vi.fn(),
     createDocumentVersion: vi.fn(),
     updateDocument: vi.fn(),
     deleteDocument: vi.fn(),
     recordHistory: vi.fn(),
     listHistory: vi.fn(),
-  } satisfies Record<
-    keyof PropertyCapabilitiesRepository,
-    ReturnType<typeof vi.fn>
-  >;
+  };
   const auditRecord = vi.fn().mockResolvedValue(undefined);
   const service = new PropertyCapabilitiesService(repository, {
     record: auditRecord,
@@ -157,17 +154,14 @@ describe('PropertyCapabilitiesService', () => {
       },
       actorUuid,
     );
-    expect(repository.createDocument).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: 'Deed',
-        retentionUntil: null,
-        version: expect.objectContaining({
-          storageKey: 'docs/deed.pdf',
-          checksumSha256: 'a'.repeat(64),
-          createdBy: actorUuid,
-        }),
-      }),
-    );
+    const [documentInput] = repository.createDocument.mock.calls[0] ?? [];
+    expect(documentInput?.title).toBe('Deed');
+    expect(documentInput?.retentionUntil).toBeNull();
+    expect(documentInput?.version).toMatchObject({
+      storageKey: 'docs/deed.pdf',
+      checksumSha256: 'a'.repeat(64),
+      createdBy: actorUuid,
+    });
     expect(repository.recordHistory).toHaveBeenCalledOnce();
     expect(auditRecord).toHaveBeenCalledOnce();
   });
