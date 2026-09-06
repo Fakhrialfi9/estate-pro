@@ -8,7 +8,7 @@ const depsFactory = () => ({
   markNotificationRead: vi.fn().mockResolvedValue({ uuid: 'n1', read: true }),
   markAllNotificationsRead: vi.fn().mockResolvedValue({ updated: 2 }),
   listPreferences: vi.fn().mockResolvedValue([{ notificationType: 'LEAD', channel: 'EMAIL', enabled: true }]),
-  setPreference: vi.fn().mockImplementation(async (input) => input),
+  setPreference: vi.fn().mockImplementation((input: Record<string, unknown>) => input),
   listTemplates: vi.fn().mockResolvedValue([{ code: 'welcome' }]),
   createTemplate: vi.fn().mockResolvedValue({ uuid: 't1' }),
   updateTemplate: vi.fn().mockResolvedValue({ uuid: 't1' }),
