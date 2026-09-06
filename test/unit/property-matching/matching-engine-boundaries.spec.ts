@@ -54,7 +54,9 @@ const preference = (
   ...overrides,
 });
 
-const signal = (overrides: Partial<BehavioralSignal> = {}): BehavioralSignal => ({
+const signal = (
+  overrides: Partial<BehavioralSignal> = {},
+): BehavioralSignal => ({
   saved: false,
   viewedAt: null,
   inquiryCount: 0,

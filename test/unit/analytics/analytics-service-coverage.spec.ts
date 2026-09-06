@@ -10,7 +10,7 @@ import type { AccessTokenClaims } from '../../../src/common/security/access-toke
 import { describe, expect, it, vi } from 'vitest';
 
 const user = (permissions: string[] = []): AccessTokenClaims =>
-  ({ sub: 'user-1', sid: 'session-1', permissions } as AccessTokenClaims);
+  ({ sub: 'user-1', sid: 'session-1', permissions }) as AccessTokenClaims;
 
 type LeadReport = {
   funnel: Array<{ percentage: number }>;
@@ -137,16 +137,11 @@ const makeQueries = (): AnalyticsQueryPort =>
   new Proxy(
     {},
     {
-      get: (_target, property) =>
-        vi.fn(async () => rows(String(property))),
+      get: (_target, property) => vi.fn(async () => rows(String(property))),
     },
   ) as AnalyticsQueryPort;
 
-const makePolicy = (
-  revenue = true,
-  forecast = true,
-  exportAllowed = true,
-) => ({
+const makePolicy = (revenue = true, forecast = true, exportAllowed = true) => ({
   resolve: vi.fn(() => ({ kind: 'GLOBAL' })),
   canReadRevenue: vi.fn(() => revenue),
   canForecast: vi.fn(() => forecast),
@@ -190,14 +185,14 @@ describe('AnalyticsService coverage', () => {
       limit: 10,
     };
     const lead = (await service.leads(dto, user())).data[0] as LeadReport;
-    const acquisition =
-      (await service.acquisition(dto, user())).data[0] as AcquisitionReport;
-    const conversion =
-      (await service.conversion(dto, user())).data[0] as ConversionReport;
-    const pipeline =
-      (await service.pipeline(dto, user())).data[0] as PipelineReport;
-    const property =
-      (await service.property(dto, user())).data[0] as PropertyReport;
+    const acquisition = (await service.acquisition(dto, user()))
+      .data[0] as AcquisitionReport;
+    const conversion = (await service.conversion(dto, user()))
+      .data[0] as ConversionReport;
+    const pipeline = (await service.pipeline(dto, user()))
+      .data[0] as PipelineReport;
+    const property = (await service.property(dto, user()))
+      .data[0] as PropertyReport;
     expect(lead.funnel[0]?.percentage).toBe(40);
     expect(acquisition.sources[0]?.conversionRate).toBe(20);
     expect(conversion.leadToOpportunity.rate).toBe(40);
@@ -244,9 +239,9 @@ describe('AnalyticsService coverage', () => {
       makeQueries(),
       makePolicy(false, true, true) as never,
     );
-    await expect(
-      deniedRevenue.salesAndRevenue(dto, user()),
-    ).rejects.toThrow(AnalyticsScopeException);
+    await expect(deniedRevenue.salesAndRevenue(dto, user())).rejects.toThrow(
+      AnalyticsScopeException,
+    );
     const deniedForecast = new AnalyticsService(
       makeQueries(),
       makePolicy(true, false, true) as never,
@@ -260,8 +255,8 @@ describe('AnalyticsService coverage', () => {
       makePolicy(true, true, true) as never,
     );
     const sla = (await service.sla(dto, user())).data[0] as SlaReport;
-    const forecast =
-      (await service.forecast(dto, user())).data[0] as ForecastReport;
+    const forecast = (await service.forecast(dto, user()))
+      .data[0] as ForecastReport;
     expect(sla.responseSla.thresholdHours).toBe(24);
     expect(forecast.forecast).toBe(600);
     expect(forecast.confidence).toBe('NORMAL');
@@ -286,9 +281,9 @@ describe('AnalyticsService coverage', () => {
       AnalyticsInvalidQueryException,
     );
 
-    const noRows = new Proxy(makeQueries() as object, {
+    const noRows = new Proxy(makeQueries(), {
       get: (_target, property) => vi.fn(async () => []),
-    }) as AnalyticsQueryPort;
+    });
     const emptyService = new AnalyticsService(
       noRows,
       makePolicy(true, true, true) as never,
@@ -307,20 +302,15 @@ describe('AnalyticsService coverage', () => {
     const failing = new Proxy(
       {},
       {
-        get: () => vi.fn(async () => {
-          throw 'failure';
-        }),
+        get: () =>
+          vi.fn(async () => {
+            throw 'failure';
+          }),
       },
     ) as AnalyticsQueryPort;
-    const failingService = new AnalyticsService(
-      failing,
-      makePolicy() as never,
-    );
+    const failingService = new AnalyticsService(failing, makePolicy() as never);
     await expect(
-      failingService.leads(
-        { from: '2026-01-01', to: '2026-01-03' },
-        user(),
-      ),
+      failingService.leads({ from: '2026-01-01', to: '2026-01-03' }, user()),
     ).rejects.toThrow(AnalyticsUnavailableException);
 
     vi.useFakeTimers();
@@ -330,10 +320,7 @@ describe('AnalyticsService coverage', () => {
         get: () => vi.fn(() => new Promise(() => undefined)),
       },
     ) as AnalyticsQueryPort;
-    const pendingService = new AnalyticsService(
-      pending,
-      makePolicy() as never,
-    );
+    const pendingService = new AnalyticsService(pending, makePolicy() as never);
     const promise = pendingService.leads(
       { from: '2026-01-01', to: '2026-01-03' },
       user(),

@@ -97,7 +97,7 @@ const makeRepo = () =>
             valueType: 'STRING',
             value: 'ok',
             updatedAt: new Date(),
-            ...((typeof args.at(-1) === 'object' && args.at(-1) !== null)
+            ...(typeof args.at(-1) === 'object' && args.at(-1) !== null
               ? args.at(-1)
               : {}),
           }));
@@ -107,25 +107,23 @@ const makeRepo = () =>
     },
   ) as never;
 
-const makeAudit = () => ({
-  record: vi.fn(async () => undefined),
-}) as never;
+const makeAudit = () =>
+  ({
+    record: vi.fn(async () => undefined),
+  }) as never;
 
-const makeUserPort = () => ({
-  getUser: vi.fn(async () => activeUser),
-}) as never;
+const makeUserPort = () =>
+  ({
+    getUser: vi.fn(async () => activeUser),
+  }) as never;
 
-const makePropertyPort = () => ({
-  getProperty: vi.fn(async () => ({ uuid: 'property-1' })),
-}) as never;
+const makePropertyPort = () =>
+  ({
+    getProperty: vi.fn(async () => ({ uuid: 'property-1' })),
+  }) as never;
 
 const service = () =>
-  new CrmService(
-    makeRepo(),
-    makeAudit(),
-    makePropertyPort(),
-    makeUserPort(),
-  );
+  new CrmService(makeRepo(), makeAudit(), makePropertyPort(), makeUserPort());
 
 describe('CrmService coverage', () => {
   it('covers contact CRUD, children, preferences, consent, and relationships', async () => {
@@ -145,24 +143,20 @@ describe('CrmService coverage', () => {
     expect((await s.getContact('c')).uuid).toBe('row-1');
     expect(await s.listContacts({ page: 1, limit: 10 })).toEqual([]);
     expect(
-      (
-        await s.updateContact(
-          'c',
-          { firstName: 'A', lastName: null },
-          actor,
-        )
-      ).uuid,
+      (await s.updateContact('c', { firstName: 'A', lastName: null }, actor))
+        .uuid,
     ).toBe('row-1');
     await expect(
       s.updateContact('c', { firstName: '<bad>' }, actor),
     ).rejects.toBeInstanceOf(BadRequestException);
     await s.archiveContact('c', actor);
     expect(
-      (await s.child('email', 'c', { value: ' User@Example.COM ' }, actor)).uuid,
+      (await s.child('email', 'c', { value: ' User@Example.COM ' }, actor))
+        .uuid,
     ).toBe('row-1');
-    expect(
-      (await s.child('phone', 'c', { value: ' 0812 ' }, actor)).uuid,
-    ).toBe('row-1');
+    expect((await s.child('phone', 'c', { value: ' 0812 ' }, actor)).uuid).toBe(
+      'row-1',
+    );
     expect(
       (
         await s.child(
@@ -177,30 +171,25 @@ describe('CrmService coverage', () => {
       BadRequestException,
     );
     await expect(
-      s.child(
-        'address',
-        'c',
-        { line1: 'Main', countryCode: 'IDN' },
-        actor,
-      ),
+      s.child('address', 'c', { line1: 'Main', countryCode: 'IDN' }, actor),
     ).rejects.toThrow('ISO-3166');
     await s.childUpdate('email', 'c', 'cc', { value: 'x@y.com' }, actor);
     await s.childUpdate('phone', 'c', 'cc', { value: '123' }, actor);
     await s.childUpdate('address', 'c', 'cc', { line1: 'Street' }, actor);
     await s.childDelete('email', 'c', 'cc', actor);
     await s.childPrimary('email', 'c', 'cc', actor);
-    expect((await s.preferences('c', { contactTime: 'morning' }, actor)).uuid).toBe(
-      'row-1',
-    );
+    expect(
+      (await s.preferences('c', { contactTime: 'morning' }, actor)).uuid,
+    ).toBe('row-1');
     expect((await s.consent('c', { marketing: true }, actor)).uuid).toBe(
       'row-1',
     );
     expect(
       (await s.relationship('c1', 'c2', { type: 'colleague' }, actor)).uuid,
     ).toBe('rel-1');
-    await expect(s.relationship('same', 'same', {}, actor)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      s.relationship('same', 'same', {}, actor),
+    ).rejects.toBeInstanceOf(BadRequestException);
     await s.removeRelationship('rel', actor);
   });
 
@@ -246,13 +235,8 @@ describe('CrmService coverage', () => {
       s.createScoreRule({ field: 'bad', operator: 'GT' }, actor),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(
-      (
-        await s.updateScoreRule(
-          'r',
-          { field: 'status', operator: 'EQ' },
-          actor,
-        )
-      ).uuid,
+      (await s.updateScoreRule('r', { field: 'status', operator: 'EQ' }, actor))
+        .uuid,
     ).toBe('row-1');
     await expect(
       s.updateScoreRule('r', { operator: 'BAD' }, actor),
@@ -290,23 +274,28 @@ describe('CrmService coverage', () => {
     );
     expect((await s.inquiryGet('i')).uuid).toBe('row-1');
     expect(await s.inquiryList({ page: 1, limit: 10 })).toEqual([]);
-    expect((await s.inquiryUpdate('i', { message: 'Updated' }, actor)).uuid).toBe(
-      'row-1',
-    );
-    expect((await s.inquiryConvert('i', { leadUuid: 'lead' }, actor)).uuid).toBe(
-      'row-1',
-    );
-    expect((await s.activityCreate({ description: 'Call done' }, actor)).uuid).toBe(
-      'row-1',
-    );
+    expect(
+      (await s.inquiryUpdate('i', { message: 'Updated' }, actor)).uuid,
+    ).toBe('row-1');
+    expect(
+      (await s.inquiryConvert('i', { leadUuid: 'lead' }, actor)).uuid,
+    ).toBe('row-1');
+    expect(
+      (await s.activityCreate({ description: 'Call done' }, actor)).uuid,
+    ).toBe('row-1');
     await expect(
       s.activityCreate({ description: '<bad>' }, actor),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect((await s.activityGet('a')).uuid).toBe('row-1');
     expect(await s.activityList({ page: 1, limit: 10 })).toEqual([]);
     expect(
-      (await s.activityUpdate('a', { subject: 'Subject', description: 'Desc' }, actor))
-        .uuid,
+      (
+        await s.activityUpdate(
+          'a',
+          { subject: 'Subject', description: 'Desc' },
+          actor,
+        )
+      ).uuid,
     ).toBe('row-1');
     expect((await s.activityTransition('a', 'DONE', actor)).uuid).toBe('row-1');
     expect((await s.communicationCreate({ body: 'Hello' }, actor)).uuid).toBe(
@@ -345,10 +334,7 @@ describe('CrmService coverage', () => {
       ).uuid,
     ).toBe('row-1');
     await expect(
-      s.templateCreate(
-        { subject: 'Hi', body: '{{unknown.variable}}' },
-        actor,
-      ),
+      s.templateCreate({ subject: 'Hi', body: '{{unknown.variable}}' }, actor),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(
       (await s.templateUpdate('t', { body: 'Hi {{lead.score}}' }, actor)).uuid,

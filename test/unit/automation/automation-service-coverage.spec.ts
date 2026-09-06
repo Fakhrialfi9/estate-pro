@@ -180,7 +180,7 @@ const makeService = (
     crm as never,
     sales as never,
     users as never,
-    audit as never,
+    audit,
     validator as never,
     [handler],
   );
@@ -227,11 +227,7 @@ describe('AutomationService coverage', () => {
       versions: [],
     });
     await expect(
-      service.updateWorkflow(
-        workflowUuid,
-        { name: 'Updated' },
-        actorUuid,
-      ),
+      service.updateWorkflow(workflowUuid, { name: 'Updated' }, actorUuid),
     ).rejects.toBeInstanceOf(ConflictException);
 
     const draft = await service.createDraftVersion(
@@ -415,11 +411,7 @@ describe('AutomationService coverage', () => {
       ).maxAttempts,
     ).toBe(3);
     await expect(
-      service.createEscalationPolicy(
-        workflowUuid,
-        { levels: [] },
-        actorUuid,
-      ),
+      service.createEscalationPolicy(workflowUuid, { levels: [] }, actorUuid),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     repo.listWorkflows.mockResolvedValueOnce({ items: [], total: 7 });
