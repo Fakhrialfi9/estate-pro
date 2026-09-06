@@ -71,8 +71,16 @@ export class PrismaRefreshTokenRepository
     now: Date,
   ): Promise<RefreshRotationResult> {
     return this.prisma.$transaction(async (tx) => {
+      const [locked] = await tx.$queryRaw<Array<{ id: bigint }>>(Prisma.sql`
+        SELECT id
+        FROM authentication_refresh_tokens
+        WHERE token_hash = ${tokenHash}
+        FOR UPDATE
+      `);
+      if (!locked) return { kind: 'INVALID' };
+
       const current = await tx.authenticationRefreshToken.findUnique({
-        where: { tokenHash },
+        where: { id: locked.id },
         include: { family: { include: { session: true, user: true } } },
       });
       if (!current) return { kind: 'INVALID' };
@@ -108,14 +116,13 @@ export class PrismaRefreshTokenRepository
         return { kind: 'REVOKED', snapshot: this.snapshot(current) };
       }
 
-      const consumed = await tx.authenticationRefreshToken.updateMany({
-        where: {
-          id: current.id,
-          familyId: current.familyId,
-          consumedAt: null,
-          revokedAt: null,
-          expiresAt: { gt: now },
-        },
+      const replacement = createReplacement({
+        familyId: current.familyId,
+        sessionId: current.family.sessionId.toString(),
+      });
+
+      await tx.authenticationRefreshToken.update({
+        where: { id: current.id },
         data: {
           consumedAt: now,
           revokedAt: now,
@@ -123,36 +130,6 @@ export class PrismaRefreshTokenRepository
         },
       });
 
-      if (consumed.count !== 1) {
-        const [afterRace] = await tx.$queryRaw<
-          Array<{ consumed_at: Date | null; revoked_at: Date | null }>
-        >(Prisma.sql`
-          SELECT consumed_at, revoked_at
-          FROM authentication_refresh_tokens
-          WHERE id = ${current.id}
-          FOR UPDATE
-        `);
-        if (afterRace?.consumed_at !== null || afterRace?.revoked_at !== null) {
-          await this.revokeFamilyAndSession(
-            tx,
-            current.familyId,
-            current.family.sessionId,
-            now,
-          );
-          return {
-            kind: 'REUSE_DETECTED',
-            familyId: current.familyId,
-            userUuid: current.family.user.uuid,
-            sessionId: current.family.sessionId.toString(),
-          };
-        }
-        return { kind: 'INVALID' };
-      }
-
-      const replacement = createReplacement({
-        familyId: current.familyId,
-        sessionId: current.family.sessionId.toString(),
-      });
       await tx.authenticationRefreshToken.create({
         data: {
           family: { connect: { id: current.familyId } },
@@ -162,6 +139,7 @@ export class PrismaRefreshTokenRepository
           createdAt: now,
         },
       });
+
       return {
         kind: 'ROTATED',
         value: {
