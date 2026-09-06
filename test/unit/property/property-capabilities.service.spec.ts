@@ -45,7 +45,7 @@ describe('PropertyCapabilitiesService', () => {
     unassignAmenity: vi.fn(),
     listDocuments: vi.fn(),
     getDocument: vi.fn(),
-    createDocument: vi.fn(),
+    createDocument: vi.fn<PropertyCapabilitiesRepository['createDocument']>(),
     createDocumentVersion: vi.fn(),
     updateDocument: vi.fn(),
     deleteDocument: vi.fn(),
