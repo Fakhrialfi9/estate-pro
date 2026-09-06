@@ -35,12 +35,12 @@ const dependencies = () => ({
       totalRows: 0,
       processedRows: 0,
     }),
-    update: vi.fn().mockImplementation(
-      (_uuid: string, input: Record<string, unknown>) => ({
+    update: vi
+      .fn()
+      .mockImplementation((_uuid: string, input: Record<string, unknown>) => ({
         ...baseJob,
         ...input,
-      }),
-    ),
+      })),
     findByUuid: vi.fn().mockResolvedValue(baseJob),
     list: vi.fn().mockResolvedValue({ items: [baseJob], total: 1 }),
   },
@@ -53,17 +53,11 @@ const dependencies = () => ({
   },
   storage: {
     put: vi.fn().mockResolvedValue({ path: 'job-1/source' }),
-<<<<<<< HEAD
-    read: vi.fn().mockResolvedValue(
-      Buffer.from('eventType,category,summary\nFOLLOW_UP,CRM,hello\n'),
-    ),
-=======
     read: vi
       .fn()
       .mockResolvedValue(
         Buffer.from('eventType,category,summary\nFOLLOW_UP,CRM,hello\n'),
       ),
->>>>>>> 92c412f1 (“Update”)
   },
   audit: { record: vi.fn().mockResolvedValue(undefined) },
   mapping: {

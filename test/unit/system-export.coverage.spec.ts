@@ -42,18 +42,9 @@ const dependencies = () => ({
     findByUuid: vi.fn().mockResolvedValue(job),
     list: vi.fn().mockResolvedValue({ items: [job], total: 1 }),
     listExpired: vi.fn().mockResolvedValue([job]),
-<<<<<<< HEAD
-    update: vi.fn().mockImplementation(
-      (_uuid: string, input: Record<string, unknown>) => ({
-        ...job,
-        ...input,
-      }),
-    ),
-=======
     update: vi
       .fn()
       .mockImplementation(async (_uuid, input) => ({ ...job, ...input })),
->>>>>>> 92c412f1 (“Update”)
     deleteMany: vi.fn().mockResolvedValue(undefined),
   },
   activity: {

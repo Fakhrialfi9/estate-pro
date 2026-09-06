@@ -40,18 +40,16 @@ const dependencies = () => ({
   repository: {
     get: vi.fn().mockResolvedValue(row),
     list: vi.fn().mockResolvedValue({ items: [row], total: 1 }),
-    create: vi.fn().mockImplementation(
-      (input: Record<string, unknown>) => ({
+    create: vi.fn().mockImplementation((input: Record<string, unknown>) => ({
+      ...row,
+      ...input,
+    })),
+    update: vi
+      .fn()
+      .mockImplementation((_uuid: string, input: Record<string, unknown>) => ({
         ...row,
         ...input,
-      }),
-    ),
-    update: vi.fn().mockImplementation(
-      (_uuid: string, input: Record<string, unknown>) => ({
-        ...row,
-        ...input,
-      }),
-    ),
+      })),
     delete: vi.fn().mockResolvedValue(undefined),
   },
   roadmap: {
@@ -210,14 +208,8 @@ describe('SystemIntegrationService coverage', () => {
     ).resolves.toMatchObject({ idempotentReplay: true });
 
     d.roadmap.operation.getByIdempotency.mockResolvedValueOnce(null);
-<<<<<<< HEAD
-    await expect(
-      service.reconnect('actor-1', 'integration-1', 'key-2'),
-    ).resolves.toMatchObject({
-=======
     const result = await service.reconnect('actor-1', 'integration-1', 'key-2');
     expect(result).toMatchObject({
->>>>>>> 92c412f1 (“Update”)
       ok: true,
       state: 'ACTIVE',
       idempotentReplay: false,

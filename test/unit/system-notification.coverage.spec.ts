@@ -9,17 +9,12 @@ const depsFactory = () => ({
     .mockResolvedValue({ items: [{ uuid: 'n1' }], total: 1 }),
   markNotificationRead: vi.fn().mockResolvedValue({ uuid: 'n1', read: true }),
   markAllNotificationsRead: vi.fn().mockResolvedValue({ updated: 2 }),
-<<<<<<< HEAD
-  listPreferences: vi.fn().mockResolvedValue([{ notificationType: 'LEAD', channel: 'EMAIL', enabled: true }]),
-  setPreference: vi.fn().mockImplementation((input: Record<string, unknown>) => input),
-=======
   listPreferences: vi
     .fn()
     .mockResolvedValue([
       { notificationType: 'LEAD', channel: 'EMAIL', enabled: true },
     ]),
   setPreference: vi.fn().mockImplementation(async (input) => input),
->>>>>>> 92c412f1 (“Update”)
   listTemplates: vi.fn().mockResolvedValue([{ code: 'welcome' }]),
   createTemplate: vi.fn().mockResolvedValue({ uuid: 't1' }),
   updateTemplate: vi.fn().mockResolvedValue({ uuid: 't1' }),
