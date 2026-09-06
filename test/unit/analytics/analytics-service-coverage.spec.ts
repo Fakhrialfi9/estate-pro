@@ -324,8 +324,11 @@ describe('AnalyticsService coverage', () => {
       { from: '2026-01-01', to: '2026-01-03' },
       user(),
     );
+    const assertion = expect(promise).rejects.toThrow(
+      AnalyticsQueryTimeoutException,
+    );
     await vi.advanceTimersByTimeAsync(10_000);
-    await expect(promise).rejects.toThrow(AnalyticsQueryTimeoutException);
+    await assertion;
     vi.useRealTimers();
   });
 });
