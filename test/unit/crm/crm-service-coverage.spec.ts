@@ -198,9 +198,9 @@ describe('CrmService coverage', () => {
     expect(
       (await s.relationship('c1', 'c2', { type: 'colleague' }, actor)).uuid,
     ).toBe('rel-1');
-    await expect(
-      s.relationship('same', 'same', {}, actor),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(s.relationship('same', 'same', {}, actor)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
     await s.removeRelationship('rel', actor);
   });
 
@@ -260,13 +260,11 @@ describe('CrmService coverage', () => {
       'row-1',
     );
     expect((await s.merge('source', 'target', actor)).uuid).toBe('row-1');
-    expect(() =>
-      s.configList('invalid', { page: 1, limit: 10 }),
-    ).toThrow(BadRequestException);
-    expect(await s.configList('source', { page: 1, limit: 10 })).toEqual([]);
-    expect((await s.configCreate('source', { code: 'web' }, actor)).uuid).toBe(
-      'row-1',
+    expect(() => s.configList('invalid', { page: 1, limit: 10 })).toThrow(
+      BadRequestException,
     );
+    expect(await s.configList('source', { page: 1, limit: 10 })).toEqual([]);
+    expect((await s.configCreate('source', { code: 'web' }, actor)).uuid).toBe('row-1');
     expect(
       (await s.configUpdate('source', 'c', { name: 'Web' }, actor)).uuid,
     ).toBe('row-1');

@@ -150,161 +150,175 @@ const makePolicy = (revenue = true, forecast = true, exportAllowed = true) => ({
 });
 
 describe('AnalyticsService coverage', () => {
-  it('normalizes query defaults, bounds, optional filters, and rejects invalid ranges', () => {
-    const service = new AnalyticsService(makeQueries(), makePolicy() as never);
-    const query = service.normalizeQuery({
-      to: '2026-01-31T00:00:00.000Z',
-      granularity: 'week',
-      page: 999,
-      limit: 999,
-      ownerUserUuid: 'owner',
-      sourceUuid: 'source',
-      campaignUuid: 'campaign',
-      pipelineUuid: 'pipeline',
-      stageUuid: 'stage',
-      propertyUuid: 'property',
-      currency: 'IDR',
-    });
-    expect(query.page).toBe(50);
-    expect(query.limit).toBe(100);
-    expect(query.granularity).toBe('week');
-    expect(query.currency).toBe('IDR');
-    expect(() =>
-      service.normalizeQuery({ from: 'invalid', to: 'invalid' }),
-    ).toThrow(AnalyticsInvalidQueryException);
-    expect(() =>
-      service.normalizeQuery({ from: '2024-01-01', to: '2026-01-01' }),
-    ).toThrow('cannot exceed');
-  });
+  it(
+    'normalizes query defaults, bounds, optional filters, and rejects invalid ranges',
+    () => {
+      const service = new AnalyticsService(makeQueries(), makePolicy() as never);
+      const query = service.normalizeQuery({
+        to: '2026-01-31T00:00:00.000Z',
+        granularity: 'week',
+        page: 999,
+        limit: 999,
+        ownerUserUuid: 'owner',
+        sourceUuid: 'source',
+        campaignUuid: 'campaign',
+        pipelineUuid: 'pipeline',
+        stageUuid: 'stage',
+        propertyUuid: 'property',
+        currency: 'IDR',
+      });
+      expect(query.page).toBe(50);
+      expect(query.limit).toBe(100);
+      expect(query.granularity).toBe('week');
+      expect(query.currency).toBe('IDR');
+      expect(() =>
+        service.normalizeQuery({ from: 'invalid', to: 'invalid' }),
+      ).toThrow(AnalyticsInvalidQueryException);
+      expect(() =>
+        service.normalizeQuery({ from: '2024-01-01', to: '2026-01-01' }),
+      ).toThrow('cannot exceed');
+    },
+  );
 
-  it('builds lead, acquisition, conversion, pipeline, and property reports', async () => {
-    const service = new AnalyticsService(makeQueries(), makePolicy() as never);
-    const dto = {
-      from: '2026-01-01T00:00:00.000Z',
-      to: '2026-01-03T00:00:00.000Z',
-      page: 1,
-      limit: 10,
-    };
-    const lead = (await service.leads(dto, user())).data[0] as LeadReport;
-    const acquisition = (await service.acquisition(dto, user()))
-      .data[0] as AcquisitionReport;
-    const conversion = (await service.conversion(dto, user()))
-      .data[0] as ConversionReport;
-    const pipeline = (await service.pipeline(dto, user()))
-      .data[0] as PipelineReport;
-    const property = (await service.property(dto, user()))
-      .data[0] as PropertyReport;
-    expect(lead.funnel[0]?.percentage).toBe(40);
-    expect(acquisition.sources[0]?.conversionRate).toBe(20);
-    expect(conversion.leadToOpportunity.rate).toBe(40);
-    expect(pipeline.pipeline).toHaveLength(1);
-    expect(property.inventory[0]?.active).toBe(5);
-  });
+  it(
+    'builds lead, acquisition, conversion, pipeline, and property reports',
+    async () => {
+      const service = new AnalyticsService(makeQueries(), makePolicy() as never);
+      const dto = {
+        from: '2026-01-01T00:00:00.000Z',
+        to: '2026-01-03T00:00:00.000Z',
+        page: 1,
+        limit: 10,
+      };
+      const lead = (await service.leads(dto, user())).data[0] as LeadReport;
+      const acquisition = (await service.acquisition(dto, user()))
+        .data[0] as AcquisitionReport;
+      const conversion = (await service.conversion(dto, user()))
+        .data[0] as ConversionReport;
+      const pipeline = (await service.pipeline(dto, user()))
+        .data[0] as PipelineReport;
+      const property = (await service.property(dto, user()))
+        .data[0] as PropertyReport;
+      expect(lead.funnel[0]?.percentage).toBe(40);
+      expect(acquisition.sources[0]?.conversionRate).toBe(20);
+      expect(conversion.leadToOpportunity.rate).toBe(40);
+      expect(pipeline.pipeline).toHaveLength(1);
+      expect(property.inventory[0]?.active).toBe(5);
+    },
+  );
 
-  it('builds agent and combined reports with and without revenue visibility', async () => {
-    const dto = {
-      from: '2026-01-01T00:00:00.000Z',
-      to: '2026-01-03T00:00:00.000Z',
-    };
-    const restricted = new AnalyticsService(
-      makeQueries(),
-      makePolicy(false, true, true) as never,
-    );
-    const restrictedReport = (await restricted.agent(dto, user()))
-      .data[0] as AgentReport;
-    expect(restrictedReport.conversion[0]).not.toHaveProperty('revenue');
-    expect(restrictedReport.activity.map((x) => x.category)).toEqual([
-      'CALL',
-      'MESSAGE',
-      'VIEWING',
-      'NOTE',
-      'OTHER',
-    ]);
-
-    const full = new AnalyticsService(
-      makeQueries(),
-      makePolicy(true, true, true) as never,
-    );
-    const fullReport = (await full.propertyAndAgent(dto, user()))
-      .data[0] as CombinedReport;
-    expect(fullReport.conversion[0]?.revenue).toBe('1000');
-    expect(fullReport.scorecards[0]?.conversionRate).toBe(50);
-  });
-
-  it('enforces revenue and forecast permissions and calculates forecast', async () => {
-    const dto = {
-      from: '2026-01-01T00:00:00.000Z',
-      to: '2026-01-03T00:00:00.000Z',
-    };
-    const deniedRevenue = new AnalyticsService(
-      makeQueries(),
-      makePolicy(false, true, true) as never,
-    );
-    await expect(deniedRevenue.salesAndRevenue(dto, user())).rejects.toThrow(
-      AnalyticsScopeException,
-    );
-    const deniedForecast = new AnalyticsService(
-      makeQueries(),
-      makePolicy(true, false, true) as never,
-    );
-    await expect(deniedForecast.forecast(dto, user())).rejects.toThrow(
-      AnalyticsScopeException,
-    );
-
-    const service = new AnalyticsService(
-      makeQueries(),
-      makePolicy(true, true, true) as never,
-    );
-    const sla = (await service.sla(dto, user())).data[0] as SlaReport;
-    const forecast = (await service.forecast(dto, user()))
-      .data[0] as ForecastReport;
-    expect(sla.responseSla.thresholdHours).toBe(24);
-    expect(forecast.forecast).toBe(600);
-    expect(forecast.confidence).toBe('NORMAL');
-  });
-
-  it('exports supported reports to CSV, including escaping and empty results', async () => {
-    const dto = {
-      from: '2026-01-01T00:00:00.000Z',
-      to: '2026-01-03T00:00:00.000Z',
-    };
-    const service = new AnalyticsService(
-      makeQueries(),
-      makePolicy(true, true, true) as never,
-    );
-    const csv = await service.exportCsv(dto, user(), 'leads');
-    expect(csv.filename).toBe('analytics-leads.csv');
-    expect(csv.content).toContain('count');
-
-    const acquisition = await service.exportCsv(dto, user(), 'acquisition');
-    expect(acquisition.content).toContain('"web,paid"');
-    await expect(service.exportCsv(dto, user(), 'unknown')).rejects.toThrow(
-      AnalyticsInvalidQueryException,
-    );
-
-    const noRows = new Proxy(makeQueries(), {
-      get: () => vi.fn(() => Promise.resolve([])),
-    });
-    const emptyService = new AnalyticsService(
-      noRows,
-      makePolicy(true, true, true) as never,
-    );
-    const empty = await emptyService.exportCsv(dto, user(), 'pipeline');
-    expect(empty.content).toBe('');
-    await expect(
-      new AnalyticsService(
+  it(
+    'builds agent and combined reports with and without revenue visibility',
+    async () => {
+      const dto = {
+        from: '2026-01-01T00:00:00.000Z',
+        to: '2026-01-03T00:00:00.000Z',
+      };
+      const restricted = new AnalyticsService(
         makeQueries(),
-        makePolicy(true, true, false) as never,
-      ).exportCsv(dto, user(), 'leads'),
-    ).rejects.toThrow(AnalyticsScopeException);
-  });
+        makePolicy(false, true, true) as never,
+      );
+      const restrictedReport = (await restricted.agent(dto, user()))
+        .data[0] as AgentReport;
+      expect(restrictedReport.conversion[0]).not.toHaveProperty('revenue');
+      expect(restrictedReport.activity.map((x) => x.category)).toEqual([
+        'CALL',
+        'MESSAGE',
+        'VIEWING',
+        'NOTE',
+        'OTHER',
+      ]);
+
+      const full = new AnalyticsService(
+        makeQueries(),
+        makePolicy(true, true, true) as never,
+      );
+      const fullReport = (await full.propertyAndAgent(dto, user()))
+        .data[0] as CombinedReport;
+      expect(fullReport.conversion[0]?.revenue).toBe('1000');
+      expect(fullReport.scorecards[0]?.conversionRate).toBe(50);
+    },
+  );
+
+  it(
+    'enforces revenue and forecast permissions and calculates forecast',
+    async () => {
+      const dto = {
+        from: '2026-01-01T00:00:00.000Z',
+        to: '2026-01-03T00:00:00.000Z',
+      };
+      const deniedRevenue = new AnalyticsService(
+        makeQueries(),
+        makePolicy(false, true, true) as never,
+      );
+      await expect(deniedRevenue.salesAndRevenue(dto, user())).rejects.toThrow(
+        AnalyticsScopeException,
+      );
+      const deniedForecast = new AnalyticsService(
+        makeQueries(),
+        makePolicy(true, false, true) as never,
+      );
+      await expect(deniedForecast.forecast(dto, user())).rejects.toThrow(
+        AnalyticsScopeException,
+      );
+
+      const service = new AnalyticsService(
+        makeQueries(),
+        makePolicy(true, true, true) as never,
+      );
+      const sla = (await service.sla(dto, user())).data[0] as SlaReport;
+      const forecast = (await service.forecast(dto, user()))
+        .data[0] as ForecastReport;
+      expect(sla.responseSla.thresholdHours).toBe(24);
+      expect(forecast.forecast).toBe(600);
+      expect(forecast.confidence).toBe('NORMAL');
+    },
+  );
+
+  it(
+    'exports supported reports to CSV, including escaping and empty results',
+    async () => {
+      const dto = {
+        from: '2026-01-01T00:00:00.000Z',
+        to: '2026-01-03T00:00:00.000Z',
+      };
+      const service = new AnalyticsService(
+        makeQueries(),
+        makePolicy(true, true, true) as never,
+      );
+      const csv = await service.exportCsv(dto, user(), 'leads');
+      expect(csv.filename).toBe('analytics-leads.csv');
+      expect(csv.content).toContain('count');
+
+      const acquisition = await service.exportCsv(dto, user(), 'acquisition');
+      expect(acquisition.content).toContain('"web,paid"');
+      await expect(service.exportCsv(dto, user(), 'unknown')).rejects.toThrow(
+        AnalyticsInvalidQueryException,
+      );
+
+      const noRows = new Proxy(makeQueries(), {
+        get: () => vi.fn(() => Promise.resolve([])),
+      });
+      const emptyService = new AnalyticsService(
+        noRows,
+        makePolicy(true, true, true) as never,
+      );
+      const empty = await emptyService.exportCsv(dto, user(), 'pipeline');
+      expect(empty.content).toBe('');
+      await expect(
+        new AnalyticsService(
+          makeQueries(),
+          makePolicy(true, true, false) as never,
+        ).exportCsv(dto, user(), 'leads'),
+      ).rejects.toThrow(AnalyticsScopeException);
+    },
+  );
 
   it('normalizes unexpected query failures and timeout conditions', async () => {
     const failing = new Proxy(
       {},
       {
-        get: () =>
-          vi.fn(() => Promise.reject('failure')),
+        get: () => vi.fn(() => Promise.reject('failure')),
       },
     ) as AnalyticsQueryPort;
     const failingService = new AnalyticsService(failing, makePolicy() as never);
