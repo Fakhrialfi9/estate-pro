@@ -26,7 +26,7 @@ export interface AutomationEvent {
 }
 
 export interface AutomationRepository {
-  createWorkflow(input: {
+  createWorkflow(this: void, input: {
     uuid: string;
     name: string;
     description?: string | null;
@@ -35,17 +35,18 @@ export interface AutomationRepository {
     updatedBy: string;
   }): Promise<Record<string, unknown>>;
   updateWorkflow(
+    this: void,
     uuid: string,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
-  getWorkflow(uuid: string): Promise<Record<string, unknown> | null>;
-  listWorkflows(input: Record<string, unknown>): Promise<{
+  getWorkflow(this: void, uuid: string): Promise<Record<string, unknown> | null>;
+  listWorkflows(this: void, input: Record<string, unknown>): Promise<{
     items: readonly Record<string, unknown>[];
     total: number;
     page: number;
     limit: number;
   }>;
-  createVersion(input: {
+  createVersion(this: void, input: {
     uuid: string;
     workflowUuid: string;
     version: number;
@@ -56,82 +57,108 @@ export interface AutomationRepository {
     createdBy: string;
     activatedAt?: Date | null;
   }): Promise<Record<string, unknown>>;
-  getVersion(uuid: string): Promise<Record<string, unknown> | null>;
-  listActiveVersions(): Promise<readonly Record<string, unknown>[]>;
+  getVersion(
+    this: void,
+    uuid: string,
+  ): Promise<Record<string, unknown> | null>;
+  listActiveVersions(this: void): Promise<readonly Record<string, unknown>[]>;
   updateVersion(
+    this: void,
     uuid: string,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
   createExecution(
+    this: void,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
-  getExecution(uuid: string): Promise<Record<string, unknown> | null>;
-  listExecutions(input: Record<string, unknown>): Promise<{
+  getExecution(
+    this: void,
+    uuid: string,
+  ): Promise<Record<string, unknown> | null>;
+  listExecutions(this: void, input: Record<string, unknown>): Promise<{
     items: readonly Record<string, unknown>[];
     total: number;
     page: number;
     limit: number;
   }>;
   updateExecution(
+    this: void,
     uuid: string,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
   createAction(
+    this: void,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
-  getAction(uuid: string): Promise<Record<string, unknown> | null>;
+  getAction(this: void, uuid: string): Promise<Record<string, unknown> | null>;
   listActions(
+    this: void,
     executionUuid: string,
   ): Promise<readonly Record<string, unknown>[]>;
   updateAction(
+    this: void,
     uuid: string,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
   claimDueExecution(
+    this: void,
     workerId: string,
     leaseMs: number,
   ): Promise<Record<string, unknown> | null>;
   claimDueAction(
+    this: void,
     workerId: string,
     leaseMs: number,
   ): Promise<Record<string, unknown> | null>;
-  reclaimExpired(workerId: string, now: Date): Promise<number>;
+  reclaimExpired(this: void, workerId: string, now: Date): Promise<number>;
   countRecentActionExecutions(
+    this: void,
     workflowUuid: string,
     entityUuid: string,
     since: Date,
   ): Promise<number>;
   createAssignmentRule(
+    this: void,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
   createSlaPolicy(
+    this: void,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
   createSlaInstance(
+    this: void,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
   claimDueSla(
+    this: void,
     workerId: string,
     leaseMs: number,
   ): Promise<Record<string, unknown> | null>;
   updateSlaInstance(
+    this: void,
     uuid: string,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
   createEscalationPolicy(
+    this: void,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
-  getEscalationPolicy(uuid: string): Promise<Record<string, unknown> | null>;
+  getEscalationPolicy(
+    this: void,
+    uuid: string,
+  ): Promise<Record<string, unknown> | null>;
   createNotification(
+    this: void,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
-  listNotifications(input: {
+  listNotifications(this: void, input: {
     userUuid: string;
     page: number;
     limit: number;
     unreadOnly: boolean;
   }): Promise<{ items: readonly Record<string, unknown>[]; total: number }>;
   markNotificationRead(
+    this: void,
     uuid: string,
     userUuid: string,
   ): Promise<Record<string, unknown> | null>;
