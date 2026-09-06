@@ -111,6 +111,34 @@ const dashboardSchema = {
   },
 };
 
+const environmentMetadataSchema = {
+  type: 'object',
+  required: [
+    'environment',
+    'application',
+    'version',
+    'nodeVersion',
+    'platform',
+    'architecture',
+    'deploymentId',
+    'buildSha',
+    'region',
+    'uptimeSeconds',
+  ],
+  properties: {
+    environment: { type: 'string' },
+    application: { type: 'string' },
+    version: { type: 'string' },
+    nodeVersion: { type: 'string' },
+    platform: { type: 'string' },
+    architecture: { type: 'string' },
+    deploymentId: { type: 'string', nullable: true },
+    buildSha: { type: 'string', nullable: true },
+    region: { type: 'string', nullable: true },
+    uptimeSeconds: { type: 'integer', minimum: 0 },
+  },
+};
+
 @ApiTags('System Control Plane')
 @ApiBearerAuth()
 @Controller({ path: 'system/control', version: '1' })
@@ -136,11 +164,18 @@ export class SystemRoadmapControlController {
   dashboard() {
     return this.control.dashboard();
   }
+
   @Get('environment')
   @RequirePermissions('system.dashboard.read')
+  @ApiResponse({
+    status: 200,
+    description: 'System environment metadata returned.',
+    schema: environmentMetadataSchema,
+  })
   environmentMetadata() {
     return this.environment.read();
   }
+
   @Get('flags')
   @RequirePermissions('system.flags.read')
   flags(@Query() q: FeatureFlagQueryDto) {
