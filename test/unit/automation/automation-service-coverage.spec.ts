@@ -379,6 +379,16 @@ describe('AutomationService coverage', () => {
     await expect(
       service.retryExecution(executionUuid, actorUuid),
     ).resolves.toMatchObject({ state: 'WAITING' });
+
+    repo.getExecution.mockResolvedValueOnce({
+      uuid: executionUuid,
+      workflowUuid,
+      workflowVersionUuid: versionUuid,
+      state: 'WAITING',
+      currentNodeId: 'action-1',
+      contextSnapshot: {},
+      actorUuid,
+    });
     await expect(
       service.cancelExecution(executionUuid, actorUuid),
     ).resolves.toMatchObject({ state: 'CANCELLED' });
