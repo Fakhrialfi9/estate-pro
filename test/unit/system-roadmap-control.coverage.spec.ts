@@ -18,36 +18,46 @@ const createDependencies = () => ({
     aggregate: vi.fn().mockResolvedValue({ total: 4, active: 3 }),
     featureFlag: {
       list: vi.fn().mockResolvedValue([{ key: 'new-ui', enabled: true }]),
-      upsert: vi.fn().mockImplementation(async (input) => ({
-        id: 'flag-1',
-        ...input,
-      })),
+      upsert: vi.fn().mockImplementation(
+        (input: Record<string, unknown>) => ({
+          id: 'flag-1',
+          ...input,
+        }),
+      ),
       get: vi.fn(),
     },
     importProfile: {
-      create: vi.fn().mockImplementation(async (input) => ({
-        id: 'profile-1',
-        ...input,
-      })),
+      create: vi.fn().mockImplementation(
+        (input: Record<string, unknown>) => ({
+          id: 'profile-1',
+          ...input,
+        }),
+      ),
       list: vi.fn().mockResolvedValue([{ id: 'profile-1' }]),
       get: vi.fn(),
-      update: vi.fn().mockImplementation(async (uuid, input) => ({
-        uuid,
-        ...input,
-      })),
+      update: vi.fn().mockImplementation(
+        (uuid: string, input: Record<string, unknown>) => ({
+          uuid,
+          ...input,
+        }),
+      ),
     },
     credential: {
       list: vi.fn().mockResolvedValue([]),
-      create: vi.fn().mockImplementation(async (input) => ({
-        id: 'credential-1',
-        ...input,
-      })),
-      rotate: vi.fn().mockImplementation(async (uuid, input) => ({
-        uuid,
-        secretRef: input.secretRef,
-        status: 'ACTIVE',
-      })),
-      revoke: vi.fn().mockImplementation(async (uuid) => ({
+      create: vi.fn().mockImplementation(
+        (input: Record<string, unknown>) => ({
+          id: 'credential-1',
+          ...input,
+        }),
+      ),
+      rotate: vi.fn().mockImplementation(
+        (uuid: string, input: { secretRef: string }) => ({
+          uuid,
+          secretRef: input.secretRef,
+          status: 'ACTIVE',
+        }),
+      ),
+      revoke: vi.fn().mockImplementation((uuid: string) => ({
         uuid,
         secretRef: 'vault://redacted',
         status: 'REVOKED',
@@ -63,23 +73,29 @@ const createDependencies = () => ({
         nextRetryAt: null,
         failureCount: 0,
       }),
-      update: vi.fn().mockImplementation(async (_id, input) => ({
-        ...input,
-      })),
+      update: vi.fn().mockImplementation(
+        (_id: string, input: Record<string, unknown>) => ({
+          ...input,
+        }),
+      ),
     },
     operation: {
       getByIdempotency: vi.fn().mockResolvedValue(null),
-      create: vi.fn().mockImplementation(async (input) => ({
-        id: 'operation-1',
-        integrationId: 11n,
-        ...input,
-      })),
+      create: vi.fn().mockImplementation(
+        (input: Record<string, unknown>) => ({
+          id: 'operation-1',
+          integrationId: 11n,
+          ...input,
+        }),
+      ),
       list: vi.fn().mockResolvedValue([{ id: 'operation-1' }]),
-      update: vi.fn().mockImplementation(async (uuid, input) => ({
-        uuid,
-        integrationId: 11n,
-        ...input,
-      })),
+      update: vi.fn().mockImplementation(
+        (uuid: string, input: Record<string, unknown>) => ({
+          uuid,
+          integrationId: 11n,
+          ...input,
+        }),
+      ),
     },
     alert: {
       upsert: vi.fn().mockResolvedValue({ id: 'alert-1' }),
