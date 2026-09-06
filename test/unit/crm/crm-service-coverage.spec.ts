@@ -26,9 +26,10 @@ const makeRepo = (): CrmRepository =>
     {},
     {
       get: (target, property) => {
-        const override = Reflect.get(target, property);
-        if (override !== undefined) return override;
         const name = String(property);
+        if (Object.prototype.hasOwnProperty.call(target, name)) {
+          return target[name];
+        }
         if (name === 'findProfileByUserUuid') {
           return vi.fn(() => Promise.resolve(null));
         }
