@@ -9,7 +9,8 @@ prisma/
     ├── config.ts                   # Environment-driven seed configuration
     ├── database.ts                 # Prisma client/adapter + transaction type
     ├── runner.ts                   # Single transaction + dependency order
-    ├── verification.ts             # Post-commit coverage gate
+    ├── expansion.ts                # Deterministic fixture expansion to minimum dataset size
+    ├── verification.ts             # Post-commit baseline coverage gate
     ├── shared/
     │   └── ids.ts                  # Stable UUIDs + reference date
     ├── permissions/
@@ -68,15 +69,32 @@ The dependency order is intentionally centralized in `runner.ts`:
 10. Automation
 11. CMS content
 12. System control-plane fixtures
-13. Post-commit verification
+13. Minimum-dataset expansion
+14. Post-commit verification
 
 Every write is executed in one Prisma transaction. A failure rolls back the complete bootstrap state.
+
+## Dataset size and deterministic variation
+
+Every model intentionally populated by the seed is guaranteed to contain at least `SEED_MIN_RECORDS` records. The default is **10**, and the value cannot be reduced below 10. Existing fixture definitions remain the source of truth; after the domain seed completes, the expansion layer derives additional test records from those fixtures.
+
+The additional values are **deterministic pseudo-random variants**, derived from stable hashes and the source record. This provides realistic variation without using `randomUUID()` or time-dependent randomness, so repeated `prisma:seed` runs remain idempotent and reproducible. Unique identifiers, unique codes, emails, dates and other unique scalar values are varied only when required to satisfy the existing database uniqueness rules. Foreign keys are kept valid and are remapped to expanded parent records when appropriate.
+
+This expansion applies to every model listed in the seed coverage registry. Runtime-only or secret-bearing state that is intentionally excluded from that registry remains excluded, including active sessions, access/refresh tokens, password-reset tokens, two-factor challenges/recovery codes, webhook signing secrets, and transient import/export/queue state.
+
+You can increase the dataset for heavier testing by setting, for example:
+
+```bash
+SEED_MIN_RECORDS=50 npm run prisma:seed
+```
+
+Values below 10 are rejected so the project always keeps the minimum test-data contract.
 
 ## Determinism and idempotency
 
 Seed identifiers use `shared/ids.ts` instead of `randomUUID()` for fixture records. Natural/composite unique keys are used where the schema provides them; otherwise the stable fixture UUID is the upsert key. Dates use the fixed development reference date so repeated runs do not create time-dependent diffs.
 
-The verification gate checks every model that is intentionally populated by the seed. A missing baseline record fails the seed command rather than silently producing a partial database.
+The verification gate checks every model that is intentionally populated by the seed. The dataset expansion gate additionally verifies that every populated model reaches the configured minimum record count rather than silently leaving single-record fixtures behind.
 
 ## Seed policy
 
