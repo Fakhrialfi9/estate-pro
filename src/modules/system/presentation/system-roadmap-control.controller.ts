@@ -222,6 +222,11 @@ export class SystemRoadmapControlController {
 
   @Post('flags')
   @RequirePermissions('system.flags.update')
+  @ApiResponse({
+    status: 200,
+    description: 'System feature flag updated.',
+    schema: featureFlagSchema,
+  })
   setFlag(@Req() req: Request, @Body() dto: SetFeatureFlagDto) {
     return this.control.setFlag(actor(req), dto);
   }
