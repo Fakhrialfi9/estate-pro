@@ -42,10 +42,7 @@ export interface AutomationRepository {
     uuid: string,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
-  getWorkflow(
-    this: void,
-    uuid: string,
-  ): Promise<Record<string, unknown> | null>;
+  getWorkflow(this: void, uuid: string): Promise<Record<string, unknown> | null>;
   listWorkflows(
     this: void,
     input: Record<string, unknown>,
@@ -69,13 +66,8 @@ export interface AutomationRepository {
       activatedAt?: Date | null;
     },
   ): Promise<Record<string, unknown>>;
-  getVersion(
-    this: void,
-    uuid: string,
-  ): Promise<Record<string, unknown> | null>;
-  listActiveVersions(
-    this: void,
-  ): Promise<readonly Record<string, unknown>[]>;
+  getVersion(this: void, uuid: string): Promise<Record<string, unknown> | null>;
+  listActiveVersions(this: void): Promise<readonly Record<string, unknown>[]>;
   updateVersion(
     this: void,
     uuid: string,
