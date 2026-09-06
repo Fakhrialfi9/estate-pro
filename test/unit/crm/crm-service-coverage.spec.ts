@@ -118,22 +118,22 @@ const makeRepo = () =>
     },
   ) as never;
 
-const makeAudit = ()
+const makeAudit = () =>
   ({
     record: vi.fn(() => Promise.resolve(undefined)),
   }) as never;
 
-const makeUserPort = ()
+const makeUserPort = () =>
   ({
     getUser: vi.fn(() => Promise.resolve(activeUser)),
   }) as never;
 
-const makePropertyPort = ()
+const makePropertyPort = () =>
   ({
     getProperty: vi.fn(() => Promise.resolve({ uuid: 'property-1' })),
   }) as never;
 
-const service = ()
+const service = () =>
   new CrmService(makeRepo(), makeAudit(), makePropertyPort(), makeUserPort());
 
 describe('CrmService coverage', () => {
