@@ -116,7 +116,10 @@ const webhookDeliverySchema = {
   ],
   properties: {
     uuid: { type: 'string', format: 'uuid' },
-    subscriptionId: { type: 'string', description: 'Internal subscription identifier.' },
+    subscriptionId: {
+      type: 'string',
+      description: 'Internal subscription identifier.',
+    },
     eventId: { type: 'string' },
     deliveryKey: { type: 'string' },
     eventName: { type: 'string' },
@@ -125,7 +128,14 @@ const webhookDeliverySchema = {
     attemptCount: { type: 'integer', minimum: 0 },
     state: {
       type: 'string',
-      enum: ['PENDING', 'DELIVERING', 'SUCCEEDED', 'RETRYING', 'DEAD_LETTER', 'CANCELLED'],
+      enum: [
+        'PENDING',
+        'DELIVERING',
+        'SUCCEEDED',
+        'RETRYING',
+        'DEAD_LETTER',
+        'CANCELLED',
+      ],
     },
     httpStatus: { type: 'integer', nullable: true },
     responseSummary: { type: 'string', nullable: true },
@@ -157,6 +167,14 @@ const webhookListSchema = {
     total: { type: 'integer', minimum: 0 },
     page: { type: 'integer', minimum: 1 },
     limit: { type: 'integer', minimum: 1 },
+  },
+};
+
+const webhookEventCatalogSchema = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: { type: 'array', items: webhookEventSchema },
   },
 };
 
@@ -200,7 +218,7 @@ export class WebhookController {
   @ApiResponse({
     status: 200,
     description: 'Supported webhook event catalog.',
-    schema: { type: 'array', items: webhookEventSchema },
+    schema: webhookEventCatalogSchema,
   })
   events() {
     return { data: this.webhooks.eventCatalog() };
@@ -224,7 +242,7 @@ export class WebhookController {
   @ApiResponse({
     status: 201,
     description: 'Webhook subscription created with its initial secret.',
-    schema: { ...webhookWithSecretSchema },
+    schema: webhookWithSecretSchema,
   })
   create(@Req() request: Request, @Body() dto: CreateWebhookDto) {
     return this.webhooks.create(
