@@ -46,12 +46,10 @@ const makeRepo = (overrides: Record<string, unknown> = {}) => {
       activeVersionUuid: null,
       versions: [],
     })),
-    updateWorkflow: vi.fn(
-      (_uuid: string, patch: Record<string, unknown>) => ({
-        uuid: workflowUuid,
-        ...patch,
-      }),
-    ),
+    updateWorkflow: vi.fn((_uuid: string, patch: Record<string, unknown>) => ({
+      uuid: workflowUuid,
+      ...patch,
+    })),
     createVersion: vi.fn((input: Record<string, unknown>) => input),
     getVersion: vi.fn(() => ({
       uuid: versionUuid,
@@ -61,12 +59,10 @@ const makeRepo = (overrides: Record<string, unknown> = {}) => {
       triggerDefinition: definition.trigger,
       version: 1,
     })),
-    updateVersion: vi.fn(
-      (_uuid: string, patch: Record<string, unknown>) => ({
-        uuid: versionUuid,
-        ...patch,
-      }),
-    ),
+    updateVersion: vi.fn((_uuid: string, patch: Record<string, unknown>) => ({
+      uuid: versionUuid,
+      ...patch,
+    })),
     listActiveVersions: vi.fn(() => []),
     createExecution: vi.fn((input: Record<string, unknown>) => input),
     claimDueExecution: vi.fn(() => null),
@@ -79,35 +75,27 @@ const makeRepo = (overrides: Record<string, unknown> = {}) => {
       contextSnapshot: {},
       actorUuid,
     })),
-    updateExecution: vi.fn(
-      (_uuid: string, patch: Record<string, unknown>) => ({
-        uuid: executionUuid,
-        state: patch.state ?? 'PENDING',
-        ...patch,
-      }),
-    ),
+    updateExecution: vi.fn((_uuid: string, patch: Record<string, unknown>) => ({
+      uuid: executionUuid,
+      state: patch.state ?? 'PENDING',
+      ...patch,
+    })),
     createAction: vi.fn((input: Record<string, unknown>) => ({
       uuid: actionUuid,
       ...input,
     })),
     listActions: vi.fn(() => []),
-    updateAction: vi.fn(
-      (_uuid: string, patch: Record<string, unknown>) => ({
-        uuid: actionUuid,
-        ...patch,
-      }),
-    ),
+    updateAction: vi.fn((_uuid: string, patch: Record<string, unknown>) => ({
+      uuid: actionUuid,
+      ...patch,
+    })),
     listWorkflows: vi.fn(() => ({ items: [], total: 0 })),
     listExecutions: vi.fn(() => ({ items: [], total: 0 })),
     listNotifications: vi.fn(() => []),
     markNotificationRead: vi.fn(() => ({ success: true })),
-    createAssignmentRule: vi.fn(
-      (input: Record<string, unknown>) => input,
-    ),
+    createAssignmentRule: vi.fn((input: Record<string, unknown>) => input),
     createSlaPolicy: vi.fn((input: Record<string, unknown>) => input),
-    createEscalationPolicy: vi.fn(
-      (input: Record<string, unknown>) => input,
-    ),
+    createEscalationPolicy: vi.fn((input: Record<string, unknown>) => input),
     ...overrides,
   };
   return base;
