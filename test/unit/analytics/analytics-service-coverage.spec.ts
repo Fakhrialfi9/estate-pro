@@ -7,71 +7,64 @@ import { describe, expect, it, vi } from 'vitest';
 const user = (permissions: string[] = []): AccessTokenClaims =>
   ({ sub: 'user-1', sid: 'session-1', permissions } as AccessTokenClaims);
 
+type LeadReport = {
+  funnel: Array<{ percentage: number }>;
+  volume: unknown[];
+  lifecycle: Record<string, unknown>;
+  aging: Record<string, unknown>;
+  assignments: unknown[];
+};
+type AcquisitionReport = { sources: Array<{ conversionRate: number }>; campaigns: unknown[] };
+type ConversionReport = { leadToOpportunity: { rate: number } };
+type PipelineReport = { pipeline: unknown[] };
+type PropertyReport = { inventory: Array<{ active: number }> };
+type AgentReport = { conversion: Array<Record<string, unknown>>; activity: Array<{ category: string }> };
+type CombinedReport = { conversion: Array<Record<string, unknown>>; scorecards: Array<{ conversionRate: number }> };
+type SlaReport = { responseSla: { thresholdHours: number } };
+type ForecastReport = { forecast: number; confidence: string };
+
 const rows = (method: string): Record<string, unknown>[] => {
   switch (method) {
-    case 'leadVolume':
-      return [{ count: 10n, date: new Date('2026-01-01T00:00:00.000Z') }];
-    case 'leadLifecycle':
-      return [{ new: 3, converted: 1 }];
-    case 'leadAging':
-      return [{ averageDays: '2.5' }];
-    case 'leadFunnel':
-      return [{ stage: 'NEW', count: 2 }, { stage: 'QUALIFIED', count: 3 }];
-    case 'leadAssignment':
-      return [{ agentUuid: 'agent-1', count: 5 }];
-    case 'sourcePerformance':
-    case 'campaignPerformance':
-      return [{ leads: 10, qualified: 5, converted: 2, source: 'web' }];
-    case 'conversion':
-      return [{ leads: 10, opportunities: 4, wonDeals: 2, leadToOpportunityDays: 3, opportunityToCloseDays: 7 }];
-    case 'cohort':
-      return [{ leads: 4, converted: 1, cohort: '2026-01' }];
+    case 'leadVolume': return [{ count: 10n, date: new Date('2026-01-01T00:00:00.000Z') }];
+    case 'leadLifecycle': return [{ new: 3, converted: 1 }];
+    case 'leadAging': return [{ averageDays: '2.5' }];
+    case 'leadFunnel': return [{ stage: 'NEW', count: 2 }, { stage: 'QUALIFIED', count: 3 }];
+    case 'leadAssignment': return [{ agentUuid: 'agent-1', count: 5 }];
+    case 'sourcePerformance': return [{ leads: 10, qualified: 5, converted: 2, source: 'web,paid' }];
+    case 'campaignPerformance': return [{ leads: 10, qualified: 5, converted: 2, source: 'web' }];
+    case 'conversion': return [{ leads: 10, opportunities: 4, wonDeals: 2, leadToOpportunityDays: 3, opportunityToCloseDays: 7 }];
+    case 'cohort': return [{ leads: 4, converted: 1, cohort: '2026-01' }];
     case 'pipeline':
     case 'stageVelocity':
     case 'opportunityAging':
-    case 'opportunityValue':
-      return [{ stage: 'QUALIFIED', value: '123.45' }];
+    case 'opportunityValue': return [{ stage: 'QUALIFIED', value: '123.45' }];
     case 'propertyInventory':
     case 'listingAnalytics':
     case 'propertyLifecycle':
-    case 'propertyAging':
-      return [{ active: 5, averageDays: 9 }];
-    case 'agentWorkload':
-      return [{ agentUuid: 'agent-1', active: 4 }];
-    case 'agentActivity':
-      return [
-        { agentUuid: 'agent-1', type: 'CALL_MADE' },
-        { agentUuid: 'agent-1', type: 'WHATSAPP_MESSAGE' },
-        { agentUuid: 'agent-1', type: 'SHOWING' },
-        { agentUuid: 'agent-1', type: 'NOTE_ADDED' },
-        { agentUuid: 'agent-1', type: 'SYSTEM_EVENT' },
-      ];
-    case 'agentConversion':
-      return [{ agentUuid: 'agent-1', opportunities: 4, wonDeals: 2, revenue: '1000' }];
-    case 'agentProperty':
-      return [{ agentUuid: 'agent-1', activeProperties: 3, publishedProperties: 2 }];
+    case 'propertyAging': return [{ active: 5, averageDays: 9 }];
+    case 'agentWorkload': return [{ agentUuid: 'agent-1', active: 4 }];
+    case 'agentActivity': return [
+      { agentUuid: 'agent-1', type: 'CALL_MADE' },
+      { agentUuid: 'agent-1', type: 'WHATSAPP_MESSAGE' },
+      { agentUuid: 'agent-1', type: 'SHOWING' },
+      { agentUuid: 'agent-1', type: 'NOTE_ADDED' },
+      { agentUuid: 'agent-1', type: 'SYSTEM_EVENT' },
+    ];
+    case 'agentConversion': return [{ agentUuid: 'agent-1', opportunities: 4, wonDeals: 2, revenue: '1000' }];
+    case 'agentProperty': return [{ agentUuid: 'agent-1', activeProperties: 3, publishedProperties: 2 }];
     case 'salesVolume':
     case 'salesCycle':
     case 'revenue':
-    case 'averageDeal':
-      return [{ deals: 4, value: 100 }];
-    case 'sla':
-      return [{ averageResponseHours: 2, averageQualificationHours: 20 }];
-    case 'forecastInput':
-      return [{ closedRevenue: 1000, closedDeals: 10, weightedPipeline: 500 }];
-    default:
-      return [];
+    case 'averageDeal': return [{ deals: 4, value: 100 }];
+    case 'sla': return [{ averageResponseHours: 2, averageQualificationHours: 20 }];
+    case 'forecastInput': return [{ closedRevenue: 1000, closedDeals: 10, weightedPipeline: 500 }];
+    default: return [];
   }
 };
 
-const makeQueries = (): AnalyticsQueryPort =>
-  new Proxy(
-    {},
-    {
-      get: (_target, property) =>
-        vi.fn(async () => rows(String(property))),
-    },
-  ) as AnalyticsQueryPort;
+const makeQueries = (): AnalyticsQueryPort => new Proxy({}, {
+  get: (_target, property) => vi.fn(async () => rows(String(property))),
+}) as AnalyticsQueryPort;
 
 const makePolicy = (revenue = true, forecast = true, exportAllowed = true) => ({
   resolve: vi.fn(() => ({ kind: 'GLOBAL' })),
@@ -107,29 +100,29 @@ describe('AnalyticsService coverage', () => {
   it('builds lead, acquisition, conversion, pipeline, and property reports', async () => {
     const service = new AnalyticsService(makeQueries(), makePolicy() as never);
     const dto = { from: '2026-01-01T00:00:00.000Z', to: '2026-01-03T00:00:00.000Z', page: 1, limit: 10 };
-    const lead = await service.leads(dto, user());
-    const acquisition = await service.acquisition(dto, user());
-    const conversion = await service.conversion(dto, user());
-    const pipeline = await service.pipeline(dto, user());
-    const property = await service.property(dto, user());
-    expect(lead.data[0].funnel[0].percentage).toBe(40);
-    expect(acquisition.data[0].sources[0].conversionRate).toBe(20);
-    expect(conversion.data[0].leadToOpportunity.rate).toBe(40);
-    expect(pipeline.data[0].pipeline).toHaveLength(1);
-    expect(property.data[0].inventory[0].active).toBe(5);
+    const lead = (await service.leads(dto, user())).data[0] as LeadReport;
+    const acquisition = (await service.acquisition(dto, user())).data[0] as AcquisitionReport;
+    const conversion = (await service.conversion(dto, user())).data[0] as ConversionReport;
+    const pipeline = (await service.pipeline(dto, user())).data[0] as PipelineReport;
+    const property = (await service.property(dto, user())).data[0] as PropertyReport;
+    expect(lead.funnel[0]?.percentage).toBe(40);
+    expect(acquisition.sources[0]?.conversionRate).toBe(20);
+    expect(conversion.leadToOpportunity.rate).toBe(40);
+    expect(pipeline.pipeline).toHaveLength(1);
+    expect(property.inventory[0]?.active).toBe(5);
   });
 
   it('builds agent and combined reports with and without revenue visibility', async () => {
     const dto = { from: '2026-01-01T00:00:00.000Z', to: '2026-01-03T00:00:00.000Z' };
     const restricted = new AnalyticsService(makeQueries(), makePolicy(false, true, true) as never);
-    const restrictedReport = await restricted.agent(dto, user());
-    expect(restrictedReport.data[0].conversion[0]).not.toHaveProperty('revenue');
-    expect(restrictedReport.data[0].activity.map((x) => x.category)).toEqual(['CALL', 'MESSAGE', 'VIEWING', 'NOTE', 'OTHER']);
+    const restrictedReport = (await restricted.agent(dto, user())).data[0] as AgentReport;
+    expect(restrictedReport.conversion[0]).not.toHaveProperty('revenue');
+    expect(restrictedReport.activity.map((x) => x.category)).toEqual(['CALL', 'MESSAGE', 'VIEWING', 'NOTE', 'OTHER']);
 
     const full = new AnalyticsService(makeQueries(), makePolicy(true, true, true) as never);
-    const fullReport = await full.propertyAndAgent(dto, user());
-    expect(fullReport.data[0].conversion[0].revenue).toBe('1000');
-    expect(fullReport.data[0].scorecards[0].conversionRate).toBe(50);
+    const fullReport = (await full.propertyAndAgent(dto, user())).data[0] as CombinedReport;
+    expect(fullReport.conversion[0]?.revenue).toBe('1000');
+    expect(fullReport.scorecards[0]?.conversionRate).toBe(50);
   });
 
   it('enforces revenue and forecast permissions and calculates forecast', async () => {
@@ -140,11 +133,11 @@ describe('AnalyticsService coverage', () => {
     await expect(deniedForecast.forecast(dto, user())).rejects.toThrow(AnalyticsScopeException);
 
     const service = new AnalyticsService(makeQueries(), makePolicy(true, true, true) as never);
-    const sla = await service.sla(dto, user());
-    const forecast = await service.forecast(dto, user());
-    expect(sla.data[0].responseSla.thresholdHours).toBe(24);
-    expect(forecast.data[0].forecast).toBe(600);
-    expect(forecast.data[0].confidence).toBe('NORMAL');
+    const sla = (await service.sla(dto, user())).data[0] as SlaReport;
+    const forecast = (await service.forecast(dto, user())).data[0] as ForecastReport;
+    expect(sla.responseSla.thresholdHours).toBe(24);
+    expect(forecast.forecast).toBe(600);
+    expect(forecast.confidence).toBe('NORMAL');
   });
 
   it('exports supported reports to CSV, including escaping and empty results', async () => {
@@ -153,7 +146,9 @@ describe('AnalyticsService coverage', () => {
     const csv = await service.exportCsv(dto, user(), 'leads');
     expect(csv.filename).toBe('analytics-leads.csv');
     expect(csv.content).toContain('volume');
-    expect(csv.content).toContain('"2026-01-01T00:00:00.000Z"');
+
+    const acquisition = await service.exportCsv(dto, user(), 'acquisition');
+    expect(acquisition.content).toContain('"web,paid"');
     await expect(service.exportCsv(dto, user(), 'unknown')).rejects.toThrow(AnalyticsInvalidQueryException);
 
     const noRows = new Proxy(makeQueries() as object, {
@@ -166,7 +161,6 @@ describe('AnalyticsService coverage', () => {
   });
 
   it('normalizes unexpected query failures and timeout conditions', async () => {
-    const service = new AnalyticsService(makeQueries(), makePolicy() as never);
     const failing = new Proxy({}, {
       get: () => vi.fn(async () => { throw 'failure'; }),
     }) as AnalyticsQueryPort;
