@@ -59,7 +59,7 @@ function deterministicUuid(namespace: string, value: string): string {
 
 function quoteIdentifier(value: string): string {
   if (!/^[A-Za-z0-9_]+$/.test(value)) throw new Error(`Unsafe SQL identifier: ${value}`);
-  return `\\`${value}\\``;
+  return `\`${value}\``;
 }
 
 function isStringType(dataType: string): boolean {
