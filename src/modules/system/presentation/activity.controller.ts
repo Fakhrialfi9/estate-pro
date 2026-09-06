@@ -35,7 +35,10 @@ export class ActivityController {
       type: 'object',
       required: ['items', 'meta'],
       properties: {
-        items: { type: 'array', items: { type: 'object', additionalProperties: true } },
+        items: {
+          type: 'array',
+          items: { type: 'object', additionalProperties: true },
+        },
         meta: {
           type: 'object',
           required: ['page', 'limit', 'total', 'totalPages'],

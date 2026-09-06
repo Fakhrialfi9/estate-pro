@@ -40,7 +40,14 @@ const importResultSchema = {
     uuid: { type: 'string', format: 'uuid' },
     state: {
       type: 'string',
-      enum: ['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'RETRYABLE'],
+      enum: [
+        'QUEUED',
+        'RUNNING',
+        'SUCCEEDED',
+        'FAILED',
+        'CANCELLED',
+        'RETRYABLE',
+      ],
     },
     totalRows: { type: 'integer', minimum: 0 },
     processedRows: { type: 'integer', minimum: 0 },
@@ -79,7 +86,14 @@ const failedRowReportSchema = {
     importUuid: { type: 'string', format: 'uuid' },
     state: {
       type: 'string',
-      enum: ['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'RETRYABLE'],
+      enum: [
+        'QUEUED',
+        'RUNNING',
+        'SUCCEEDED',
+        'FAILED',
+        'CANCELLED',
+        'RETRYABLE',
+      ],
     },
     failedRows: { type: 'integer', minimum: 0 },
     errors: {

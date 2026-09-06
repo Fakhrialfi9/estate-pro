@@ -17,7 +17,9 @@ function quoteIdentifier(value: string): string {
  * E2E suites intentionally clean all property data, including rows created by
  * seed expansion, so the cleanup must not assume a fixed list of child tables.
  */
-export async function cleanupPropertyGraph(prisma: PrismaService): Promise<void> {
+export async function cleanupPropertyGraph(
+  prisma: PrismaService,
+): Promise<void> {
   const foreignKeys = await prisma.$queryRawUnsafe<ForeignKeyRow[]>(
     `SELECT TABLE_NAME, REFERENCED_TABLE_NAME
      FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
@@ -30,7 +32,10 @@ export async function cleanupPropertyGraph(prisma: PrismaService): Promise<void>
   while (changed) {
     changed = false;
     for (const foreignKey of foreignKeys) {
-      if (tables.has(foreignKey.REFERENCED_TABLE_NAME) && !tables.has(foreignKey.TABLE_NAME)) {
+      if (
+        tables.has(foreignKey.REFERENCED_TABLE_NAME) &&
+        !tables.has(foreignKey.TABLE_NAME)
+      ) {
         tables.add(foreignKey.TABLE_NAME);
         changed = true;
       }
@@ -40,7 +45,11 @@ export async function cleanupPropertyGraph(prisma: PrismaService): Promise<void>
   const children = new Map<string, Set<string>>();
   for (const table of tables) children.set(table, new Set());
   for (const foreignKey of foreignKeys) {
-    if (!tables.has(foreignKey.TABLE_NAME) || !tables.has(foreignKey.REFERENCED_TABLE_NAME)) continue;
+    if (
+      !tables.has(foreignKey.TABLE_NAME) ||
+      !tables.has(foreignKey.REFERENCED_TABLE_NAME)
+    )
+      continue;
     children.get(foreignKey.REFERENCED_TABLE_NAME)?.add(foreignKey.TABLE_NAME);
   }
 

@@ -119,13 +119,7 @@ const notificationTemplateSchema = {
 
 const notificationPolicySchema = {
   type: 'object',
-  required: [
-    'uuid',
-    'notificationUuid',
-    'priority',
-    'createdAt',
-    'updatedAt',
-  ],
+  required: ['uuid', 'notificationUuid', 'priority', 'createdAt', 'updatedAt'],
   properties: {
     uuid: { type: 'string', format: 'uuid' },
     notificationUuid: { type: 'string', format: 'uuid' },

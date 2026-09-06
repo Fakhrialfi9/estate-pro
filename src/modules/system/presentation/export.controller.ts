@@ -42,14 +42,7 @@ const EXPORT_RESULT_SCHEMA = {
 
 const EXPORT_CREATE_RESULT_SCHEMA = {
   type: 'object',
-  required: [
-    'uuid',
-    'state',
-    'format',
-    'rows',
-    'expiresAt',
-    'downloadToken',
-  ],
+  required: ['uuid', 'state', 'format', 'rows', 'expiresAt', 'downloadToken'],
   properties: {
     ...EXPORT_RESULT_SCHEMA.properties,
     downloadToken: { type: 'string', minLength: 1 },

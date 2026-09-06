@@ -54,7 +54,14 @@ const integrationSchema = {
     capabilities: { type: 'array', items: { type: 'string' } },
     state: {
       type: 'string',
-      enum: ['CONFIGURED', 'ACTIVE', 'DISABLED', 'ERROR', 'DISCONNECTED', 'CONNECTING'],
+      enum: [
+        'CONFIGURED',
+        'ACTIVE',
+        'DISABLED',
+        'ERROR',
+        'DISCONNECTED',
+        'CONNECTING',
+      ],
     },
     metadata: { type: 'object', additionalProperties: true },
     secretConfigured: { type: 'boolean' },
@@ -172,7 +179,10 @@ const reconciliationSchema = {
     providerKey: { type: 'string' },
     state: { type: 'string' },
     status: { type: 'string', enum: ['CONFLICTS_FOUND', 'IN_SYNC'] },
-    conflicts: { type: 'array', items: { type: 'object', additionalProperties: true } },
+    conflicts: {
+      type: 'array',
+      items: { type: 'object', additionalProperties: true },
+    },
     syncDirection: { type: 'string', nullable: true },
     syncCursor: { type: 'string', nullable: true },
     lastSyncedAt: { type: 'string', format: 'date-time', nullable: true },
