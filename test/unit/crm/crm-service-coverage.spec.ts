@@ -21,10 +21,12 @@ const activeUser = {
 };
 
 const makeRepo = () =>
-  new Proxy(
+  new Proxy<Record<string, unknown>>(
     {},
     {
-      get: (_target, property) => {
+      get: (target, property) => {
+        const override = Reflect.get(target, property);
+        if (override !== undefined) return override;
         const name = String(property);
         if (name === 'findProfileByUserUuid') {
           return vi.fn(() => Promise.resolve(null));
