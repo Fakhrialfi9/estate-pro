@@ -27,10 +27,10 @@ const makeRepo = () =>
       get: (_target, property) => {
         const name = String(property);
         if (name === 'findProfileByUserUuid') {
-          return vi.fn(async () => null);
+          return vi.fn(() => null);
         }
         if (name === 'getLead') {
-          return vi.fn(async () => ({
+          return vi.fn(() => ({
             uuid: 'lead-1',
             ownerUserUuid: 'user-1',
             score: 10,
@@ -41,12 +41,12 @@ const makeRepo = () =>
           }));
         }
         if (name === 'listScoreRules') {
-          return vi.fn(async () => [
+          return vi.fn(() => [
             { field: 'score', operator: 'GT', value: 5, points: 10 },
           ]);
         }
         if (name === 'saveScore') {
-          return vi.fn(async () => ({ uuid: 'lead-1', score: 20 }));
+          return vi.fn(() => ({ uuid: 'lead-1', score: 20 }));
         }
         if (
           name === 'getInquiry' ||
@@ -54,19 +54,19 @@ const makeRepo = () =>
           name === 'getCommunication' ||
           name === 'getContact'
         ) {
-          return vi.fn(async () => ({ uuid: 'row-1' }));
+          return vi.fn(() => ({ uuid: 'row-1' }));
         }
         if (name === 'getLeadScore') {
-          return vi.fn(async () => ({ score: 20 }));
+          return vi.fn(() => ({ score: 20 }));
         }
         if (name === 'detectDuplicates') {
-          return vi.fn(async () => []);
+          return vi.fn(() => []);
         }
         if (name === 'relationship') {
-          return vi.fn(async () => ({ uuid: 'rel-1' }));
+          return vi.fn(() => ({ uuid: 'rel-1' }));
         }
         if (name.startsWith('list')) {
-          return vi.fn(async () => []);
+          return vi.fn(() => []);
         }
         if (
           name.startsWith('delete') ||
@@ -74,7 +74,7 @@ const makeRepo = () =>
           name.startsWith('untag') ||
           name.startsWith('remove')
         ) {
-          return vi.fn(async () => undefined);
+          return vi.fn(() => undefined);
         }
         if (
           name.startsWith('add') ||
@@ -91,35 +91,40 @@ const makeRepo = () =>
           name.startsWith('convert') ||
           name.startsWith('save')
         ) {
-          return vi.fn(async (...args: unknown[]) => ({
-            uuid: 'row-1',
-            version: 1,
-            valueType: 'STRING',
-            value: 'ok',
-            updatedAt: new Date(),
-            ...(typeof args.at(-1) === 'object' && args.at(-1) !== null
-              ? args.at(-1)
-              : {}),
-          }));
+          return vi.fn((...args: unknown[]) => {
+            const last = args.at(-1);
+            const patch =
+              last !== null && typeof last === 'object' && !Array.isArray(last)
+                ? (last as Record<string, unknown>)
+                : {};
+            return {
+              uuid: 'row-1',
+              version: 1,
+              valueType: 'STRING',
+              value: 'ok',
+              updatedAt: new Date(),
+              ...patch,
+            };
+          });
         }
-        return vi.fn(async () => ({ uuid: 'row-1' }));
+        return vi.fn(() => ({ uuid: 'row-1' }));
       },
     },
   ) as never;
 
 const makeAudit = () =>
   ({
-    record: vi.fn(async () => undefined),
+    record: vi.fn(() => undefined),
   }) as never;
 
 const makeUserPort = () =>
   ({
-    getUser: vi.fn(async () => activeUser),
+    getUser: vi.fn(() => activeUser),
   }) as never;
 
 const makePropertyPort = () =>
   ({
-    getProperty: vi.fn(async () => ({ uuid: 'property-1' })),
+    getProperty: vi.fn(() => ({ uuid: 'property-1' })),
   }) as never;
 
 const service = () =>
@@ -343,7 +348,7 @@ describe('CrmService coverage', () => {
 
   it('maps repository errors to stable HTTP exceptions', async () => {
     const repo = makeRepo() as Record<string, ReturnType<typeof vi.fn>>;
-    repo.getContact = vi.fn(async () => {
+    repo.getContact = vi.fn(() => {
       throw new Error('already exists');
     });
     const s = new CrmService(
@@ -353,15 +358,15 @@ describe('CrmService coverage', () => {
       makeUserPort(),
     );
     await expect(s.getContact('c')).rejects.toBeInstanceOf(ConflictException);
-    repo.getContact = vi.fn(async () => {
+    repo.getContact = vi.fn(() => {
       throw new Error('not found');
     });
     await expect(s.getContact('c')).rejects.toBeInstanceOf(NotFoundException);
-    repo.getContact = vi.fn(async () => {
+    repo.getContact = vi.fn(() => {
       throw new Error('bad input');
     });
     await expect(s.getContact('c')).rejects.toBeInstanceOf(BadRequestException);
-    repo.getContact = vi.fn(async () => {
+    repo.getContact = vi.fn(() => {
       throw new ForbiddenException();
     });
     await expect(s.getContact('c')).rejects.toBeInstanceOf(ForbiddenException);
