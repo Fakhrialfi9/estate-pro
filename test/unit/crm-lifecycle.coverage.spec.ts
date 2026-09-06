@@ -83,11 +83,11 @@ describe('CrmLifecycleService coverage', () => {
     service = new CrmLifecycleService(
       d.crm as never,
       d.repo as never,
-      d.lifecycle as never,
-      d.qualification as never,
-      d.closure as never,
-      d.sales as never,
-      d.audit as never,
+      d.lifecycle,
+      d.qualification,
+      d.closure,
+      d.sales,
+      d.audit,
       d.logger as never,
     );
   });
@@ -117,19 +117,16 @@ describe('CrmLifecycleService coverage', () => {
       service.qualify('lead-1', 'ready for sale', actor),
     ).resolves.toEqual(expect.objectContaining({ uuid: 'lead-1' }));
     expect(d.crm.score).toHaveBeenCalledWith('lead-1');
-    expect(d.qualification.evaluate).toHaveBeenCalledWith(
-      90,
-      'ready for sale',
-    );
+    expect(d.qualification.evaluate).toHaveBeenCalledWith(90, 'ready for sale');
     expect(d.audit.record).toHaveBeenCalled();
 
     d.qualification.evaluate.mockReturnValueOnce({
       qualified: false,
       reason: 'score too low',
     });
-    await expect(
-      service.qualify('lead-1', 'not ready', actor),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.qualify('lead-1', 'not ready', actor)).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('covers nurture workflow and reactivation', async () => {

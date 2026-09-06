@@ -59,10 +59,10 @@ describe('SystemOperationsService coverage', () => {
     d = dependencies();
     service = new SystemOperationsService(
       d.settings as never,
-      d.audit as never,
-      d.storageHealth as never,
-      d.jobHealth as never,
-      d.databaseHealth as never,
+      d.audit,
+      d.storageHealth,
+      d.jobHealth,
+      d.databaseHealth,
       d.integrations as never,
     );
   });

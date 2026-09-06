@@ -4,11 +4,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SystemNotificationService } from '../../src/modules/system/application/services/system-notification.service.js';
 
 const depsFactory = () => ({
-  listNotifications: vi.fn().mockResolvedValue({ items: [{ uuid: 'n1' }], total: 1 }),
+  listNotifications: vi
+    .fn()
+    .mockResolvedValue({ items: [{ uuid: 'n1' }], total: 1 }),
   markNotificationRead: vi.fn().mockResolvedValue({ uuid: 'n1', read: true }),
   markAllNotificationsRead: vi.fn().mockResolvedValue({ updated: 2 }),
+<<<<<<< HEAD
   listPreferences: vi.fn().mockResolvedValue([{ notificationType: 'LEAD', channel: 'EMAIL', enabled: true }]),
   setPreference: vi.fn().mockImplementation((input: Record<string, unknown>) => input),
+=======
+  listPreferences: vi
+    .fn()
+    .mockResolvedValue([
+      { notificationType: 'LEAD', channel: 'EMAIL', enabled: true },
+    ]),
+  setPreference: vi.fn().mockImplementation(async (input) => input),
+>>>>>>> 92c412f1 (“Update”)
   listTemplates: vi.fn().mockResolvedValue([{ code: 'welcome' }]),
   createTemplate: vi.fn().mockResolvedValue({ uuid: 't1' }),
   updateTemplate: vi.fn().mockResolvedValue({ uuid: 't1' }),
@@ -41,7 +52,9 @@ describe('SystemNotificationService coverage', () => {
       uuid: 'n1',
       read: true,
     });
-    await expect(service.markAllRead('user-1')).resolves.toEqual({ updated: 2 });
+    await expect(service.markAllRead('user-1')).resolves.toEqual({
+      updated: 2,
+    });
 
     d.markNotificationRead.mockResolvedValueOnce(null);
     await expect(service.markRead('user-1', 'missing')).rejects.toBeInstanceOf(
@@ -72,9 +85,9 @@ describe('SystemNotificationService coverage', () => {
 
   it('covers template, policy and delivery delegation', async () => {
     await expect(service.templates()).resolves.toEqual([{ code: 'welcome' }]);
-    await expect(service.templates({ code: 'welcome', activeOnly: true })).resolves.toEqual([
-      { code: 'welcome' },
-    ]);
+    await expect(
+      service.templates({ code: 'welcome', activeOnly: true }),
+    ).resolves.toEqual([{ code: 'welcome' }]);
     await expect(
       service.createTemplate({
         actorUuid: 'actor-1',

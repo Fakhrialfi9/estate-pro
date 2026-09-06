@@ -63,10 +63,7 @@ describe('PropertyExtrasService coverage', () => {
 
   beforeEach(() => {
     d = depsFactory();
-    service = new PropertyExtrasService(
-      d.repository as never,
-      d.audit as never,
-    );
+    service = new PropertyExtrasService(d.repository, d.audit);
   });
 
   it('covers utility, legal and certificate CRUD', async () => {
@@ -94,7 +91,7 @@ describe('PropertyExtrasService coverage', () => {
           ownerReference: 'SECRET',
           disputes: { open: true },
           encumbrances: { x: true },
-        } as never,
+        },
         actor,
       ),
     ).resolves.toEqual({ ok: true });
@@ -129,7 +126,7 @@ describe('PropertyExtrasService coverage', () => {
     await expect(
       service.updateFinancial(
         'p1',
-        { askingPrice: '100000', currency: 'IDR' } as never,
+        { askingPrice: '100000', currency: 'IDR' },
         actor,
       ),
     ).resolves.toEqual({ ok: true });
@@ -137,19 +134,19 @@ describe('PropertyExtrasService coverage', () => {
       petFriendly: true,
     });
     await expect(
-      service.updateFeatures('p1', { petFriendly: true } as never, actor),
+      service.updateFeatures('p1', { petFriendly: true }, actor),
     ).resolves.toEqual({ ok: true });
     await expect(service.getSecurity('p1')).resolves.toEqual({
       cctv: true,
     });
     await expect(
-      service.updateSecurity('p1', { cctv: true } as never, actor),
+      service.updateSecurity('p1', { cctv: true }, actor),
     ).resolves.toEqual({ ok: true });
     await expect(service.getEnvironment('p1')).resolves.toEqual({
       solarPower: true,
     });
     await expect(
-      service.updateEnvironment('p1', { solarPower: true } as never, actor),
+      service.updateEnvironment('p1', { solarPower: true }, actor),
     ).resolves.toEqual({ ok: true });
   });
 
@@ -161,7 +158,7 @@ describe('PropertyExtrasService coverage', () => {
         {
           title: 'A good title',
           canonicalUrl: 'https://example.com/grand-residence',
-        } as never,
+        },
         actor,
       ),
     ).resolves.toEqual({ ok: true });
@@ -240,20 +237,48 @@ describe('PropertyExtrasService coverage', () => {
         verificationStatus: 'PENDING',
       }),
     ).toThrow();
-    expect(() => rules.validateLegalInvariants({ verificationStatus: 'VERIFIED' })).toThrow();
-    expect(() => rules.validateCertificateInput({ number: ' ' } as never)).toThrow();
-    expect(() => rules.validateCertificateDates('bad')).toThrow('Invalid issueDate');
-    expect(() => rules.validateCertificateDates(undefined, 'bad')).toThrow('Invalid expiryDate');
-    expect(() => rules.validateCertificateDates('2026-02-01', '2026-01-01')).toThrow();
-    expect(() => rules.validateCertificateDates(undefined, undefined, 'EXPIRED')).toThrow();
-    expect(() => rules.validateFinancialInvariants({ currency: 'id' })).toThrow();
-    expect(() => rules.validateSeoInvariants('slug', { title: 'x'.repeat(61) })).toThrow();
-    expect(() => rules.validateSeoInvariants('slug', { canonicalUrl: 'https://example.com/other' })).toThrow();
-    expect(() => rules.validateMedia({ ...validMedia, fileSizeBytes: -1 } as never)).toThrow();
-    expect(() => rules.validateMedia({ ...validMedia, widthPx: 0 } as never)).toThrow();
-    expect(() => rules.validateMedia({ ...validMedia, heightPx: 0 } as never)).toThrow();
-    expect(() => rules.validateMedia({ ...validMedia, durationMs: 0 } as never)).toThrow();
-    expect(() => rules.validateMedia({ ...validMedia, sortOrder: -1 } as never)).toThrow();
+    expect(() =>
+      rules.validateLegalInvariants({ verificationStatus: 'VERIFIED' }),
+    ).toThrow();
+    expect(() => rules.validateCertificateInput({ number: ' ' })).toThrow();
+    expect(() => rules.validateCertificateDates('bad')).toThrow(
+      'Invalid issueDate',
+    );
+    expect(() => rules.validateCertificateDates(undefined, 'bad')).toThrow(
+      'Invalid expiryDate',
+    );
+    expect(() =>
+      rules.validateCertificateDates('2026-02-01', '2026-01-01'),
+    ).toThrow();
+    expect(() =>
+      rules.validateCertificateDates(undefined, undefined, 'EXPIRED'),
+    ).toThrow();
+    expect(() =>
+      rules.validateFinancialInvariants({ currency: 'id' }),
+    ).toThrow();
+    expect(() =>
+      rules.validateSeoInvariants('slug', { title: 'x'.repeat(61) }),
+    ).toThrow();
+    expect(() =>
+      rules.validateSeoInvariants('slug', {
+        canonicalUrl: 'https://example.com/other',
+      }),
+    ).toThrow();
+    expect(() =>
+      rules.validateMedia({ ...validMedia, fileSizeBytes: -1 } as never),
+    ).toThrow();
+    expect(() =>
+      rules.validateMedia({ ...validMedia, widthPx: 0 } as never),
+    ).toThrow();
+    expect(() =>
+      rules.validateMedia({ ...validMedia, heightPx: 0 } as never),
+    ).toThrow();
+    expect(() =>
+      rules.validateMedia({ ...validMedia, durationMs: 0 } as never),
+    ).toThrow();
+    expect(() =>
+      rules.validateMedia({ ...validMedia, sortOrder: -1 } as never),
+    ).toThrow();
   });
 
   it('covers money arithmetic and invalid inputs', () => {

@@ -85,9 +85,9 @@ describe('SystemIntegrationService coverage', () => {
   beforeEach(() => {
     d = dependencies();
     service = new SystemIntegrationService(
-      d.repository as never,
+      d.repository,
       d.roadmap as never,
-      d.audit as never,
+      d.audit,
     );
     service.registerProvider(provider as never);
   });
@@ -105,7 +105,11 @@ describe('SystemIntegrationService coverage', () => {
       syncDirection: 'BIDIRECTIONAL',
     });
     expect(() =>
-      service.registerProvider({ key: '', version: '1', capabilities: [] } as never),
+      service.registerProvider({
+        key: '',
+        version: '1',
+        capabilities: [],
+      } as never),
     ).toThrow('Integration provider identity is required');
     await expect(service.providerFor('missing')).rejects.toBeInstanceOf(
       NotFoundException,
@@ -161,11 +165,15 @@ describe('SystemIntegrationService coverage', () => {
       state: 'DISABLED',
       metadata: { region: 'id' },
     });
-    await expect(service.remove('actor-1', 'integration-1')).resolves.toBeUndefined();
+    await expect(
+      service.remove('actor-1', 'integration-1'),
+    ).resolves.toBeUndefined();
   });
 
   it('covers connection and reconnect success/failure semantics', async () => {
-    await expect(service.test('actor-1', 'integration-1')).resolves.toMatchObject({
+    await expect(
+      service.test('actor-1', 'integration-1'),
+    ).resolves.toMatchObject({
       uuid: 'integration-1',
       ok: true,
       latencyMs: 12,
@@ -176,7 +184,9 @@ describe('SystemIntegrationService coverage', () => {
       code: 'TIMEOUT',
       message: 'timeout',
     });
-    await expect(service.test('actor-1', 'integration-1')).resolves.toMatchObject({
+    await expect(
+      service.test('actor-1', 'integration-1'),
+    ).resolves.toMatchObject({
       ok: false,
       code: 'TIMEOUT',
     });
@@ -200,9 +210,14 @@ describe('SystemIntegrationService coverage', () => {
     ).resolves.toMatchObject({ idempotentReplay: true });
 
     d.roadmap.operation.getByIdempotency.mockResolvedValueOnce(null);
+<<<<<<< HEAD
     await expect(
       service.reconnect('actor-1', 'integration-1', 'key-2'),
     ).resolves.toMatchObject({
+=======
+    const result = await service.reconnect('actor-1', 'integration-1', 'key-2');
+    expect(result).toMatchObject({
+>>>>>>> 92c412f1 (“Update”)
       ok: true,
       state: 'ACTIVE',
       idempotentReplay: false,
@@ -220,9 +235,9 @@ describe('SystemIntegrationService coverage', () => {
 
     const noSync = { ...provider, sync: undefined };
     const serviceWithoutSync = new SystemIntegrationService(
-      d.repository as never,
+      d.repository,
       d.roadmap as never,
-      d.audit as never,
+      d.audit,
     );
     serviceWithoutSync.registerProvider(noSync as never);
     await expect(

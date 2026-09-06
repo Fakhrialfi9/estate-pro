@@ -53,9 +53,17 @@ const dependencies = () => ({
   },
   storage: {
     put: vi.fn().mockResolvedValue({ path: 'job-1/source' }),
+<<<<<<< HEAD
     read: vi.fn().mockResolvedValue(
       Buffer.from('eventType,category,summary\nFOLLOW_UP,CRM,hello\n'),
     ),
+=======
+    read: vi
+      .fn()
+      .mockResolvedValue(
+        Buffer.from('eventType,category,summary\nFOLLOW_UP,CRM,hello\n'),
+      ),
+>>>>>>> 92c412f1 (“Update”)
   },
   audit: { record: vi.fn().mockResolvedValue(undefined) },
   mapping: {
@@ -76,7 +84,7 @@ describe('SystemImportService coverage', () => {
       d.jobs as never,
       d.activity as never,
       d.storage as never,
-      d.audit as never,
+      d.audit,
       d.mapping as never,
     );
   });
@@ -192,19 +200,28 @@ describe('SystemImportService coverage', () => {
 
     d.activity.get.mockResolvedValueOnce({ uuid: 'existing-row' });
     await expect(
-      service.execute('actor-1', csvRequest({ conflictStrategy: 'FAIL' }) as never),
+      service.execute(
+        'actor-1',
+        csvRequest({ conflictStrategy: 'FAIL' }) as never,
+      ),
     ).resolves.toMatchObject({ state: 'FAILED' });
 
     d.jobs.create.mockResolvedValueOnce({ ...baseJob, state: 'QUEUED' });
     d.activity.get.mockResolvedValueOnce({ uuid: 'existing-row' });
     await expect(
-      service.execute('actor-1', csvRequest({ conflictStrategy: 'SKIP' }) as never),
+      service.execute(
+        'actor-1',
+        csvRequest({ conflictStrategy: 'SKIP' }) as never,
+      ),
     ).resolves.toMatchObject({ state: 'SUCCEEDED' });
 
     d.jobs.create.mockResolvedValueOnce({ ...baseJob, state: 'QUEUED' });
     d.activity.get.mockResolvedValueOnce({ uuid: 'existing-row' });
     await expect(
-      service.execute('actor-1', csvRequest({ conflictStrategy: 'UPDATE' }) as never),
+      service.execute(
+        'actor-1',
+        csvRequest({ conflictStrategy: 'UPDATE' }) as never,
+      ),
     ).resolves.toMatchObject({ state: 'SUCCEEDED' });
     expect(d.activity.upsert).toHaveBeenCalled();
   });
@@ -308,9 +325,9 @@ describe('SystemImportService coverage', () => {
       ...baseJob,
       state: 'QUEUED',
     });
-    await expect(
-      service.cancel('actor-1', 'job-1'),
-    ).resolves.toMatchObject({ state: 'CANCELLED' });
+    await expect(service.cancel('actor-1', 'job-1')).resolves.toMatchObject({
+      state: 'CANCELLED',
+    });
     await expect(service.list('actor-1', 0, 200)).resolves.toMatchObject({
       page: 1,
       limit: 100,

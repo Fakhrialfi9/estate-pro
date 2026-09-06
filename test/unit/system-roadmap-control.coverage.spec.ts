@@ -125,7 +125,7 @@ describe('SystemRoadmapControlService coverage', () => {
     service = new SystemRoadmapControlService(
       deps.roadmap as never,
       deps.integrations as never,
-      deps.audit as never,
+      deps.audit,
       deps.config as never,
     );
   });
@@ -211,9 +211,9 @@ describe('SystemRoadmapControlService coverage', () => {
     ).rejects.toThrow('Invalid environment identifier');
 
     deps.roadmap.featureFlag.get.mockResolvedValueOnce(null);
-    await expect(
-      service.evaluateFlag('missing', 'production'),
-    ).resolves.toBe(false);
+    await expect(service.evaluateFlag('missing', 'production')).resolves.toBe(
+      false,
+    );
     deps.roadmap.featureFlag.get.mockResolvedValueOnce({
       enabled: false,
       rolloutPercentage: 100,
@@ -225,9 +225,9 @@ describe('SystemRoadmapControlService coverage', () => {
       enabled: true,
       rolloutPercentage: 100,
     });
-    await expect(
-      service.evaluateFlag('full', 'production'),
-    ).resolves.toBe(true);
+    await expect(service.evaluateFlag('full', 'production')).resolves.toBe(
+      true,
+    );
   });
 
   it('covers import profile lifecycle', async () => {
@@ -260,9 +260,9 @@ describe('SystemRoadmapControlService coverage', () => {
       id: 'profile-1',
       name: 'old',
     });
-    await expect(
-      service.listImportProfiles('Lead', true),
-    ).resolves.toEqual([{ id: 'profile-1' }]);
+    await expect(service.listImportProfiles('Lead', true)).resolves.toEqual([
+      { id: 'profile-1' },
+    ]);
 
     const updated = await service.updateImportProfile('actor-1', 'profile-1', {
       name: ' Updated ',
@@ -298,11 +298,9 @@ describe('SystemRoadmapControlService coverage', () => {
     expect(created.secretRef).not.toBe('vault://secret/path');
     expect(created.version).toBe(1);
 
-    const rotated = await service.rotateCredential(
-      'actor-1',
-      'credential-1',
-      { secretRef: 'vault://new-secret' },
-    );
+    const rotated = await service.rotateCredential('actor-1', 'credential-1', {
+      secretRef: 'vault://new-secret',
+    });
     expect(rotated.secretRef).not.toBe('vault://new-secret');
     await expect(
       service.revokeCredential('actor-1', 'credential-1'),

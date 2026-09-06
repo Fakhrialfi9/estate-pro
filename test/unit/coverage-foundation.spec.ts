@@ -177,9 +177,9 @@ describe('coverage foundation', () => {
     expect(session.id).toBe('42');
     expect(session.statusAt(now)).toBe('active');
     expect(session.isActiveAt(now)).toBe(true);
-    expect(
-      session.statusAt(new Date('2026-01-03T00:00:00.000Z')),
-    ).toBe('expired');
+    expect(session.statusAt(new Date('2026-01-03T00:00:00.000Z'))).toBe(
+      'expired',
+    );
     const revoked = SessionEntity.create({
       ...base,
       revokedAt: new Date('2026-01-01T01:00:00.000Z'),
@@ -199,9 +199,9 @@ describe('coverage foundation', () => {
     expect(() =>
       SessionEntity.create({ ...base, sessionIdHash: 'bad' }),
     ).toThrow('Invalid session digest');
-    expect(() =>
-      SessionEntity.create({ ...base, expiresAt: now }),
-    ).toThrow('Session expiry must be after creation');
+    expect(() => SessionEntity.create({ ...base, expiresAt: now })).toThrow(
+      'Session expiry must be after creation',
+    );
   });
 
   it('covers two-factor states', () => {
@@ -279,9 +279,9 @@ describe('coverage foundation', () => {
     expect(() =>
       UserRoleEntity.create({ ...snapshot, userUuid: 'bad' }),
     ).toThrow('Invalid user UUID');
-    expect(() =>
-      UserRoleEntity.create({ ...snapshot, roleName: ' ' }),
-    ).toThrow('Invalid role identity');
+    expect(() => UserRoleEntity.create({ ...snapshot, roleName: ' ' })).toThrow(
+      'Invalid role identity',
+    );
     expect(() =>
       UserRoleEntity.create({ ...snapshot, isActive: false }),
     ).toThrow('Inactive user role must have a revoked timestamp');
@@ -363,14 +363,16 @@ describe('coverage foundation', () => {
     expect(property.status).toBe('ACTIVE');
     expect(property.updatedBy).toBe('actor-1');
     expect(property.publishedAt).toBeInstanceOf(Date);
-    expect(() =>
-      new PropertyCategory('x', 1n, '', 'Name', 'slug', null, null, true, 0),
+    expect(
+      () =>
+        new PropertyCategory('x', 1n, '', 'Name', 'slug', null, null, true, 0),
     ).toThrow('Invalid category code');
-    expect(() =>
-      new PropertySubcategory('x', 1n, 'CODE', '', 'slug', null, true, 0),
+    expect(
+      () => new PropertySubcategory('x', 1n, 'CODE', '', 'slug', null, true, 0),
     ).toThrow('Invalid subcategory name');
-    expect(() =>
-      new Facility('x', 'CODE', '', 'slug', 'AMENITY', null, null, 0, true),
+    expect(
+      () =>
+        new Facility('x', 'CODE', '', 'slug', 'AMENITY', null, null, 0, true),
     ).toThrow('Invalid facility');
   });
 

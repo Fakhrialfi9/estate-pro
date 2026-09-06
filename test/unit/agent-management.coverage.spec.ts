@@ -106,19 +106,19 @@ describe('AgentManagementService coverage', () => {
     service = new AgentManagementService(
       d.repo as never,
       d.authorization as never,
-      d.users as never,
-      d.audit as never,
+      d.users,
+      d.audit,
       d.propertyAssignments as never,
       d.propertyContext as never,
-      d.propertyRegions as never,
-      d.crmWorkload as never,
-      d.salesWorkload as never,
+      d.propertyRegions,
+      d.crmWorkload,
+      d.salesWorkload,
     );
   });
 
   it('covers profile create/list and authorization failures', async () => {
     await expect(
-      service.create({ userUuid: uuid, displayName: 'Alice' } as never, actor),
+      service.create({ userUuid: uuid, displayName: 'Alice' }, actor),
     ).resolves.toMatchObject({ uuid: 'agent-1' });
     const list = await service.list(
       { limit: 200, regionUuid: 'region-1' },
@@ -129,7 +129,7 @@ describe('AgentManagementService coverage', () => {
 
     d.repo.findProfileByUserUuid.mockResolvedValueOnce({ uuid: 'existing' });
     await expect(
-      service.create({ userUuid: uuid, displayName: 'Alice' } as never, actor),
+      service.create({ userUuid: uuid, displayName: 'Alice' }, actor),
     ).rejects.toBeInstanceOf(ConflictException);
 
     d.repo.findProfileByUserUuid.mockResolvedValueOnce(null);
@@ -139,7 +139,7 @@ describe('AgentManagementService coverage', () => {
       roleCodes: [],
     });
     await expect(
-      service.create({ userUuid: uuid, displayName: 'Alice' } as never, actor),
+      service.create({ userUuid: uuid, displayName: 'Alice' }, actor),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -150,7 +150,7 @@ describe('AgentManagementService coverage', () => {
     await expect(
       service.update(
         'agent-1',
-        { displayName: 'Updated', maxActiveAssignments: 20 } as never,
+        { displayName: 'Updated', maxActiveAssignments: 20 },
         actor,
       ),
     ).resolves.toMatchObject({ uuid: 'agent-1' });
@@ -165,16 +165,16 @@ describe('AgentManagementService coverage', () => {
   it('covers specialization and coverage lifecycle', async () => {
     await expect(
       service.createSpecialization(
-        { code: ' RES ', name: ' Residential ' } as never,
+        { code: ' RES ', name: ' Residential ' },
         actor,
       ),
     ).resolves.toMatchObject({ uuid: 'spec-1' });
     await expect(service.listSpecializations()).resolves.toEqual([
       { uuid: 'spec-1' },
     ]);
-    await expect(
-      service.specializations('agent-1', actor),
-    ).resolves.toEqual([]);
+    await expect(service.specializations('agent-1', actor)).resolves.toEqual(
+      [],
+    );
     await expect(
       service.addSpecialization('agent-1', 'spec-1', true, actor),
     ).resolves.toEqual({ uuid: 'link-1' });
@@ -211,9 +211,7 @@ describe('AgentManagementService coverage', () => {
   });
 
   it('covers availability validation and persistence', async () => {
-    const schedule = [
-      { dayOfWeek: 1, startTime: '09:00', endTime: '17:00' },
-    ];
+    const schedule = [{ dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }];
     const exceptions = [
       {
         startsAt: new Date('2026-01-01T09:00:00Z'),
@@ -251,11 +249,11 @@ describe('AgentManagementService coverage', () => {
     await expect(
       service.unassign('property-1', 'agent-1', actor, 'sold'),
     ).resolves.toEqual({ uuid: 'assignment-3' });
-    await expect(
-      service.assignments('agent-1', true, actor),
-    ).resolves.toEqual([{ uuid: 'assignment-h1' }]);
-    await expect(
-      service.assignments('agent-1', false, actor),
-    ).resolves.toEqual([{ uuid: 'assignment-c1' }]);
+    await expect(service.assignments('agent-1', true, actor)).resolves.toEqual([
+      { uuid: 'assignment-h1' },
+    ]);
+    await expect(service.assignments('agent-1', false, actor)).resolves.toEqual(
+      [{ uuid: 'assignment-c1' }],
+    );
   });
 });
