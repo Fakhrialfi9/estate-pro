@@ -4,7 +4,6 @@ import type {
   ContentRepository,
   ArticleRecord,
 } from '../../../src/modules/content/domain/repositories/content.repository.js';
-import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
 import {
   ContentConflictError,
   ContentNotFoundError,
@@ -76,7 +75,7 @@ describe('ContentService', () => {
     removeRelation: vi.fn(),
     reorderMenu: vi.fn(),
     ensureSlugRedirect: vi.fn(),
-  } as unknown as ContentRepository;
+  } satisfies Record<keyof ContentRepository, ReturnType<typeof vi.fn>>;
   const auditRecord = vi.fn().mockResolvedValue(undefined);
   const service = new ContentService(repository, {
     record: auditRecord,
