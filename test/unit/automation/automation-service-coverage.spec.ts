@@ -417,7 +417,7 @@ describe('AutomationService coverage', () => {
         limit: 10,
         unreadOnly: true,
       }),
-    ).resolves.toEqual([]);
+    ).resolves.toMatchObject({ items: [], total: 0 });
     await expect(
       service.markNotificationRead('notification-1', actorUuid),
     ).resolves.toEqual({ success: true });
