@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mocked } from 'vitest';
 import { SalesService } from '../../../src/modules/sales/application/sales.service.js';
 import type { SalesRepository } from '../../../src/modules/sales/domain/repositories/sales.repository.js';
 import type {
@@ -42,7 +42,7 @@ const opportunity = (
 });
 
 describe('SalesService', () => {
-  const repository = {
+  const repository: Mocked<SalesRepository> = {
     createPipeline: vi.fn(),
     listPipelines: vi.fn(),
     getPipeline: vi.fn(),
@@ -55,10 +55,7 @@ describe('SalesService', () => {
     transitionNegotiation: vi.fn(),
     getDeal: vi.fn(),
     listDeals: vi.fn(),
-  } satisfies Record<
-    keyof SalesRepository,
-    ReturnType<typeof vi.fn>
-  >;
+  };
   const auditRecord = vi.fn().mockResolvedValue(undefined);
   const service = new SalesService(repository, {
     record: auditRecord,
