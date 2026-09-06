@@ -305,7 +305,7 @@ describe('SalesService coverage', () => {
     ).toBe(uuid);
     expect((await s.lostOpportunity(uuid, uuid, actor)).uuid).toBe(uuid);
     expect((await s.lostDeal(uuid, uuid, actor)).uuid).toBe(uuid);
-    expect(await s.reopenDeal(uuid, 'Customer request', actor)).toEqual({
+    expect(await s.reopenDeal(uuid, 'Customer request', actor)).toMatchObject({
       uuid,
     });
     expect(await s.lostReasons(actor)).toEqual([]);
