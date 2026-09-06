@@ -42,7 +42,10 @@ export interface AutomationRepository {
     uuid: string,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
-  getWorkflow(this: void, uuid: string): Promise<Record<string, unknown> | null>;
+  getWorkflow(
+    this: void,
+    uuid: string,
+  ): Promise<Record<string, unknown> | null>;
   listWorkflows(
     this: void,
     input: Record<string, unknown>,
@@ -99,10 +102,7 @@ export interface AutomationRepository {
     this: void,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
-  getAction(
-    this: void,
-    uuid: string,
-  ): Promise<Record<string, unknown> | null>;
+  getAction(this: void, uuid: string): Promise<Record<string, unknown> | null>;
   listActions(
     this: void,
     executionUuid: string,
@@ -122,11 +122,7 @@ export interface AutomationRepository {
     workerId: string,
     leaseMs: number,
   ): Promise<Record<string, unknown> | null>;
-  reclaimExpired(
-    this: void,
-    workerId: string,
-    now: Date,
-  ): Promise<number>;
+  reclaimExpired(this: void, workerId: string, now: Date): Promise<number>;
   countRecentActionExecutions(
     this: void,
     workflowUuid: string,

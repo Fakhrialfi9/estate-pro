@@ -143,10 +143,7 @@ export interface SalesRepository {
     orderedStageUuids: string[],
   ): Promise<SalesRecord[]>;
   createOpportunity(input: OpportunityInput): Promise<SalesOpportunityRow>;
-  getOpportunity(
-    this: void,
-    uuid: string,
-  ): Promise<SalesOpportunityRow | null>;
+  getOpportunity(this: void, uuid: string): Promise<SalesOpportunityRow | null>;
   listOpportunities(
     this: void,
     query: Record<string, unknown>,
