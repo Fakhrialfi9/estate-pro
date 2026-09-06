@@ -4,9 +4,8 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mocked } from 'vitest';
 import { AutomationService } from '../../../src/modules/automation/application/services/automation.service.js';
-import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
 import type { AutomationCrmPort } from '../../../src/common/contracts/automation-crm.port.js';
 import type { AutomationSalesPort } from '../../../src/common/contracts/automation-sales.port.js';
 import type { UserPublicPort } from '../../../src/common/contracts/user-public.port.js';
@@ -71,7 +70,7 @@ const event: AutomationEvent = {
 };
 
 describe('AutomationService', () => {
-  const repo = {
+  const repo: Mocked<AutomationRepository> = {
     createWorkflow: vi.fn(),
     updateWorkflow: vi.fn(),
     getWorkflow: vi.fn(),
@@ -93,23 +92,23 @@ describe('AutomationService', () => {
     createEscalationPolicy: vi.fn(),
     listNotifications: vi.fn(),
     markNotificationRead: vi.fn(),
-  } as unknown as AutomationRepository;
-  const crm = {
+  } as Mocked<AutomationRepository>;
+  const crm: Mocked<AutomationCrmPort> = {
     getLead: vi.fn(),
     getActivity: vi.fn(),
-  } as unknown as AutomationCrmPort;
-  const sales = {
+  } as Mocked<AutomationCrmPort>;
+  const sales: Mocked<AutomationSalesPort> = {
     getOpportunity: vi.fn(),
     listOpenOpportunities: vi.fn(),
-  } as unknown as AutomationSalesPort;
-  const users = {
+  } as Mocked<AutomationSalesPort>;
+  const users: Mocked<UserPublicPort> = {
     getUser: vi.fn(),
-  } as unknown as UserPublicPort;
+  } as Mocked<UserPublicPort>;
   const auditRecord = vi.fn().mockResolvedValue(undefined);
-  const handler: ActionHandler = {
+  const handler: Mocked<ActionHandler> = {
     actionType: 'NOTIFY',
     execute: vi.fn(),
-  };
+  } as Mocked<ActionHandler>;
   const service = new AutomationService(
     repo,
     crm,
