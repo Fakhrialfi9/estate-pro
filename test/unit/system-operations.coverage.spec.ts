@@ -4,9 +4,16 @@ import { SystemOperationsService } from '../../src/modules/system/application/se
 
 const now = new Date('2026-01-01T00:00:00.000Z');
 
+type Setting = {
+  uuid: string;
+  value: string;
+  updatedAt: Date;
+  version: number;
+};
+
 const dependencies = () => ({
   settings: {
-    get: vi.fn().mockImplementation(async (key: string) => {
+    get: vi.fn().mockImplementation((key: string): Setting => {
       if (key === 'system.maintenance_mode') {
         return {
           uuid: 'maintenance-1',
