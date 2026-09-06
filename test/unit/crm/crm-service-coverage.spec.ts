@@ -198,9 +198,9 @@ describe('CrmService coverage', () => {
     expect(
       (await s.relationship('c1', 'c2', { type: 'colleague' }, actor)).uuid,
     ).toBe('rel-1');
-    await expect(s.relationship('same', 'same', {}, actor)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      s.relationship('same', 'same', {}, actor),
+    ).rejects.toBeInstanceOf(BadRequestException);
     await s.removeRelationship('rel', actor);
   });
 
@@ -264,7 +264,9 @@ describe('CrmService coverage', () => {
       BadRequestException,
     );
     expect(await s.configList('source', { page: 1, limit: 10 })).toEqual([]);
-    expect((await s.configCreate('source', { code: 'web' }, actor)).uuid).toBe('row-1');
+    expect((await s.configCreate('source', { code: 'web' }, actor)).uuid).toBe(
+      'row-1',
+    );
     expect(
       (await s.configUpdate('source', 'c', { name: 'Web' }, actor)).uuid,
     ).toBe('row-1');
@@ -351,9 +353,10 @@ describe('CrmService coverage', () => {
   });
 
   it('maps repository errors to stable HTTP exceptions', async () => {
-    const repo = {
-      getContact: vi.fn(() => Promise.reject(new Error('already exists'))),
-    };
+    const repo = makeRepo() as Record<string, ReturnType<typeof vi.fn>>;
+    repo.getContact = vi.fn(async () => {
+      throw new Error('already exists');
+    });
     const s = new CrmService(
       repo as never,
       makeAudit(),
@@ -361,17 +364,17 @@ describe('CrmService coverage', () => {
       makeUserPort(),
     );
     await expect(s.getContact('c')).rejects.toBeInstanceOf(ConflictException);
-    repo.getContact.mockImplementationOnce(() =>
-      Promise.reject(new Error('not found')),
-    );
+    repo.getContact = vi.fn(async () => {
+      throw new Error('not found');
+    });
     await expect(s.getContact('c')).rejects.toBeInstanceOf(NotFoundException);
-    repo.getContact.mockImplementationOnce(() =>
-      Promise.reject(new Error('bad input')),
-    );
+    repo.getContact = vi.fn(async () => {
+      throw new Error('bad input');
+    });
     await expect(s.getContact('c')).rejects.toBeInstanceOf(BadRequestException);
-    repo.getContact.mockImplementationOnce(() =>
-      Promise.reject(new ForbiddenException()),
-    );
+    repo.getContact = vi.fn(async () => {
+      throw new ForbiddenException();
+    });
     await expect(s.getContact('c')).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
