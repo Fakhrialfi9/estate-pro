@@ -8,11 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AutomationCrmPort } from '../../../src/common/contracts/automation-crm.port.js';
 import type { AutomationSalesPort } from '../../../src/common/contracts/automation-sales.port.js';
-import type { UserPublicPort } from '../../../src/common/contracts/user-public.port.js';
-import type {
-  ActionHandler,
-  AutomationRepository,
-} from '../../../src/modules/automation/domain/automation.ports.js';
+import type { ActionHandler } from '../../../src/modules/automation/domain/automation.ports.js';
 import { AutomationService } from '../../../src/modules/automation/application/services/automation.service.js';
 import type { WorkflowValidator } from '../../../src/modules/automation/application/validation/workflow-validator.js';
 
