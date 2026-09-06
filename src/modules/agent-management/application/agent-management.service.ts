@@ -667,7 +667,7 @@ export class AgentManagementService {
           ),
           agentStatus: agent.status,
         },
-        this.effectiveAvailability(agent as AgentProfileDetails),
+        this.effectiveAvailability(agent),
         cap.remaining,
       )
     )
