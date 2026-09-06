@@ -205,6 +205,16 @@ const importProfileSchema = {
   },
 };
 
+const genericResponseSchema = {
+  type: 'object',
+  additionalProperties: true,
+};
+
+const genericArrayResponseSchema = {
+  type: 'array',
+  items: genericResponseSchema,
+};
+
 @ApiTags('System Control Plane')
 @ApiBearerAuth()
 @Controller({ path: 'system/control', version: '1' })
@@ -294,18 +304,33 @@ export class SystemRoadmapControlController {
 
   @Post('import-profiles')
   @RequirePermissions('system.import.profile.create')
+  @ApiResponse({
+    status: 201,
+    description: 'System import profile created.',
+    schema: importProfileSchema,
+  })
   createProfile(@Req() req: Request, @Body() dto: CreateImportProfileDto) {
     return this.control.createImportProfile(actor(req), dto);
   }
 
   @Get('import-profiles/:uuid')
   @RequirePermissions('system.import.profile.read')
+  @ApiResponse({
+    status: 200,
+    description: 'System import profile returned.',
+    schema: importProfileSchema,
+  })
   profile(@Param('uuid') uuid: string) {
     return this.control.getImportProfile(uuid);
   }
 
   @Patch('import-profiles/:uuid')
   @RequirePermissions('system.import.profile.update')
+  @ApiResponse({
+    status: 200,
+    description: 'System import profile updated.',
+    schema: importProfileSchema,
+  })
   updateProfile(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -320,12 +345,14 @@ export class SystemRoadmapControlController {
 
   @Get('integrations/:uuid/credentials')
   @RequirePermissions('system.integration.credentials.read')
+  @ApiResponse({ status: 200, schema: genericArrayResponseSchema })
   credentialsList(@Param('uuid') uuid: string, @Query() q: CredentialQueryDto) {
     return this.control.credentials(uuid, q.credentialType);
   }
 
   @Post('integrations/:uuid/credentials')
   @RequirePermissions('system.integration.credentials.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   createCredential(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -344,6 +371,7 @@ export class SystemRoadmapControlController {
 
   @Post('credentials/:uuid/rotate')
   @RequirePermissions('system.integration.credentials.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   rotateCredential(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -362,6 +390,7 @@ export class SystemRoadmapControlController {
 
   @Post('integrations/:integrationUuid/credentials/:credentialUuid/refresh')
   @RequirePermissions('system.integration.credentials.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   refreshCredential(
     @Req() req: Request,
     @Param('integrationUuid') integrationUuid: string,
@@ -376,18 +405,21 @@ export class SystemRoadmapControlController {
 
   @Post('credentials/:uuid/revoke')
   @RequirePermissions('system.integration.credentials.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   revokeCredential(@Req() req: Request, @Param('uuid') uuid: string) {
     return this.control.revokeCredential(actor(req), uuid);
   }
 
   @Get('integrations/:uuid/runtime')
   @RequirePermissions('system.integration.runtime.read')
+  @ApiResponse({ status: 200, schema: genericResponseSchema })
   runtime(@Param('uuid') uuid: string) {
     return this.control.runtime(uuid);
   }
 
   @Patch('integrations/:uuid/runtime')
   @RequirePermissions('system.integration.runtime.update')
+  @ApiResponse({ status: 200, schema: genericResponseSchema })
   configureRuntime(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -398,6 +430,7 @@ export class SystemRoadmapControlController {
 
   @Post('integrations/:uuid/sync/push')
   @RequirePermissions('system.integration.sync')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   push(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -414,6 +447,7 @@ export class SystemRoadmapControlController {
 
   @Post('integrations/:uuid/sync/pull')
   @RequirePermissions('system.integration.sync')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   pull(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -424,6 +458,7 @@ export class SystemRoadmapControlController {
 
   @Post('integrations/:uuid/sync')
   @RequirePermissions('system.integration.sync')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   bidirectional(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -441,12 +476,14 @@ export class SystemRoadmapControlController {
 
   @Get('integrations/:uuid/operations')
   @RequirePermissions('system.integration.operation.read')
+  @ApiResponse({ status: 200, schema: genericArrayResponseSchema })
   operations(@Param('uuid') uuid: string, @Query() q: OperationQueryDto) {
     return this.control.listOperations(uuid, q.state, q.limit);
   }
 
   @Post('integrations/:uuid/operations')
   @RequirePermissions('system.integration.operation.create')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   operation(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -457,6 +494,7 @@ export class SystemRoadmapControlController {
 
   @Post('operations/:uuid/retry')
   @RequirePermissions('system.integration.operation.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   @ApiOperation({
     summary: 'Schedule a failed integration operation for retry',
   })
@@ -466,6 +504,7 @@ export class SystemRoadmapControlController {
 
   @Post('operations/:uuid/complete')
   @RequirePermissions('system.integration.operation.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   complete(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -476,6 +515,7 @@ export class SystemRoadmapControlController {
 
   @Post('operations/:uuid/fail')
   @RequirePermissions('system.integration.operation.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   fail(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -486,12 +526,14 @@ export class SystemRoadmapControlController {
 
   @Get('integrations/:uuid/events')
   @RequirePermissions('system.integration.event.read')
+  @ApiResponse({ status: 200, schema: genericArrayResponseSchema })
   events(@Param('uuid') uuid: string, @Query() q: EventQueryDto) {
     return this.control.listEvents(uuid, q.status, q.limit);
   }
 
   @Post('integrations/:uuid/events')
   @RequirePermissions('system.integration.event.create')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   event(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -502,18 +544,21 @@ export class SystemRoadmapControlController {
 
   @Post('events/:uuid/process')
   @RequirePermissions('system.integration.event.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   processEvent(@Req() req: Request, @Param('uuid') uuid: string) {
     return this.control.processEvent(actor(req), uuid);
   }
 
   @Get('integrations/:uuid/conflicts')
   @RequirePermissions('system.integration.conflict.read')
+  @ApiResponse({ status: 200, schema: genericArrayResponseSchema })
   conflicts(@Param('uuid') uuid: string, @Query() q: ConflictQueryDto) {
     return this.control.conflicts(uuid, q.status, q.limit);
   }
 
   @Post('integrations/:uuid/conflicts')
   @RequirePermissions('system.integration.conflict.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   conflict(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -524,6 +569,7 @@ export class SystemRoadmapControlController {
 
   @Post('integrations/:uuid/conflicts/:conflictKey/resolve')
   @RequirePermissions('system.integration.conflict.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   resolveConflict(
     @Req() req: Request,
     @Param('uuid') uuid: string,
@@ -535,12 +581,14 @@ export class SystemRoadmapControlController {
 
   @Get('alerts')
   @RequirePermissions('system.alert.read')
+  @ApiResponse({ status: 200, schema: genericArrayResponseSchema })
   alerts(@Query() q: AlertQueryDto) {
     return this.control.alerts(q.status, q.severity, q.limit);
   }
 
   @Post('alerts/evaluate')
   @RequirePermissions('system.alert.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   evaluateAlerts(
     @Body() body: { signals: Record<string, number>; resourceUuid?: string },
   ) {
@@ -549,18 +597,21 @@ export class SystemRoadmapControlController {
 
   @Post('alerts/:uuid/acknowledge')
   @RequirePermissions('system.alert.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   acknowledgeAlert(@Req() req: Request, @Param('uuid') uuid: string) {
     return this.alertsService.acknowledge(actor(req), uuid);
   }
 
   @Post('alerts/:uuid/resolve')
   @RequirePermissions('system.alert.update')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   resolveAlert(@Req() req: Request, @Param('uuid') uuid: string) {
     return this.control.resolveAlert(actor(req), uuid);
   }
 
   @Post('integrations/:uuid/resync')
   @RequirePermissions('system.integration.sync')
+  @ApiResponse({ status: 201, schema: genericResponseSchema })
   resync(
     @Req() req: Request,
     @Param('uuid') uuid: string,

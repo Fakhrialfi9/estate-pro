@@ -1,5 +1,10 @@
 import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../common/security/authorization.guard.js';
@@ -25,6 +30,10 @@ export class ExecutiveDashboardController {
     'analytics.manage',
   )
   @ApiOperation({ summary: 'Read the authorized executive dashboard' })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'object', additionalProperties: true },
+  })
   get(@Req() request: Request, @Query() query: ExecutiveDashboardQueryDto) {
     return this.dashboard.get(query, actor(request));
   }
@@ -37,6 +46,10 @@ export class ExecutiveDashboardController {
     'analytics.manage',
   )
   @ApiOperation({ summary: 'Read property dashboard KPIs' })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'object', additionalProperties: true },
+  })
   property(
     @Req() request: Request,
     @Query() query: ExecutiveDashboardQueryDto,
@@ -52,6 +65,10 @@ export class ExecutiveDashboardController {
     'analytics.manage',
   )
   @ApiOperation({ summary: 'Read CRM dashboard KPIs' })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'object', additionalProperties: true },
+  })
   crm(@Req() request: Request, @Query() query: ExecutiveDashboardQueryDto) {
     return this.dashboard.getCrm(query, actor(request));
   }
@@ -64,6 +81,10 @@ export class ExecutiveDashboardController {
     'analytics.manage',
   )
   @ApiOperation({ summary: 'Read sales dashboard KPIs' })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'object', additionalProperties: true },
+  })
   sales(@Req() request: Request, @Query() query: ExecutiveDashboardQueryDto) {
     return this.dashboard.getSales(query, actor(request));
   }
@@ -76,6 +97,10 @@ export class ExecutiveDashboardController {
     'analytics.manage',
   )
   @ApiOperation({ summary: 'Read agent dashboard KPIs' })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'object', additionalProperties: true },
+  })
   agent(@Req() request: Request, @Query() query: ExecutiveDashboardQueryDto) {
     return this.dashboard.getAgent(query, actor(request));
   }
@@ -83,6 +108,10 @@ export class ExecutiveDashboardController {
   @Get('operational')
   @RequirePermissions('system.dashboard.read')
   @ApiOperation({ summary: 'Read operational dashboard status' })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'object', additionalProperties: true },
+  })
   operational() {
     return this.dashboard.getOperational();
   }

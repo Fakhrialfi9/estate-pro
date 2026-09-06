@@ -7,7 +7,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -31,6 +36,10 @@ export class SystemCacheOperationsController {
   @Get()
   @RequirePermissions('system.operations.read')
   @ApiOperation({ summary: 'Read safe cache statistics' })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'object', additionalProperties: true },
+  })
   stats() {
     return this.cache.stats();
   }
@@ -38,6 +47,10 @@ export class SystemCacheOperationsController {
   @Get('health')
   @RequirePermissions('system.operations.read')
   @ApiOperation({ summary: 'Read cache backend health' })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'object', additionalProperties: true },
+  })
   health() {
     return this.cache.health();
   }
@@ -45,6 +58,10 @@ export class SystemCacheOperationsController {
   @Delete(':namespace')
   @RequirePermissions('system.operations.update')
   @ApiOperation({ summary: 'Invalidate one cache namespace' })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'object', additionalProperties: true },
+  })
   async clearNamespace(
     @Param('namespace') namespace: string,
     @Req() request: Request,

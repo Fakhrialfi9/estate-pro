@@ -7,7 +7,12 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
@@ -24,6 +29,14 @@ export class CrmCommunicationDeliveryController {
   @Post(':uuid/send')
   @RequirePermissions('crm.communications.send')
   @ApiOperation({ summary: 'Deliver a queued CRM communication' })
+  @ApiResponse({
+    status: 201,
+    description: 'CRM communication delivered.',
+    schema: {
+      type: 'object',
+      additionalProperties: true,
+    },
+  })
   send(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     const actorUuid = (request.user as { sub?: string } | undefined)?.sub;
     if (!actorUuid) {

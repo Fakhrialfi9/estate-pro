@@ -8,7 +8,7 @@ import {
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { SystemIntegrationCallbackService } from '../application/services/system-integration-callback.service.js';
 import { SystemIntegrationService } from '../application/services/system-integration.service.js';
@@ -23,6 +23,14 @@ export class IntegrationCallbackController {
 
   @Post(':uuid/callback')
   @ApiOperation({ summary: 'Receive an authenticated integration callback' })
+  @ApiResponse({
+    status: 201,
+    description: 'Integration callback processed.',
+    schema: {
+      type: 'object',
+      additionalProperties: true,
+    },
+  })
   async callback(
     @Param('uuid', ParseUUIDPipe) uuid: string,
     @Headers('content-type') contentType: string | undefined,
