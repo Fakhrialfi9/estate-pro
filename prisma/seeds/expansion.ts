@@ -9,7 +9,7 @@ type InformationSchemaColumn = {
   TABLE_NAME: string;
   COLUMN_NAME: string;
   DATA_TYPE: string;
-  CHARACTER_MAXIMUM_LENGTH: number | null;
+  CHARACTER_MAXIMUM_LENGTH: number | bigint | null;
   IS_NULLABLE: 'YES' | 'NO';
   EXTRA: string;
 };
@@ -83,7 +83,11 @@ function isUuidLike(column: InformationSchemaColumn, value: string): boolean {
 function varyString(column: InformationSchemaColumn, value: string, variant: number, tableName: string): string {
   if (isUuidLike(column, value)) return deterministicUuid(tableName, `${column.COLUMN_NAME}:${value}:${variant}`);
 
-  const maxLength = column.CHARACTER_MAXIMUM_LENGTH ?? Number.MAX_SAFE_INTEGER;
+  const maxLength = column.CHARACTER_MAXIMUM_LENGTH === null ? Number.MAX_SAFE_INTEGER : Number(column.CHARACTER_MAXIMUM_LENGTH);
+  if (!Number.isSafeInteger(maxLength) || maxLength < 1) {
+    throw new Error(`Invalid string length metadata for ${tableName}.${column.COLUMN_NAME}`);
+  }
+
   if (value.includes('@')) {
     const at = value.indexOf('@');
     const local = value.slice(0, at);
