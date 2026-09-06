@@ -425,9 +425,9 @@ export class SystemRoadmapControlController {
   complete(
     @Req() req: Request,
     @Param('uuid') uuid: string,
-    @Body() dto: Record<string, unknown>,
+    @Body() body: Record<string, unknown>,
   ) {
-    return this.control.completeOperation(actor(req), uuid, dto);
+    return this.control.completeOperation(actor(req), uuid, body);
   }
 
   @Post('operations/:uuid/fail')
@@ -440,55 +440,99 @@ export class SystemRoadmapControlController {
     return this.control.failOperation(actor(req), uuid, dto);
   }
 
-  @Get('events')
+  @Get('integrations/:uuid/events')
   @RequirePermissions('system.integration.event.read')
-  events(@Query() q: EventQueryDto) {
-    return this.control.listEvents(q.status, q.limit);
+  events(@Param('uuid') uuid: string, @Query() q: EventQueryDto) {
+    return this.control.listEvents(uuid, q.status, q.limit);
   }
 
-  @Post('events')
+  @Post('integrations/:uuid/events')
   @RequirePermissions('system.integration.event.create')
-  event(@Req() req: Request, @Body() dto: CreateEventDto) {
-    return this.control.createEvent(actor(req), dto);
-  }
-
-  @Get('conflicts')
-  @RequirePermissions('system.integration.conflict.read')
-  conflicts(@Query() q: ConflictQueryDto) {
-    return this.control.listConflicts(q.status, q.limit);
-  }
-
-  @Post('conflicts')
-  @RequirePermissions('system.integration.conflict.create')
-  conflict(@Req() req: Request, @Body() dto: CreateConflictDto) {
-    return this.control.createConflict(actor(req), dto);
-  }
-
-  @Post('conflicts/:uuid/resolve')
-  @RequirePermissions('system.integration.conflict.resolve')
-  resolve(
+  event(
     @Req() req: Request,
     @Param('uuid') uuid: string,
+    @Body() dto: CreateEventDto,
+  ) {
+    return this.control.emitEvent(actor(req), uuid, dto);
+  }
+
+  @Post('events/:uuid/process')
+  @RequirePermissions('system.integration.event.update')
+  processEvent(@Req() req: Request, @Param('uuid') uuid: string) {
+    return this.control.processEvent(actor(req), uuid);
+  }
+
+  @Get('integrations/:uuid/conflicts')
+  @RequirePermissions('system.integration.conflict.read')
+  conflicts(@Param('uuid') uuid: string, @Query() q: ConflictQueryDto) {
+    return this.control.conflicts(uuid, q.status, q.limit);
+  }
+
+  @Post('integrations/:uuid/conflicts')
+  @RequirePermissions('system.integration.conflict.update')
+  conflict(
+    @Req() req: Request,
+    @Param('uuid') uuid: string,
+    @Body() dto: CreateConflictDto,
+  ) {
+    return this.control.recordConflict(actor(req), uuid, dto);
+  }
+
+  @Post('integrations/:uuid/conflicts/:conflictKey/resolve')
+  @RequirePermissions('system.integration.conflict.update')
+  resolveConflict(
+    @Req() req: Request,
+    @Param('uuid') uuid: string,
+    @Param('conflictKey') key: string,
     @Body() dto: ResolveConflictDto,
   ) {
-    return this.control.resolveConflict(actor(req), uuid, dto.resolution);
+    return this.control.resolveConflict(actor(req), uuid, key, dto.resolution);
   }
 
   @Get('alerts')
   @RequirePermissions('system.alert.read')
   alerts(@Query() q: AlertQueryDto) {
-    return this.alertsService.list(q.status, q.severity, q.limit);
+    return this.control.alerts(q.status, q.severity, q.limit);
+  }
+
+  @Post('alerts/evaluate')
+  @RequirePermissions('system.alert.update')
+  evaluateAlerts(
+    @Body() body: { signals: Record<string, number>; resourceUuid?: string },
+  ) {
+    return this.alertsService.evaluate(body);
   }
 
   @Post('alerts/:uuid/acknowledge')
   @RequirePermissions('system.alert.update')
-  acknowledge(@Req() req: Request, @Param('uuid') uuid: string) {
-    return this.alertsService.acknowledge(uuid, actor(req));
+  acknowledgeAlert(@Req() req: Request, @Param('uuid') uuid: string) {
+    return this.alertsService.acknowledge(actor(req), uuid);
+  }
+
+  @Post('alerts/:uuid/resolve')
+  @RequirePermissions('system.alert.update')
+  resolveAlert(@Req() req: Request, @Param('uuid') uuid: string) {
+    return this.control.resolveAlert(actor(req), uuid);
+  }
+
+  @Post('integrations/:uuid/resync')
+  @RequirePermissions('system.integration.sync')
+  resync(
+    @Req() req: Request,
+    @Param('uuid') uuid: string,
+    @Body() body: { direction: string; entityType?: string },
+  ) {
+    return this.control.resync(
+      actor(req),
+      uuid,
+      body.direction,
+      body.entityType,
+    );
   }
 }
 
 function actor(req: Request): string {
-  const user = (req as Request & { user?: { uuid?: string } }).user;
-  if (!user?.uuid) throw new UnauthorizedException('Authenticated user required');
-  return user.uuid;
+  const id = (req.user as { sub?: string } | undefined)?.sub;
+  if (!id) throw new UnauthorizedException('Authenticated actor missing');
+  return id;
 }
