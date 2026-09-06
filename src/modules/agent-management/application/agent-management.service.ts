@@ -118,22 +118,22 @@ export class AgentManagementService {
       })
     )
       throw new ForbiddenException('User is not eligible to become an agent');
-    const existing = await this.repo.findProfileByUserUuid(input.userUuid);
-    if (existing) throw new ConflictException('User already has an agent profile');
+    if (await this.repo.findProfileByUserUuid(input.userUuid))
+      throw new ConflictException('User already has an agent profile');
     const result = await this.repo.createProfile({
       uuid: randomUUID(),
       userUuid: input.userUuid,
-      displayName: input.displayName?.trim() || null,
-      bio: input.bio?.trim() || null,
-      status: input.status ?? 'ACTIVE',
-      hireDate: input.hireDate ? new Date(input.hireDate) : null,
-      licenseNumberMasked: input.licenseNumberMasked?.trim() || null,
+      displayName: input.displayName ?? null,
+      bio: input.bio ?? null,
+      status: 'ACTIVE',
+      hireDate: input.hireDate ?? null,
+      licenseNumberMasked: input.licenseNumberMasked ?? null,
       timeZone: input.timeZone ?? 'UTC',
       maxActiveAssignments: input.maxActiveAssignments ?? 10,
-      version: 1,
-      deletedAt: null,
     });
-    await this.record(actor, AUDIT.CREATED, result.uuid);
+    await this.record(actor, AUDIT.CREATED, result.uuid, {
+      userUuid: input.userUuid,
+    });
     return this.serialize(result);
   }
 
@@ -147,30 +147,55 @@ export class AgentManagementService {
     return this.serialize(agent);
   }
 
+  async list(
+    query: {
+      limit?: number;
+      cursor?: string;
+      status?: AgentProfileStatus;
+      specializationUuid?: string;
+      regionUuid?: string;
+    },
+    actor: Actor,
+  ) {
+    await this.requirePermission(actor.uuid, 'agents.read');
+    const limit = Math.min(100, Math.max(1, query.limit ?? 20));
+    const rows = await this.repo.listProfiles({
+      limit,
+      cursor: query.cursor,
+      status: query.status,
+      specializationUuid: query.specializationUuid,
+      regionUuids: query.regionUuid ? [query.regionUuid] : undefined,
+    });
+    return {
+      items: rows.map((x) => this.serialize(x)),
+      nextCursor: rows.length === limit ? (rows.at(-1)?.uuid ?? null) : null,
+    };
+  }
+
   async update(uuid: string, input: AgentUpdateDto, actor: Actor) {
     await this.requirePermission(actor.uuid, 'agents.manage');
-    await this.requireAgent(uuid);
+    const current = await this.requireAgent(uuid);
     const result = await this.repo.updateProfile(uuid, {
       ...(input.displayName !== undefined
-        ? { displayName: input.displayName?.trim() || null }
+        ? { displayName: input.displayName }
         : {}),
-      ...(input.bio !== undefined ? { bio: input.bio?.trim() || null } : {}),
+      ...(input.bio !== undefined ? { bio: input.bio } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}),
-      ...(input.hireDate !== undefined
-        ? { hireDate: input.hireDate ? new Date(input.hireDate) : null }
-        : {}),
+      ...(input.hireDate !== undefined ? { hireDate: input.hireDate } : {}),
       ...(input.licenseNumberMasked !== undefined
-        ? {
-            licenseNumberMasked: input.licenseNumberMasked?.trim() || null,
-          }
+        ? { licenseNumberMasked: input.licenseNumberMasked }
         : {}),
       ...(input.timeZone !== undefined ? { timeZone: input.timeZone } : {}),
       ...(input.maxActiveAssignments !== undefined
         ? { maxActiveAssignments: input.maxActiveAssignments }
         : {}),
-      version: { increment: 1 },
     });
-    await this.record(actor, AUDIT.UPDATED, result.uuid);
+    if (input.maxActiveAssignments !== undefined)
+      await this.record(actor, AUDIT.CAPACITY_CHANGED, uuid, {
+        oldValue: current.maxActiveAssignments,
+        newValue: input.maxActiveAssignments,
+      });
+    await this.record(actor, AUDIT.UPDATED, uuid);
     return this.serialize(result);
   }
 
@@ -181,94 +206,102 @@ export class AgentManagementService {
     await this.record(actor, AUDIT.ARCHIVED, uuid);
   }
 
-  async list(
-    query: {
-      limit?: number;
-      cursor?: string;
-      status?: AgentProfileStatus;
-      specializationUuid?: string;
-      regionUuids?: string[];
-    },
-    actor: Actor,
-  ) {
-    await this.requirePermission(actor.uuid, 'agents.read');
-    const rows = await this.repo.listProfiles({
-      limit: Math.min(100, Math.max(1, query.limit ?? 20)),
-      cursor: query.cursor,
-      status: query.status,
-      specializationUuid: query.specializationUuid,
-      regionUuids: query.regionUuids,
+  async createSpecialization(input: SpecializationCreateDto, actor: Actor) {
+    await this.requirePermission(actor.uuid, 'agents.specialization.manage');
+    const item = await this.repo.createSpecialization({
+      uuid: randomUUID(),
+      code: input.code.trim(),
+      name: input.name.trim(),
+      description: input.description ?? null,
+      sortOrder: input.sortOrder ?? 0,
+      isActive: input.isActive ?? true,
     });
-    return {
-      items: rows.map((row) => this.serialize(row)),
-      nextCursor: rows.length
-        ? rows[rows.length - 1]?.uuid ?? null
-        : null,
-    };
+    await this.record(actor, AUDIT.SPECIALIZATION_CHANGED, item.uuid);
+    return item;
+  }
+
+  listSpecializations() {
+    return this.repo.listSpecializations();
+  }
+
+  async specializations(uuid: string, actor: Actor) {
+    const agent = await this.requireAgent(uuid);
+    await this.requireSelfOrPermission(
+      agent.userUuid,
+      actor.uuid,
+      'agents.read',
+    );
+    return (agent.specializations ?? []).map((x) => ({
+      uuid: x.specialization.uuid,
+      code: x.specialization.code,
+      name: x.specialization.name,
+      isPrimary: x.isPrimary,
+    }));
   }
 
   async addSpecialization(
-    uuid: string,
-    input: SpecializationCreateDto,
+    agentUuid: string,
+    specializationUuid: string,
+    primary: boolean,
     actor: Actor,
   ) {
     await this.requirePermission(actor.uuid, 'agents.specialization.manage');
-    const agent = await this.requireAgent(uuid);
-    const specialization = await this.repo.findSpecialization(
-      input.specializationUuid,
-    );
-    if (!specialization)
+    const agent = await this.requireAgent(agentUuid);
+    const spec = await this.repo.findSpecialization(specializationUuid);
+    if (!spec || !spec.isActive)
       throw new NotFoundException('Specialization not found');
     const result = await this.repo.setSpecialization(
       agent.id,
-      specialization.id,
-      input.isPrimary ?? false,
+      spec.id,
+      primary,
     );
-    await this.record(actor, AUDIT.SPECIALIZATION_CHANGED, uuid, {
-      specializationUuid: input.specializationUuid,
-      isPrimary: input.isPrimary ?? false,
+    await this.record(actor, AUDIT.SPECIALIZATION_CHANGED, agentUuid, {
+      specializationUuid,
+      isPrimary: primary,
     });
     return result;
   }
 
   async removeSpecialization(
-    uuid: string,
+    agentUuid: string,
     specializationUuid: string,
     actor: Actor,
   ) {
     await this.requirePermission(actor.uuid, 'agents.specialization.manage');
-    const agent = await this.requireAgent(uuid);
-    const specialization = await this.repo.findSpecialization(specializationUuid);
-    if (!specialization)
-      throw new NotFoundException('Specialization not found');
-    await this.repo.removeSpecialization(agent.id, specialization.id);
-    await this.record(actor, AUDIT.SPECIALIZATION_CHANGED, uuid, {
+    const agent = await this.requireAgent(agentUuid);
+    const spec = await this.repo.findSpecialization(specializationUuid);
+    if (!spec) throw new NotFoundException('Specialization not found');
+    await this.repo.removeSpecialization(agent.id, spec.id);
+    await this.record(actor, AUDIT.SPECIALIZATION_CHANGED, agentUuid, {
       specializationUuid,
       removed: true,
     });
   }
 
-  async addCoverage(uuid: string, input: CoverageCreateDto, actor: Actor) {
-    await this.requirePermission(actor.uuid, 'agents.coverage.manage');
-    const agent = await this.requireAgent(uuid);
-    const region = await this.propertyRegions.getRegion(input.regionUuid);
-    if (!region) throw new NotFoundException('Region not found');
-    const result = await this.repo.addCoverage({
+  async addCoverage(agentUuid: string, input: CoverageCreateDto, actor: Actor) {
+    await this.requirePermission(actor.uuid, 'agents.location.manage');
+    const agent = await this.requireAgent(agentUuid);
+    if (!(await this.propertyRegions.isKnownRegion(input.regionUuid)))
+      throw new BadRequestException('Unknown geographic region');
+    const item = await this.repo.addCoverage({
       uuid: randomUUID(),
       agentId: agent.id,
-      regionUuid: input.regionUuid,
       level: input.level,
+      regionUuid: input.regionUuid,
+      label: input.label ?? null,
       isActive: true,
+      createdBy: actor.uuid,
+      updatedBy: actor.uuid,
     });
-    await this.record(actor, AUDIT.COVERAGE_CHANGED, uuid, {
-      regionUuid: input.regionUuid,
+    await this.record(actor, AUDIT.COVERAGE_CHANGED, agentUuid, {
       level: input.level,
+      regionUuid: input.regionUuid,
     });
-    return result;
+    return item;
   }
 
-  async listCoverage(uuid: string, actor: Actor) {
-    const agent = await this.requireAgent(uuid);
+  async listCoverage(agentUuid: string, actor: Actor) {
+    const agent = await this.requireAgent(agentUuid);
     await this.requireSelfOrPermission(
       agent.userUuid,
       actor.uuid,
@@ -277,93 +310,86 @@ export class AgentManagementService {
     return this.repo.listCoverages(agent.id);
   }
 
-  async removeCoverage(uuid: string, coverageUuid: string, actor: Actor) {
-    await this.requirePermission(actor.uuid, 'agents.coverage.manage');
-    const agent = await this.requireAgent(uuid);
-    const result = await this.repo.removeCoverage(coverageUuid);
-    if (result.agentId !== agent.id)
-      throw new ForbiddenException('Coverage does not belong to agent');
-    await this.record(actor, AUDIT.COVERAGE_CHANGED, uuid, {
-      coverageUuid,
+  async removeCoverage(coverageUuid: string, actor: Actor) {
+    await this.requirePermission(actor.uuid, 'agents.location.manage');
+    await this.repo.removeCoverage(coverageUuid);
+    await this.record(actor, AUDIT.COVERAGE_CHANGED, coverageUuid, {
       removed: true,
     });
   }
 
-  async setAvailability(
-    uuid: string,
+  async updateAvailability(
+    agentUuid: string,
     input: AvailabilityUpdateDto,
     actor: Actor,
   ) {
-    const agent = await this.requireAgent(uuid);
-    await this.requireSelfOrPermission(
-      agent.userUuid,
-      actor.uuid,
-      'agents.availability.manage',
-    );
-    const result = await this.repo.saveAvailability({
+    const agent = await this.requireAgent(agentUuid);
+    if (actor.uuid !== agent.userUuid)
+      await this.requirePermission(actor.uuid, 'agents.availability.manage');
+    for (const item of input.schedule) {
+      if (
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(item.startTime) ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(item.endTime)
+      )
+        throw new BadRequestException('Invalid schedule time');
+    }
+    for (const item of input.exceptions)
+      if (item.endsAt <= item.startsAt)
+        throw new BadRequestException(
+          'Availability exception end must be after start',
+        );
+    await this.repo.saveAvailability({
       agentId: agent.id,
       status: input.status,
       timeZone: input.timeZone ?? agent.timeZone,
+      effectiveAt: input.effectiveAt ?? new Date(),
+      schedule: input.schedule,
+      exceptions: input.exceptions,
     });
-    await this.record(actor, AUDIT.AVAILABILITY_CHANGED, uuid, {
-      status: input.status,
-    });
-    return result;
+    await this.record(actor, AUDIT.AVAILABILITY_CHANGED, agentUuid);
+    return this.getAvailability(agentUuid);
   }
 
-  async availability(uuid: string, actor: Actor) {
-    const agent = await this.requireAgent(uuid);
-    await this.requireSelfOrPermission(
-      agent.userUuid,
-      actor.uuid,
-      'agents.availability.read',
-    );
-    const full = await this.requireAgent(uuid);
+  async getAvailability(agentUuid: string) {
+    const agent = await this.requireAgent(agentUuid);
+    const full = await this.repo.findProfile(agentUuid);
     return {
       status: this.effectiveAvailability(full),
       timeZone: full?.availability?.timeZone ?? agent.timeZone,
-      weeklySchedules: full?.weeklySchedules ?? [],
+      schedule: full?.weeklySchedules ?? [],
       exceptions: full?.availabilityExceptions ?? [],
     };
   }
 
-  async setCapacity(
-    uuid: string,
-    maxActiveAssignments: number,
-    actor: Actor,
-  ) {
-    await this.requirePermission(actor.uuid, 'agents.capacity.manage');
-    const result = await this.repo.updateProfile(uuid, {
-      maxActiveAssignments,
-      version: { increment: 1 },
-    });
-    await this.record(actor, AUDIT.CAPACITY_CHANGED, uuid, {
-      maxActiveAssignments,
-    });
-    return this.serialize(result);
+  async capacity(agentUuid: string, actor: Actor) {
+    const agent = await this.requireAgent(agentUuid);
+    await this.requireSelfOrPermission(
+      agent.userUuid,
+      actor.uuid,
+      'agents.read',
+    );
+    return this.capacityForAgent(agent);
   }
 
   async assign(
+    propertyUuid: string,
     agentUuid: string,
-    input: {
-      propertyUuid: string;
-      assignmentType: string;
-    },
     actor: Actor,
+    reason?: string,
   ) {
-    const agent = await this.requireAgent(agentUuid);
-    await this.assignmentPermission(agent.userUuid, actor.uuid);
-    await this.ensureAssignable(agent);
+    const target = await this.requireAgent(agentUuid);
+    await this.assignmentPermission(target.userUuid, actor.uuid);
+    await this.ensureAssignable(target);
     const result = await this.propertyAssignments.assign({
-      propertyUuid: input.propertyUuid,
-      agentUserUuid: agent.userUuid,
-      assignmentType: input.assignmentType,
+      propertyUuid,
+      agentUserUuid: target.userUuid,
+      agentDisplayName: target.displayName ?? target.userUuid,
       actorUuid: actor.uuid,
     });
-    await this.record(actor, AUDIT.ASSIGNED, agentUuid, {
-      propertyUuid: input.propertyUuid,
-      assignmentType: input.assignmentType,
-      assignmentUuid: result.uuid,
+    await this.record(actor, AUDIT.ASSIGNED, result.uuid, {
+      propertyUuid,
+      agentUserUuid: target.userUuid,
+      ...(reason ? { reason } : {}),
     });
     return result;
   }
@@ -372,91 +398,105 @@ export class AgentManagementService {
     propertyUuid: string,
     toAgentUuid: string,
     actor: Actor,
+    fromAgentUuid?: string,
+    reason?: string,
   ) {
+    await this.requirePermission(actor.uuid, 'agents.assignment.manage');
     const target = await this.requireAgent(toAgentUuid);
-    await this.assignmentPermission(target.userUuid, actor.uuid);
     await this.ensureAssignable(target);
     const result = await this.propertyAssignments.reassign({
+      propertyUuid,
+      fromAgentUserUuid: fromAgentUuid
+        ? (await this.requireAgent(fromAgentUuid)).userUuid
+        : undefined,
+      toAgentUserUuid: target.userUuid,
+      toAgentDisplayName: target.displayName ?? target.userUuid,
+      actorUuid: actor.uuid,
+    });
+    await this.record(actor, AUDIT.REASSIGNED, result.uuid, {
+      propertyUuid,
+      toAgentUserUuid: target.userUuid,
+      ...(reason ? { reason } : {}),
+    });
+    return result;
+  }
+
+  async unassign(
+    propertyUuid: string,
+    agentUuid: string,
+    actor: Actor,
+    reason?: string,
+  ) {
+    await this.requirePermission(actor.uuid, 'agents.assignment.manage');
+    const target = await this.requireAgent(agentUuid);
+    const result = await this.propertyAssignments.unassign({
       propertyUuid,
       agentUserUuid: target.userUuid,
       actorUuid: actor.uuid,
     });
-    await this.record(actor, AUDIT.REASSIGNED, toAgentUuid, {
+    await this.record(actor, AUDIT.UNASSIGNED, result.uuid, {
       propertyUuid,
-      assignmentUuid: result.uuid,
+      agentUserUuid: target.userUuid,
+      ...(reason ? { reason } : {}),
     });
     return result;
   }
 
-  async unassign(propertyUuid: string, actor: Actor) {
-    await this.requirePermission(actor.uuid, 'agents.assignment.manage');
-    const result = await this.propertyAssignments.unassign({
-      propertyUuid,
-      actorUuid: actor.uuid,
-    });
-    await this.record(actor, AUDIT.UNASSIGNED, result.agentUuid, {
-      propertyUuid,
-      assignmentUuid: result.uuid,
-    });
-    return result;
+  async assignments(agentUuid: string, history: boolean, actor: Actor) {
+    const agent = await this.requireAgent(agentUuid);
+    await this.requireSelfOrPermission(
+      agent.userUuid,
+      actor.uuid,
+      'agents.read',
+    );
+    return history
+      ? this.propertyAssignments.listHistory(agent.userUuid, 100)
+      : this.propertyAssignments.listCurrent(agent.userUuid, 100);
   }
 
-  async createTarget(
-    uuid: string,
-    input: TargetCreateDto,
-    actor: Actor,
-  ) {
+  async createTarget(agentUuid: string, input: TargetCreateDto, actor: Actor) {
     await this.requirePermission(actor.uuid, 'agents.target.manage');
-    const agent = await this.requireAgent(uuid);
+    if (input.periodEnd < input.periodStart)
+      throw new BadRequestException('periodEnd must be after periodStart');
+    const agent = await this.requireAgent(agentUuid);
     const item = await this.repo.createTarget({
       uuid: randomUUID(),
       agentId: agent.id,
       metricType: input.metricType,
-      periodStart: new Date(input.periodStart),
-      periodEnd: new Date(input.periodEnd),
+      periodType: input.periodType,
+      periodStart: input.periodStart,
+      periodEnd: input.periodEnd,
       targetValue: input.targetValue,
-      status: input.status,
+      scope: input.scope ?? null,
+      status: 'ACTIVE',
+      createdBy: actor.uuid,
+      updatedBy: actor.uuid,
     });
-    await this.record(actor, AUDIT.TARGET_CHANGED, uuid, {
-      action: 'created',
-      targetUuid: item.uuid,
-    });
+    await this.record(actor, AUDIT.TARGET_CHANGED, item.uuid);
     return item;
   }
 
-  async listTargets(uuid: string, actor: Actor) {
-    const agent = await this.requireAgent(uuid);
+  async listTargets(agentUuid: string, actor: Actor) {
+    const agent = await this.requireAgent(agentUuid);
     await this.requireSelfOrPermission(
       agent.userUuid,
       actor.uuid,
-      'agents.performance.read',
+      'agents.target.read',
     );
     return this.repo.listTargets(agent.id);
   }
 
-  async updateTarget(
-    uuid: string,
-    targetUuid: string,
-    input: TargetUpdateDto,
-    actor: Actor,
-  ) {
+  async updateTarget(uuid: string, input: TargetUpdateDto, actor: Actor) {
     await this.requirePermission(actor.uuid, 'agents.target.manage');
-    const current = await this.repo.getTarget(targetUuid);
-    if (!current || current.agentId !== (await this.requireAgent(uuid)).id)
-      throw new NotFoundException('Agent target not found');
-    const item = await this.repo.updateTarget(targetUuid, {
-      ...(input.metricType !== undefined
-        ? { metricType: input.metricType }
-        : {}),
-      ...(input.periodStart !== undefined
-        ? { periodStart: new Date(input.periodStart) }
-        : {}),
-      ...(input.periodEnd !== undefined
-        ? { periodEnd: new Date(input.periodEnd) }
-        : {}),
+    const current = await this.repo.findTarget(uuid);
+    if (!current) throw new NotFoundException('Target not found');
+    if (current.status === 'CLOSED')
+      throw new ConflictException('Closed target is immutable');
+    const item = await this.repo.updateTarget(uuid, {
       ...(input.targetValue !== undefined
         ? { targetValue: input.targetValue }
         : {}),
+      ...(input.scope !== undefined ? { scope: input.scope } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}),
     });
     await this.record(actor, AUDIT.TARGET_CHANGED, uuid, {
