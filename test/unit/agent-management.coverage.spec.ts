@@ -1,0 +1,149 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+
+import { AgentManagementService } from '../../src/modules/agent-management/application/agent-management.service.js';
+
+const uuid = '123e4567-e89b-12d3-a456-426614174000';
+const actor = { uuid: uuid, ipAddress: '127.0.0.1', userAgent: 'vitest', requestId: 'req-1' };
+
+const agent = {
+  id: 1n,
+  uuid: 'agent-1',
+  userUuid: uuid,
+  displayName: 'Alice',
+  bio: 'Broker',
+  status: 'ACTIVE',
+  hireDate: null,
+  licenseNumberMasked: null,
+  timeZone: 'UTC',
+  maxActiveAssignments: 10,
+  availability: { status: 'AVAILABLE', timeZone: 'UTC' },
+  weeklySchedules: [],
+  availabilityExceptions: [],
+  assignments: [],
+  specializations: [],
+};
+
+const depsFactory = () => ({
+  repo: {
+    findProfileByUserUuid: vi.fn().mockResolvedValue(null),
+    createProfile: vi.fn().mockResolvedValue(agent),
+    findProfile: vi.fn().mockResolvedValue(agent),
+    listProfiles: vi.fn().mockResolvedValue([agent]),
+    updateProfile: vi.fn().mockResolvedValue(agent),
+    softDeleteProfile: vi.fn().mockResolvedValue(undefined),
+    createSpecialization: vi.fn().mockResolvedValue({ uuid: 'spec-1', code: 'RES', name: 'Residential', isActive: true }),
+    listSpecializations: vi.fn().mockResolvedValue([{ uuid: 'spec-1' }]),
+    findSpecialization: vi.fn().mockResolvedValue({ id: 2n, uuid: 'spec-1', code: 'RES', name: 'Residential', isActive: true }),
+    setSpecialization: vi.fn().mockResolvedValue({ uuid: 'link-1' }),
+    removeSpecialization: vi.fn().mockResolvedValue(undefined),
+    addCoverage: vi.fn().mockResolvedValue({ uuid: 'coverage-1' }),
+    listCoverages: vi.fn().mockResolvedValue([{ uuid: 'coverage-1' }]),
+    removeCoverage: vi.fn().mockResolvedValue(undefined),
+    saveAvailability: vi.fn().mockResolvedValue(undefined),
+    listTargets: vi.fn().mockResolvedValue([]),
+    createTarget: vi.fn().mockResolvedValue({ uuid: 'target-1' }),
+    updateTarget: vi.fn().mockResolvedValue({ uuid: 'target-1' }),
+    deleteTarget: vi.fn().mockResolvedValue(undefined),
+  },
+  authorization: {
+    resolve: vi.fn().mockResolvedValue({ userUuid: uuid, permissionCodes: ['agents.manage', 'agents.read', 'agents.specialization.manage', 'agents.location.manage', 'agents.availability.manage', 'agents.assignment.manage', 'agents.target.manage'], roleCodes: [] }),
+  },
+  users: { getUser: vi.fn().mockResolvedValue({ uuid, isActive: true, status: 'active' }) },
+  audit: { record: vi.fn().mockResolvedValue(undefined) },
+  propertyAssignments: {
+    assign: vi.fn().mockResolvedValue({ uuid: 'assignment-1' }),
+    reassign: vi.fn().mockResolvedValue({ uuid: 'assignment-2' }),
+    unassign: vi.fn().mockResolvedValue({ uuid: 'assignment-3' }),
+    listHistory: vi.fn().mockResolvedValue([{ uuid: 'assignment-h1' }]),
+    listCurrent: vi.fn().mockResolvedValue([{ uuid: 'assignment-c1' }]),
+  },
+  propertyContext: {},
+  propertyRegions: { isKnownRegion: vi.fn().mockResolvedValue(true) },
+  crmWorkload: { getWorkload: vi.fn().mockResolvedValue({ activeAssignments: 1 }) },
+  salesWorkload: { getWorkload: vi.fn().mockResolvedValue({ activeOpportunities: 1 }) },
+});
+
+describe('AgentManagementService coverage', () => {
+  let d: ReturnType<typeof depsFactory>;
+  let service: AgentManagementService;
+
+  beforeEach(() => {
+    d = depsFactory();
+    service = new AgentManagementService(
+      d.repo as never,
+      d.authorization as never,
+      d.users as never,
+      d.audit as never,
+      d.propertyAssignments as never,
+      d.propertyContext as never,
+      d.propertyRegions as never,
+      d.crmWorkload as never,
+      d.salesWorkload as never,
+    );
+  });
+
+  it('creates and lists eligible agents and rejects duplicates/ineligible users', async () => {
+    const created = await service.create({ userUuid: uuid, displayName: 'Alice' } as never, actor);
+    expect(created).toMatchObject({ uuid: 'agent-1' });
+    expect(d.repo.createProfile).toHaveBeenCalled();
+    expect(d.audit.record).toHaveBeenCalled();
+
+    const list = await service.list({ limit: 200, regionUuid: 'region-1' }, actor);
+    expect(list.items).toHaveLength(1);
+    expect(list.nextCursor).toBe('agent-1');
+
+    d.repo.findProfileByUserUuid.mockResolvedValueOnce({ uuid: 'existing' });
+    await expect(service.create({ userUuid: uuid, displayName: 'Alice' } as never, actor)).rejects.toBeInstanceOf(ConflictException);
+
+    d.repo.findProfileByUserUuid.mockResolvedValueOnce(null);
+    d.authorization.resolve.mockResolvedValueOnce({ userUuid: uuid, permissionCodes: [], roleCodes: [] });
+    await expect(service.create({ userUuid: uuid, displayName: 'Alice' } as never, actor)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('gets, updates and archives agent profiles', async () => {
+    await expect(service.get('agent-1', actor)).resolves.toMatchObject({ uuid: 'agent-1' });
+    await expect(service.update('agent-1', { displayName: 'Updated', maxActiveAssignments: 20 } as never, actor)).resolves.toMatchObject({ uuid: 'agent-1' });
+    expect(d.repo.updateProfile).toHaveBeenCalledWith('agent-1', expect.objectContaining({ displayName: 'Updated', maxActiveAssignments: 20 }));
+    await expect(service.archive('agent-1', actor)).resolves.toBeUndefined();
+    expect(d.repo.softDeleteProfile).toHaveBeenCalledWith('agent-1');
+
+    d.repo.findProfile.mockResolvedValueOnce(null);
+    await expect(service.get('missing', actor)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('covers specialization and geographic coverage lifecycle', async () => {
+    await expect(service.createSpecialization({ code: ' RES ', name: ' Residential ' } as never, actor)).resolves.toMatchObject({ uuid: 'spec-1' });
+    await expect(service.listSpecializations()).resolves.toEqual([{ uuid: 'spec-1' }]);
+    await expect(service.specializations('agent-1', actor)).resolves.toEqual([]);
+    await expect(service.addSpecialization('agent-1', 'spec-1', true, actor)).resolves.toEqual({ uuid: 'link-1' });
+    await expect(service.removeSpecialization('agent-1', 'spec-1', actor)).resolves.toBeUndefined();
+
+    d.repo.findSpecialization.mockResolvedValueOnce(null);
+    await expect(service.addSpecialization('agent-1', 'missing', false, actor)).rejects.toBeInstanceOf(NotFoundException);
+
+    await expect(service.addCoverage('agent-1', { level: 'CITY', regionUuid: 'region-1' } as never, actor)).resolves.toEqual({ uuid: 'coverage-1' });
+    await expect(service.listCoverage('agent-1', actor)).resolves.toEqual([{ uuid: 'coverage-1' }]);
+    await expect(service.removeCoverage('coverage-1', actor)).resolves.toBeUndefined();
+    d.propertyRegions.isKnownRegion.mockResolvedValueOnce(false);
+    await expect(service.addCoverage('agent-1', { level: 'CITY', regionUuid: 'bad-region' } as never, actor)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('validates and persists availability schedules', async () => {
+    const schedule = [{ dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }];
+    const exceptions = [{ startsAt: new Date('2026-01-01T09:00:00Z'), endsAt: new Date('2026-01-01T10:00:00Z') }];
+    await expect(service.updateAvailability('agent-1', { status: 'AVAILABLE', schedule, exceptions } as never, actor)).resolves.toMatchObject({ status: 'AVAILABLE' });
+    expect(d.repo.saveAvailability).toHaveBeenCalled();
+    await expect(service.updateAvailability('agent-1', { status: 'AVAILABLE', schedule: [{ dayOfWeek: 1, startTime: 'bad', endTime: '17:00' }], exceptions } as never, actor)).rejects.toThrow('Invalid schedule time');
+    await expect(service.updateAvailability('agent-1', { status: 'AVAILABLE', schedule, exceptions: [{ startsAt: new Date('2026-01-01T10:00:00Z'), endsAt: new Date('2026-01-01T09:00:00Z') }] } as never, actor)).rejects.toThrow('Availability exception end must be after start');
+  });
+
+  it('covers assignment, reassignment, unassignment and history/current views', async () => {
+    await expect(service.assign('property-1', 'agent-1', actor, 'manual')).resolves.toEqual({ uuid: 'assignment-1' });
+    await expect(service.reassign('property-1', 'agent-1', actor, 'agent-1', 'capacity')).resolves.toEqual({ uuid: 'assignment-2' });
+    await expect(service.unassign('property-1', 'agent-1', actor, 'sold')).resolves.toEqual({ uuid: 'assignment-3' });
+    await expect(service.assignments('agent-1', true, actor)).resolves.toEqual([{ uuid: 'assignment-h1' }]);
+    await expect(service.assignments('agent-1', false, actor)).resolves.toEqual([{ uuid: 'assignment-c1' }]);
+    expect(d.propertyAssignments.assign).toHaveBeenCalledWith(expect.objectContaining({ propertyUuid: 'property-1', agentUserUuid: uuid }));
+  });
+});
