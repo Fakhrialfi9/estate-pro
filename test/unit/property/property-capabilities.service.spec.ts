@@ -51,7 +51,10 @@ describe('PropertyCapabilitiesService', () => {
     deleteDocument: vi.fn(),
     recordHistory: vi.fn(),
     listHistory: vi.fn(),
-  } satisfies Record<keyof PropertyCapabilitiesRepository, ReturnType<typeof vi.fn>>;
+  } satisfies Record<
+    keyof PropertyCapabilitiesRepository,
+    ReturnType<typeof vi.fn>
+  >;
   const auditRecord = vi.fn().mockResolvedValue(undefined);
   const service = new PropertyCapabilitiesService(repository, {
     record: auditRecord,

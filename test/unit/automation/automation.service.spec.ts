@@ -100,15 +100,15 @@ describe('AutomationService', () => {
   const sales: Mocked<AutomationSalesPort> = {
     getOpportunity: vi.fn(),
     listOpenOpportunities: vi.fn(),
-  } as Mocked<AutomationSalesPort>;
+  };
   const users: Mocked<UserPublicPort> = {
     getUser: vi.fn(),
-  } as Mocked<UserPublicPort>;
+  };
   const auditRecord = vi.fn().mockResolvedValue(undefined);
   const handler: Mocked<ActionHandler> = {
     actionType: 'NOTIFY',
     execute: vi.fn(),
-  } as Mocked<ActionHandler>;
+  };
   const service = new AutomationService(
     repo,
     crm,
