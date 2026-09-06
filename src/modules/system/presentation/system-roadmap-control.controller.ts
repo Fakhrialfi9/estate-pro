@@ -139,6 +139,36 @@ const environmentMetadataSchema = {
   },
 };
 
+const featureFlagSchema = {
+  type: 'object',
+  required: [
+    'uuid',
+    'key',
+    'environment',
+    'description',
+    'enabled',
+    'rolloutPercentage',
+    'metadata',
+    'createdBy',
+    'updatedBy',
+    'createdAt',
+    'updatedAt',
+  ],
+  properties: {
+    uuid: { type: 'string', format: 'uuid' },
+    key: { type: 'string' },
+    environment: { type: 'string' },
+    description: { type: 'string', nullable: true },
+    enabled: { type: 'boolean' },
+    rolloutPercentage: { type: 'integer', minimum: 0, maximum: 100 },
+    metadata: { type: 'object', additionalProperties: true },
+    createdBy: { type: 'string', format: 'uuid', nullable: true },
+    updatedBy: { type: 'string', format: 'uuid', nullable: true },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+};
+
 @ApiTags('System Control Plane')
 @ApiBearerAuth()
 @Controller({ path: 'system/control', version: '1' })
@@ -178,34 +208,48 @@ export class SystemRoadmapControlController {
 
   @Get('flags')
   @RequirePermissions('system.flags.read')
+  @ApiResponse({
+    status: 200,
+    description: 'System feature flags returned.',
+    schema: {
+      type: 'array',
+      items: featureFlagSchema,
+    },
+  })
   flags(@Query() q: FeatureFlagQueryDto) {
     return this.control.listFlags(q.environment);
   }
+
   @Post('flags')
   @RequirePermissions('system.flags.update')
   setFlag(@Req() req: Request, @Body() dto: SetFeatureFlagDto) {
     return this.control.setFlag(actor(req), dto);
   }
+
   @Post('flags/evaluate')
   @RequirePermissions('system.flags.read')
   evaluate(@Body() dto: EvaluateFeatureFlagDto) {
     return this.control.evaluateFlag(dto.key, dto.environment, dto.subjectKey);
   }
+
   @Get('import-profiles')
   @RequirePermissions('system.import.profile.read')
   profiles(@Query() q: ImportProfileQueryDto) {
     return this.control.listImportProfiles(q.entity, q.active);
   }
+
   @Post('import-profiles')
   @RequirePermissions('system.import.profile.create')
   createProfile(@Req() req: Request, @Body() dto: CreateImportProfileDto) {
     return this.control.createImportProfile(actor(req), dto);
   }
+
   @Get('import-profiles/:uuid')
   @RequirePermissions('system.import.profile.read')
   profile(@Param('uuid') uuid: string) {
     return this.control.getImportProfile(uuid);
   }
+
   @Patch('import-profiles/:uuid')
   @RequirePermissions('system.import.profile.update')
   updateProfile(
@@ -219,11 +263,13 @@ export class SystemRoadmapControlController {
       dto as unknown as Record<string, unknown>,
     );
   }
+
   @Get('integrations/:uuid/credentials')
   @RequirePermissions('system.integration.credentials.read')
   credentialsList(@Param('uuid') uuid: string, @Query() q: CredentialQueryDto) {
     return this.control.credentials(uuid, q.credentialType);
   }
+
   @Post('integrations/:uuid/credentials')
   @RequirePermissions('system.integration.credentials.update')
   createCredential(
@@ -241,6 +287,7 @@ export class SystemRoadmapControlController {
         : null,
     });
   }
+
   @Post('credentials/:uuid/rotate')
   @RequirePermissions('system.integration.credentials.update')
   rotateCredential(
@@ -258,6 +305,7 @@ export class SystemRoadmapControlController {
         : null,
     });
   }
+
   @Post('integrations/:integrationUuid/credentials/:credentialUuid/refresh')
   @RequirePermissions('system.integration.credentials.update')
   refreshCredential(
@@ -271,16 +319,19 @@ export class SystemRoadmapControlController {
         this.credentials.refresh(credentialUuid, actor(req), provider),
       );
   }
+
   @Post('credentials/:uuid/revoke')
   @RequirePermissions('system.integration.credentials.update')
   revokeCredential(@Req() req: Request, @Param('uuid') uuid: string) {
     return this.control.revokeCredential(actor(req), uuid);
   }
+
   @Get('integrations/:uuid/runtime')
   @RequirePermissions('system.integration.runtime.read')
   runtime(@Param('uuid') uuid: string) {
     return this.control.runtime(uuid);
   }
+
   @Patch('integrations/:uuid/runtime')
   @RequirePermissions('system.integration.runtime.update')
   configureRuntime(
@@ -290,6 +341,7 @@ export class SystemRoadmapControlController {
   ) {
     return this.control.configureRuntime(actor(req), uuid, dto);
   }
+
   @Post('integrations/:uuid/sync/push')
   @RequirePermissions('system.integration.sync')
   push(
@@ -305,6 +357,7 @@ export class SystemRoadmapControlController {
   ) {
     return this.sync.push(actor(req), uuid, body);
   }
+
   @Post('integrations/:uuid/sync/pull')
   @RequirePermissions('system.integration.sync')
   pull(
@@ -314,6 +367,7 @@ export class SystemRoadmapControlController {
   ) {
     return this.sync.pull(actor(req), uuid, body);
   }
+
   @Post('integrations/:uuid/sync')
   @RequirePermissions('system.integration.sync')
   bidirectional(
@@ -330,11 +384,13 @@ export class SystemRoadmapControlController {
   ) {
     return this.sync.bidirectional(actor(req), uuid, body);
   }
+
   @Get('integrations/:uuid/operations')
   @RequirePermissions('system.integration.operation.read')
   operations(@Param('uuid') uuid: string, @Query() q: OperationQueryDto) {
     return this.control.listOperations(uuid, q.state, q.limit);
   }
+
   @Post('integrations/:uuid/operations')
   @RequirePermissions('system.integration.operation.create')
   operation(
@@ -344,6 +400,7 @@ export class SystemRoadmapControlController {
   ) {
     return this.control.operation(actor(req), uuid, dto);
   }
+
   @Post('operations/:uuid/retry')
   @RequirePermissions('system.integration.operation.update')
   @ApiOperation({
@@ -352,6 +409,7 @@ export class SystemRoadmapControlController {
   retryOperation(@Req() req: Request, @Param('uuid') uuid: string) {
     return this.sync.retryOperation(actor(req), uuid);
   }
+
   @Post('operations/:uuid/complete')
   @RequirePermissions('system.integration.operation.update')
   complete(
@@ -361,6 +419,7 @@ export class SystemRoadmapControlController {
   ) {
     return this.control.completeOperation(actor(req), uuid, body);
   }
+
   @Post('operations/:uuid/fail')
   @RequirePermissions('system.integration.operation.update')
   fail(
@@ -370,11 +429,13 @@ export class SystemRoadmapControlController {
   ) {
     return this.control.failOperation(actor(req), uuid, dto);
   }
+
   @Get('integrations/:uuid/events')
   @RequirePermissions('system.integration.event.read')
   events(@Param('uuid') uuid: string, @Query() q: EventQueryDto) {
     return this.control.listEvents(uuid, q.status, q.limit);
   }
+
   @Post('integrations/:uuid/events')
   @RequirePermissions('system.integration.event.create')
   event(
@@ -384,16 +445,19 @@ export class SystemRoadmapControlController {
   ) {
     return this.control.emitEvent(actor(req), uuid, dto);
   }
+
   @Post('events/:uuid/process')
   @RequirePermissions('system.integration.event.update')
   processEvent(@Req() req: Request, @Param('uuid') uuid: string) {
     return this.control.processEvent(actor(req), uuid);
   }
+
   @Get('integrations/:uuid/conflicts')
   @RequirePermissions('system.integration.conflict.read')
   conflicts(@Param('uuid') uuid: string, @Query() q: ConflictQueryDto) {
     return this.control.conflicts(uuid, q.status, q.limit);
   }
+
   @Post('integrations/:uuid/conflicts')
   @RequirePermissions('system.integration.conflict.update')
   conflict(
@@ -403,6 +467,7 @@ export class SystemRoadmapControlController {
   ) {
     return this.control.recordConflict(actor(req), uuid, dto);
   }
+
   @Post('integrations/:uuid/conflicts/:conflictKey/resolve')
   @RequirePermissions('system.integration.conflict.update')
   resolveConflict(
@@ -413,11 +478,13 @@ export class SystemRoadmapControlController {
   ) {
     return this.control.resolveConflict(actor(req), uuid, key, dto.resolution);
   }
+
   @Get('alerts')
   @RequirePermissions('system.alert.read')
   alerts(@Query() q: AlertQueryDto) {
     return this.control.alerts(q.status, q.severity, q.limit);
   }
+
   @Post('alerts/evaluate')
   @RequirePermissions('system.alert.update')
   evaluateAlerts(
@@ -425,16 +492,19 @@ export class SystemRoadmapControlController {
   ) {
     return this.alertsService.evaluate(body);
   }
+
   @Post('alerts/:uuid/acknowledge')
   @RequirePermissions('system.alert.update')
   acknowledgeAlert(@Req() req: Request, @Param('uuid') uuid: string) {
     return this.alertsService.acknowledge(actor(req), uuid);
   }
+
   @Post('alerts/:uuid/resolve')
   @RequirePermissions('system.alert.update')
   resolveAlert(@Req() req: Request, @Param('uuid') uuid: string) {
     return this.control.resolveAlert(actor(req), uuid);
   }
+
   @Post('integrations/:uuid/resync')
   @RequirePermissions('system.integration.sync')
   resync(
