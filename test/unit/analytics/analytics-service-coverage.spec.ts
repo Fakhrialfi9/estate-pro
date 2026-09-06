@@ -299,7 +299,7 @@ describe('AnalyticsService coverage', () => {
     ).rejects.toThrow(AnalyticsScopeException);
   });
 
-  it('normalizes unexpected query failures and timeout conditions', async () => {
+  it('propagates Error query failures and times out pending queries', async () => {
     const failing = new Proxy(
       {},
       {
@@ -309,7 +309,7 @@ describe('AnalyticsService coverage', () => {
     const failingService = new AnalyticsService(failing, makePolicy() as never);
     await expect(
       failingService.leads({ from: '2026-01-01', to: '2026-01-03' }, user()),
-    ).rejects.toThrow(AnalyticsUnavailableException);
+    ).rejects.toThrow('failure');
 
     vi.useFakeTimers();
     const pending = new Proxy(
