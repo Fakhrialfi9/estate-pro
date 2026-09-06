@@ -4,18 +4,13 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-  type MockedFunction,
-} from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mocked } from 'vitest';
 import { SalesService } from '../../../src/modules/sales/application/sales.service.js';
-import type { SalesRepository } from '../../../src/modules/sales/domain/repositories/sales.repository.js';
+import type {
+  SalesRepository,
+  SalesOpportunityRow,
+} from '../../../src/modules/sales/domain/repositories/sales.repository.js';
 import type { SalesActor } from '../../../src/modules/sales/domain/sales.types.js';
-import type { SalesOpportunityRow } from '../../../src/modules/sales/domain/repositories/sales.repository.js';
 
 const actor: SalesActor = {
   actorUuid: '11111111-1111-4111-8111-111111111111',
@@ -46,16 +41,8 @@ const opportunity = (
   ...overrides,
 });
 
-type SalesRepositoryMock = {
-  [K in keyof SalesRepository]: SalesRepository[K] extends (
-    ...args: infer Args
-  ) => infer Return
-    ? MockedFunction<(...args: Args) => Return>
-    : never;
-};
-
 describe('SalesService', () => {
-  const repository: SalesRepositoryMock = {
+  const repository: Mocked<SalesRepository> = {
     createPipeline: vi.fn(),
     listPipelines: vi.fn(),
     getPipeline: vi.fn(),
@@ -68,7 +55,7 @@ describe('SalesService', () => {
     transitionNegotiation: vi.fn(),
     getDeal: vi.fn(),
     listDeals: vi.fn(),
-  };
+  } as Mocked<SalesRepository>;
   const auditRecord = vi.fn().mockResolvedValue(undefined);
   const service = new SalesService(repository, {
     record: auditRecord,
