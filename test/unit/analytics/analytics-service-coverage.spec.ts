@@ -137,7 +137,7 @@ const makeQueries = (): AnalyticsQueryPort =>
   new Proxy(
     {},
     {
-      get: () => vi.fn(() => rows(String(''))),
+      get: (_target, property) => vi.fn(() => rows(String(property))),
     },
   ) as AnalyticsQueryPort;
 
