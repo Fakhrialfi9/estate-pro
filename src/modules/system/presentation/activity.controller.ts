@@ -65,7 +65,37 @@ export class ActivityController {
   @Get(':uuid')
   @RequirePermissions('system.activity.read')
   @ApiOperation({ summary: 'Get a single system activity entry' })
-  @ApiResponse({ status: 200, description: 'System activity returned.' })
+  @ApiResponse({
+    status: 200,
+    description: 'System activity returned.',
+    schema: {
+      type: 'object',
+      required: [
+        'uuid',
+        'actorUuid',
+        'eventType',
+        'category',
+        'resourceType',
+        'resourceUuid',
+        'summary',
+        'metadata',
+        'requestId',
+        'createdAt',
+      ],
+      properties: {
+        uuid: { type: 'string', format: 'uuid' },
+        actorUuid: { type: 'string', format: 'uuid', nullable: true },
+        eventType: { type: 'string' },
+        category: { type: 'string' },
+        resourceType: { type: 'string', nullable: true },
+        resourceUuid: { type: 'string', format: 'uuid', nullable: true },
+        summary: { type: 'string' },
+        metadata: { type: 'object', additionalProperties: true },
+        requestId: { type: 'string', nullable: true },
+        createdAt: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
   get(@Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.activity.get(uuid);
   }
