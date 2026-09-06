@@ -38,8 +38,8 @@ const activeUser = {
 
 const makeRepo = (overrides: Record<string, unknown> = {}) => {
   const base = {
-    createWorkflow: vi.fn(async (input: Record<string, unknown>) => input),
-    getWorkflow: vi.fn(async () => ({
+    createWorkflow: vi.fn((input: Record<string, unknown>) => input),
+    getWorkflow: vi.fn(() => ({
       uuid: workflowUuid,
       ownerUserUuid: actorUuid,
       status: 'DRAFT',
@@ -47,13 +47,13 @@ const makeRepo = (overrides: Record<string, unknown> = {}) => {
       versions: [],
     })),
     updateWorkflow: vi.fn(
-      async (_uuid: string, patch: Record<string, unknown>) => ({
+      (_uuid: string, patch: Record<string, unknown>) => ({
         uuid: workflowUuid,
         ...patch,
       }),
     ),
-    createVersion: vi.fn(async (input: Record<string, unknown>) => input),
-    getVersion: vi.fn(async () => ({
+    createVersion: vi.fn((input: Record<string, unknown>) => input),
+    getVersion: vi.fn(() => ({
       uuid: versionUuid,
       workflowUuid,
       status: 'DRAFT',
@@ -62,15 +62,15 @@ const makeRepo = (overrides: Record<string, unknown> = {}) => {
       version: 1,
     })),
     updateVersion: vi.fn(
-      async (_uuid: string, patch: Record<string, unknown>) => ({
+      (_uuid: string, patch: Record<string, unknown>) => ({
         uuid: versionUuid,
         ...patch,
       }),
     ),
-    listActiveVersions: vi.fn(async () => []),
-    createExecution: vi.fn(async (input: Record<string, unknown>) => input),
-    claimDueExecution: vi.fn(async () => null),
-    getExecution: vi.fn(async () => ({
+    listActiveVersions: vi.fn(() => []),
+    createExecution: vi.fn((input: Record<string, unknown>) => input),
+    claimDueExecution: vi.fn(() => null),
+    getExecution: vi.fn(() => ({
       uuid: executionUuid,
       workflowUuid,
       workflowVersionUuid: versionUuid,
@@ -80,33 +80,33 @@ const makeRepo = (overrides: Record<string, unknown> = {}) => {
       actorUuid,
     })),
     updateExecution: vi.fn(
-      async (_uuid: string, patch: Record<string, unknown>) => ({
+      (_uuid: string, patch: Record<string, unknown>) => ({
         uuid: executionUuid,
         state: patch.state ?? 'PENDING',
         ...patch,
       }),
     ),
-    createAction: vi.fn(async (input: Record<string, unknown>) => ({
+    createAction: vi.fn((input: Record<string, unknown>) => ({
       uuid: actionUuid,
       ...input,
     })),
-    listActions: vi.fn(async () => []),
+    listActions: vi.fn(() => []),
     updateAction: vi.fn(
-      async (_uuid: string, patch: Record<string, unknown>) => ({
+      (_uuid: string, patch: Record<string, unknown>) => ({
         uuid: actionUuid,
         ...patch,
       }),
     ),
-    listWorkflows: vi.fn(async () => ({ items: [], total: 0 })),
-    listExecutions: vi.fn(async () => ({ items: [], total: 0 })),
-    listNotifications: vi.fn(async () => []),
-    markNotificationRead: vi.fn(async () => ({ success: true })),
+    listWorkflows: vi.fn(() => ({ items: [], total: 0 })),
+    listExecutions: vi.fn(() => ({ items: [], total: 0 })),
+    listNotifications: vi.fn(() => []),
+    markNotificationRead: vi.fn(() => ({ success: true })),
     createAssignmentRule: vi.fn(
-      async (input: Record<string, unknown>) => input,
+      (input: Record<string, unknown>) => input,
     ),
-    createSlaPolicy: vi.fn(async (input: Record<string, unknown>) => input),
+    createSlaPolicy: vi.fn((input: Record<string, unknown>) => input),
     createEscalationPolicy: vi.fn(
-      async (input: Record<string, unknown>) => input,
+      (input: Record<string, unknown>) => input,
     ),
     ...overrides,
   };
@@ -114,11 +114,11 @@ const makeRepo = (overrides: Record<string, unknown> = {}) => {
 };
 
 const makeUsers = () => ({
-  getUser: vi.fn(async () => activeUser),
+  getUser: vi.fn(() => activeUser),
 });
 
 const makeCrm = () => ({
-  getLead: vi.fn(async () => ({
+  getLead: vi.fn(() => ({
     uuid: 'lead-1',
     contactUuid: 'contact-1',
     status: 'NEW',
@@ -129,11 +129,11 @@ const makeCrm = () => ({
     createdAt: new Date(),
     updatedAt: new Date(),
   })),
-  getActivity: vi.fn(async () => ({ uuid: 'activity-1', status: 'OPEN' })),
+  getActivity: vi.fn(() => ({ uuid: 'activity-1', status: 'OPEN' })),
 });
 
 const makeSales = () => ({
-  getOpportunity: vi.fn(async () => ({
+  getOpportunity: vi.fn(() => ({
     uuid: 'opportunity-1',
     leadUuid: 'lead-1',
     contactUuid: 'contact-1',
@@ -150,7 +150,7 @@ const makeSales = () => ({
 });
 
 const makeAudit = () => ({
-  record: vi.fn(async () => undefined),
+  record: vi.fn(() => undefined),
 });
 
 const makeValidator = () => ({
@@ -173,7 +173,7 @@ const makeService = (
   const validator = makeValidator();
   const handler = {
     actionType: 'NOTIFY',
-    execute: vi.fn(async () => handlerResult),
+    execute: vi.fn(() => handlerResult),
   };
   const service = new AutomationService(
     repo as never,
@@ -189,7 +189,6 @@ const makeService = (
 
 describe('AutomationService coverage', () => {
   it('covers workflow lifecycle, ownership and draft versioning', async () => {
-    const { service, repo } = makeService();
     expect(
       (
         await service.createWorkflow(
@@ -269,8 +268,8 @@ describe('AutomationService coverage', () => {
       definition,
     };
     const { service, repo, crm } = makeService({
-      listActiveVersions: vi.fn(async () => [version]),
-      getWorkflow: vi.fn(async () => ({
+      listActiveVersions: vi.fn(() => [version]),
+      getWorkflow: vi.fn(() => ({
         uuid: workflowUuid,
         ownerUserUuid: actorUuid,
         status: 'ACTIVE',
@@ -448,9 +447,9 @@ describe('AutomationService coverage', () => {
     };
 
     const success = makeService({
-      getExecution: vi.fn(async () => baseExecution),
-      listActions: vi.fn(async () => []),
-      claimDueExecution: vi.fn(async () => baseExecution),
+      getExecution: vi.fn(() => baseExecution),
+      listActions: vi.fn(() => []),
+      claimDueExecution: vi.fn(() => baseExecution),
     });
     const processed = await success.service.processDue('worker-1');
     expect(processed).toMatchObject({ state: 'SUCCEEDED' });
@@ -501,8 +500,8 @@ describe('AutomationService coverage', () => {
 
   it('rejects missing resources and inactive capability targets', async () => {
     const missing = makeService({
-      getWorkflow: vi.fn(async () => null),
-      getExecution: vi.fn(async () => null),
+      getWorkflow: vi.fn(() => null),
+      getExecution: vi.fn(() => null),
     });
     await expect(
       missing.service.getWorkflow(workflowUuid, actorUuid),
