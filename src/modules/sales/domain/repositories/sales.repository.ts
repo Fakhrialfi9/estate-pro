@@ -120,12 +120,14 @@ export interface DealItemInput {
 }
 
 export interface SalesRepository {
-  createPipeline(input: PipelineInput): Promise<SalesRecord>;
+  createPipeline(this: void, input: PipelineInput): Promise<SalesRecord>;
   listPipelines(
+    this: void,
     query: Record<string, unknown>,
   ): Promise<PageResult<SalesRecord>>;
-  getPipeline(uuid: string): Promise<SalesRecord | null>;
+  getPipeline(this: void, uuid: string): Promise<SalesRecord | null>;
   updatePipeline(
+    this: void,
     uuid: string,
     input: Partial<PipelineInput>,
   ): Promise<SalesRecord>;
@@ -141,15 +143,21 @@ export interface SalesRepository {
     orderedStageUuids: string[],
   ): Promise<SalesRecord[]>;
   createOpportunity(input: OpportunityInput): Promise<SalesOpportunityRow>;
-  getOpportunity(uuid: string): Promise<SalesOpportunityRow | null>;
+  getOpportunity(
+    this: void,
+    uuid: string,
+  ): Promise<SalesOpportunityRow | null>;
   listOpportunities(
+    this: void,
     query: Record<string, unknown>,
   ): Promise<PageResult<SalesOpportunityRow>>;
   updateOpportunity(
+    this: void,
     uuid: string,
     input: Partial<OpportunityInput> & { version: number },
   ): Promise<SalesOpportunityRow>;
   transitionOpportunity(
+    this: void,
     uuid: string,
     from: OpportunityStatus,
     to: OpportunityStatus,
