@@ -101,4 +101,10 @@ export type AutomationNotificationPort = Readonly<{
     maxAttempts?: number;
   }): Promise<unknown>;
   listDeliveries(notificationUuid: string): Promise<readonly unknown[]>;
+  retryDelivery(uuid: string, actorUuid: string): Promise<unknown>;
+  processDueDeliveries(limit?: number): Promise<{
+    processed: number;
+    sent: number;
+    failed: number;
+  }>;
 }>;
