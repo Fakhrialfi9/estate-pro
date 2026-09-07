@@ -9,6 +9,11 @@ import type {
 
 export const SYSTEM_WEBHOOK_REPOSITORY = Symbol('SYSTEM_WEBHOOK_REPOSITORY');
 
+export type DueWebhookDelivery = Readonly<{
+  delivery: WebhookDeliveryRecord;
+  subscription: WebhookSubscriptionRecord;
+}>;
+
 export interface SystemWebhookRepository {
   createSubscription(input: {
     uuid: string;
@@ -92,7 +97,7 @@ export interface SystemWebhookRepository {
   listDueDeliveries(
     now: Date,
     limit: number,
-  ): Promise<readonly WebhookDeliveryRecord[]>;
+  ): Promise<readonly DueWebhookDelivery[]>;
   claimDelivery(uuid: string, now: Date): Promise<boolean>;
   listExpiredDeliveries(
     before: Date,
