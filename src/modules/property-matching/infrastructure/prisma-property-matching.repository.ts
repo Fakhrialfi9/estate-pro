@@ -760,9 +760,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
       where: { uuid: subjectUuid },
       select: { uuid: true, ownerUserUuid: true },
     });
-    return lead
-      ? { uuid: lead.uuid, ownerUserUuid: lead.ownerUserUuid }
-      : null;
+    return lead ? { uuid: lead.uuid, ownerUserUuid: lead.ownerUserUuid } : null;
   }
 
   private preferenceData(
