@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import type { ImportState } from '../../domain/system-public.contracts.js';
 import {
   IsArray,
@@ -23,6 +24,7 @@ export class ImportDto {
   @MaxLength(255)
   filename!: string;
 
+  @ApiProperty({ type: 'string', format: 'byte' })
   @IsBase64()
   contentBase64!: string;
 
