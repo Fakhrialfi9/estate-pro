@@ -176,16 +176,16 @@ model AutomationSlaInstance {
 
 model AutomationEscalationPolicy {
   id              BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid            String             @unique @db.Char(36)
+  uuid             String             @unique @db.Char(36)
   workflowUuid    String             @db.Char(36)
   name            String             @db.VarChar(180)
   levels          Json
   maxAttempts     Int                @default(3)
   cooldownSeconds Int                @default(3600)
-  isActive         Boolean             @default(true)
-  createdAt       DateTime             @default(now()) @db.DateTime(3)
-  updatedAt       DateTime             @updatedAt @db.DateTime(3)
-  workflow        AutomationWorkflow  @relation(fields: [workflowUuid], references: [uuid], onDelete: Cascade)
+  isActive         Boolean            @default(true)
+  createdAt        DateTime           @default(now()) @db.DateTime(3)
+  updatedAt        DateTime           @updatedAt @db.DateTime(3)
+  workflow        AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onDelete: Cascade)
 
   @@index([workflowUuid, isActive])
   @@map("automation_escalation_policies")
@@ -246,10 +246,10 @@ model AutomationNotificationPreference {
 model AutomationNotificationPolicy {
   id               BigInt                        @id @default(autoincrement()) @db.UnsignedBigInt
   uuid             String                        @unique @db.Char(36)
-  notificationUuid String                        @unique @db.Char(36)
-  templateUuid     String?                       @db.Char(36)
+  notificationUuid String                        @unique @db.Char(36) @map("notification_uuid")
+  templateUuid     String?                       @db.Char(36) @map("template_uuid")
   priority         String                        @default("NORMAL") @db.VarChar(16)
-  expiresAt        DateTime?                     @db.DateTime(3)
+  expiresAt        DateTime?                     @db.DateTime(3) @map("expires_at")
   createdAt        DateTime                      @default(now()) @db.DateTime(3)
   updatedAt        DateTime                      @updatedAt @db.DateTime(3)
   notification     AutomationNotification        @relation(fields: [notificationUuid], references: [uuid], onDelete: Cascade)
