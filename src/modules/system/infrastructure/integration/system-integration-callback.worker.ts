@@ -2,7 +2,6 @@ import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nest
 import { SYSTEM_INTEGRATION_REPOSITORY, type SystemIntegrationRepository } from '../../domain/repositories/system-integration.repository.js';
 import { SYSTEM_ROADMAP_REPOSITORY, type SystemRoadmapRepository } from '../../domain/repositories/system-roadmap.repository.js';
 import { SystemIntegrationCallbackService } from '../../application/services/system-integration-callback.service.js';
-import { SystemIntegrationService } from '../../application/services/system-integration.service.js';
 
 const POLL_MS = 1_000;
 const BATCH_SIZE = 25;
@@ -19,7 +18,6 @@ export class SystemIntegrationCallbackWorker implements OnModuleInit, OnModuleDe
     @Inject(SYSTEM_ROADMAP_REPOSITORY)
     private readonly roadmap: SystemRoadmapRepository,
     private readonly callbacks: SystemIntegrationCallbackService,
-    private readonly integrationService: SystemIntegrationService,
   ) {}
 
   onModuleInit() {
@@ -64,7 +62,9 @@ export class SystemIntegrationCallbackWorker implements OnModuleInit, OnModuleDe
         error: error instanceof Error ? error.message : String(error),
       });
     } finally {
-      this.logger.log(`Inbound callback worker processed=${processed} runtimeMs=${Date.now() - startedAt}`);
+      this.logger.log(
+        `Inbound callback worker processed=${processed} runtimeMs=${Date.now() - startedAt}`,
+      );
       this.running = false;
     }
   }
