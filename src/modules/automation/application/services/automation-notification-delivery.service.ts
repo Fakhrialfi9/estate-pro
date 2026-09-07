@@ -1,16 +1,20 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
-import type {
-  NotificationDeliveryRecord,
-  NotificationDeliveryState,
-} from '../../domain/notification.types.js';
+import type { NotificationDeliveryRecord } from '../../domain/notification.types.js';
 import {
   AUTOMATION_NOTIFICATION_REPOSITORY,
   type AutomationNotificationRepository,
 } from '../../domain/repositories/automation-notification.repository.js';
 
-const RETRYABLE_DELAY_MS = 1000;
+const MAX_RETRY_DELAY_MS = 60_000;
+const RETRY_JITTER_MS = 250;
+
+const retryDelayMs = (attemptCount: number): number => {
+  const exponential = 1000 * 2 ** Math.min(Math.max(attemptCount - 1, 0), 6);
+  const jitter = Math.floor(Math.random() * (RETRY_JITTER_MS + 1));
+  return Math.min(MAX_RETRY_DELAY_MS, exponential + jitter);
+};
 
 @Injectable()
 export class AutomationNotificationDeliveryService {
@@ -48,9 +52,10 @@ export class AutomationNotificationDeliveryService {
     if (current.state !== 'FAILED') return current;
     if (current.attemptCount >= current.maxAttempts) return current;
 
+    const nextAttempt = current.attemptCount + 1;
     const next = await this.repository.updateDelivery(uuid, {
       state: 'QUEUED',
-      availableAt: new Date(Date.now() + RETRYABLE_DELAY_MS),
+      availableAt: new Date(Date.now() + retryDelayMs(nextAttempt)),
       errorMessage: null,
     });
     await this.audit.record({
@@ -59,15 +64,16 @@ export class AutomationNotificationDeliveryService {
       entityType: 'notification_delivery',
       entityUuid: uuid,
       result: 'SUCCESS',
-      reason: `attempt=${next.attemptCount};max=${next.maxAttempts}`,
+      reason: `attempt=${nextAttempt};max=${next.maxAttempts}`,
     });
     return next;
   }
 
   private async process(delivery: NotificationDeliveryRecord) {
+    const nextAttempt = delivery.attemptCount + 1;
     await this.repository.updateDelivery(delivery.uuid, {
       state: 'SENDING',
-      attemptCount: delivery.attemptCount + 1,
+      attemptCount: nextAttempt,
     });
 
     if (delivery.channel === 'IN_APP') {
@@ -89,17 +95,30 @@ export class AutomationNotificationDeliveryService {
       return sent;
     }
 
-    const nextAttempt = delivery.attemptCount + 1;
     const terminal = nextAttempt >= delivery.maxAttempts;
-    return this.repository.updateDelivery(delivery.uuid, {
+    const result = await this.repository.updateDelivery(delivery.uuid, {
       state: terminal ? 'FAILED' : 'QUEUED',
-      attemptCount: nextAttempt,
       availableAt: terminal
         ? null
-        : new Date(Date.now() + 1000 * 2 ** Math.min(nextAttempt - 1, 6)),
+        : new Date(Date.now() + retryDelayMs(nextAttempt)),
       errorMessage: terminal
         ? `No notification provider is configured for ${delivery.channel}`
         : `Notification provider unavailable for ${delivery.channel}`,
     });
+
+    await this.audit.record({
+      action: terminal
+        ? 'NOTIFICATION_DELIVERED'
+        : 'NOTIFICATION_DELIVERY_RETRIED',
+      actorUuid: null,
+      entityType: 'notification_delivery',
+      entityUuid: delivery.uuid,
+      result: terminal ? 'FAILURE' : 'SUCCESS',
+      reason: terminal
+        ? `delivery_failed:channel=${delivery.channel};attempt=${nextAttempt};max=${delivery.maxAttempts}`
+        : `retry_scheduled:channel=${delivery.channel};attempt=${nextAttempt}`,
+      system: true,
+    });
+    return result;
   }
 }

@@ -28,6 +28,7 @@ import { WebhookController } from './presentation/webhook.controller.js';
 import { IntegrationController } from './presentation/integration.controller.js';
 import { OperationsController } from './presentation/operations.controller.js';
 import { ObservabilityController } from './presentation/observability.controller.js';
+import { RetentionController } from './presentation/retention.controller.js';
 import { SystemRoadmapControlController } from './presentation/system-roadmap-control.controller.js';
 import { IntegrationCallbackController } from './presentation/integration-callback.controller.js';
 import { SystemActivityService } from './application/services/system-activity.service.js';
@@ -121,6 +122,7 @@ import {
     IntegrationController,
     OperationsController,
     ObservabilityController,
+    RetentionController,
     SystemRoadmapControlController,
     IntegrationCallbackController,
   ],

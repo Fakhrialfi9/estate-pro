@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { PinoLogger } from 'nestjs-pino';
 import { AUDIT_LOG_REPOSITORY } from '../domain/repositories/audit-log.repository.js';
 import type {
   AuditLogRepository,
@@ -25,7 +26,10 @@ export class AuditLogService
   constructor(
     @Inject(AUDIT_LOG_REPOSITORY)
     private readonly repository: AuditLogRepository,
-  ) {}
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(AuditLogService.name);
+  }
 
   async record(event: SecurityAuditEvent): Promise<void> {
     const resourceType = event.entityType ?? null;
@@ -57,7 +61,23 @@ export class AuditLogService
       ...(safeChanges.length > 0 ? { changes: safeChanges } : {}),
       ...(event.system !== undefined ? { system: event.system } : {}),
     };
-    await this.repository.record(writeEvent);
+
+    try {
+      await this.repository.record(writeEvent);
+    } catch (error: unknown) {
+      this.logger.error(
+        {
+          auditAction: event.action,
+          resourceType,
+          resourceId: event.entityUuid ?? event.resourceId ?? undefined,
+          error:
+            error instanceof Error
+              ? { type: error.constructor.name, message: error.message }
+              : { type: 'UnknownError' },
+        },
+        'Audit write failed; business operation is not rolled back',
+      );
+    }
   }
 
   async list(query: AuditLogQuery): Promise<AuditLogQueryResult> {
