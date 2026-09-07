@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Query, Req, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -10,7 +10,9 @@ import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
+import { SystemObservabilityService } from '../application/services/system-observability.service.js';
 import { SystemOperationsService } from '../application/services/system-operations.service.js';
+import { ObservabilityQueryDto } from './dto/observability-query.dto.js';
 
 const operationalStateSchema = {
   type: 'object',
@@ -39,6 +41,11 @@ const diagnosticsSchema = {
   },
 };
 
+const metricSchema = {
+  type: 'object',
+  additionalProperties: true,
+};
+
 class ToggleOperationDto {
   @IsBoolean()
   enabled!: boolean;
@@ -49,16 +56,15 @@ class ToggleOperationDto {
 @Controller({ path: 'system/operations', version: '1' })
 @UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
 export class OperationsController {
-  constructor(private readonly operations: SystemOperationsService) {}
+  constructor(
+    private readonly operations: SystemOperationsService,
+    private readonly observability: SystemObservabilityService,
+  ) {}
 
   @Get()
   @RequirePermissions('system.operations.read')
   @ApiOperation({ summary: 'Read system operational state' })
-  @ApiResponse({
-    status: 200,
-    description: 'System operational state returned.',
-    schema: operationalStateSchema,
-  })
+  @ApiResponse({ status: 200, schema: operationalStateSchema })
   state() {
     return this.operations.state();
   }
@@ -66,43 +72,47 @@ export class OperationsController {
   @Get('diagnostics')
   @RequirePermissions('system.operations.read')
   @ApiOperation({ summary: 'Read safe aggregated system diagnostics' })
-  @ApiResponse({
-    status: 200,
-    description: 'System diagnostics returned.',
-    schema: diagnosticsSchema,
-  })
+  @ApiResponse({ status: 200, schema: diagnosticsSchema })
   diagnostics() {
     return this.operations.diagnostics();
+  }
+
+  @Get('/../observability/import-export-metrics')
+  @RequirePermissions('system.operations.read')
+  @ApiOperation({ summary: 'Read bounded import/export operational metrics' })
+  @ApiResponse({ status: 200, schema: metricSchema })
+  importExportMetrics(@Query() query: ObservabilityQueryDto) {
+    const dates = query.toDates();
+    return this.observability.importExportMetrics(dates.from, dates.to);
+  }
+
+  @Get('/../observability/delivery-metrics')
+  @RequirePermissions('system.operations.read')
+  @ApiOperation({ summary: 'Read bounded webhook delivery metrics' })
+  @ApiResponse({ status: 200, schema: metricSchema })
+  deliveryMetrics(@Query() query: ObservabilityQueryDto) {
+    const dates = query.toDates();
+    return this.observability.deliveryMetrics(
+      dates.from,
+      dates.to,
+      dates.subscriptionUuid,
+    );
   }
 
   @Patch('maintenance')
   @RequirePermissions('system.operations.update')
   @ApiOperation({ summary: 'Toggle system maintenance mode' })
-  @ApiResponse({
-    status: 200,
-    description: 'System operational state returned after the update.',
-    schema: operationalStateSchema,
-  })
+  @ApiResponse({ status: 200, description: 'System operational state returned after the update.', schema: operationalStateSchema })
   maintenance(@Req() request: Request, @Body() dto: ToggleOperationDto) {
-    return this.operations.setMaintenance(
-      this.actor(request),
-      dto.enabled === true,
-    );
+    return this.operations.setMaintenance(this.actor(request), dto.enabled === true);
   }
 
   @Patch('read-only')
   @RequirePermissions('system.operations.update')
   @ApiOperation({ summary: 'Toggle system read-only mode' })
-  @ApiResponse({
-    status: 200,
-    description: 'System operational state returned after the update.',
-    schema: operationalStateSchema,
-  })
+  @ApiResponse({ status: 200, description: 'System operational state returned after the update.', schema: operationalStateSchema })
   readOnly(@Req() request: Request, @Body() dto: ToggleOperationDto) {
-    return this.operations.setReadOnly(
-      this.actor(request),
-      dto.enabled === true,
-    );
+    return this.operations.setReadOnly(this.actor(request), dto.enabled === true);
   }
 
   private actor(request: Request): string {
