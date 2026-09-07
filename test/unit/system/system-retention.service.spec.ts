@@ -20,10 +20,7 @@ describe('SystemRetentionService', () => {
 
   it('purges in bounded batches', async () => {
     const { service, repository } = createService();
-    repository.purgeActivity
-      .mockResolvedValueOnce(2)
-      .mockResolvedValueOnce(1)
-      .mockResolvedValueOnce(0);
+    repository.purgeActivity.mockResolvedValueOnce(2).mockResolvedValueOnce(1);
     repository.purgeAudit.mockResolvedValueOnce(2).mockResolvedValueOnce(0);
 
     const result = await service.run({
@@ -37,7 +34,7 @@ describe('SystemRetentionService', () => {
       audit: { retentionDays: 365, deleted: 2 },
       batchSize: 2,
     });
-    expect(repository.purgeActivity).toHaveBeenCalledTimes(3);
+    expect(repository.purgeActivity).toHaveBeenCalledTimes(2);
     expect(repository.purgeAudit).toHaveBeenCalledTimes(2);
   });
 
