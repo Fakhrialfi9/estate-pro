@@ -1,4 +1,11 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
+import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
 import {
   SYSTEM_RETENTION_REPOSITORY,
   type SystemRetentionRepository,
@@ -13,6 +20,8 @@ export class SystemRetentionService {
   constructor(
     @Inject(SYSTEM_RETENTION_REPOSITORY)
     private readonly repository: SystemRetentionRepository,
+    @Inject(SECURITY_AUDIT_REPOSITORY)
+    private readonly audit: SecurityAuditRepository,
   ) {}
 
   async run(input: {
@@ -51,6 +60,65 @@ export class SystemRetentionService {
       audit: { retentionDays: auditDays, deleted: auditDeleted },
       batchSize,
     };
+  }
+
+  async setActivityHold(
+    actorUuid: string,
+    uuid: string,
+    enabled: boolean,
+    until?: Date,
+  ): Promise<{ held: boolean; holdUntil: string | null }> {
+    const holdUntil = this.normalizeHoldUntil(enabled, until);
+    const updated = await this.repository.setActivityHold(
+      uuid,
+      enabled,
+      holdUntil,
+    );
+    if (!updated) throw new NotFoundException('Activity record not found');
+    await this.audit.record({
+      action: 'SYSTEM_SETTING_UPDATED',
+      actorUuid,
+      subjectUuid: actorUuid,
+      entityType: 'system_setting',
+      entityUuid: uuid,
+      result: 'SUCCESS',
+      reason: `activity_retention_hold=${enabled};until=${holdUntil?.toISOString() ?? 'none'}`,
+    });
+    return { held: enabled, holdUntil: holdUntil?.toISOString() ?? null };
+  }
+
+  async setAuditHold(
+    actorUuid: string,
+    uuid: string,
+    enabled: boolean,
+    until?: Date,
+  ): Promise<{ held: boolean; holdUntil: string | null }> {
+    const holdUntil = this.normalizeHoldUntil(enabled, until);
+    const updated = await this.repository.setAuditHold(
+      uuid,
+      enabled,
+      holdUntil,
+    );
+    if (!updated) throw new NotFoundException('Audit record not found');
+    await this.audit.record({
+      action: 'SYSTEM_SETTING_UPDATED',
+      actorUuid,
+      subjectUuid: actorUuid,
+      entityType: 'system_setting',
+      entityUuid: uuid,
+      result: 'SUCCESS',
+      reason: `audit_retention_hold=${enabled};until=${holdUntil?.toISOString() ?? 'none'}`,
+    });
+    return { held: enabled, holdUntil: holdUntil?.toISOString() ?? null };
+  }
+
+  private normalizeHoldUntil(enabled: boolean, until?: Date): Date | null {
+    if (!enabled) return null;
+    if (!until || !Number.isFinite(until.getTime()))
+      throw new BadRequestException('Retention hold expiry is required');
+    if (until.getTime() <= Date.now())
+      throw new BadRequestException('Retention hold expiry must be in the future');
+    return until;
   }
 
   private days(value: number): number {
