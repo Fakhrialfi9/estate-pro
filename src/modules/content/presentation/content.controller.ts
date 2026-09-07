@@ -180,6 +180,7 @@ export class ContentController {
   @RequirePermissions('content.articles.delete')
   @HttpCode(204)
   @ApiOperation({ summary: 'Soft delete article' })
+  @ApiResponse({ status: 204 })
   async remove(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     try {
       await this.deleteArticle.execute(uuid, this.ctx(req));
@@ -323,6 +324,7 @@ export class ContentController {
   @RequirePermissions('content.media.delete')
   @HttpCode(204)
   @ApiOperation({ summary: 'Soft delete media' })
+  @ApiResponse({ status: 204 })
   async deleteMedia(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     await this.resources.delete('media', uuid, this.ctx(req));
   }
@@ -405,6 +407,7 @@ export class ContentController {
   @Delete('relations/:uuid')
   @RequirePermissions('content.relations.delete')
   @HttpCode(204)
+  @ApiResponse({ status: 204 })
   async relationDelete(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     await this.service.removeRelation(uuid, this.ctx(req));
   }
