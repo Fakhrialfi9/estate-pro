@@ -14,10 +14,12 @@ import { CrmService } from './application/crm.service.js';
 import { CrmLifecycleService } from './application/crm-lifecycle.service.js';
 import { CrmAutomationAdapter } from './application/services/crm-automation.adapter.js';
 import { CrmCommunicationDeliveryService } from './application/services/crm-communication-delivery.service.js';
+import { CrmCommunicationHealthService } from './application/services/crm-communication-health.service.js';
 import { CrmController } from './presentation/crm.controller.js';
 import { CrmPublicInquiryController } from './presentation/crm-public-inquiry.controller.js';
 import { CrmLifecycleController } from './presentation/crm-lifecycle.controller.js';
 import { CrmCommunicationDeliveryController } from './presentation/crm-communication-delivery.controller.js';
+import { CrmCommunicationHealthController } from './presentation/crm-communication-health.controller.js';
 import { ScoreDomainService } from './application/ports/score-domain.service.js';
 import { DuplicateDetector } from './application/ports/duplicate-detector.js';
 import { LeadMergePolicy } from './application/ports/merge.policy.js';
@@ -29,24 +31,19 @@ import { CRM_AGENT_WORKLOAD_PORT } from '../../common/contracts/crm-agent-worklo
 import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
 
 @Module({
-  imports: [
-    DatabaseModule,
-    AuditModule,
-    AuthorizationModule,
-    PropertyModule,
-    UsersModule,
-    SalesModule,
-  ],
+  imports: [DatabaseModule, AuditModule, AuthorizationModule, PropertyModule, UsersModule, SalesModule],
   controllers: [
     CrmController,
     CrmPublicInquiryController,
     CrmLifecycleController,
     CrmCommunicationDeliveryController,
+    CrmCommunicationHealthController,
   ],
   providers: [
     CrmService,
     CrmAutomationAdapter,
     CrmCommunicationDeliveryService,
+    CrmCommunicationHealthService,
     CrmLifecycleService,
     PrismaCrmLifecycleRepository,
     PrismaCommunicationRepository,
@@ -57,15 +54,9 @@ import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
     QualificationPolicy,
     ClosurePolicy,
     { provide: CRM_REPOSITORY, useClass: PrismaCrmRepository },
-    {
-      provide: COMMUNICATION_REPOSITORY,
-      useExisting: PrismaCommunicationRepository,
-    },
+    { provide: COMMUNICATION_REPOSITORY, useExisting: PrismaCommunicationRepository },
     { provide: CRM_AUTOMATION_PORT, useExisting: CrmAutomationAdapter },
-    {
-      provide: CRM_AGENT_WORKLOAD_PORT,
-      useClass: PrismaCrmAgentWorkloadAdapter,
-    },
+    { provide: CRM_AGENT_WORKLOAD_PORT, useClass: PrismaCrmAgentWorkloadAdapter },
   ],
   exports: [
     CRM_REPOSITORY,
@@ -73,6 +64,7 @@ import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
     CRM_AUTOMATION_PORT,
     CRM_AGENT_WORKLOAD_PORT,
     CrmCommunicationDeliveryService,
+    CrmCommunicationHealthService,
   ],
 })
 export class CrmModule {}
