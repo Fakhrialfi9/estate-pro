@@ -47,6 +47,7 @@ import { SystemWebhookService } from './application/services/system-webhook.serv
 import { SystemIntegrationService } from './application/services/system-integration.service.js';
 import { SystemOperationsService } from './application/services/system-operations.service.js';
 import { SystemRoadmapControlService } from './application/services/system-roadmap-control.service.js';
+import { SystemRetentionService } from './application/services/system-retention.service.js';
 import { SystemReadOnlyGuard } from './application/guards/system-read-only.guard.js';
 import { PrismaSystemActivityRepository } from './infrastructure/persistence/prisma-system-activity.repository.js';
 import { PrismaSystemExportRepository } from './infrastructure/persistence/prisma-system-export.repository.js';
@@ -56,8 +57,10 @@ import { PrismaSystemWebhookRepository } from './infrastructure/persistence/pris
 import { PrismaSystemIntegrationRepository } from './infrastructure/persistence/prisma-system-integration.repository.js';
 import { PrismaSystemRoadmapRepository } from './infrastructure/persistence/prisma-system-roadmap.repository.js';
 import { PrismaSystemIntegrationOperationRetryRepository } from './infrastructure/persistence/prisma-system-integration-operation-retry.repository.js';
+import { PrismaSystemRetentionRepository } from './infrastructure/persistence/prisma-system-retention.repository.js';
 import { LocalSystemArtifactStorage } from './infrastructure/storage/local-system-artifact.storage.js';
 import { SystemExportScheduler } from './infrastructure/export/system-export.scheduler.js';
+import { SystemRetentionScheduler } from './infrastructure/system-retention.scheduler.js';
 import { SystemXlsxExporterAdapter } from './infrastructure/export/system-xlsx-exporter.adapter.js';
 import { SystemMetricsService } from './infrastructure/observability/system-metrics.service.js';
 import { WebhookNetworkService } from './infrastructure/webhook/webhook-network.service.js';
@@ -75,6 +78,7 @@ import { SYSTEM_INTEGRATION_REPOSITORY } from './domain/repositories/system-inte
 import { SYSTEM_XLSX_EXPORTER } from './domain/repositories/system-xlsx-exporter.port.js';
 import { SYSTEM_ROADMAP_REPOSITORY } from './domain/repositories/system-roadmap.repository.js';
 import { SYSTEM_INTEGRATION_OPERATION_RETRY_REPOSITORY } from './domain/repositories/system-integration-operation-retry.repository.js';
+import { SYSTEM_RETENTION_REPOSITORY } from './domain/repositories/system-retention.repository.js';
 import { SYSTEM_INTEGRATION_SECRET_RESOLVER } from './domain/integration/integration-secret-resolver.port.js';
 import {
   SYSTEM_DATABASE_HEALTH_PORT,
@@ -118,6 +122,7 @@ import {
     AuthorizationGuard,
     SystemSettingsService,
     SystemActivityService,
+    SystemRetentionService,
     SystemNotificationService,
     SystemJobOperationsService,
     SystemImportService,
@@ -131,6 +136,7 @@ import {
     SystemOperationalAlertService,
     SystemExportService,
     SystemExportScheduler,
+    SystemRetentionScheduler,
     SystemXlsxExporterAdapter,
     SystemWebhookService,
     SystemIntegrationService,
@@ -148,6 +154,7 @@ import {
     PrismaSystemIntegrationRepository,
     PrismaSystemRoadmapRepository,
     PrismaSystemIntegrationOperationRetryRepository,
+    PrismaSystemRetentionRepository,
     LocalSystemArtifactStorage,
     WebhookNetworkService,
     WebhookSecretService,
@@ -159,6 +166,10 @@ import {
     {
       provide: SYSTEM_ACTIVITY_REPOSITORY,
       useExisting: PrismaSystemActivityRepository,
+    },
+    {
+      provide: SYSTEM_RETENTION_REPOSITORY,
+      useExisting: PrismaSystemRetentionRepository,
     },
     {
       provide: SYSTEM_IMPORT_REPOSITORY,
@@ -257,6 +268,3 @@ import {
   ],
 })
 export class SystemModule {}
-
-export { SYSTEM_OPERATIONS_PORT } from './domain/operations/system-operations.port.js';
-export type { SystemOperationsPort } from './domain/operations/system-operations.port.js';
