@@ -28,6 +28,7 @@ import { WebhookController } from './presentation/webhook.controller.js';
 import { IntegrationController } from './presentation/integration.controller.js';
 import { OperationsController } from './presentation/operations.controller.js';
 import { ObservabilityController } from './presentation/observability.controller.js';
+import { ProductionHardeningController } from './presentation/production-hardening.controller.js';
 import { RetentionController } from './presentation/retention.controller.js';
 import { SystemRoadmapControlController } from './presentation/system-roadmap-control.controller.js';
 import { IntegrationCallbackController } from './presentation/integration-callback.controller.js';
@@ -50,6 +51,7 @@ import { SystemWebhookRateLimitService } from './application/services/system-web
 import { SystemIntegrationService } from './application/services/system-integration.service.js';
 import { SystemOperationsService } from './application/services/system-operations.service.js';
 import { SystemObservabilityService } from './application/services/system-observability.service.js';
+import { SystemProductionHardeningService } from './application/services/system-production-hardening.service.js';
 import { SystemRoadmapControlService } from './application/services/system-roadmap-control.service.js';
 import { SystemRetentionService } from './application/services/system-retention.service.js';
 import { SystemContentSafetyService } from './application/services/system-content-safety.service.js';
@@ -123,6 +125,7 @@ import {
     IntegrationController,
     OperationsController,
     ObservabilityController,
+    ProductionHardeningController,
     RetentionController,
     SystemRoadmapControlController,
     IntegrationCallbackController,
@@ -155,6 +158,7 @@ import {
     SystemIntegrationService,
     SystemOperationsService,
     SystemObservabilityService,
+    SystemProductionHardeningService,
     SystemRoadmapControlService,
     SystemReadOnlyGuard,
     SystemMetricsService,
