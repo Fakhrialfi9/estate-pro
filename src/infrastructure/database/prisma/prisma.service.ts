@@ -13,7 +13,8 @@ export class PrismaService
     const databaseUrl = configService.get<string>('database.url');
     const allowPublicKeyRetrieval =
       databaseUrl !== undefined &&
-      new URL(databaseUrl).searchParams.get('allowPublicKeyRetrieval') === 'true';
+      new URL(databaseUrl).searchParams.get('allowPublicKeyRetrieval') ===
+        'true';
 
     const adapter = new PrismaMariaDb({
       host: configService.getOrThrow<string>('database.host'),
