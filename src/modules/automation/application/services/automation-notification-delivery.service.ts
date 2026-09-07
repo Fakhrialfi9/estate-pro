@@ -85,7 +85,6 @@ export class AutomationNotificationDeliveryService {
       });
       await this.audit.record({
         action: 'NOTIFICATION_DELIVERED',
-        actorUuid: null,
         entityType: 'notification_delivery',
         entityUuid: delivery.uuid,
         result: 'SUCCESS',
@@ -110,7 +109,6 @@ export class AutomationNotificationDeliveryService {
       action: terminal
         ? 'NOTIFICATION_DELIVERED'
         : 'NOTIFICATION_DELIVERY_RETRIED',
-      actorUuid: null,
       entityType: 'notification_delivery',
       entityUuid: delivery.uuid,
       result: terminal ? 'FAILURE' : 'SUCCESS',
