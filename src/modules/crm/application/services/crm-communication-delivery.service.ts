@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
 import {
@@ -28,16 +29,17 @@ export class CrmCommunicationDeliveryService {
     private readonly repository: CommunicationRepository,
     @Inject(SECURITY_AUDIT_REPOSITORY)
     private readonly audit: SecurityAuditRepository,
+    private readonly config: ConfigService,
   ) {
     for (const channel of CHANNELS) {
-      const endpoint = process.env[`${channel}_PROVIDER_URL`];
+      const endpoint = this.config.get<string>(`${channel}_PROVIDER_URL`);
       if (!endpoint) continue;
       this.providers.set(
         channel,
         new HttpCommunicationProvider(
           channel,
           endpoint,
-          process.env[`${channel}_PROVIDER_TOKEN`],
+          this.config.get<string>(`${channel}_PROVIDER_TOKEN`),
         ),
       );
     }
