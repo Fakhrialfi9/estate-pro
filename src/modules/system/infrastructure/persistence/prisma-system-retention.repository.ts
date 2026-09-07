@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import type { SystemRetentionRepository } from '../../domain/repositories/system-retention.repository.js';
 
 @Injectable()
