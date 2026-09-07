@@ -10,10 +10,10 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor(configService: ConfigService) {
-    const databaseUrl = configService.getOrThrow<string>('database.url');
-    const parsedDatabaseUrl = new URL(databaseUrl);
-    const allowPublicKeyRetrieval =
-      parsedDatabaseUrl.searchParams.get('allowPublicKeyRetrieval') === 'true';
+    const databaseUrl = configService.get<string>('database.url');
+    const allowPublicKeyRetrieval = databaseUrl
+      ? new URL(databaseUrl).searchParams.get('allowPublicKeyRetrieval') === 'true'
+      : false;
 
     const adapter = new PrismaMariaDb({
       host: configService.getOrThrow<string>('database.host'),
