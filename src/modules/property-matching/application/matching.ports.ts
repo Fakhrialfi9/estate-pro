@@ -19,7 +19,7 @@ export type StoredRecommendation = {
   readonly subjectUuid: string;
   readonly preferenceVersion: number;
   readonly algorithmVersion: number;
-  readonly source: string;
+  readonly source: MatchingRecommendationSource;
   readonly generatedAt: Date;
   readonly candidateCount: number;
   readonly stale: boolean;
@@ -36,7 +36,7 @@ export type StoredRecommendation = {
 export type RecommendationHistoryItem = {
   readonly uuid: string;
   readonly recommendationId: string;
-  readonly source: string;
+  readonly source: MatchingRecommendationSource;
   readonly preferenceVersion: number;
   readonly algorithmVersion: number;
   readonly candidateCount: number;
