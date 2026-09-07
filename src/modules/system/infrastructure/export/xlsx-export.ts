@@ -31,14 +31,19 @@ const col = (n: number): string => {
   return s;
 };
 
+const sanitizeSpreadsheetText = (value: string): string => {
+  const trimmed = value.trimStart();
+  return ['=', '+', '-', '@'].includes(trimmed.charAt(0)) ? `'${value}` : value;
+};
+
 const stringifyCellValue = (value: unknown): string => {
   if (value == null) return '';
   if (value instanceof Date) return value.toISOString();
   if (typeof value === 'bigint') return value.toString();
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return sanitizeSpreadsheetText(value);
   if (typeof value === 'number' || typeof value === 'boolean')
     return String(value);
-  return JSON.stringify(value) ?? '';
+  return sanitizeSpreadsheetText(JSON.stringify(value) ?? '');
 };
 
 const c = (v: unknown, r: number, i: number): string => {
