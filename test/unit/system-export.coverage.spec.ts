@@ -208,6 +208,12 @@ describe('SystemExportService coverage', () => {
   });
 
   it('validates download state and token expiration', async () => {
+    d.jobs.findByUuid.mockResolvedValueOnce({
+      ...job,
+      state: 'SUCCEEDED',
+      downloadTokenHash:
+        '3c469e9d6c5875d37a43f353d4f88e61fcf812c66eee3457465a40b0da4153e0',
+    });
     const result = await service.download('actor-1', 'job-1', 'token');
     expect(result.filename).toBe('job-1.csv');
     expect(result.stream).toBe('stream');
@@ -219,6 +225,9 @@ describe('SystemExportService coverage', () => {
 
     d.jobs.findByUuid.mockResolvedValueOnce({
       ...job,
+      state: 'SUCCEEDED',
+      downloadTokenHash:
+        '3c469e9d6c5875d37a43f353d4f88e61fcf812c66eee3457465a40b0da4153e0',
       expiresAt: new Date(Date.now() - 1),
     });
     await expect(
