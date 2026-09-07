@@ -35,47 +35,49 @@ export async function assertSafeOutboundUrl(
 ): Promise<string> {
   const url = parseUrl(rawUrl);
   const hostname = normalizeHostname(url.hostname);
+  const configuredHosts =
+    options.allowedHosts ??
+    (process.env.SECURITY_SSRF_ALLOWED_HOSTS ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
   const allowedHosts = new Set(
-    (
-      options.allowedHosts ??
-      (process.env.SECURITY_SSRF_ALLOWED_HOSTS ?? '')
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean)
-    ).map((host) => normalizeHostname(host)),
+    configuredHosts.map((host) => normalizeHostname(host)),
   );
   const explicitlyAllowed = matchesAllowedHost(hostname, allowedHosts);
   const allowLocalhostHttp =
     options.allowLocalhostHttp === true ||
     process.env.SECURITY_SSRF_ALLOW_LOCALHOST_HTTP === 'true';
-
-  if (url.username || url.password)
-    throw new UnsafeOutboundUrlError(
-      'Outbound URL must not contain credentials',
-    );
-
-  const isLocalhost = hostname === 'localhost' || hostname.endsWith('.localhost');
+  const isLocalhost =
+    hostname === 'localhost' ||
+    hostname.endsWith('.localhost') ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1';
   const localHttpAllowed =
     url.protocol === 'http:' &&
     allowLocalhostHttp &&
     isLocalhost &&
     (options.allowHttp === true || options.allowHttp === undefined);
 
+  if (url.username || url.password)
+    throw new UnsafeOutboundUrlError(
+      'Outbound URL must not contain credentials',
+    );
   if (url.protocol !== 'https:' && !localHttpAllowed && !(
     options.allowHttp === true && explicitlyAllowed
   )) {
     throw new UnsafeOutboundUrlError('Outbound URL must use HTTPS');
   }
-
   if (isLocalhost && !localHttpAllowed)
     throw new UnsafeOutboundUrlError('Outbound URL cannot target localhost');
   if (hostname.endsWith('.internal') || hostname.endsWith('.local')) {
     throw new UnsafeOutboundUrlError('Outbound URL targets a reserved hostname');
   }
 
+  if (localHttpAllowed) return url.toString();
+
   const family = isIP(hostname);
   if (family) {
-    if (localHttpAllowed && hostname === '127.0.0.1') return url.toString();
     if (!isSafeIp(hostname))
       throw new UnsafeOutboundUrlError('Outbound URL targets a blocked network');
     return url.toString();
@@ -92,7 +94,6 @@ export async function assertSafeOutboundUrl(
       'Outbound URL hostname cannot be resolved',
     );
   }
-
   if (
     addresses.length === 0 ||
     addresses.some((entry) => !isSafeIp(entry.address))
@@ -101,7 +102,6 @@ export async function assertSafeOutboundUrl(
       'Outbound URL resolves to a blocked network',
     );
   }
-
   return url.toString();
 }
 
