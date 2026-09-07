@@ -26,7 +26,7 @@ const agent = {
   licenseNumberMasked: null,
   timeZone: 'UTC',
   maxActiveAssignments: 10,
-  availability: { status: 'AVAILABLE', timeZone: 'UTC' },
+  availability: { status: 'ACTIVE', timeZone: 'UTC' },
   weeklySchedules: [],
   availabilityExceptions: [],
   assignments: [],
@@ -116,10 +116,18 @@ const dependencies = () => ({
     isKnownRegion: vi.fn().mockResolvedValue(true),
   },
   crmWorkload: {
-    getWorkload: vi.fn().mockResolvedValue({ activeAssignments: 1 }),
+    getWorkload: vi.fn().mockResolvedValue({
+      assignedLeads: 0,
+      closedLeads: 0,
+      activeAssignments: 0,
+    }),
   },
   salesWorkload: {
-    getWorkload: vi.fn().mockResolvedValue({ activeOpportunities: 1 }),
+    getWorkload: vi.fn().mockResolvedValue({
+      openOpportunities: 0,
+      openDeals: 0,
+      salesValue: 0,
+    }),
   },
 });
 
@@ -151,7 +159,14 @@ describe('AgentManagementService coverage', () => {
       actor,
     );
     expect(list.items).toHaveLength(1);
-    expect(list.nextCursor).toBe('agent-1');
+    expect(list.nextCursor).toBeNull();
+    expect(d.repo.listProfiles).toHaveBeenCalledWith({
+      limit: 100,
+      cursor: undefined,
+      status: undefined,
+      specializationUuid: undefined,
+      regionUuids: ['region-1'],
+    });
 
     d.repo.findProfileByUserUuid.mockResolvedValueOnce({ uuid: 'existing' });
     await expect(
