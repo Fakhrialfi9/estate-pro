@@ -104,7 +104,7 @@ describe('SystemNotificationService coverage', () => {
       service.updateTemplate('t1', { isActive: false }),
     ).resolves.toEqual({ uuid: 't1' });
     await expect(
-      service.setPolicy('n1', { priority: 'HIGH' } as never),
+      service.setPolicy('n1', { priority: 'HIGH', templateUuid: 't1' }),
     ).resolves.toEqual({ uuid: 'p1' });
     await expect(service.policy('n1')).resolves.toEqual({ uuid: 'p1' });
     await expect(service.createDelivery('n1', 'EMAIL', 3)).resolves.toEqual({
