@@ -72,6 +72,7 @@ describe('System webhook repository integration', () => {
           eventName: 'system.activity.created',
           eventVersion: 1,
           payloadHash: `hash-${index}`.padEnd(64, '0').slice(0, 64),
+          payload: { index },
           state: 'PENDING',
           signedAt: new Date(),
         }),
@@ -84,10 +85,11 @@ describe('System webhook repository integration', () => {
 
     const persisted = await prisma.systemWebhookDelivery.findMany({
       where: { subscriptionId, eventId },
-      select: { uuid: true, eventId: true, deliveryKey: true },
+      select: { uuid: true, eventId: true, deliveryKey: true, payload: true },
     });
     expect(persisted).toHaveLength(1);
     expect(persisted[0]?.eventId).toBe(eventId);
     expect(persisted[0]?.deliveryKey).toBe(eventId);
+    expect(persisted[0]?.payload).toEqual({ index: expect.any(Number) });
   });
 });
