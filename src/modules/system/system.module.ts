@@ -167,6 +167,8 @@ import { SYSTEM_METRICS_PORT } from './domain/observability/system-metrics.port.
     SystemWebhookRateLimitService,
     SystemWebhookRetryWorker,
     SystemIntegrationService,
+    EnvironmentIntegrationSecretResolverService,
+    GenericHttpIntegrationProvider,
     SystemOperationsService,
     SystemObservabilityService,
     SystemProductionHardeningService,
