@@ -39,6 +39,7 @@ import { SystemJobOperationsService } from './application/services/system-job-op
 import { SystemNotificationService } from './application/services/system-notification.service.js';
 import { SystemSettingsService } from './application/services/system-settings.service.js';
 import { SystemWebhookService } from './application/services/system-webhook.service.js';
+import { SystemWebhookRateLimitService } from './application/services/system-webhook-rate-limit.service.js';
 import { SystemIntegrationService } from './application/services/system-integration.service.js';
 import { SystemOperationsService } from './application/services/system-operations.service.js';
 import { SystemObservabilityService } from './application/services/system-observability.service.js';
@@ -51,6 +52,7 @@ import { PrismaSystemExportRepository } from './infrastructure/persistence/prism
 import { PrismaSystemImportRepository } from './infrastructure/persistence/prisma-system-import.repository.js';
 import { PrismaSystemSettingsRepository } from './infrastructure/persistence/prisma-system-settings.repository.js';
 import { PrismaSystemWebhookRepository } from './infrastructure/persistence/prisma-system-webhook.repository.js';
+import { PrismaSystemWebhookRateLimitRepository } from './infrastructure/persistence/prisma-system-webhook-rate-limit.repository.js';
 import { PrismaSystemIntegrationRepository } from './infrastructure/persistence/prisma-system-integration.repository.js';
 import { PrismaSystemRoadmapRepository } from './infrastructure/persistence/prisma-system-roadmap.repository.js';
 import { PrismaSystemIntegrationOperationRetryRepository } from './infrastructure/persistence/prisma-system-integration-operation-retry.repository.js';
@@ -77,6 +79,7 @@ import { SYSTEM_ROADMAP_REPOSITORY } from './domain/repositories/system-roadmap.
 import { SYSTEM_INTEGRATION_OPERATION_RETRY_REPOSITORY } from './domain/repositories/system-integration-operation-retry.repository.js';
 import { SYSTEM_RETENTION_REPOSITORY } from './domain/repositories/system-retention.repository.js';
 import { SYSTEM_INTEGRATION_SECRET_RESOLVER } from './domain/integration/integration-secret-resolver.port.js';
+import { SYSTEM_WEBHOOK_RATE_LIMIT_REPOSITORY } from './domain/webhook/webhook-rate-limit.repository.js';
 import { SYSTEM_DATABASE_HEALTH_PORT, SYSTEM_JOB_HEALTH_PORT, SYSTEM_OPERATIONS_PORT, SYSTEM_STORAGE_HEALTH_PORT } from './domain/operations/system-operations.port.js';
 import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK_SIGNER_PORT } from './domain/webhook/webhook.ports.js';
 
@@ -106,6 +109,7 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     SystemRetentionScheduler,
     SystemXlsxExporterAdapter,
     SystemWebhookService,
+    SystemWebhookRateLimitService,
     SystemIntegrationService,
     SystemOperationsService,
     SystemObservabilityService,
@@ -117,6 +121,7 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     PrismaSystemImportRepository,
     PrismaSystemExportRepository,
     PrismaSystemWebhookRepository,
+    PrismaSystemWebhookRateLimitRepository,
     PrismaSystemIntegrationRepository,
     PrismaSystemRoadmapRepository,
     PrismaSystemIntegrationOperationRetryRepository,
@@ -133,6 +138,7 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     { provide: SYSTEM_ARTIFACT_STORAGE, useExisting: LocalSystemArtifactStorage },
     { provide: SYSTEM_XLSX_EXPORTER, useExisting: SystemXlsxExporterAdapter },
     { provide: SYSTEM_WEBHOOK_REPOSITORY, useExisting: PrismaSystemWebhookRepository },
+    { provide: SYSTEM_WEBHOOK_RATE_LIMIT_REPOSITORY, useExisting: PrismaSystemWebhookRateLimitRepository },
     { provide: SYSTEM_INTEGRATION_REPOSITORY, useExisting: PrismaSystemIntegrationRepository },
     { provide: SYSTEM_ROADMAP_REPOSITORY, useExisting: PrismaSystemRoadmapRepository },
     { provide: SYSTEM_INTEGRATION_OPERATION_RETRY_REPOSITORY, useExisting: PrismaSystemIntegrationOperationRetryRepository },
@@ -142,21 +148,13 @@ import { SYSTEM_WEBHOOK_NETWORK_PORT, SYSTEM_WEBHOOK_SECRET_PORT, SYSTEM_WEBHOOK
     { provide: SYSTEM_WEBHOOK_NETWORK_PORT, useExisting: WebhookNetworkService },
     {
       provide: SYSTEM_STORAGE_HEALTH_PORT,
-      useFactory: (storage: LocalSystemArtifactStorage) => ({
-        check: async () => {
-          try { await storage.health(); return 'up' as const; } catch { return 'down' as const; }
-        },
-      }),
+      useFactory: (storage: LocalSystemArtifactStorage) => ({ check: async () => { try { await storage.health(); return 'up' as const; } catch { return 'down' as const; } } }),
       inject: [LocalSystemArtifactStorage],
     },
     { provide: SYSTEM_JOB_HEALTH_PORT, useFactory: (automation: AutomationHealthPort) => automation, inject: [AUTOMATION_HEALTH_PORT] },
     {
       provide: SYSTEM_DATABASE_HEALTH_PORT,
-      useFactory: (health: SystemHealthPort) => ({
-        check: async (): Promise<'up' | 'down'> => {
-          try { return await health.checkDatabase(); } catch { return 'down'; }
-        },
-      }),
+      useFactory: (health: SystemHealthPort) => ({ check: async (): Promise<'up' | 'down'> => { try { return await health.checkDatabase(); } catch { return 'down'; } } }),
       inject: [SYSTEM_HEALTH_PORT],
     },
     { provide: SYSTEM_OPERATIONS_PORT, useExisting: SystemOperationsService },
