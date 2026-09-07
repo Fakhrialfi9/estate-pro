@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../prisma/generated/prisma/client.js';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 
 const MAX_DAYS = 90;
 const DAY_MS = 24 * 60 * 60 * 1000;
