@@ -78,6 +78,10 @@ export class PrismaAuthenticationSecurityRepository
     now: Date,
     policy: AuthenticationLockoutPolicy,
   ): Promise<AuthenticationSecurityState> {
+    // Ensure the unique security row exists before attempting the row lock.
+    // The initialization path already handles concurrent creates safely.
+    await this.getState(userUuid);
+
     return this.prisma.$transaction(async (tx) => {
       const [locked] = await tx.$queryRaw<LockedSecurityRecord[]>(Prisma.sql`
         SELECT
@@ -96,42 +100,7 @@ export class PrismaAuthenticationSecurityRepository
       `);
 
       if (!locked) {
-        await tx.authenticationUserSecurity.create({
-          data: { user: { connect: { uuid: userUuid } } },
-        });
-
-        const [created] = await tx.$queryRaw<LockedSecurityRecord[]>(
-          Prisma.sql`
-            SELECT
-              s.id,
-              u.uuid AS user_uuid,
-              s.failed_login_attempts,
-              s.locked_until,
-              s.last_login_at,
-              s.last_login_ip,
-              s.updated_at
-            FROM authentication_user_security s
-            INNER JOIN authentication_users u ON u.id = s.user_id
-            WHERE u.uuid = ${userUuid}
-            LIMIT 1
-            FOR UPDATE
-          `,
-        );
-
-        if (!created) {
-          throw new Error('Unable to initialize authentication security state');
-        }
-
-        const next = this.nextFailedLoginState(created, now, policy);
-        const updated = await tx.authenticationUserSecurity.update({
-          where: { id: created.id },
-          data: {
-            failedLoginAttempts: next.failedLoginAttempts,
-            lockedUntil: next.lockedUntil,
-          },
-          include: { user: { select: { uuid: true } } },
-        });
-        return this.toState(updated);
+        throw new Error('Authentication security state disappeared during update');
       }
 
       const next = this.nextFailedLoginState(locked, now, policy);
