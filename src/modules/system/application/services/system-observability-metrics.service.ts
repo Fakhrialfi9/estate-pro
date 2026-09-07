@@ -1,7 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
-import { SystemMetricsService } from '../../infrastructure/observability/system-metrics.service.js';
+import {
+  SYSTEM_METRICS_PORT,
+  type SystemMetricsPort,
+} from '../../domain/observability/system-metrics.port.js';
 
 const MAX_DAYS = 90;
 const MAX_ROWS = 100;
@@ -20,7 +23,7 @@ type StateRow = {
 export class SystemObservabilityMetricsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly http: SystemMetricsService,
+    private readonly http: SystemMetricsPort,
   ) {}
 
   async systemMetrics(
@@ -433,21 +436,12 @@ function rangeOf(from?: Date, to?: Date) {
 
 function number(value: bigint | number | string | null | undefined): number {
   if (typeof value === 'bigint') return Number(value);
-  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') return Number(value);
   return 0;
 }
 
 function redact(value: string | null): string | null {
-  return value
-    ? value
-        .replace(
-          /(token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+/gi,
-          '$1=[REDACTED]',
-        )
-        .slice(0, 240)
-    : null;
+  if (!value) return value;
+  return value.length > 200 ? `${value.slice(0, 200)}…` : value;
 }
