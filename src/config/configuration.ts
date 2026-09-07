@@ -87,9 +87,7 @@ export const configurationValidationSchema = Joi.object({
   API_PREFIX: Joi.string().trim().min(1).default('api'),
   API_VERSION: Joi.string().trim().min(1).default('v1'),
   SWAGGER_ENABLED: Joi.boolean().truthy('true').falsy('false'),
-  DATABASE_URL: Joi.string()
-    .uri({ scheme: ['mysql'] })
-    .required(),
+  DATABASE_URL: Joi.string().uri({ scheme: ['mysql'] }).required(),
   DATABASE_POOL_CONNECTION_LIMIT: Joi.number()
     .integer()
     .min(1)
@@ -219,11 +217,7 @@ export const configurationValidationSchema = Joi.object({
     .min(1)
     .max(100)
     .default(20),
-  AUTOMATION_ACTION_MAX_ATTEMPTS: Joi.number()
-    .integer()
-    .min(1)
-    .max(10)
-    .default(3),
+  AUTOMATION_ACTION_MAX_ATTEMPTS: Joi.number().integer().min(1).max(10).default(3),
   AUTOMATION_ACTION_RATE_LIMIT: Joi.number()
     .integer()
     .min(1)
@@ -244,64 +238,30 @@ export const configurationValidationSchema = Joi.object({
   SECURITY_RATE_LIMIT_MAX: Joi.number().integer().min(1).default(100),
   SECURITY_BODY_LIMIT: Joi.string().trim().default('1mb'),
   SECURITY_COMPRESSION_THRESHOLD: Joi.string().trim().default('1kb'),
-  SECURITY_GRPC_MAX_MESSAGE_BYTES: Joi.number()
-    .integer()
-    .min(1024)
-    .default(1048576),
+  SECURITY_GRPC_MAX_MESSAGE_BYTES: Joi.number().integer().min(1024).default(1048576),
   SECURITY_TRUST_PROXY: Joi.string().trim().invalid('true', 'false').optional(),
-  SECURITY_CSP_ENABLED: Joi.boolean()
-    .truthy('true')
-    .falsy('false')
-    .default(true),
-  SECURITY_HSTS_ENABLED: Joi.boolean()
-    .truthy('true')
-    .falsy('false')
-    .default(true),
+  SECURITY_CSP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
+  SECURITY_HSTS_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
   SYSTEM_WEBHOOK_ENCRYPTION_KEY: Joi.alternatives().conditional('NODE_ENV', {
     is: Joi.valid('staging', 'production'),
     then: environmentSecret,
     otherwise: Joi.string().trim().min(32).optional(),
   }),
-  SYSTEM_WEBHOOK_ALLOW_LOCAL_HTTP: Joi.boolean()
-    .truthy('true')
-    .falsy('false')
-    .default(false),
-  SYSTEM_EXPORT_MAX_ROWS: Joi.number()
-    .integer()
-    .min(1)
-    .max(1000000)
-    .default(10000),
-  SYSTEM_EXPORT_MAX_CONCURRENT: Joi.number()
-    .integer()
-    .min(1)
-    .max(100)
-    .default(2),
-  SYSTEM_EXPORT_MAX_ARTIFACT_BYTES: Joi.number()
-    .integer()
-    .min(1024)
-    .max(1073741824)
-    .default(26214400),
-  SYSTEM_EXPORT_RETENTION_HOURS: Joi.number()
-    .integer()
-    .min(1)
-    .max(720)
-    .default(24),
-  SYSTEM_WEBHOOK_TIMEOUT_MS: Joi.number()
-    .integer()
-    .min(100)
-    .max(60000)
-    .default(5000),
+  SYSTEM_WEBHOOK_ALLOW_LOCAL_HTTP: Joi.boolean().truthy('true').falsy('false').default(false),
+  SYSTEM_EXPORT_MAX_ROWS: Joi.number().integer().min(1).max(1000000).default(10000),
+  SYSTEM_EXPORT_MAX_CONCURRENT: Joi.number().integer().min(1).max(100).default(2),
+  SYSTEM_EXPORT_MAX_ARTIFACT_BYTES: Joi.number().integer().min(1024).max(1073741824).default(26214400),
+  SYSTEM_EXPORT_RETENTION_HOURS: Joi.number().integer().min(1).max(720).default(24),
+  SYSTEM_RETENTION_INTERVAL_MS: Joi.number().integer().min(60000).max(86400000).default(3600000),
+  SYSTEM_ACTIVITY_RETENTION_DAYS: Joi.number().integer().min(1).max(3650).default(90),
+  SYSTEM_AUDIT_RETENTION_DAYS: Joi.number().integer().min(1).max(3650).default(365),
+  SYSTEM_RETENTION_BATCH_SIZE: Joi.number().integer().min(1).max(1000).default(250),
+  SYSTEM_WEBHOOK_TIMEOUT_MS: Joi.number().integer().min(100).max(60000).default(5000),
   SYSTEM_WEBHOOK_MAX_ATTEMPTS: Joi.number().integer().min(1).max(10).default(5),
-  SYSTEM_WEBHOOK_MAX_PAYLOAD_BYTES: Joi.number()
-    .integer()
-    .min(1024)
-    .max(10485760)
-    .default(1048576),
-  SYSTEM_WEBHOOK_RETENTION_DAYS: Joi.number()
-    .integer()
-    .min(1)
-    .max(3650)
-    .default(30),
+  SYSTEM_WEBHOOK_MAX_PAYLOAD_BYTES: Joi.number().integer().min(1024).max(10485760).default(1048576),
+  SYSTEM_WEBHOOK_RETENTION_DAYS: Joi.number().integer().min(1).max(3650).default(30),
+  SYSTEM_WEBHOOK_RATE_LIMIT: Joi.number().integer().min(1).max(10000).default(60),
+  SYSTEM_WEBHOOK_RATE_WINDOW_MS: Joi.number().integer().min(1000).max(3600000).default(60000),
   EMAIL_PROVIDER_URL: providerUrl.optional(),
   EMAIL_PROVIDER_TOKEN: providerToken.optional(),
   WHATSAPP_PROVIDER_URL: providerUrl.optional(),
@@ -318,30 +278,15 @@ export const configurationValidationSchema = Joi.object({
     .trim()
     .valid('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent')
     .default('info'),
-  OTEL_SERVICE_NAME: Joi.string()
-    .trim()
-    .min(1)
-    .max(200)
-    .default('estate-pro-api'),
-  OTEL_TRACING_ENABLED: Joi.boolean()
-    .truthy('true')
-    .falsy('false')
-    .default(false),
+  OTEL_SERVICE_NAME: Joi.string().trim().min(1).max(200).default('estate-pro-api'),
+  OTEL_TRACING_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
   OTEL_TRACES_EXPORTER: traceExporter.default('none'),
   OTEL_TRACES_SAMPLER: Joi.string()
     .trim()
-    .valid(
-      'always_on',
-      'always_off',
-      'traceidratio',
-      'parentbased_traceidratio',
-    )
+    .valid('always_on', 'always_off', 'traceidratio', 'parentbased_traceidratio')
     .default('parentbased_traceidratio'),
   OTEL_TRACES_SAMPLER_ARG: Joi.number().min(0).max(1).default(0.1),
-  OTEL_METRICS_ENABLED: Joi.boolean()
-    .truthy('true')
-    .falsy('false')
-    .default(false),
+  OTEL_METRICS_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
   OTEL_METRICS_EXPORTER: metricsExporter.default('none'),
   OTEL_METRIC_EXPORT_INTERVAL: Joi.number().integer().min(1000).default(60000),
 });
