@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { Prisma } from '../../prisma/generated/prisma/client.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AppModule } from '../../src/app.module.js';
@@ -7,6 +8,15 @@ import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.s
 import { PrismaSystemWebhookRepository } from '../../src/modules/system/infrastructure/persistence/prisma-system-webhook.repository.js';
 
 const endpoint = 'https://example.test/webhook';
+
+type PersistedDelivery = Prisma.SystemWebhookDeliveryGetPayload<{
+  select: {
+    uuid: true;
+    eventId: true;
+    deliveryKey: true;
+    payload: true;
+  };
+}>;
 
 describe('System webhook repository integration', () => {
   let moduleRef: TestingModule;
@@ -83,10 +93,16 @@ describe('System webhook repository integration', () => {
     expect(createdCount).toBe(1);
     expect(new Set(results.map((result) => result.record.uuid)).size).toBe(1);
 
-    const persisted = await prisma.systemWebhookDelivery.findMany({
-      where: { subscriptionId, eventId },
-      select: { uuid: true, eventId: true, deliveryKey: true, payload: true },
-    });
+    const persisted: PersistedDelivery[] =
+      await prisma.systemWebhookDelivery.findMany({
+        where: { subscriptionId, eventId },
+        select: {
+          uuid: true,
+          eventId: true,
+          deliveryKey: true,
+          payload: true,
+        },
+      });
     expect(persisted).toHaveLength(1);
     expect(persisted[0]?.eventId).toBe(eventId);
     expect(persisted[0]?.deliveryKey).toBe(eventId);
