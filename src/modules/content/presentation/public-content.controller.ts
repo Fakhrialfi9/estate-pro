@@ -8,7 +8,12 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Public } from '../../../common/security/authorization.decorators.js';
 import { ContentService } from '../application/content.service.js';
@@ -23,7 +28,7 @@ export class PublicContentController {
   @Get('articles/:slug')
   @ApiOperation({ summary: 'Get published public article' })
   @ApiParam({ name: 'slug' })
-  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 200, type: Object })
   @ApiResponse({ status: 304, description: 'Not modified' })
   async article(
     @Param('slug') slug: string,
@@ -55,6 +60,8 @@ export class PublicContentController {
   @Get('pages/:slug')
   @ApiOperation({ summary: 'Get published public page' })
   @ApiParam({ name: 'slug' })
+  @ApiResponse({ status: 200, type: Object })
+  @ApiResponse({ status: 304, description: 'Not modified' })
   async page(
     @Param('slug') slug: string,
     @Headers('accept-language') language: string | undefined,
@@ -79,6 +86,7 @@ export class PublicContentController {
 
   @Post('articles/:uuid/view')
   @ApiOperation({ summary: 'Record a privacy-preserving article view' })
+  @ApiResponse({ status: 201, type: Object })
   async view(@Param('uuid') uuid: string, @Req() request: Request) {
     return this.service.view(
       uuid,
