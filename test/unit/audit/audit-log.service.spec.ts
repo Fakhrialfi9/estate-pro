@@ -1,0 +1,41 @@
+import { describe, expect, it, vi } from 'vitest';
+import { AuditLogService } from '../../../src/modules/audit/application/audit-log.service.js';
+
+describe('AuditLogService', () => {
+  it('does not propagate audit persistence failures to the business caller', async () => {
+    const repository = {
+      record: vi.fn().mockRejectedValue(new Error('audit database unavailable')),
+      list: vi.fn(),
+    };
+    const logger = {
+      setContext: vi.fn(),
+      error: vi.fn(),
+    };
+    const service = new AuditLogService(repository as never, logger as never);
+
+    await expect(
+      service.record({
+        action: 'SYSTEM_SETTING_UPDATED',
+        actorUuid: 'actor-1',
+        subjectUuid: 'actor-1',
+        entityType: 'system_setting',
+        entityUuid: 'setting-1',
+        result: 'SUCCESS',
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(repository.record).toHaveBeenCalledOnce();
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auditAction: 'SYSTEM_SETTING_UPDATED',
+        resourceType: 'system_setting',
+        resourceId: 'setting-1',
+        error: expect.objectContaining({
+          type: 'Error',
+          message: 'audit database unavailable',
+        }),
+      }),
+      expect.stringContaining('Audit write failed'),
+    );
+  });
+});
