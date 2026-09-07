@@ -57,7 +57,7 @@ export class AgentManagementController {
   @Get()
   @RequirePermissions('agents.read')
   @ApiOperation({ summary: 'List agents' })
-  @ApiResponse({ status: 200, description: 'Cursor-paginated agent directory' })
+  @ApiResponse({ status: 200, description: 'Cursor-paginated agent directory', type: Object })
   list(
     @Req() r: AuthRequest,
     @Query('limit') limit?: string,
@@ -81,6 +81,7 @@ export class AgentManagementController {
   @Post()
   @RequirePermissions('agents.manage')
   @ApiOperation({ summary: 'Create an agent profile' })
+  @ApiResponse({ status: 201, type: Object })
   create(
     @Req() r: AuthRequest,
     @Body() dto: AgentCreateDto,
@@ -93,12 +94,14 @@ export class AgentManagementController {
   @Get('specializations')
   @RequirePermissions('agents.read')
   @ApiOperation({ summary: 'List active specialization taxonomy' })
+  @ApiResponse({ status: 200, type: Object })
   specializations() {
     return this.service.listSpecializations();
   }
 
   @Post('specializations')
   @RequirePermissions('agents.specialization.manage')
+  @ApiResponse({ status: 201, type: Object })
   createSpecialization(
     @Req() r: AuthRequest,
     @Body() dto: SpecializationCreateDto,
@@ -111,6 +114,7 @@ export class AgentManagementController {
   @Get('candidates/search')
   @RequirePermissions('agents.read')
   @ApiOperation({ summary: 'Find eligible assignment candidates' })
+  @ApiResponse({ status: 200, type: Object })
   candidates(
     @Req() r: AuthRequest,
     @Query('propertyUuid') propertyUuid?: string,
@@ -132,6 +136,7 @@ export class AgentManagementController {
   @Post('assignments')
   @RequirePermissions('agents.assignment.manage')
   @ApiOperation({ summary: 'Assign a property to an eligible agent' })
+  @ApiResponse({ status: 201, type: Object })
   assignments(
     @Req() r: AuthRequest,
     @Body() dto: AssignmentCreateDto,
@@ -148,6 +153,7 @@ export class AgentManagementController {
 
   @Post('assignments/:propertyUuid/reassign')
   @RequirePermissions('agents.assignment.manage')
+  @ApiResponse({ status: 201, type: Object })
   reassign(
     @Req() r: AuthRequest,
     @Param('propertyUuid', new ParseUUIDPipe({ version: '4' }))
@@ -167,6 +173,7 @@ export class AgentManagementController {
 
   @Get(':uuid')
   @RequirePermissions('agents.read')
+  @ApiResponse({ status: 200, type: Object })
   get(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -176,6 +183,7 @@ export class AgentManagementController {
 
   @Patch(':uuid')
   @RequirePermissions('agents.manage')
+  @ApiResponse({ status: 200, type: Object })
   update(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -189,6 +197,7 @@ export class AgentManagementController {
   @Delete(':uuid')
   @HttpCode(204)
   @RequirePermissions('agents.manage')
+  @ApiResponse({ status: 204 })
   archive(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -200,6 +209,7 @@ export class AgentManagementController {
 
   @Get(':uuid/specializations')
   @RequirePermissions('agents.read')
+  @ApiResponse({ status: 200, type: Object })
   specializationsForAgent(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -209,6 +219,7 @@ export class AgentManagementController {
 
   @Post(':uuid/specializations/:specializationUuid')
   @RequirePermissions('agents.specialization.manage')
+  @ApiResponse({ status: 201, type: Object })
   addSpecialization(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -229,6 +240,7 @@ export class AgentManagementController {
   @Delete(':uuid/specializations/:specializationUuid')
   @HttpCode(204)
   @RequirePermissions('agents.specialization.manage')
+  @ApiResponse({ status: 204 })
   removeSpecialization(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -246,6 +258,7 @@ export class AgentManagementController {
 
   @Get(':uuid/coverage')
   @RequirePermissions('agents.read')
+  @ApiResponse({ status: 200, type: Object })
   coverage(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -255,6 +268,7 @@ export class AgentManagementController {
 
   @Post(':uuid/coverage')
   @RequirePermissions('agents.location.manage')
+  @ApiResponse({ status: 201, type: Object })
   addCoverage(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -268,6 +282,7 @@ export class AgentManagementController {
   @Delete('coverage/:coverageUuid')
   @HttpCode(204)
   @RequirePermissions('agents.location.manage')
+  @ApiResponse({ status: 204 })
   removeCoverage(
     @Req() r: AuthRequest,
     @Param('coverageUuid', new ParseUUIDPipe({ version: '4' }))
@@ -280,6 +295,7 @@ export class AgentManagementController {
 
   @Get(':uuid/availability')
   @RequirePermissions('agents.read')
+  @ApiResponse({ status: 200, type: Object })
   availability(
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
   ) {
@@ -289,6 +305,7 @@ export class AgentManagementController {
   @Put(':uuid/availability')
   @ApiOperation({ summary: 'Update self or managed availability' })
   @RequirePermissions('agents.availability.manage')
+  @ApiResponse({ status: 200, type: Object })
   updateAvailability(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -301,6 +318,7 @@ export class AgentManagementController {
 
   @Get(':uuid/capacity')
   @RequirePermissions('agents.read')
+  @ApiResponse({ status: 200, type: Object })
   capacity(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -310,6 +328,7 @@ export class AgentManagementController {
 
   @Get(':uuid/assignments')
   @RequirePermissions('agents.read')
+  @ApiResponse({ status: 200, type: Object })
   assignmentList(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -321,6 +340,7 @@ export class AgentManagementController {
   @Delete(':uuid/assignments/:propertyUuid')
   @HttpCode(204)
   @RequirePermissions('agents.assignment.manage')
+  @ApiResponse({ status: 204 })
   unassign(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -334,6 +354,7 @@ export class AgentManagementController {
 
   @Get(':uuid/targets')
   @RequirePermissions('agents.target.read')
+  @ApiResponse({ status: 200, type: Object })
   targets(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -343,6 +364,7 @@ export class AgentManagementController {
 
   @Post(':uuid/targets')
   @RequirePermissions('agents.target.manage')
+  @ApiResponse({ status: 201, type: Object })
   createTarget(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
@@ -355,6 +377,7 @@ export class AgentManagementController {
 
   @Patch('targets/:targetUuid')
   @RequirePermissions('agents.target.manage')
+  @ApiResponse({ status: 200, type: Object })
   updateTarget(
     @Req() r: AuthRequest,
     @Param('targetUuid', new ParseUUIDPipe({ version: '4' }))
@@ -369,6 +392,7 @@ export class AgentManagementController {
   @Delete('targets/:targetUuid')
   @HttpCode(204)
   @RequirePermissions('agents.target.manage')
+  @ApiResponse({ status: 204 })
   closeTarget(
     @Req() r: AuthRequest,
     @Param('targetUuid', new ParseUUIDPipe({ version: '4' }))
@@ -381,6 +405,7 @@ export class AgentManagementController {
 
   @Get(':uuid/performance')
   @RequirePermissions('agents.performance.read')
+  @ApiResponse({ status: 200, type: Object })
   performance(
     @Req() r: AuthRequest,
     @Param('uuid', new ParseUUIDPipe({ version: '4' })) uuid: string,
