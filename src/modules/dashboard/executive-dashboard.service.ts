@@ -234,6 +234,10 @@ export class ExecutiveDashboardService {
   }
 
   private firstRow(value: unknown): AnalyticsRow {
+    if (Array.isArray(value)) {
+      const first = value[0];
+      return this.isRow(first) ? first : {};
+    }
     return this.isRow(value) ? value : {};
   }
 
@@ -518,7 +522,6 @@ export class ExecutiveDashboardService {
       type: this.string(row.type),
       status: this.string(row.status),
       count: this.number(row.count),
-      category: this.string(row.category, 'OTHER'),
     }));
   }
 
@@ -530,7 +533,9 @@ export class ExecutiveDashboardService {
       agentUuid: this.string(row.agentUuid),
       opportunities: this.number(row.opportunities),
       wonDeals: this.number(row.wonDeals),
-      ...(canReadRevenue ? { revenue: this.money(row.revenue) } : {}),
+      ...(canReadRevenue && Object.prototype.hasOwnProperty.call(row, 'revenue')
+        ? { revenue: this.money(row.revenue) }
+        : {}),
     }));
   }
 
@@ -557,20 +562,23 @@ export class ExecutiveDashboardService {
       publishedProperties: this.number(row.publishedProperties),
       wonDeals: this.number(row.wonDeals),
       conversionRate: this.number(row.conversionRate),
-      ...(canReadRevenue ? { revenue: this.money(row.revenue) } : {}),
+      ...(canReadRevenue && Object.prototype.hasOwnProperty.call(row, 'revenue')
+        ? { revenue: this.money(row.revenue) }
+        : {}),
     }));
   }
 
   private canReadRevenue(user: AccessTokenClaims): boolean {
-    return (user.permissions ?? []).some((permission) =>
+    return user.permissions.some((permission) =>
       ANALYTICS_GLOBAL_PERMISSIONS.has(permission),
     );
   }
 
   private canForecast(user: AccessTokenClaims): boolean {
-    return (
-      (user.permissions ?? []).includes('analytics.forecast') ||
-      (user.permissions ?? []).includes('analytics.manage')
+    return user.permissions.some((permission) =>
+      ['analytics.forecast', ...ANALYTICS_GLOBAL_PERMISSIONS].includes(
+        permission,
+      ),
     );
   }
 }
