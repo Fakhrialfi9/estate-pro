@@ -3,6 +3,7 @@ import { ANALYTICS_PERMISSIONS } from './analytics.ts';
 import { AUTOMATION_PERMISSIONS } from './automation.ts';
 import { CONTENT_EXTRA_PERMISSIONS, CONTENT_PERMISSIONS } from './content.ts';
 import { CRM_PERMISSIONS } from './crm.ts';
+import { PROPERTY_MATCHING_PERMISSIONS } from './property-matching.ts';
 import { PROPERTY_PERMISSIONS } from './property.ts';
 import { SALES_PERMISSIONS } from './sales.ts';
 import { SYSTEM_PERMISSIONS } from './system.ts';
@@ -14,6 +15,7 @@ export type { PermissionSeed } from './types.ts';
 export const PERMISSIONS: readonly PermissionSeed[] = [
   ...USER_PERMISSIONS,
   ...PROPERTY_PERMISSIONS,
+  ...PROPERTY_MATCHING_PERMISSIONS,
   ...AUTOMATION_PERMISSIONS,
   ...SYSTEM_PERMISSIONS,
   ...CONTENT_PERMISSIONS,
