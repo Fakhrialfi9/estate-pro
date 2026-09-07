@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi, type Mock } from 'vitest';
+import { Prisma } from '../../../prisma/generated/prisma/client.js';
 import type { ConfigService } from '@nestjs/config';
 import { PrismaSecurityAuditRepository } from '../../../src/infrastructure/audit/prisma-security-audit.repository.js';
 import type { SecurityAuditEvent } from '../../../src/common/audit/security-audit.port.js';
@@ -162,7 +163,7 @@ describe('PrismaSecurityAuditRepository', () => {
         {
           auditLogId: 1n,
           field: 'electricityProvider',
-          oldValue: null,
+          oldValue: Prisma.JsonNull,
           newValue: 'PLN',
         },
       ],
