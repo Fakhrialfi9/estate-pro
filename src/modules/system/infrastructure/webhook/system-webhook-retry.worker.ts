@@ -52,18 +52,29 @@ export class SystemWebhookRetryWorker implements OnModuleInit, OnModuleDestroy {
       for (const job of jobs) {
         const claimed = await this.repository.claimDelivery(job.delivery.uuid, now);
         if (!claimed) continue;
+
+        const attempt = job.delivery.attemptCount + 1;
+        const runningDelivery = await this.repository.updateDelivery(
+          job.delivery.uuid,
+          { attemptCount: attempt, state: 'DELIVERING' },
+        );
         processed += 1;
-        const waitMs = Math.max(0, now.getTime() - job.delivery.createdAt.getTime());
+        const waitMs = Math.max(
+          0,
+          now.getTime() - job.delivery.createdAt.getTime(),
+        );
         try {
-          const result = await this.webhooks.processQueuedDelivery(job.delivery.uuid);
+          const result = await this.webhooks.processQueuedDelivery(
+            runningDelivery.uuid,
+          );
           if (result?.state === 'DEAD_LETTER') deadLetters += 1;
         } catch (error: unknown) {
           failures += 1;
           this.logger.error(
             {
-              deliveryUuid: job.delivery.uuid,
-              eventId: job.delivery.eventId,
-              attemptCount: job.delivery.attemptCount,
+              deliveryUuid: runningDelivery.uuid,
+              eventId: runningDelivery.eventId,
+              attemptCount: runningDelivery.attemptCount,
               error:
                 error instanceof Error
                   ? error.message
@@ -75,11 +86,11 @@ export class SystemWebhookRetryWorker implements OnModuleInit, OnModuleDestroy {
         const runMs = Date.now() - startedAt;
         this.logger.log(
           {
-            deliveryUuid: job.delivery.uuid,
+            deliveryUuid: runningDelivery.uuid,
             queueWaitMs: waitMs,
             runMs,
-            attemptCount: job.delivery.attemptCount,
-            state: job.delivery.state,
+            attemptCount: attempt,
+            state: runningDelivery.state,
           },
           'Webhook retry delivery processed',
         );
