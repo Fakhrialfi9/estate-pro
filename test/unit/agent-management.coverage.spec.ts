@@ -71,7 +71,10 @@ const dependencies = () => ({
       roleCodes: [],
     }),
     assertPermissions: vi.fn(
-      (snapshot: { permissionCodes: string[] }, required: readonly string[]) => {
+      (
+        snapshot: { permissionCodes: string[] },
+        required: readonly string[],
+      ) => {
         if (
           !required.every(
             (permission) =>
