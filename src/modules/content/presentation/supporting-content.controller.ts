@@ -124,17 +124,20 @@ export class SupportingContentController {
     return this.resources.restore('category', id, this.ctx(r));
   }
 
-  @Get('tags') @RequirePermissions('content.tags.read')
+  @Get('tags')
+  @RequirePermissions('content.tags.read')
   @ApiResponse({ status: 200, type: Object })
   listTags(@Query() q: ContentQueryDto) {
     return this.resources.list('tag', q);
   }
-  @Get('tags/:uuid') @RequirePermissions('content.tags.read')
+  @Get('tags/:uuid')
+  @RequirePermissions('content.tags.read')
   @ApiResponse({ status: 200, type: Object })
   getTag(@Param('uuid') id: string) {
     return this.resources.get('tag', id);
   }
-  @Post('tags') @RequirePermissions('content.tags.create')
+  @Post('tags')
+  @RequirePermissions('content.tags.create')
   @ApiResponse({ status: 201, type: Object })
   createTag(@Req() r: AuthRequest, @Body() d: ResourceDto) {
     return this.resources.create(
@@ -143,7 +146,8 @@ export class SupportingContentController {
       this.ctx(r),
     );
   }
-  @Patch('tags/:uuid') @RequirePermissions('content.tags.update')
+  @Patch('tags/:uuid')
+  @RequirePermissions('content.tags.update')
   @ApiResponse({ status: 200, type: Object })
   updateTag(
     @Req() r: AuthRequest,
@@ -171,17 +175,20 @@ export class SupportingContentController {
     return this.resources.restore('tag', id, this.ctx(r));
   }
 
-  @Get('pages') @RequirePermissions('content.pages.read')
+  @Get('pages')
+  @RequirePermissions('content.pages.read')
   @ApiResponse({ status: 200, type: Object })
   listPages(@Query() q: ContentQueryDto) {
     return this.resources.list('page', q);
   }
-  @Get('pages/:uuid') @RequirePermissions('content.pages.read')
+  @Get('pages/:uuid')
+  @RequirePermissions('content.pages.read')
   @ApiResponse({ status: 200, type: Object })
   getPage(@Param('uuid') id: string) {
     return this.resources.get('page', id);
   }
-  @Post('pages') @RequirePermissions('content.pages.create')
+  @Post('pages')
+  @RequirePermissions('content.pages.create')
   @ApiResponse({ status: 201, type: Object })
   createPage(@Req() r: AuthRequest, @Body() d: ResourceDto) {
     return this.resources.create(
@@ -190,7 +197,8 @@ export class SupportingContentController {
       this.ctx(r),
     );
   }
-  @Patch('pages/:uuid') @RequirePermissions('content.pages.update')
+  @Patch('pages/:uuid')
+  @RequirePermissions('content.pages.update')
   @ApiResponse({ status: 200, type: Object })
   updatePage(
     @Req() r: AuthRequest,
@@ -250,17 +258,20 @@ export class SupportingContentController {
     );
   }
 
-  @Get('faqs') @RequirePermissions('content.faqs.read')
+  @Get('faqs')
+  @RequirePermissions('content.faqs.read')
   @ApiResponse({ status: 200, type: Object })
   listFaqs(@Query() q: ContentQueryDto) {
     return this.resources.list('faq', q);
   }
-  @Get('faqs/:uuid') @RequirePermissions('content.faqs.read')
+  @Get('faqs/:uuid')
+  @RequirePermissions('content.faqs.read')
   @ApiResponse({ status: 200, type: Object })
   getFaq(@Param('uuid') id: string) {
     return this.resources.get('faq', id);
   }
-  @Post('faqs') @RequirePermissions('content.faqs.create')
+  @Post('faqs')
+  @RequirePermissions('content.faqs.create')
   @ApiResponse({ status: 201, type: Object })
   createFaq(@Req() r: AuthRequest, @Body() d: ResourceDto) {
     return this.resources.create(
@@ -269,7 +280,8 @@ export class SupportingContentController {
       this.ctx(r),
     );
   }
-  @Patch('faqs/:uuid') @RequirePermissions('content.faqs.update')
+  @Patch('faqs/:uuid')
+  @RequirePermissions('content.faqs.update')
   @ApiResponse({ status: 200, type: Object })
   updateFaq(
     @Req() r: AuthRequest,
@@ -348,17 +360,20 @@ export class SupportingContentController {
     return this.resources.restore('testimonial', id, this.ctx(r));
   }
 
-  @Get('banners') @RequirePermissions('content.banners.read')
+  @Get('banners')
+  @RequirePermissions('content.banners.read')
   @ApiResponse({ status: 200, type: Object })
   listBanners(@Query() q: ContentQueryDto) {
     return this.resources.list('banner', q);
   }
-  @Get('banners/:uuid') @RequirePermissions('content.banners.read')
+  @Get('banners/:uuid')
+  @RequirePermissions('content.banners.read')
   @ApiResponse({ status: 200, type: Object })
   getBanner(@Param('uuid') id: string) {
     return this.resources.get('banner', id);
   }
-  @Post('banners') @RequirePermissions('content.banners.create')
+  @Post('banners')
+  @RequirePermissions('content.banners.create')
   @ApiResponse({ status: 201, type: Object })
   createBanner(@Req() r: AuthRequest, @Body() d: ResourceDto) {
     return this.resources.create(
@@ -418,17 +433,20 @@ export class SupportingContentController {
     );
   }
 
-  @Get('menus') @RequirePermissions('content.menus.read')
+  @Get('menus')
+  @RequirePermissions('content.menus.read')
   @ApiResponse({ status: 200, type: Object })
   listMenus(@Query() q: ContentQueryDto) {
     return this.resources.list('menu', q);
   }
-  @Get('menus/:uuid') @RequirePermissions('content.menus.read')
+  @Get('menus/:uuid')
+  @RequirePermissions('content.menus.read')
   @ApiResponse({ status: 200, type: Object })
   getMenu(@Param('uuid') id: string) {
     return this.resources.get('menu', id);
   }
-  @Post('menus') @RequirePermissions('content.menus.create')
+  @Post('menus')
+  @RequirePermissions('content.menus.create')
   @ApiResponse({ status: 201, type: Object })
   createMenu(@Req() r: AuthRequest, @Body() d: ResourceDto) {
     return this.resources.create(
@@ -437,7 +455,8 @@ export class SupportingContentController {
       this.ctx(r),
     );
   }
-  @Patch('menus/:uuid') @RequirePermissions('content.menus.update')
+  @Patch('menus/:uuid')
+  @RequirePermissions('content.menus.update')
   @ApiResponse({ status: 200, type: Object })
   updateMenu(
     @Req() r: AuthRequest,
@@ -475,7 +494,8 @@ export class SupportingContentController {
     return this.content.reorderMenu(id, d.itemUuids, this.ctx(r));
   }
 
-  @Get('redirects') @RequirePermissions('content.redirects.read')
+  @Get('redirects')
+  @RequirePermissions('content.redirects.read')
   @ApiResponse({ status: 200, type: Object })
   listRedirects(@Query() q: ContentQueryDto) {
     return this.resources.list('redirect', q);

@@ -8,12 +8,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import {
-  ApiOperation,
-  ApiParam,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Public } from '../../../common/security/authorization.decorators.js';
 import { ContentService } from '../application/content.service.js';
