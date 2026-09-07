@@ -42,6 +42,7 @@ const delivery = (
   eventName: 'system.activity.created',
   eventVersion: 1,
   payloadHash: 'hash'.padEnd(64, '0'),
+  payload: {},
   attemptCount: 1,
   state: 'SUCCEEDED',
   httpStatus: 200,
@@ -144,31 +145,38 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
 };
 
 describe('SystemWebhookService', () => {
-  it('does not deliver when declarative filters do not match', async () => {
+  it('does not enqueue when declarative filters do not match', async () => {
     const row = subscription([
       { field: 'lead.status', operator: 'EQ', value: 'qualified' },
     ]);
-    const { service, network } = createService([row]);
+    const { service, network, createDelivery } = createService([row]);
 
     await service.publish('event-1', 'system.activity.created', {
       lead: { status: 'new' },
     });
 
+    expect(createDelivery).not.toHaveBeenCalled();
     expect(network.send).not.toHaveBeenCalled();
   });
 
-  it('delivers when all declarative filters match', async () => {
+  it('enqueues a matching webhook without blocking on network delivery', async () => {
     const row = subscription([
       { field: 'lead.status', operator: 'EQ', value: 'qualified' },
       { field: 'lead.score', operator: 'GTE', value: 70 },
     ]);
-    const { service, network } = createService([row]);
+    const { service, network, createDelivery, getCreatedDeliveryInput } =
+      createService([row]);
 
     await service.publish('event-1', 'system.activity.created', {
       lead: { status: 'qualified', score: 80 },
     });
 
-    expect(network.send).toHaveBeenCalledOnce();
+    expect(createDelivery).toHaveBeenCalledOnce();
+    expect(getCreatedDeliveryInput()?.state).toBe('PENDING');
+    expect(getCreatedDeliveryInput()?.payload).toEqual({
+      lead: { status: 'qualified', score: 80 },
+    });
+    expect(network.send).not.toHaveBeenCalled();
   });
 
   it('uses a distinct delivery key for explicit replay while preserving event identity', async () => {
