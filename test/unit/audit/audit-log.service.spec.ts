@@ -1,13 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AuditLogService } from '../../../src/modules/audit/application/audit-log.service.js';
+import type {
+  AuditLogRepository,
+  AuditLogWriteEvent,
+} from '../../../src/modules/audit/domain/repositories/audit-log.repository.js';
 
 describe('AuditLogService', () => {
   it('does not propagate audit persistence failures to the business caller', async () => {
-    const repository = {
-      record: vi
-        .fn()
-        .mockRejectedValue(new Error('audit database unavailable')),
-      list: vi.fn(),
+    const record = vi
+      .fn<AuditLogRepository['record']>()
+      .mockRejectedValue(new Error('audit database unavailable'));
+    const repository: Pick<AuditLogRepository, 'record' | 'list'> = {
+      record: record as (event: AuditLogWriteEvent) => Promise<void>,
+      list: vi.fn<AuditLogRepository['list']>(),
     };
     const logger = {
       setContext: vi.fn(),
