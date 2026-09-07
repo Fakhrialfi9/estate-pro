@@ -1,7 +1,6 @@
-import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
 import type { CommunicationProvider } from './communication-provider.js';
 import { CommunicationProviderError } from './communication-provider.js';
+import { assertSafeOutboundUrl } from '../../../../common/security/outbound-url-policy.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -97,67 +96,16 @@ export class HttpCommunicationProvider implements CommunicationProvider {
 }
 
 export async function assertPublicHttpsUrl(raw: string): Promise<void> {
-  let url: URL;
   try {
-    url = new URL(raw);
-  } catch {
+    await assertSafeOutboundUrl(raw);
+  } catch (error: unknown) {
     throw new CommunicationProviderError(
-      'Communication provider URL is invalid',
+      error instanceof Error
+        ? error.message.replace(/^Outbound/, 'Communication provider')
+        : 'Communication provider URL is unsafe',
       false,
     );
   }
-
-  if (url.protocol !== 'https:') {
-    throw new CommunicationProviderError(
-      'Communication provider URL must use HTTPS',
-      false,
-    );
-  }
-  if (url.username || url.password) {
-    throw new CommunicationProviderError(
-      'Communication provider URL cannot contain credentials',
-      false,
-    );
-  }
-
-  const hostname = url.hostname.toLowerCase();
-  if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
-    throw new CommunicationProviderError(
-      'Communication provider URL cannot target localhost',
-      false,
-    );
-  }
-  if (isPrivateAddress(hostname)) {
-    throw new CommunicationProviderError(
-      'Communication provider URL cannot target a private network',
-      false,
-    );
-  }
-
-  const addresses = await lookup(hostname, { all: true, verbatim: true });
-  if (addresses.some((entry) => isPrivateAddress(entry.address))) {
-    throw new CommunicationProviderError(
-      'Communication provider URL resolves to a private network',
-      false,
-    );
-  }
-}
-
-function isPrivateAddress(address: string): boolean {
-  const version = isIP(address);
-  if (version === 4) {
-    const [a = Number.NaN, b = Number.NaN] = address.split('.').map(Number);
-    return (
-      a === 10 ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 192 && b === 168) ||
-      (a === 172 && b >= 16 && b <= 31)
-    );
-  }
-  return (
-    version === 6 && (address === '::1' || /^(fc|fd|fe80:)/i.test(address))
-  );
 }
 
 function parseObject(text: string): Record<string, unknown> | null {
