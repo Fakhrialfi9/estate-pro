@@ -128,6 +128,15 @@ export class SystemNotificationService implements SystemNotificationsContract {
     return this.automation.listDeliveries(notificationUuid);
   }
 
+  retryDelivery(uuid: string, actorUuid: string) {
+    this.requireUser(actorUuid);
+    return this.automation.retryDelivery(uuid, actorUuid);
+  }
+
+  processDueDeliveries(limit = 25) {
+    return this.automation.processDueDeliveries(limit);
+  }
+
   private requireUser(userUuid: string): void {
     if (!userUuid) {
       throw new BadRequestException({
