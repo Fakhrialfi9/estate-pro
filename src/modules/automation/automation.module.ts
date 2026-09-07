@@ -19,6 +19,7 @@ import { AuthorizationGuard } from '../../common/security/authorization.guard.js
 import { AutomationController } from './presentation/automation.controller.js';
 import { AutomationService } from './application/services/automation.service.js';
 import { AutomationNotificationService } from './application/services/automation-notification.service.js';
+import { AutomationNotificationDeliveryService } from './application/services/automation-notification-delivery.service.js';
 import { WorkflowValidator } from './application/validation/workflow-validator.js';
 import { PrismaAutomationRepository } from './infrastructure/persistence/prisma-automation.repository.js';
 import { PrismaAutomationNotificationRepository } from './infrastructure/persistence/prisma-automation-notification.repository.js';
@@ -26,10 +27,7 @@ import { AUTOMATION_REPOSITORY } from './infrastructure/persistence/automation.r
 import { AUTOMATION_NOTIFICATION_REPOSITORY } from './domain/repositories/automation-notification.repository.js';
 import { AUTOMATION_ACTION_PROVIDERS } from './application/actions/automation-actions.js';
 import { SendCommunicationAction } from './application/actions/send-communication.action.js';
-import type {
-  ActionHandler,
-  AutomationRepository,
-} from './domain/automation.ports.js';
+import type { ActionHandler, AutomationRepository } from './domain/automation.ports.js';
 import { AUTOMATION_ACTION_HANDLERS } from './domain/automation.tokens.js';
 import {
   CRM_AUTOMATION_PORT,
@@ -70,6 +68,7 @@ const ACTION_HANDLERS = [
     PrismaAutomationRepository,
     PrismaAutomationNotificationRepository,
     AutomationNotificationService,
+    AutomationNotificationDeliveryService,
     ...ACTION_HANDLERS,
     { provide: AUTOMATION_REPOSITORY, useExisting: PrismaAutomationRepository },
     {
@@ -148,8 +147,7 @@ const ACTION_HANDLERS = [
             const items = result.items ?? [];
             if (items.length === 0) break;
             for (const item of items) {
-              const uuid =
-                typeof item.uuid === 'string' ? item.uuid : undefined;
+              const uuid = typeof item.uuid === 'string' ? item.uuid : undefined;
               if (!uuid) continue;
               if (await automation.markNotificationRead(uuid, userUuid))
                 updated += 1;
@@ -196,6 +194,7 @@ const ACTION_HANDLERS = [
     AUTOMATION_SYSTEM_PORT,
     AUTOMATION_NOTIFICATION_PORT,
     AUTOMATION_HEALTH_PORT,
+    AutomationNotificationDeliveryService,
   ],
 })
 export class AutomationModule {}
