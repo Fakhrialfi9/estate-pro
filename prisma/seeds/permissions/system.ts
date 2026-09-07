@@ -54,4 +54,8 @@ export const SYSTEM_PERMISSIONS = [
   { name: 'Update System Operations', code: 'system.operations.update', module: 'system', domain: 'operations', action: 'update' },
   { name: 'Retry System Operations', code: 'system.operations.retry', module: 'system', domain: 'operations', action: 'retry' },
   { name: 'Cleanup System Operations', code: 'system.operations.cleanup', module: 'system', domain: 'operations', action: 'cleanup' },
+  { name: 'Read Integration Metrics', code: 'system.integration.metrics.read', module: 'system', domain: 'integration', action: 'metrics:read' },
+  { name: 'Read Job Metrics', code: 'system.jobs.metrics.read', module: 'system', domain: 'jobs', action: 'metrics:read' },
+  { name: 'Read Integration Health', code: 'system.integration.health.read', module: 'system', domain: 'integration', action: 'health:read' },
+  { name: 'Read External Dependency Health', code: 'system.external.health.read', module: 'system', domain: 'operations', action: 'health:read' },
 ] as const;
