@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import type { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
+import type {
+  CallHandler,
+  ExecutionContext,
+  NestInterceptor,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { catchError, finalize, throwError } from 'rxjs';
 import { SystemMetricsService } from './system-metrics.service.js';

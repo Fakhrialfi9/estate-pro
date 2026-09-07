@@ -1,6 +1,9 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { assertSafeOutboundUrl, UnsafeOutboundUrlError } from '../../../../common/security/outbound-url-policy.js';
+import {
+  assertSafeOutboundUrl,
+  UnsafeOutboundUrlError,
+} from '../../../../common/security/outbound-url-policy.js';
 import type { SystemWebhookNetworkPort } from '../../domain/webhook/webhook.ports.js';
 
 @Injectable()
@@ -10,14 +13,17 @@ export class WebhookNetworkService implements SystemWebhookNetworkPort {
   async validateTarget(rawUrl: string): Promise<URL> {
     try {
       const url = await assertSafeOutboundUrl(rawUrl, {
-        allowHttp: this.config.get<string>('system.allowLocalWebhookHttp') === 'true',
+        allowHttp:
+          this.config.get<string>('system.allowLocalWebhookHttp') === 'true',
         allowLocalhostHttp:
           this.config.get<string>('system.allowLocalWebhookHttp') === 'true',
       });
       return new URL(url);
     } catch (error: unknown) {
       if (error instanceof UnsafeOutboundUrlError) {
-        throw new UnprocessableEntityException(error.message.replace(/^Outbound/, 'Webhook'));
+        throw new UnprocessableEntityException(
+          error.message.replace(/^Outbound/, 'Webhook'),
+        );
       }
       throw error;
     }

@@ -1,13 +1,27 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { SYSTEM_INTEGRATION_REPOSITORY, type SystemIntegrationRepository } from '../../domain/repositories/system-integration.repository.js';
-import { SYSTEM_ROADMAP_REPOSITORY, type SystemRoadmapRepository } from '../../domain/repositories/system-roadmap.repository.js';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
+import {
+  SYSTEM_INTEGRATION_REPOSITORY,
+  type SystemIntegrationRepository,
+} from '../../domain/repositories/system-integration.repository.js';
+import {
+  SYSTEM_ROADMAP_REPOSITORY,
+  type SystemRoadmapRepository,
+} from '../../domain/repositories/system-roadmap.repository.js';
 import { SystemIntegrationCallbackService } from '../../application/services/system-integration-callback.service.js';
 
 const POLL_MS = 1_000;
 const BATCH_SIZE = 25;
 
 @Injectable()
-export class SystemIntegrationCallbackWorker implements OnModuleInit, OnModuleDestroy {
+export class SystemIntegrationCallbackWorker
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(SystemIntegrationCallbackWorker.name);
   private timer: ReturnType<typeof setInterval> | undefined;
   private running = false;

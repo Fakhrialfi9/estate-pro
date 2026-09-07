@@ -33,22 +33,24 @@ export class SystemIntegrationLogService {
     if (input.operationKey)
       conditions.push(Prisma.sql`o.operation_key = ${input.operationKey}`);
 
-    const rows = await this.prisma.$queryRaw<Array<{
-      uuid: string;
-      integrationUuid: string;
-      providerKey: string;
-      operationKey: string;
-      direction: string;
-      state: string;
-      attempt: number;
-      maxAttempts: number;
-      idempotencyKey: string;
-      startedAt: Date | null;
-      completedAt: Date | null;
-      nextAttemptAt: Date | null;
-      errorCode: string | null;
-      createdAt: Date;
-    }>>(Prisma.sql`
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        uuid: string;
+        integrationUuid: string;
+        providerKey: string;
+        operationKey: string;
+        direction: string;
+        state: string;
+        attempt: number;
+        maxAttempts: number;
+        idempotencyKey: string;
+        startedAt: Date | null;
+        completedAt: Date | null;
+        nextAttemptAt: Date | null;
+        errorCode: string | null;
+        createdAt: Date;
+      }>
+    >(Prisma.sql`
       SELECT
         o.uuid,
         i.uuid AS integrationUuid,

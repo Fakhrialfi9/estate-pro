@@ -318,13 +318,20 @@ export class SystemWebhookService {
     return this.toDelivery(delivery);
   }
 
-  async processQueuedDelivery(deliveryUuid: string): Promise<WebhookDeliveryRecord | null> {
+  async processQueuedDelivery(
+    deliveryUuid: string,
+  ): Promise<WebhookDeliveryRecord | null> {
     const existing = await this.repository.findDelivery(deliveryUuid);
     if (!existing) return null;
-    if (existing.state === 'SUCCEEDED' || existing.state === 'DEAD_LETTER' || existing.state === 'CANCELLED')
+    if (
+      existing.state === 'SUCCEEDED' ||
+      existing.state === 'DEAD_LETTER' ||
+      existing.state === 'CANCELLED'
+    )
       return existing;
 
-    const subscription = await this.repository.findSubscriptionByDelivery(deliveryUuid);
+    const subscription =
+      await this.repository.findSubscriptionByDelivery(deliveryUuid);
     if (!subscription) {
       return this.repository.updateDelivery(deliveryUuid, {
         state: 'DEAD_LETTER',
@@ -363,7 +370,10 @@ export class SystemWebhookService {
     const maxAttempts = Math.max(
       1,
       Math.trunc(
-        this.config.get<number>('system.webhook.maxAttempts', DEFAULT_MAX_ATTEMPTS),
+        this.config.get<number>(
+          'system.webhook.maxAttempts',
+          DEFAULT_MAX_ATTEMPTS,
+        ),
       ),
     );
     const timeoutMs = Math.max(
@@ -550,12 +560,17 @@ export class SystemWebhookService {
     const maxAttempts = Math.max(
       1,
       Math.trunc(
-        this.config.get<number>('system.webhook.maxAttempts', DEFAULT_MAX_ATTEMPTS),
+        this.config.get<number>(
+          'system.webhook.maxAttempts',
+          DEFAULT_MAX_ATTEMPTS,
+        ),
       ),
     );
     const timeoutMs = Math.max(
       1000,
-      Math.trunc(this.config.get<number>('system.webhook.timeoutMs', DEFAULT_TIMEOUT_MS)),
+      Math.trunc(
+        this.config.get<number>('system.webhook.timeoutMs', DEFAULT_TIMEOUT_MS),
+      ),
     );
     let lastFailure = 'Webhook delivery failed';
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -648,7 +663,13 @@ export class SystemWebhookService {
   }
 
   private isRetryableStatus(status: number): boolean {
-    return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+    return (
+      status === 408 ||
+      status === 409 ||
+      status === 425 ||
+      status === 429 ||
+      status >= 500
+    );
   }
 
   private retryDelayMs(attempt: number): number {

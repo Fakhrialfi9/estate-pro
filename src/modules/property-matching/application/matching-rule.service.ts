@@ -183,7 +183,7 @@ export class MatchingRuleService {
       throw new BadRequestException(
         'Matching rule weight sum must be between 0 and 1000',
       );
-    return output as MatchingRuleWeights;
+    return output;
   }
 
   private validateHardCriteria(criteria: readonly string[]): readonly string[] {

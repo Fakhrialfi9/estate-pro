@@ -29,7 +29,9 @@ export class ObservabilityController {
 
   @Get('system-metrics')
   @RequirePermissions('system.observability.read')
-  @ApiOperation({ summary: 'Read bounded system HTTP, DB, application and queue metrics' })
+  @ApiOperation({
+    summary: 'Read bounded system HTTP, DB, application and queue metrics',
+  })
   @ApiResponse({ status: 200, schema: metricsSchema })
   systemMetrics(@Query() query: ObservabilityQueryDto) {
     const dates = query.toDates();
@@ -60,7 +62,11 @@ export class ObservabilityController {
   @ApiResponse({ status: 200, schema: metricsSchema })
   integrationMetrics(@Query() query: ObservabilityQueryDto) {
     const dates = query.toDates();
-    return this.metrics.integrationMetrics(dates.from, dates.to, dates.granularity);
+    return this.metrics.integrationMetrics(
+      dates.from,
+      dates.to,
+      dates.granularity,
+    );
   }
 
   @Get('import-export-metrics')
@@ -87,7 +93,9 @@ export class ObservabilityController {
 
   @Get('error-tracking')
   @RequirePermissions('system.observability.read')
-  @ApiOperation({ summary: 'Read aggregated and redacted application/integration errors' })
+  @ApiOperation({
+    summary: 'Read aggregated and redacted application/integration errors',
+  })
   @ApiResponse({ status: 200, schema: metricsSchema })
   errorTracking(@Query() query: ObservabilityQueryDto) {
     const dates = query.toDates();
@@ -96,7 +104,9 @@ export class ObservabilityController {
 
   @Get('audit-correlation')
   @RequirePermissions('system.observability.read')
-  @ApiOperation({ summary: 'Read request/service/job/integration audit correlation' })
+  @ApiOperation({
+    summary: 'Read request/service/job/integration audit correlation',
+  })
   @ApiResponse({ status: 200, schema: metricsSchema })
   auditCorrelation(@Query() query: ObservabilityQueryDto) {
     const dates = query.toDates();

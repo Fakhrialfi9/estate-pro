@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { AutomationNotificationDeliveryService } from '../../../src/modules/automation/application/services/automation-notification-delivery.service.js';
 import type { NotificationDeliveryRecord } from '../../../src/modules/automation/domain/notification.types.js';
 
-const baseDelivery = (overrides: Partial<NotificationDeliveryRecord> = {}): NotificationDeliveryRecord => ({
+const baseDelivery = (
+  overrides: Partial<NotificationDeliveryRecord> = {},
+): NotificationDeliveryRecord => ({
   uuid: 'delivery-1',
   notificationUuid: 'notification-1',
   channel: 'EMAIL',
@@ -30,7 +32,7 @@ describe('AutomationNotificationDeliveryService', () => {
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
     const service = new AutomationNotificationDeliveryService(
       repository as never,
-      audit as never,
+      audit,
     );
 
     const result = await service.retry('delivery-1', 'actor-1');
@@ -42,9 +44,7 @@ describe('AutomationNotificationDeliveryService', () => {
     );
     const [, update] = repository.updateDelivery.mock.calls[0];
     expect(update.availableAt.getTime()).toBeGreaterThan(Date.now());
-    expect(update.availableAt.getTime()).toBeLessThanOrEqual(
-      Date.now() + 4250,
-    );
+    expect(update.availableAt.getTime()).toBeLessThanOrEqual(Date.now() + 4250);
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'NOTIFICATION_DELIVERY_RETRIED',
@@ -59,7 +59,11 @@ describe('AutomationNotificationDeliveryService', () => {
       listDueDeliveries: vi.fn().mockResolvedValue([delivery]),
       updateDelivery: vi
         .fn()
-        .mockResolvedValueOnce({ ...delivery, state: 'SENDING', attemptCount: 1 })
+        .mockResolvedValueOnce({
+          ...delivery,
+          state: 'SENDING',
+          attemptCount: 1,
+        })
         .mockResolvedValueOnce({
           ...delivery,
           state: 'QUEUED',
@@ -71,7 +75,7 @@ describe('AutomationNotificationDeliveryService', () => {
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
     const service = new AutomationNotificationDeliveryService(
       repository as never,
-      audit as never,
+      audit,
     );
 
     const result = await service.processDue();
@@ -94,7 +98,7 @@ describe('AutomationNotificationDeliveryService', () => {
     const audit = { record: vi.fn() };
     const service = new AutomationNotificationDeliveryService(
       repository as never,
-      audit as never,
+      audit,
     );
 
     await expect(service.retry('delivery-1', 'actor-1')).resolves.toBe(current);

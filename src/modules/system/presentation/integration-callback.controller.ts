@@ -30,7 +30,8 @@ export class IntegrationCallbackController {
   @ApiOperation({ summary: 'Receive an authenticated integration callback' })
   @ApiResponse({
     status: 202,
-    description: 'Integration callback durably queued for asynchronous processing.',
+    description:
+      'Integration callback durably queued for asynchronous processing.',
     schema: {
       type: 'object',
       additionalProperties: true,

@@ -8,7 +8,8 @@ export default registerAs('system', () => ({
       .split(',')
       .map((value) => value.trim().toLowerCase())
       .filter(Boolean),
-    allowLocalhostHttp: process.env.SECURITY_SSRF_ALLOW_LOCALHOST_HTTP ?? 'false',
+    allowLocalhostHttp:
+      process.env.SECURITY_SSRF_ALLOW_LOCALHOST_HTTP ?? 'false',
   },
   export: {
     maxRows: Number(process.env.SYSTEM_EXPORT_MAX_ROWS ?? 10000),

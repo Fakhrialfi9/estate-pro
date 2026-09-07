@@ -89,7 +89,10 @@ export interface SystemWebhookRepository {
     limit: number;
   }): Promise<readonly WebhookDeliveryRecord[]>;
   countRecentDeliveries(subscriptionUuid: string, since: Date): Promise<number>;
-  listDueDeliveries(now: Date, limit: number): Promise<readonly WebhookDeliveryRecord[]>;
+  listDueDeliveries(
+    now: Date,
+    limit: number,
+  ): Promise<readonly WebhookDeliveryRecord[]>;
   claimDelivery(uuid: string, now: Date): Promise<boolean>;
   listExpiredDeliveries(
     before: Date,

@@ -12,7 +12,7 @@ describe('SystemRetentionService', () => {
     };
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
     return {
-      service: new SystemRetentionService(repository as never, audit as never),
+      service: new SystemRetentionService(repository, audit),
       repository,
       audit,
     };
@@ -24,9 +24,7 @@ describe('SystemRetentionService', () => {
       .mockResolvedValueOnce(2)
       .mockResolvedValueOnce(1)
       .mockResolvedValueOnce(0);
-    repository.purgeAudit
-      .mockResolvedValueOnce(2)
-      .mockResolvedValueOnce(0);
+    repository.purgeAudit.mockResolvedValueOnce(2).mockResolvedValueOnce(0);
 
     const result = await service.run({
       activityRetentionDays: 30,

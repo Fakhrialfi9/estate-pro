@@ -17,7 +17,10 @@ const http = {
 
 describe('SystemObservabilityMetricsService', () => {
   it('rejects an observability range beyond 90 days before querying', async () => {
-    const service = new SystemObservabilityMetricsService(prisma as never, http as never);
+    const service = new SystemObservabilityMetricsService(
+      prisma,
+      http as never,
+    );
     const to = new Date('2026-04-01T00:00:00.000Z');
     const from = new Date('2025-12-01T00:00:00.000Z');
 
@@ -30,12 +33,21 @@ describe('SystemObservabilityMetricsService', () => {
   it('returns bounded system metrics with process-lifetime HTTP scope', async () => {
     prisma.$queryRaw
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ result: 'SUCCESS', count: 8n }, { result: 'FAILURE', count: 2n }])
-      .mockResolvedValueOnce([{ state: 'PENDING', count: 3n }, { state: 'SUCCEEDED', count: 7n }])
+      .mockResolvedValueOnce([
+        { result: 'SUCCESS', count: 8n },
+        { result: 'FAILURE', count: 2n },
+      ])
+      .mockResolvedValueOnce([
+        { state: 'PENDING', count: 3n },
+        { state: 'SUCCEEDED', count: 7n },
+      ])
       .mockResolvedValueOnce([{ state: 'SUCCEEDED', count: 4n }])
       .mockResolvedValueOnce([{ state: 'FAILED', count: 1n }]);
 
-    const service = new SystemObservabilityMetricsService(prisma as never, http as never);
+    const service = new SystemObservabilityMetricsService(
+      prisma,
+      http as never,
+    );
     const result = await service.systemMetrics(
       new Date('2026-01-01T00:00:00.000Z'),
       new Date('2026-01-02T00:00:00.000Z'),
@@ -69,7 +81,10 @@ describe('SystemObservabilityMetricsService', () => {
         },
       ]);
 
-    const service = new SystemObservabilityMetricsService(prisma as never, http as never);
+    const service = new SystemObservabilityMetricsService(
+      prisma,
+      http as never,
+    );
     const result = await service.errorTracking(
       new Date('2026-01-01T00:00:00.000Z'),
       new Date('2026-01-02T00:00:00.000Z'),

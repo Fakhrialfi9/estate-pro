@@ -198,11 +198,7 @@ export class PrismaAutomationRepository implements AutomationRepository {
         OR: [{ retryAt: null }, { retryAt: { lte: now } }],
         AND: [{ OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }] }],
       },
-      orderBy: [
-        { priority: 'asc' },
-        { retryAt: 'asc' },
-        { createdAt: 'asc' },
-      ],
+      orderBy: [{ priority: 'asc' }, { retryAt: 'asc' }, { createdAt: 'asc' }],
     });
     if (!candidate) return null;
     const claimed = await this.prisma.automationWorkflowExecution.updateMany({

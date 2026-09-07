@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { assertSafeOutboundUrl, UnsafeOutboundUrlError } from '../../../src/common/security/outbound-url-policy.js';
+import {
+  assertSafeOutboundUrl,
+  UnsafeOutboundUrlError,
+} from '../../../src/common/security/outbound-url-policy.js';
 
 describe('assertSafeOutboundUrl', () => {
   it('allows a public HTTPS IP literal', async () => {

@@ -1,5 +1,10 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
@@ -15,7 +20,10 @@ export class SystemHealthAggregationController {
   @Get('integration-health')
   @RequirePermissions('system.integration.health.read')
   @ApiOperation({ summary: 'Read normalized integration provider health' })
-  @ApiResponse({ status: 200, schema: { type: 'object', additionalProperties: true } })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'object', additionalProperties: true },
+  })
   integrationHealth() {
     return this.hardening.integrationHealth();
   }
@@ -23,7 +31,10 @@ export class SystemHealthAggregationController {
   @Get('external-dependency-health')
   @RequirePermissions('system.external.health.read')
   @ApiOperation({ summary: 'Read normalized external dependency health' })
-  @ApiResponse({ status: 200, schema: { type: 'object', additionalProperties: true } })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'object', additionalProperties: true },
+  })
   externalDependencyHealth() {
     return this.hardening.externalDependencyHealth();
   }

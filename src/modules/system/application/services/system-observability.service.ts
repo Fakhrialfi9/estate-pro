@@ -53,24 +53,23 @@ export class SystemObservabilityService {
           FROM system_export_jobs
           WHERE created_at >= ${range.from} AND created_at < ${range.to}
         `),
-        this.prisma.$queryRaw<MetricRow[]>(this.bucketedImportSql(
-          range.from,
-          range.to,
-          granularity,
-        )),
-        this.prisma.$queryRaw<MetricRow[]>(this.bucketedExportSql(
-          range.from,
-          range.to,
-          granularity,
-        )),
+        this.prisma.$queryRaw<MetricRow[]>(
+          this.bucketedImportSql(range.from, range.to, granularity),
+        ),
+        this.prisma.$queryRaw<MetricRow[]>(
+          this.bucketedExportSql(range.from, range.to, granularity),
+        ),
       ]);
 
     const imports = importSummary[0] ?? this.emptyImportSummary();
     const exports = exportSummary[0] ?? this.emptyExportSummary();
-    const byBucket = new Map<string, {
-      imports: Record<string, number>;
-      exports: Record<string, number>;
-    }>();
+    const byBucket = new Map<
+      string,
+      {
+        imports: Record<string, number>;
+        exports: Record<string, number>;
+      }
+    >();
 
     for (const row of importSeries) {
       byBucket.set(row.bucket, {
@@ -149,14 +148,17 @@ export class SystemObservabilityService {
       ORDER BY bucket ASC, d.state ASC
     `);
 
-    const seriesMap = new Map<string, {
-      states: Record<string, number>;
-      total: number;
-      retries: number;
-      httpFailures: number;
-      latencyTotal: number;
-      latencyCount: number;
-    }>();
+    const seriesMap = new Map<
+      string,
+      {
+        states: Record<string, number>;
+        total: number;
+        retries: number;
+        httpFailures: number;
+        latencyTotal: number;
+        latencyCount: number;
+      }
+    >();
     for (const row of rows) {
       const entry = seriesMap.get(row.bucket) ?? {
         states: {},
@@ -292,7 +294,14 @@ export class SystemObservabilityService {
   }
 
   private emptyImportSummary(): MetricRow {
-    return { bucket: '', count: 0, rows: 0, failedRows: 0, succeeded: 0, failed: 0 };
+    return {
+      bucket: '',
+      count: 0,
+      rows: 0,
+      failedRows: 0,
+      succeeded: 0,
+      failed: 0,
+    };
   }
 
   private emptyExportSummary(): MetricRow {

@@ -63,15 +63,19 @@ export async function assertSafeOutboundUrl(
     throw new UnsafeOutboundUrlError(
       'Outbound URL must not contain credentials',
     );
-  if (url.protocol !== 'https:' && !localHttpAllowed && !(
-    options.allowHttp === true && explicitlyAllowed
-  )) {
+  if (
+    url.protocol !== 'https:' &&
+    !localHttpAllowed &&
+    !(options.allowHttp === true && explicitlyAllowed)
+  ) {
     throw new UnsafeOutboundUrlError('Outbound URL must use HTTPS');
   }
   if (isLocalhost && !localHttpAllowed)
     throw new UnsafeOutboundUrlError('Outbound URL cannot target localhost');
   if (hostname.endsWith('.internal') || hostname.endsWith('.local')) {
-    throw new UnsafeOutboundUrlError('Outbound URL targets a reserved hostname');
+    throw new UnsafeOutboundUrlError(
+      'Outbound URL targets a reserved hostname',
+    );
   }
 
   if (localHttpAllowed) return url.toString();
@@ -79,12 +83,16 @@ export async function assertSafeOutboundUrl(
   const family = isIP(hostname);
   if (family) {
     if (!isSafeIp(hostname))
-      throw new UnsafeOutboundUrlError('Outbound URL targets a blocked network');
+      throw new UnsafeOutboundUrlError(
+        'Outbound URL targets a blocked network',
+      );
     return url.toString();
   }
 
   if (allowedHosts.size > 0 && !explicitlyAllowed)
-    throw new UnsafeOutboundUrlError('Outbound URL hostname is not allowlisted');
+    throw new UnsafeOutboundUrlError(
+      'Outbound URL hostname is not allowlisted',
+    );
 
   let addresses: Awaited<ReturnType<typeof lookup>>;
   try {
@@ -114,7 +122,10 @@ function parseUrl(rawUrl: string): URL {
 }
 
 function normalizeHostname(hostname: string): string {
-  return hostname.replace(/^\[|\]$/g, '').replace(/\.$/, '').toLowerCase();
+  return hostname
+    .replace(/^\[|\]$/g, '')
+    .replace(/\.$/, '')
+    .toLowerCase();
 }
 
 function matchesAllowedHost(

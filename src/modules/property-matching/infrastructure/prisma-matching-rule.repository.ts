@@ -1,5 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Prisma } from '../../../prisma/generated/prisma/client.js';
+import type { Prisma } from '../../../prisma/generated/prisma/client.js';
 import type { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
 import type {
   MatchingRuleRecord,

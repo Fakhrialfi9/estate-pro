@@ -79,11 +79,7 @@ export class SystemMetricsService {
     integrationOperations.add(1, { operation: name, status });
   }
 
-  httpRequest(input: {
-    method: string;
-    status: number;
-    durationMs: number;
-  }) {
+  httpRequest(input: { method: string; status: number; durationMs: number }) {
     const statusClass =
       input.status >= 500 ? '5xx' : input.status >= 400 ? '4xx' : '2xx';
     const attributes = {

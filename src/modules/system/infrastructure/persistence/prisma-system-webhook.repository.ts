@@ -212,7 +212,9 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
       const row = await this.prisma.systemWebhookDelivery.create({
         data: {
           ...input,
-          payload: JSON.parse(JSON.stringify(input.payload)) as Prisma.InputJsonValue,
+          payload: JSON.parse(
+            JSON.stringify(input.payload),
+          ) as Prisma.InputJsonValue,
         },
       });
       return { created: true, record: toDelivery(row) };

@@ -39,11 +39,7 @@ export class SystemIntegrationCallbackService {
     },
     provider: IntegrationProviderPort,
   ) {
-    return this.enqueue(
-      integrationUuid,
-      input,
-      provider,
-    );
+    return this.enqueue(integrationUuid, input, provider);
   }
 
   async enqueue(
@@ -106,7 +102,9 @@ export class SystemIntegrationCallbackService {
       throw new BadRequestException('Callback payload is invalid JSON');
     }
 
-    let event: ReturnType<NonNullable<IntegrationProviderPort['normalizeInbound']>>;
+    let event: ReturnType<
+      NonNullable<IntegrationProviderPort['normalizeInbound']>
+    >;
     try {
       event = provider.normalizeInbound(parsed);
     } catch {
@@ -147,11 +145,13 @@ export class SystemIntegrationCallbackService {
     );
     if (existingEvent) {
       await this.roadmap.idempotency.update(reserved.record.uuid, {
-        status: existingEvent.status === 'PROCESSED' ? 'PROCESSED' : 'PROCESSING',
+        status:
+          existingEvent.status === 'PROCESSED' ? 'PROCESSED' : 'PROCESSING',
         processedAt: existingEvent.processedAt,
       });
       return {
-        status: existingEvent.status === 'PROCESSED' ? 'DUPLICATE' : 'ALREADY_QUEUED',
+        status:
+          existingEvent.status === 'PROCESSED' ? 'DUPLICATE' : 'ALREADY_QUEUED',
         eventKey,
         eventUuid: existingEvent.uuid,
       };

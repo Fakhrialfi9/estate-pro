@@ -238,9 +238,7 @@ export class SystemIntegrationReliabilityService {
     const now = Date.now();
     this.failureWindows.set(
       integrationUuid,
-      window.filter(
-        (timestamp) => now - timestamp <= policy.circuitWindowMs,
-      ),
+      window.filter((timestamp) => now - timestamp <= policy.circuitWindowMs),
     );
     await this.roadmap.runtime.update(integrationId, {
       circuitState: 'CLOSED',

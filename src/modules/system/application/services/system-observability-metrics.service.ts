@@ -23,7 +23,11 @@ export class SystemObservabilityMetricsService {
     private readonly http: SystemMetricsService,
   ) {}
 
-  async systemMetrics(from?: Date, to?: Date, granularity: Granularity = 'day') {
+  async systemMetrics(
+    from?: Date,
+    to?: Date,
+    granularity: Granularity = 'day',
+  ) {
     const range = this.range(from, to);
     const started = performance.now();
     let database = { status: 'UP' as const, latencyMs: 0 };
@@ -72,7 +76,11 @@ export class SystemObservabilityMetricsService {
     return this.aggregate(rows, range, granularity);
   }
 
-  async webhookMetrics(from?: Date, to?: Date, granularity: Granularity = 'day') {
+  async webhookMetrics(
+    from?: Date,
+    to?: Date,
+    granularity: Granularity = 'day',
+  ) {
     const range = this.range(from, to);
     const rows = await this.stateSeries(
       'system_webhook_deliveries',
@@ -319,15 +327,22 @@ export class SystemObservabilityMetricsService {
       GROUP BY bucket, state ORDER BY bucket ASC, state ASC`);
   }
 
-  private aggregate(rows: StateRow[], range: { from: Date; to: Date }, granularity: Granularity) {
-    const series = new Map<string, {
-      total: number;
-      states: Record<string, number>;
-      retries: number;
-      failures: number;
-      latency: number;
-      latencyCount: number;
-    }>();
+  private aggregate(
+    rows: StateRow[],
+    range: { from: Date; to: Date },
+    granularity: Granularity,
+  ) {
+    const series = new Map<
+      string,
+      {
+        total: number;
+        states: Record<string, number>;
+        retries: number;
+        failures: number;
+        latency: number;
+        latencyCount: number;
+      }
+    >();
     for (const row of rows) {
       const state = row.state ?? 'UNKNOWN';
       const item = series.get(row.bucket) ?? {

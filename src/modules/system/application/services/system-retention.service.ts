@@ -117,7 +117,9 @@ export class SystemRetentionService {
     if (!until || !Number.isFinite(until.getTime()))
       throw new BadRequestException('Retention hold expiry is required');
     if (until.getTime() <= Date.now())
-      throw new BadRequestException('Retention hold expiry must be in the future');
+      throw new BadRequestException(
+        'Retention hold expiry must be in the future',
+      );
     return until;
   }
 

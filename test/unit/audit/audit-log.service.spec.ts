@@ -4,14 +4,16 @@ import { AuditLogService } from '../../../src/modules/audit/application/audit-lo
 describe('AuditLogService', () => {
   it('does not propagate audit persistence failures to the business caller', async () => {
     const repository = {
-      record: vi.fn().mockRejectedValue(new Error('audit database unavailable')),
+      record: vi
+        .fn()
+        .mockRejectedValue(new Error('audit database unavailable')),
       list: vi.fn(),
     };
     const logger = {
       setContext: vi.fn(),
       error: vi.fn(),
     };
-    const service = new AuditLogService(repository as never, logger as never);
+    const service = new AuditLogService(repository, logger as never);
 
     await expect(
       service.record({

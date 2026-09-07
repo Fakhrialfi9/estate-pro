@@ -50,7 +50,10 @@ export class SystemWebhookRetryWorker implements OnModuleInit, OnModuleDestroy {
       let deadLetters = 0;
 
       for (const job of jobs) {
-        const claimed = await this.repository.claimDelivery(job.delivery.uuid, now);
+        const claimed = await this.repository.claimDelivery(
+          job.delivery.uuid,
+          now,
+        );
         if (!claimed) continue;
 
         const attempt = job.delivery.attemptCount + 1;
