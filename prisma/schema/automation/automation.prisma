@@ -136,7 +136,7 @@ model AutomationSlaPolicy {
   targetEntityType String                  @db.VarChar(60)
   startEventType   String                  @db.VarChar(80)
   stopEventTypes   Json
-  durationMinutes  Int                     
+  durationMinutes  Int
   timezone         String                  @db.VarChar(80)
   businessHours    Json
   isActive         Boolean                 @default(true)
@@ -176,15 +176,15 @@ model AutomationSlaInstance {
 
 model AutomationEscalationPolicy {
   id              BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid             String             @unique @db.Char(36)
+  uuid            String             @unique @db.Char(36)
   workflowUuid    String             @db.Char(36)
   name            String             @db.VarChar(180)
   levels          Json
   maxAttempts     Int                @default(3)
   cooldownSeconds Int                @default(3600)
-  isActive         Boolean            @default(true)
-  createdAt        DateTime           @default(now()) @db.DateTime(3)
-  updatedAt        DateTime           @updatedAt @db.DateTime(3)
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now()) @db.DateTime(3)
+  updatedAt       DateTime           @updatedAt @db.DateTime(3)
   workflow        AutomationWorkflow @relation(fields: [workflowUuid], references: [uuid], onDelete: Cascade)
 
   @@index([workflowUuid, isActive])
@@ -196,7 +196,7 @@ model AutomationNotification {
   uuid       String    @unique @db.Char(36)
   userUuid   String    @db.Char(36)
   type       String    @db.VarChar(50)
-  title      String   @db.VarChar(180)
+  title      String    @db.VarChar(180)
   body       String    @db.Text
   entityType String?   @db.VarChar(60)
   entityUuid String?   @db.Char(36)
@@ -261,7 +261,7 @@ model AutomationNotificationPolicy {
 model AutomationNotificationDelivery {
   id                BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
   uuid              String                 @unique @db.Char(36)
-  notificationUuid  String                 @db.Char(36)
+  notificationUuid  String                 @db.Char(36) @map("notification_uuid")
   channel           String                 @db.VarChar(20)
   state             String                 @default("QUEUED") @db.VarChar(16)
   attemptCount      Int                    @default(0) @map("attempt_count")
