@@ -37,6 +37,10 @@ const FILTER_MAX_DEPTH = 5;
 const FILTER_KEY = /^[A-Za-z0-9_]+$/;
 const HEALTH_WINDOW_HOURS = 24;
 const HEALTH_MAX_DELIVERIES = 100;
+const DEFAULT_MAX_ATTEMPTS = 5;
+const DEFAULT_TIMEOUT_MS = 5000;
+const MAX_PAYLOAD_BYTES = 1024 * 1024;
+const MAX_RETRY_DELAY_MS = 30_000;
 
 type FilterScalar = string | number | boolean;
 
@@ -202,7 +206,14 @@ export class SystemWebhookService {
         );
         continue;
       }
-      await this.deliver(subscription, eventId, eventName, 1, data, eventId);
+      await this.enqueueDelivery(
+        subscription,
+        eventId,
+        eventName,
+        1,
+        data,
+        eventId,
+      );
     }
   }
 
@@ -307,6 +318,124 @@ export class SystemWebhookService {
     return this.toDelivery(delivery);
   }
 
+  async processQueuedDelivery(deliveryUuid: string): Promise<WebhookDeliveryRecord | null> {
+    const existing = await this.repository.findDelivery(deliveryUuid);
+    if (!existing) return null;
+    if (existing.state === 'SUCCEEDED' || existing.state === 'DEAD_LETTER' || existing.state === 'CANCELLED')
+      return existing;
+
+    const subscription = await this.repository.findSubscriptionByDelivery(deliveryUuid);
+    if (!subscription) {
+      return this.repository.updateDelivery(deliveryUuid, {
+        state: 'DEAD_LETTER',
+        completedAt: new Date(),
+        nextAttemptAt: null,
+        failureReason: 'Webhook subscription not found',
+      });
+    }
+    if (subscription.status !== 'ACTIVE') {
+      return this.repository.updateDelivery(deliveryUuid, {
+        state: 'CANCELLED',
+        completedAt: new Date(),
+        nextAttemptAt: null,
+        failureReason: 'Webhook subscription is disabled',
+      });
+    }
+
+    const payload = this.signer.buildPayload({
+      eventId: existing.eventId,
+      eventName: existing.eventName,
+      eventVersion: existing.eventVersion,
+      deliveryId: existing.uuid,
+      occurredAt: existing.signedAt.toISOString(),
+      data: existing.payload,
+    });
+    const payloadHash = this.signer.payloadHash(payload);
+    if (payloadHash !== existing.payloadHash) {
+      return this.repository.updateDelivery(deliveryUuid, {
+        state: 'DEAD_LETTER',
+        completedAt: new Date(),
+        nextAttemptAt: null,
+        failureReason: 'Persisted webhook payload hash mismatch',
+      });
+    }
+
+    const maxAttempts = Math.max(
+      1,
+      Math.trunc(
+        this.config.get<number>('system.webhook.maxAttempts', DEFAULT_MAX_ATTEMPTS),
+      ),
+    );
+    const timeoutMs = Math.max(
+      1000,
+      Math.trunc(
+        this.config.get<number>('system.webhook.timeoutMs', DEFAULT_TIMEOUT_MS),
+      ),
+    );
+    const attempt = Math.max(1, existing.attemptCount);
+    const timestamp = Math.floor(existing.signedAt.getTime() / 1000);
+    const secret = this.secrets.decrypt(subscription.secretCiphertext);
+    const signature = this.signer.signature(
+      secret,
+      timestamp,
+      existing.uuid,
+      payload,
+    );
+
+    try {
+      const response = await this.network.send({
+        endpoint: subscription.endpoint,
+        payload,
+        timeoutMs,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'EstatePro-Webhooks/1',
+          'X-Webhook-Id': existing.uuid,
+          'X-Webhook-Event-Id': existing.eventId,
+          'X-Webhook-Timestamp': String(timestamp),
+          'X-Webhook-Signature': `v1=${signature}`,
+          'X-Webhook-Event': existing.eventName,
+          'X-Webhook-Version': String(existing.eventVersion),
+        },
+      });
+      if (response.status >= 200 && response.status < 300)
+        return this.repository.updateDelivery(deliveryUuid, {
+          state: 'SUCCEEDED',
+          attemptCount: attempt,
+          httpStatus: response.status,
+          completedAt: new Date(),
+          responseSummary: `HTTP ${response.status}`,
+          nextAttemptAt: null,
+          failureReason: null,
+        });
+
+      const failure =
+        response.status >= 300 && response.status < 400
+          ? 'Redirects are not allowed for webhook delivery'
+          : `HTTP ${response.status}`;
+      const retryable = this.isRetryableStatus(response.status);
+      return this.scheduleOrDeadLetter(
+        existing,
+        attempt,
+        maxAttempts,
+        failure,
+        retryable,
+      );
+    } catch (error: unknown) {
+      const failure =
+        error instanceof Error && error.name === 'AbortError'
+          ? 'Webhook request timed out'
+          : 'Webhook request failed';
+      return this.scheduleOrDeadLetter(
+        existing,
+        attempt,
+        maxAttempts,
+        failure,
+        true,
+      );
+    }
+  }
+
   async cleanup(retentionDays?: number, limit = 500) {
     const configured = this.config.get<number>(
       'system.webhook.retentionDays',
@@ -323,6 +452,50 @@ export class SystemWebhookService {
     );
     await this.repository.deleteDeliveries(rows.map((row) => row.uuid));
     return { scanned: rows.length, deleted: rows.length };
+  }
+
+  private async enqueueDelivery(
+    subscription: WebhookSubscriptionRecord,
+    eventId: string,
+    eventName: SystemWebhookEventName,
+    eventVersion: number,
+    data: Record<string, unknown>,
+    deliveryKey: string,
+  ): Promise<WebhookDeliveryRecord> {
+    const deliveryId = randomUUID();
+    const timestamp = Math.floor(Date.now() / 1000);
+    const payload = this.signer.buildPayload({
+      eventId,
+      eventName,
+      eventVersion,
+      deliveryId,
+      occurredAt: new Date(timestamp * 1000).toISOString(),
+      data,
+    });
+    const maxPayloadBytes = this.config.get<number>(
+      'system.webhook.maxPayloadBytes',
+      MAX_PAYLOAD_BYTES,
+    );
+    if (Buffer.byteLength(payload, 'utf8') > maxPayloadBytes)
+      throw new ForbiddenException(
+        'Webhook payload exceeds the configured limit',
+      );
+
+    const payloadHash = this.signer.payloadHash(payload);
+    const created = await this.repository.createDelivery({
+      uuid: deliveryId,
+      subscriptionId: subscription.id,
+      eventId,
+      deliveryKey,
+      eventName,
+      eventVersion,
+      payloadHash,
+      payload: data,
+      state: 'PENDING',
+      signedAt: new Date(timestamp * 1000),
+      nextAttemptAt: null,
+    });
+    return created.record;
   }
 
   private async deliver(
@@ -345,7 +518,7 @@ export class SystemWebhookService {
     });
     const maxPayloadBytes = this.config.get<number>(
       'system.webhook.maxPayloadBytes',
-      1024 * 1024,
+      MAX_PAYLOAD_BYTES,
     );
     if (Buffer.byteLength(payload, 'utf8') > maxPayloadBytes)
       throw new ForbiddenException(
@@ -361,6 +534,7 @@ export class SystemWebhookService {
       eventName,
       eventVersion,
       payloadHash,
+      payload: data,
       state: 'PENDING',
       signedAt: new Date(timestamp * 1000),
     });
@@ -373,11 +547,16 @@ export class SystemWebhookService {
       deliveryId,
       payload,
     );
-    const maxAttempts = this.config.get<number>(
-      'system.webhook.maxAttempts',
-      5,
+    const maxAttempts = Math.max(
+      1,
+      Math.trunc(
+        this.config.get<number>('system.webhook.maxAttempts', DEFAULT_MAX_ATTEMPTS),
+      ),
     );
-    const timeoutMs = this.config.get<number>('system.webhook.timeoutMs', 5000);
+    const timeoutMs = Math.max(
+      1000,
+      Math.trunc(this.config.get<number>('system.webhook.timeoutMs', DEFAULT_TIMEOUT_MS)),
+    );
     let lastFailure = 'Webhook delivery failed';
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       await this.repository.updateDelivery(deliveryId, {
@@ -414,6 +593,7 @@ export class SystemWebhookService {
           break;
         }
         lastFailure = `HTTP ${response.status}`;
+        if (!this.isRetryableStatus(response.status)) break;
       } catch (error: unknown) {
         lastFailure =
           error instanceof Error && error.name === 'AbortError'
@@ -421,10 +601,7 @@ export class SystemWebhookService {
             : 'Webhook request failed';
       }
       if (attempt < maxAttempts) {
-        const delay = Math.min(
-          1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250),
-          30_000,
-        );
+        const delay = this.retryDelayMs(attempt);
         await this.repository.updateDelivery(deliveryId, {
           state: 'RETRYING',
           nextAttemptAt: new Date(Date.now() + delay),
@@ -439,6 +616,50 @@ export class SystemWebhookService {
       failureReason: lastFailure,
       responseSummary: 'delivery failed after bounded retries',
     });
+  }
+
+  private async scheduleOrDeadLetter(
+    existing: WebhookDeliveryRecord,
+    attempt: number,
+    maxAttempts: number,
+    failure: string,
+    retryable: boolean,
+  ) {
+    if (retryable && attempt < maxAttempts) {
+      const delay = this.retryDelayMs(attempt);
+      return this.repository.updateDelivery(existing.uuid, {
+        state: 'RETRYING',
+        attemptCount: attempt,
+        nextAttemptAt: new Date(Date.now() + delay),
+        failureReason: failure,
+      });
+    }
+    return this.repository.updateDelivery(existing.uuid, {
+      state: 'DEAD_LETTER',
+      attemptCount: attempt,
+      completedAt: new Date(),
+      nextAttemptAt: null,
+      failureReason: failure,
+      responseSummary:
+        retryable && attempt >= maxAttempts
+          ? 'delivery failed after bounded retries'
+          : 'delivery rejected as non-retryable',
+    });
+  }
+
+  private isRetryableStatus(status: number): boolean {
+    return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+  }
+
+  private retryDelayMs(attempt: number): number {
+    const exponential = Math.min(
+      MAX_RETRY_DELAY_MS,
+      1000 * 2 ** Math.min(Math.max(attempt - 1, 0), 6),
+    );
+    return Math.min(
+      MAX_RETRY_DELAY_MS,
+      exponential + Math.floor(Math.random() * 250),
+    );
   }
 
   private normalizeEvents(events: readonly SystemWebhookEventName[]) {
