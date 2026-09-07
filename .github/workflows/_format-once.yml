@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   format:
-    if: github.event.head_commit.message != 'style: normalize repository formatting'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout formatting target
@@ -34,15 +33,13 @@ jobs:
           "test/**/*.ts"
           --no-error-on-unmatched-pattern
 
+      - name: Remove formatter workflow
+        run: git rm .github/workflows/_format-once.yml
+
       - name: Commit formatted baseline
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/_format-once.yml
           git add -A
-          if git diff --cached --quiet; then
-            echo "No formatting changes required."
-            exit 0
-          fi
-          git commit -m "style: normalize repository formatting"
+          git commit -m "style: normalize repository formatting [skip ci]"
           git push origin HEAD:main
