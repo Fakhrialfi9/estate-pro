@@ -17,20 +17,19 @@ export class SystemWebhookRateLimitService {
     const now = Date.now();
     const windowMs = Math.max(
       1000,
-      this.config.get<number>('system.webhook.rateLimit.windowMs', 60_000),
+      this.config.get<number>('system.webhook.rateWindowMs', 60_000),
     );
     const bucketStart = new Date(Math.floor(now / windowMs) * windowMs);
     const limit = Math.max(
       1,
-      this.config.get<number>('system.webhook.rateLimit.limit', 60),
+      this.config.get<number>('system.webhook.rateLimit', 60),
     );
     const result = await this.repository.consume(
       subscriptionUuid,
       bucketStart,
       limit,
     );
-    if (!result.allowed) {
+    if (!result.allowed)
       throw new ForbiddenException('Webhook rate limit exceeded');
-    }
   }
 }
