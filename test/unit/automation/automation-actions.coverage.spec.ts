@@ -338,13 +338,26 @@ describe('automation actions', () => {
     await expect(
       action.execute({ userUuid: 'bad' }, { uuid: leadUuid }, actor),
     ).rejects.toBeInstanceOf(BadRequestException);
+
     await expect(
       action.execute(
         { userUuid, activitySubject: '<invalid>' },
         { uuid: leadUuid },
         actor,
       ),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).resolves.toMatchObject({
+      success: true,
+      output: { escalatedTo: userUuid, leadUuid },
+    });
+    expect(crm.createActivity).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        leadUuid,
+        type: 'TASK',
+        subject: '<invalid>',
+        description: undefined,
+      }),
+      expect.objectContaining({ actorUuid: actor }),
+    );
   });
 
   it('covers RequestStatusTransitionAction success/context/validation', async () => {
