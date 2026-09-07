@@ -57,11 +57,9 @@ type AuditTransaction = {
   auditLogChange: { createMany: AuditLogChangeCreateMany };
 };
 
-type TransactionCallback = <T>(
-  value: AuditTransaction,
+type TransactionMock = <T>(
+  callback: (value: AuditTransaction) => Promise<T>,
 ) => Promise<T>;
-
-type TransactionMock = <T>(callback: (value: AuditTransaction) => Promise<T>) => Promise<T>;
 
 const createTransaction = (
   actorUuid: string,
@@ -82,8 +80,12 @@ const createTransaction = (
   },
   auditLog: {
     create: auditLogCreate,
-    findMany: vi.fn<(args: unknown) => Promise<unknown>>().mockResolvedValue([]),
-    count: vi.fn<(args: unknown) => Promise<number>>().mockResolvedValue(0),
+    findMany: vi
+      .fn<(args: unknown) => Promise<unknown>>()
+      .mockResolvedValue([]),
+    count: vi
+      .fn<(args: unknown) => Promise<number>>()
+      .mockResolvedValue(0),
   },
   auditLogChange: {
     createMany:
@@ -108,9 +110,9 @@ describe('PrismaSecurityAuditRepository', () => {
       .fn<AuditLogCreate>()
       .mockResolvedValue({ id: 1n });
     const tx = createTransaction(actorUuid, auditLogCreate);
-    const transaction = vi.fn<TransactionMock>().mockImplementation((callback) =>
-      callback(tx),
-    );
+    const transaction = vi
+      .fn<TransactionMock>()
+      .mockImplementation((callback) => callback(tx));
     const repository = createRepository(transaction);
     const event: SecurityAuditEvent = {
       action: 'REFRESH_TOKEN_ISSUED',
@@ -147,9 +149,9 @@ describe('PrismaSecurityAuditRepository', () => {
       auditLogCreate,
       auditLogChangeCreateMany,
     );
-    const transaction = vi.fn<TransactionMock>().mockImplementation((callback) =>
-      callback(tx),
-    );
+    const transaction = vi
+      .fn<TransactionMock>()
+      .mockImplementation((callback) => callback(tx));
     const repository = createRepository(transaction);
     const entityUuid = randomUUID();
     const event: SecurityAuditEvent = {
