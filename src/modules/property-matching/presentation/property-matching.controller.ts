@@ -19,6 +19,11 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
+import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
+import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
+import {
+  MatchingRuleService,
+} from '../application/matching-rule.service.js';
 import {
   PropertyMatchingService,
   type MatchingActor,
@@ -31,6 +36,10 @@ import {
   SubjectParamsDto,
   UpdatePreferenceDto,
 } from './property-matching.dto.js';
+import {
+  CreateMatchingRuleDto,
+  UpdateMatchingRuleDto,
+} from './matching-rule.dto.js';
 
 const actorOf = (
   request: Request & {
@@ -118,7 +127,87 @@ const arrayResponseSchema = {
 @Controller({ path: 'property-matching', version: '1' })
 @UseGuards(AuthenticatedAccessGuard)
 export class PropertyMatchingController {
-  constructor(private readonly matching: PropertyMatchingService) {}
+  constructor(
+    private readonly matching: PropertyMatchingService,
+    private readonly rules: MatchingRuleService,
+  ) {}
+
+  @Get('rules/active')
+  @RequirePermissions('property-matching.rules.read')
+  @ApiOperation({ summary: 'Read the active property matching rule' })
+  @ApiResponse({ status: 200, schema: objectResponseSchema })
+  activeRule() {
+    return this.rules.active();
+  }
+
+  @Get('rules')
+  @RequirePermissions('property-matching.rules.read')
+  @ApiOperation({ summary: 'List versioned property matching rules' })
+  @ApiResponse({ status: 200, schema: objectResponseSchema })
+  listRules(@Query('page') page = '1', @Query('limit') limit = '20') {
+    return this.rules.list(Number(page), Number(limit));
+  }
+
+  @Get('rules/:uuid')
+  @RequirePermissions('property-matching.rules.read')
+  @ApiOperation({ summary: 'Read a property matching rule version' })
+  @ApiResponse({ status: 200, schema: objectResponseSchema })
+  getRule(@Param('uuid') uuid: string) {
+    return this.rules.get(uuid);
+  }
+
+  @Post('rules')
+  @RequirePermissions('property-matching.rules.manage')
+  @ApiOperation({ summary: 'Create a versioned property matching rule' })
+  @ApiResponse({ status: 201, schema: objectResponseSchema })
+  createRule(@Body() dto: CreateMatchingRuleDto, @Req() request: Request) {
+    const actor = actorOf(request);
+    if (!actor.actorUuid) throw new BadRequestException('Authenticated actor missing');
+    return this.rules.create({
+      name: dto.name,
+      version: dto.version,
+      weights: dto.weights?.toRecord(),
+      hardCriteria: dto.hardCriteria,
+      minimumScore: dto.minimumScore,
+      createdBy: actor.actorUuid,
+      activate: dto.activate,
+    });
+  }
+
+  @Patch('rules/:uuid')
+  @RequirePermissions('property-matching.rules.manage')
+  @ApiOperation({ summary: 'Create the next immutable matching rule version' })
+  @ApiResponse({ status: 200, schema: objectResponseSchema })
+  updateRule(
+    @Param('uuid') uuid: string,
+    @Body() dto: UpdateMatchingRuleDto,
+    @Req() request: Request,
+  ) {
+    const actor = actorOf(request);
+    if (!actor.actorUuid) throw new BadRequestException('Authenticated actor missing');
+    return this.rules.update(
+      uuid,
+      dto.version,
+      {
+        name: dto.name,
+        weights: dto.weights?.toRecord(),
+        hardCriteria: dto.hardCriteria,
+        minimumScore: dto.minimumScore,
+      },
+      actor.actorUuid,
+    );
+  }
+
+  @Post('rules/:uuid/activate')
+  @HttpCode(200)
+  @RequirePermissions('property-matching.rules.manage')
+  @ApiOperation({ summary: 'Activate a matching rule version' })
+  @ApiResponse({ status: 200, schema: objectResponseSchema })
+  activateRule(@Param('uuid') uuid: string, @Req() request: Request) {
+    const actor = actorOf(request);
+    if (!actor.actorUuid) throw new BadRequestException('Authenticated actor missing');
+    return this.rules.activate(uuid, actor.actorUuid);
+  }
 
   @Post('preferences')
   @ApiOperation({
