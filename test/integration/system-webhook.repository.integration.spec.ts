@@ -111,8 +111,18 @@ describe('System webhook repository integration', () => {
 
     expect(row.eventId).toBe(eventId);
     expect(row.deliveryKey).toBe(eventId);
-    expect(row.payload).toEqual(
-      expect.objectContaining({ index: expect.any(Number) }),
-    );
+    expect(typeof row.payload).toBe('object');
+    expect(row.payload).not.toBeNull();
+    if (
+      typeof row.payload !== 'object' ||
+      row.payload === null ||
+      Array.isArray(row.payload)
+    ) {
+      return;
+    }
+
+    expect('index' in row.payload).toBe(true);
+    if (!('index' in row.payload)) return;
+    expect(typeof row.payload.index).toBe('number');
   });
 });
