@@ -38,7 +38,7 @@ export class ExecutiveDashboardController {
     return this.dashboard.get(query, actor(request));
   }
 
-  @Get('property')
+  @Get(['property', 'property-dashboard'])
   @RequirePermissionsAny(
     'system.dashboard.read',
     'analytics.read',
@@ -57,7 +57,7 @@ export class ExecutiveDashboardController {
     return this.dashboard.getProperty(query, actor(request));
   }
 
-  @Get('crm')
+  @Get(['crm', 'crm-dashboard'])
   @RequirePermissionsAny(
     'system.dashboard.read',
     'analytics.read',
@@ -73,7 +73,7 @@ export class ExecutiveDashboardController {
     return this.dashboard.getCrm(query, actor(request));
   }
 
-  @Get('sales')
+  @Get(['sales', 'sales-dashboard'])
   @RequirePermissionsAny(
     'system.dashboard.read',
     'analytics.read',
@@ -89,7 +89,7 @@ export class ExecutiveDashboardController {
     return this.dashboard.getSales(query, actor(request));
   }
 
-  @Get('agent')
+  @Get(['agent', 'agent-dashboard'])
   @RequirePermissionsAny(
     'system.dashboard.read',
     'analytics.read',
@@ -105,7 +105,7 @@ export class ExecutiveDashboardController {
     return this.dashboard.getAgent(query, actor(request));
   }
 
-  @Get('operational')
+  @Get(['operational', 'operational-dashboard'])
   @RequirePermissions('system.dashboard.read')
   @ApiOperation({ summary: 'Read operational dashboard status' })
   @ApiResponse({
