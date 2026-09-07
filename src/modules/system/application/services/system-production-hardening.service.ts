@@ -38,7 +38,7 @@ export class SystemProductionHardeningService {
     const range = this.range(options.from, options.to);
     const granularity = options.granularity ?? 'day';
     const bucket = this.bucketFormat(granularity);
-    const rows = await this.prisma.$queryRaw<MetricRow[]>(Prisma.sql`
+    const query = Prisma.sql`
       SELECT
         DATE_FORMAT(o.created_at, ${bucket}) AS bucket,
         o.state AS state,
@@ -56,7 +56,8 @@ export class SystemProductionHardeningService {
         AND o.created_at < ${range.to}
       GROUP BY bucket, o.state
       ORDER BY bucket ASC, o.state ASC
-    `);
+    `;
+    const rows = await this.prisma.$queryRaw<MetricRow[]>(query);
 
     const series = new Map<
       string,
@@ -140,7 +141,7 @@ export class SystemProductionHardeningService {
     const range = this.range(options.from, options.to);
     const granularity = options.granularity ?? 'day';
     const bucket = this.bucketFormat(granularity);
-    const rows = await this.prisma.$queryRaw<MetricRow[]>(Prisma.sql`
+    const query = Prisma.sql`
       SELECT
         DATE_FORMAT(createdAt, ${bucket}) AS bucket,
         state AS state,
@@ -159,6 +160,7 @@ export class SystemProductionHardeningService {
       GROUP BY bucket, state
       ORDER BY bucket ASC, state ASC
     `;
+    const rows = await this.prisma.$queryRaw<MetricRow[]>(query);
     return this.aggregateMetricRows(rows, range, granularity);
   }
 
