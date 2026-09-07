@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { assertSafeOutboundUrl } from '../../../../../common/security/outbound-url-policy.js';
 import type {
   PasswordResetDelivery,
   PasswordResetDeliveryPayload,
@@ -11,13 +12,14 @@ export class ConfiguredPasswordResetDeliveryService
 {
   constructor(private readonly config: ConfigService) {}
 
-  deliver(payload: PasswordResetDeliveryPayload): Promise<void> {
+  async deliver(payload: PasswordResetDeliveryPayload): Promise<void> {
     const url = this.config.get<string | undefined>(
       'auth.passwordReset.deliveryUrl',
     );
-    if (!url) return Promise.resolve();
+    if (!url) return;
 
-    return fetch(url, {
+    const safeUrl = await assertSafeOutboundUrl(url);
+    const response = await fetch(safeUrl, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -25,13 +27,13 @@ export class ConfiguredPasswordResetDeliveryService
         token: payload.token,
         expiresAt: payload.expiresAt.toISOString(),
       }),
+      redirect: 'error',
       signal: AbortSignal.timeout(5_000),
-    }).then((response) => {
-      if (!response.ok) {
-        throw new Error(
-          `Password reset delivery failed with status ${response.status}`,
-        );
-      }
     });
+    if (!response.ok) {
+      throw new Error(
+        `Password reset delivery failed with status ${response.status}`,
+      );
+    }
   }
 }
