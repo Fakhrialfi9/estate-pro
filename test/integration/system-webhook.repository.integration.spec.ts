@@ -104,12 +104,14 @@ describe('System webhook repository integration', () => {
         WHERE subscription_id = ${subscriptionId}
           AND event_id = ${eventId}
       `),
-    ).resolves.toEqual([
-      expect.objectContaining({
-        eventId,
-        deliveryKey: eventId,
-        payload: { index: expect.any(Number) },
-      }),
-    ]);
+    ).resolves.toSatisfy((persisted) => {
+      if (!Array.isArray(persisted) || persisted.length !== 1) return false;
+      const [row] = persisted;
+      if (row === undefined) return false;
+      if (row.eventId !== eventId || row.deliveryKey !== eventId) return false;
+      if (typeof row.payload !== 'object' || row.payload === null) return false;
+      if (!('index' in row.payload)) return false;
+      return typeof row.payload.index === 'number';
+    });
   });
 });
