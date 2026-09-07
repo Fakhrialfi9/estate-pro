@@ -12,6 +12,15 @@ import { RequirePermissions } from '../../../common/security/authorization.decor
 import { SystemRetentionService } from '../application/services/system-retention.service.js';
 import { RetentionHoldDto } from './dto/retention-hold.dto.js';
 
+const retentionHoldResponseSchema = {
+  type: 'object',
+  required: ['held', 'holdUntil'],
+  properties: {
+    held: { type: 'boolean' },
+    holdUntil: { type: 'string', format: 'date-time', nullable: true },
+  },
+};
+
 @ApiTags('System Retention')
 @ApiBearerAuth()
 @Controller({ path: 'system/retention', version: '1' })
@@ -22,7 +31,11 @@ export class RetentionController {
 
   @Patch('activity/:uuid/hold')
   @ApiOperation({ summary: 'Set or release an activity retention hold' })
-  @ApiResponse({ status: 200 })
+  @ApiResponse({
+    status: 200,
+    description: 'Activity retention hold updated.',
+    schema: retentionHoldResponseSchema,
+  })
   setActivityHold(
     @Req() request: Request,
     @Param('uuid') uuid: string,
@@ -38,7 +51,11 @@ export class RetentionController {
 
   @Patch('audit/:uuid/hold')
   @ApiOperation({ summary: 'Set or release an audit retention hold' })
-  @ApiResponse({ status: 200 })
+  @ApiResponse({
+    status: 200,
+    description: 'Audit retention hold updated.',
+    schema: retentionHoldResponseSchema,
+  })
   setAuditHold(
     @Req() request: Request,
     @Param('uuid') uuid: string,
