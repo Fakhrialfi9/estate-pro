@@ -252,3 +252,26 @@ describe('SystemExportService coverage', () => {
     });
     d.activity.list.mockResolvedValue({
       total: 1,
+      items: [
+        {
+          uuid: 'a1',
+          actorUuid: 'actor-1',
+          eventType: 'LOGIN',
+          category: 'AUTH',
+          resourceType: null,
+          resourceUuid: null,
+          summary: 'hello',
+          metadata: {},
+          requestId: null,
+          createdAt: new Date(),
+        },
+      ],
+      hasMore: false,
+    });
+    await expect(service.processQueued()).resolves.toBe(true);
+    expect(d.jobs.update).toHaveBeenCalledWith(
+      'job-1',
+      expect.objectContaining({ state: 'RUNNING' }),
+    );
+  });
+});
