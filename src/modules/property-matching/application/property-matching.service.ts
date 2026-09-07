@@ -26,6 +26,7 @@ import {
   type MatchingRepository,
 } from './matching.ports.js';
 import { MATCHING_AUDIT_ACTIONS } from './matching-audit.actions.js';
+import { MatchingRuleService } from './matching-rule.service.js';
 
 const meter = metrics.getMeter('estate-pro.property-matching');
 const requestCounter = meter.createCounter('property_matching_requests_total');
@@ -65,6 +66,7 @@ export class PropertyMatchingService {
     @Inject(MATCHING_REPOSITORY)
     private readonly repository: MatchingRepository,
     private readonly engine: MatchingEngine,
+    private readonly rules: MatchingRuleService,
     private readonly authorization: AuthorizationService,
     @Inject(SECURITY_AUDIT_REPOSITORY)
     private readonly audit: SecurityAuditRepository,
@@ -224,6 +226,7 @@ export class PropertyMatchingService {
       subjectType,
       subjectUuid,
     );
+    const rule = await this.rules.active();
     const start = performance.now();
     requestCounter.add(1, { operation: 'match' });
     try {
@@ -237,9 +240,9 @@ export class PropertyMatchingService {
         actor.actorUuid,
         pool.map((candidate) => candidate.listingUuid),
       );
-      const ranked = this.engine
-        .evaluate(preference, pool, signals)
-        .filter((item) => item.score >= this.minimum(options.minScore));
+      const ranked = this.engine.evaluate(preference, pool, signals, rule).filter(
+        (item) => item.score >= this.minimum(options.minScore, rule.minimumScore),
+      );
       const page = Math.max(1, options.page ?? 1);
       const limit = Math.min(
         MAX_MATCH_PAGE_SIZE,
@@ -254,6 +257,7 @@ export class PropertyMatchingService {
           totalPages: Math.ceil(ranked.length / limit),
           candidateCount: pool.length,
           algorithmVersion: MATCHING_ALGORITHM_VERSION,
+          ruleVersion: rule.version,
         },
       };
     } catch (error) {
@@ -278,6 +282,7 @@ export class PropertyMatchingService {
       subjectType,
       subjectUuid,
     );
+    const rule = await this.rules.active();
     const start = performance.now();
     requestCounter.add(1, { operation: 'generate' });
     try {
@@ -292,8 +297,8 @@ export class PropertyMatchingService {
         pool.map((candidate) => candidate.listingUuid),
       );
       const results = this.engine
-        .evaluate(preference, pool, signals)
-        .filter((item) => item.score >= this.minimum(options.minScore))
+        .evaluate(preference, pool, signals, rule)
+        .filter((item) => item.score >= this.minimum(options.minScore, rule.minimumScore))
         .slice(
           0,
           Math.min(MAX_MATCH_PAGE_SIZE, Math.max(1, options.limit ?? 20)),
@@ -326,6 +331,7 @@ export class PropertyMatchingService {
         ...snapshot,
         preferenceVersion: preference.version,
         algorithmVersion: MATCHING_ALGORITHM_VERSION,
+        ruleVersion: rule.version,
       };
     } catch (error) {
       failureCounter.add(1, { operation: 'generate' });
@@ -423,8 +429,11 @@ export class PropertyMatchingService {
     return preference;
   }
 
-  private minimum(requested?: number): number {
-    return Math.min(100, Math.max(MIN_SAFE_SCORE, requested ?? MIN_SAFE_SCORE));
+  private minimum(requested: number | undefined, ruleMinimum = 0): number {
+    return Math.min(
+      100,
+      Math.max(MIN_SAFE_SCORE, Math.max(ruleMinimum, requested ?? MIN_SAFE_SCORE)),
+    );
   }
 
   private async assertSubjectAccess(
