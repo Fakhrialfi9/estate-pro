@@ -108,15 +108,15 @@ export class AutomationNotificationDeliveryService {
 
     await this.audit.record({
       action: terminal
-        ? 'NOTIFICATION_DELIVERY_FAILED'
-        : 'NOTIFICATION_DELIVERY_RETRY_SCHEDULED',
+        ? 'NOTIFICATION_DELIVERED'
+        : 'NOTIFICATION_DELIVERY_RETRIED',
       actorUuid: null,
       entityType: 'notification_delivery',
       entityUuid: delivery.uuid,
       result: terminal ? 'FAILURE' : 'SUCCESS',
       reason: terminal
-        ? `channel=${delivery.channel};attempt=${nextAttempt};max=${delivery.maxAttempts}`
-        : `channel=${delivery.channel};attempt=${nextAttempt};nextRetry=true`,
+        ? `delivery_failed:channel=${delivery.channel};attempt=${nextAttempt};max=${delivery.maxAttempts}`
+        : `retry_scheduled:channel=${delivery.channel};attempt=${nextAttempt}`,
       system: true,
     });
     return result;
