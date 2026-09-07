@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../prisma/generated/prisma/client.js';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import type { SecurityAuditRepository } from '../../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../../common/audit/security-audit.port.js';
 import { SystemIntegrationReliabilityService } from './system-integration-reliability.service.js';
@@ -58,14 +58,17 @@ export class SystemProductionHardeningService {
       ORDER BY bucket ASC, o.state ASC
     `;
 
-    const series = new Map<string, {
-      total: number;
-      states: Record<string, number>;
-      retries: number;
-      failures: number;
-      latencyTotal: number;
-      latencyCount: number;
-    }>();
+    const series = new Map<
+      string,
+      {
+        total: number;
+        states: Record<string, number>;
+        retries: number;
+        failures: number;
+        latencyTotal: number;
+        latencyCount: number;
+      }
+    >();
     for (const row of rows) {
       const state = row.state ?? 'UNKNOWN';
       const count = this.toNumber(row.count);
@@ -111,12 +114,15 @@ export class SystemProductionHardeningService {
       granularity,
       total,
       throughputPerHour:
-        total / Math.max(1, (range.to.getTime() - range.from.getTime()) / 3_600_000),
+        total /
+        Math.max(1, (range.to.getTime() - range.from.getTime()) / 3_600_000),
       states,
       retries,
       failures,
       errorRate: total ? failures / total : 0,
-      averageLatencyMs: latencyCount ? Math.round(latencyTotal / latencyCount) : 0,
+      averageLatencyMs: latencyCount
+        ? Math.round(latencyTotal / latencyCount)
+        : 0,
       series: [...series.entries()].map(([date, item]) => ({
         date,
         total: item.total,
@@ -157,7 +163,7 @@ export class SystemProductionHardeningService {
   }
 
   async integrationHealth() {
-    const list = await this.integrations.list(1, MAX_ROWS);
+    const list = await this.integrations.list({ page: 1, limit: MAX_ROWS });
     const checks = await Promise.all(
       list.items.map(async (integration) => ({
         uuid: integration.uuid,
@@ -200,7 +206,10 @@ export class SystemProductionHardeningService {
     };
   }
 
-  async retryFailedOperations(input: { dryRun?: boolean; limit?: number }, actorUuid: string) {
+  async retryFailedOperations(
+    input: { dryRun?: boolean; limit?: number },
+    actorUuid: string,
+  ) {
     const limit = Math.min(MAX_ROWS, Math.max(1, input.limit ?? 25));
     const rows = await this.prisma.systemIntegrationOperation.findMany({
       where: { state: 'FAILED' },
@@ -211,7 +220,12 @@ export class SystemProductionHardeningService {
       return {
         dryRun: true,
         count: rows.length,
-        operations: rows.map((row) => ({ uuid: row.uuid, state: row.state, attempt: row.attempt, maxAttempts: row.maxAttempts })),
+        operations: rows.map((row) => ({
+          uuid: row.uuid,
+          state: row.state,
+          attempt: row.attempt,
+          maxAttempts: row.maxAttempts,
+        })),
       };
 
     const retryable = rows.filter((row) => row.attempt < row.maxAttempts);
@@ -219,7 +233,12 @@ export class SystemProductionHardeningService {
     for (const row of retryable) {
       await this.prisma.systemIntegrationOperation.update({
         where: { uuid: row.uuid },
-        data: { state: 'RETRY_SCHEDULED', nextAttemptAt: now, errorCode: null, errorMessage: null },
+        data: {
+          state: 'RETRY_SCHEDULED',
+          nextAttemptAt: now,
+          errorCode: null,
+          errorMessage: null,
+        },
       });
     }
     await this.audit.record({
@@ -231,7 +250,11 @@ export class SystemProductionHardeningService {
       result: 'SUCCESS',
       reason: `retry-failed-operations count=${retryable.length}`,
     });
-    return { dryRun: false, count: retryable.length, skippedMaxAttempts: rows.length - retryable.length };
+    return {
+      dryRun: false,
+      count: retryable.length,
+      skippedMaxAttempts: rows.length - retryable.length,
+    };
   }
 
   async operationalCommands() {
@@ -239,26 +262,41 @@ export class SystemProductionHardeningService {
       commands: [
         { key: 'cache-invalidate', destructive: true, requiresAudit: true },
         { key: 'orphan-cleanup', destructive: true, requiresAudit: true },
-        { key: 'retry-failed-operations', destructive: true, requiresAudit: true },
+        {
+          key: 'retry-failed-operations',
+          destructive: true,
+          requiresAudit: true,
+        },
         { key: 'diagnostics', destructive: false, requiresAudit: false },
       ],
       safeDefaults: { dryRun: true, maxBatch: 25 },
     };
   }
 
-  async orphanCleanup(input: { dryRun?: boolean; olderThanHours?: number }, actorUuid: string) {
-    const hours = Math.min(24 * 365, Math.max(1, input.olderThanHours ?? 24));
+  async orphanCleanup(
+    input: { dryRun?: boolean; olderThanHours?: number },
+    actorUuid: string,
+  ) {
+    const hours = Math.min(
+      24 * 365,
+      Math.max(1, input.olderThanHours ?? 24),
+    );
     const cutoff = new Date(Date.now() - hours * 3_600_000);
-    const candidates = await this.prisma.systemIntegrationOperation.findMany({
-      where: { state: 'FAILED', createdAt: { lt: cutoff } },
-      orderBy: { createdAt: 'asc' },
-      take: 25,
-      select: { uuid: true, createdAt: true, state: true },
-    });
+    const candidates =
+      await this.prisma.systemIntegrationOperation.findMany({
+        where: { state: 'FAILED', createdAt: { lt: cutoff } },
+        orderBy: { createdAt: 'asc' },
+        take: 25,
+        select: { uuid: true, createdAt: true, state: true },
+      });
     if (input.dryRun !== false)
       return { dryRun: true, cutoff: cutoff.toISOString(), candidates };
     const deleted = await this.prisma.systemIntegrationOperation.deleteMany({
-      where: { state: 'FAILED', createdAt: { lt: cutoff }, attempt: { gte: 999999 } },
+      where: {
+        state: 'FAILED',
+        createdAt: { lt: cutoff },
+        attempt: { gte: 999999 },
+      },
     });
     await this.audit.record({
       action: 'SYSTEM_OPERATION_CLEANUP',
@@ -269,13 +307,38 @@ export class SystemProductionHardeningService {
       result: 'SUCCESS',
       reason: `orphan-cleanup deleted=${deleted.count};cutoff=${cutoff.toISOString()}`,
     });
-    return { dryRun: false, deleted: deleted.count, cutoff: cutoff.toISOString() };
+    return {
+      dryRun: false,
+      deleted: deleted.count,
+      cutoff: cutoff.toISOString(),
+    };
   }
 
-  private aggregateMetricRows(rows: MetricRow[], range: { from: Date; to: Date }, granularity: 'hour' | 'day' | 'week') {
-    const series = new Map<string, { total: number; states: Record<string, number>; retries: number; failures: number; latencyTotal: number; latencyCount: number }>();
+  private aggregateMetricRows(
+    rows: MetricRow[],
+    range: { from: Date; to: Date },
+    granularity: 'hour' | 'day' | 'week',
+  ) {
+    const series = new Map<
+      string,
+      {
+        total: number;
+        states: Record<string, number>;
+        retries: number;
+        failures: number;
+        latencyTotal: number;
+        latencyCount: number;
+      }
+    >();
     for (const row of rows) {
-      const current = series.get(row.bucket) ?? { total: 0, states: {}, retries: 0, failures: 0, latencyTotal: 0, latencyCount: 0 };
+      const current = series.get(row.bucket) ?? {
+        total: 0,
+        states: {},
+        retries: 0,
+        failures: 0,
+        latencyTotal: 0,
+        latencyCount: 0,
+      };
       const count = this.toNumber(row.count);
       current.total += count;
       const state = row.state ?? 'UNKNOWN';
@@ -295,7 +358,9 @@ export class SystemProductionHardeningService {
       states: item.states,
       retries: item.retries,
       failures: item.failures,
-      averageLatencyMs: item.latencyCount ? Math.round(item.latencyTotal / item.latencyCount) : 0,
+      averageLatencyMs: item.latencyCount
+        ? Math.round(item.latencyTotal / item.latencyCount)
+        : 0,
     }));
     const total = items.reduce((sum, item) => sum + item.total, 0);
     const failures = items.reduce((sum, item) => sum + item.failures, 0);
@@ -308,7 +373,9 @@ export class SystemProductionHardeningService {
       retries,
       failures,
       errorRate: total ? failures / total : 0,
-      throughputPerHour: total / Math.max(1, (range.to.getTime() - range.from.getTime()) / 3_600_000),
+      throughputPerHour:
+        total /
+        Math.max(1, (range.to.getTime() - range.from.getTime()) / 3_600_000),
       series: items,
     };
   }
@@ -316,10 +383,16 @@ export class SystemProductionHardeningService {
   private range(from?: Date, to?: Date) {
     const end = to ?? new Date();
     const start = from ?? new Date(end.getTime() - 86_400_000);
-    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || start >= end)
+    if (
+      !Number.isFinite(start.getTime()) ||
+      !Number.isFinite(end.getTime()) ||
+      start >= end
+    )
       throw new Error('Invalid observability date range');
     if (end.getTime() - start.getTime() > MAX_RANGE_DAYS * 86_400_000)
-      throw new Error(`Observability range cannot exceed ${MAX_RANGE_DAYS} days`);
+      throw new Error(
+        `Observability range cannot exceed ${MAX_RANGE_DAYS} days`,
+      );
     return { from: start, to: end };
   }
 
