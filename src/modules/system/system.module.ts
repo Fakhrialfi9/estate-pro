@@ -29,6 +29,7 @@ import { IntegrationController } from './presentation/integration.controller.js'
 import { OperationsController } from './presentation/operations.controller.js';
 import { ObservabilityController } from './presentation/observability.controller.js';
 import { ProductionHardeningController } from './presentation/production-hardening.controller.js';
+import { IntegrationLogsController } from './presentation/integration-logs.controller.js';
 import { SystemHealthAggregationController } from './presentation/system-health-aggregation.controller.js';
 import { RetentionController } from './presentation/retention.controller.js';
 import { SystemRoadmapControlController } from './presentation/system-roadmap-control.controller.js';
@@ -53,6 +54,7 @@ import { SystemIntegrationService } from './application/services/system-integrat
 import { SystemOperationsService } from './application/services/system-operations.service.js';
 import { SystemObservabilityService } from './application/services/system-observability.service.js';
 import { SystemProductionHardeningService } from './application/services/system-production-hardening.service.js';
+import { SystemIntegrationLogService } from './application/services/system-integration-log.service.js';
 import { SystemRoadmapControlService } from './application/services/system-roadmap-control.service.js';
 import { SystemRetentionService } from './application/services/system-retention.service.js';
 import { SystemContentSafetyService } from './application/services/system-content-safety.service.js';
@@ -106,7 +108,7 @@ import {
 
 @Module({
   imports: [DatabaseModule, AuditModule, AuthModule, PermissionsModule, AuthorizationModule, AutomationModule, HealthModule, SystemCacheModule],
-  controllers: [AuditLogsController, ActivityController, ExportController, ImportController, JobsController, NotificationsController, SettingsController, WebhookController, IntegrationController, OperationsController, ObservabilityController, ProductionHardeningController, SystemHealthAggregationController, RetentionController, SystemRoadmapControlController, IntegrationCallbackController],
+  controllers: [AuditLogsController, ActivityController, ExportController, ImportController, JobsController, NotificationsController, SettingsController, WebhookController, IntegrationController, OperationsController, ObservabilityController, ProductionHardeningController, IntegrationLogsController, SystemHealthAggregationController, RetentionController, SystemRoadmapControlController, IntegrationCallbackController],
   providers: [
     AuthenticatedAccessGuard,
     AuthorizationGuard,
@@ -137,6 +139,7 @@ import {
     SystemOperationsService,
     SystemObservabilityService,
     SystemProductionHardeningService,
+    SystemIntegrationLogService,
     SystemRoadmapControlService,
     SystemReadOnlyGuard,
     SystemMetricsService,
