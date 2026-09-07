@@ -28,7 +28,7 @@ model SystemActivity {
   requestId        String?  @db.VarChar(120)
   retentionHold    Boolean  @default(false) @map("retention_hold")
   retentionHoldUntil DateTime? @map("retention_hold_until") @db.DateTime(3)
-  createdAt        DateTime @default(now()) @db.DateTime(3)
+  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(3)
   @@index([actorUuid, createdAt])
   @@index([resourceType, resourceUuid, createdAt])
   @@index([category, createdAt])
@@ -120,6 +120,7 @@ model SystemWebhookDelivery {
   eventName         String   @map("event_name") @db.VarChar(120)
   eventVersion      Int      @default(1) @map("event_version")
   payloadHash       String   @map("payload_hash") @db.Char(64)
+  payload           Json
   attemptCount      Int      @default(0) @map("attempt_count")
   state             String   @db.VarChar(24)
   httpStatus        Int?     @map("http_status")
