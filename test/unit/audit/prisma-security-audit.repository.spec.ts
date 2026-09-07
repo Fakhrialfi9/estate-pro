@@ -96,9 +96,7 @@ describe('PrismaSecurityAuditRepository', () => {
     'accepts authentication refresh-token audit actions and persists the event',
     async () => {
       const actorUuid = randomUUID();
-      const auditLogCreate = vi
-        .fn<AuditLogCreate>()
-        .mockResolvedValue({ id: 1n });
+      const auditLogCreate = vi.fn<AuditLogCreate>().mockResolvedValue({ id: 1n });
       const tx = createTransaction(actorUuid, auditLogCreate);
       const transaction = vi
         .fn<TransactionMock>()
@@ -131,9 +129,7 @@ describe('PrismaSecurityAuditRepository', () => {
     'accepts property utilities audit events and persists sanitized changes',
     async () => {
       const actorUuid = randomUUID();
-      const auditLogCreate = vi
-        .fn<AuditLogCreate>()
-        .mockResolvedValue({ id: 1n });
+      const auditLogCreate = vi.fn<AuditLogCreate>().mockResolvedValue({ id: 1n });
       const auditLogChangeCreateMany = vi
         .fn<AuditLogChangeCreateMany>()
         .mockResolvedValue(undefined);
