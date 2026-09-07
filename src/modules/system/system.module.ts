@@ -107,8 +107,35 @@ import {
 } from './domain/webhook/webhook.ports.js';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, AuthModule, PermissionsModule, AuthorizationModule, AutomationModule, HealthModule, SystemCacheModule],
-  controllers: [AuditLogsController, ActivityController, ExportController, ImportController, JobsController, NotificationsController, SettingsController, WebhookController, IntegrationController, OperationsController, ObservabilityController, ProductionHardeningController, IntegrationLogsController, SystemHealthAggregationController, RetentionController, SystemRoadmapControlController, IntegrationCallbackController],
+  imports: [
+    DatabaseModule,
+    AuditModule,
+    AuthModule,
+    PermissionsModule,
+    AuthorizationModule,
+    AutomationModule,
+    HealthModule,
+    SystemCacheModule,
+  ],
+  controllers: [
+    AuditLogsController,
+    ActivityController,
+    ExportController,
+    ImportController,
+    JobsController,
+    NotificationsController,
+    SettingsController,
+    WebhookController,
+    IntegrationController,
+    OperationsController,
+    ObservabilityController,
+    ProductionHardeningController,
+    IntegrationLogsController,
+    SystemHealthAggregationController,
+    RetentionController,
+    SystemRoadmapControlController,
+    IntegrationCallbackController,
+  ],
   providers: [
     AuthenticatedAccessGuard,
     AuthorizationGuard,
@@ -157,41 +184,113 @@ import {
     WebhookNetworkService,
     WebhookSecretService,
     WebhookSignerService,
-    { provide: SYSTEM_SETTINGS_REPOSITORY, useExisting: PrismaSystemSettingsRepository },
-    { provide: SYSTEM_ACTIVITY_REPOSITORY, useExisting: PrismaSystemActivityRepository },
-    { provide: SYSTEM_RETENTION_REPOSITORY, useExisting: PrismaSystemRetentionRepository },
-    { provide: SYSTEM_IMPORT_REPOSITORY, useExisting: PrismaSystemImportRepository },
-    { provide: SYSTEM_EXPORT_REPOSITORY, useExisting: PrismaSystemExportRepository },
-    { provide: SYSTEM_ARTIFACT_STORAGE, useExisting: LocalSystemArtifactStorage },
+    {
+      provide: SYSTEM_SETTINGS_REPOSITORY,
+      useExisting: PrismaSystemSettingsRepository,
+    },
+    {
+      provide: SYSTEM_ACTIVITY_REPOSITORY,
+      useExisting: PrismaSystemActivityRepository,
+    },
+    {
+      provide: SYSTEM_RETENTION_REPOSITORY,
+      useExisting: PrismaSystemRetentionRepository,
+    },
+    {
+      provide: SYSTEM_IMPORT_REPOSITORY,
+      useExisting: PrismaSystemImportRepository,
+    },
+    {
+      provide: SYSTEM_EXPORT_REPOSITORY,
+      useExisting: PrismaSystemExportRepository,
+    },
+    {
+      provide: SYSTEM_ARTIFACT_STORAGE,
+      useExisting: LocalSystemArtifactStorage,
+    },
     { provide: SYSTEM_XLSX_EXPORTER, useExisting: SystemXlsxExporterAdapter },
-    { provide: SYSTEM_WEBHOOK_REPOSITORY, useExisting: PrismaSystemWebhookRepository },
-    { provide: SYSTEM_WEBHOOK_RATE_LIMIT_REPOSITORY, useExisting: PrismaSystemWebhookRateLimitRepository },
-    { provide: SYSTEM_INTEGRATION_REPOSITORY, useExisting: PrismaSystemIntegrationRepository },
-    { provide: SYSTEM_ROADMAP_REPOSITORY, useExisting: PrismaSystemRoadmapRepository },
-    { provide: SYSTEM_INTEGRATION_OPERATION_RETRY_REPOSITORY, useExisting: PrismaSystemIntegrationOperationRetryRepository },
-    { provide: SYSTEM_RETENTION_REPOSITORY, useExisting: PrismaSystemRetentionRepository },
-    { provide: SYSTEM_INTEGRATION_SECRET_RESOLVER, useExisting: EnvironmentIntegrationSecretResolverService },
+    {
+      provide: SYSTEM_WEBHOOK_REPOSITORY,
+      useExisting: PrismaSystemWebhookRepository,
+    },
+    {
+      provide: SYSTEM_WEBHOOK_RATE_LIMIT_REPOSITORY,
+      useExisting: PrismaSystemWebhookRateLimitRepository,
+    },
+    {
+      provide: SYSTEM_INTEGRATION_REPOSITORY,
+      useExisting: PrismaSystemIntegrationRepository,
+    },
+    {
+      provide: SYSTEM_ROADMAP_REPOSITORY,
+      useExisting: PrismaSystemRoadmapRepository,
+    },
+    {
+      provide: SYSTEM_INTEGRATION_OPERATION_RETRY_REPOSITORY,
+      useExisting: PrismaSystemIntegrationOperationRetryRepository,
+    },
+    {
+      provide: SYSTEM_INTEGRATION_SECRET_RESOLVER,
+      useExisting: EnvironmentIntegrationSecretResolverService,
+    },
     { provide: SYSTEM_WEBHOOK_SECRET_PORT, useExisting: WebhookSecretService },
     { provide: SYSTEM_WEBHOOK_SIGNER_PORT, useExisting: WebhookSignerService },
-    { provide: SYSTEM_WEBHOOK_NETWORK_PORT, useExisting: WebhookNetworkService },
+    {
+      provide: SYSTEM_WEBHOOK_NETWORK_PORT,
+      useExisting: WebhookNetworkService,
+    },
     {
       provide: SYSTEM_STORAGE_HEALTH_PORT,
-      useFactory: (storage: LocalSystemArtifactStorage) => ({ check: async () => { try { await storage.health(); return 'up' as const; } catch { return 'down' as const; } } }),
+      useFactory: (storage: LocalSystemArtifactStorage) => ({
+        check: async () => {
+          try {
+            await storage.health();
+            return 'up' as const;
+          } catch {
+            return 'down' as const;
+          }
+        },
+      }),
       inject: [LocalSystemArtifactStorage],
     },
-    { provide: SYSTEM_JOB_HEALTH_PORT, useFactory: (automation: AutomationHealthPort) => automation, inject: [AUTOMATION_HEALTH_PORT] },
+    {
+      provide: SYSTEM_JOB_HEALTH_PORT,
+      useFactory: (automation: AutomationHealthPort) => automation,
+      inject: [AUTOMATION_HEALTH_PORT],
+    },
     {
       provide: SYSTEM_DATABASE_HEALTH_PORT,
-      useFactory: (health: SystemHealthPort) => ({ check: async (): Promise<'up' | 'down'> => { try { return await health.checkDatabase(); } catch { return 'down'; } } }),
+      useFactory: (health: SystemHealthPort) => ({
+        check: async (): Promise<'up' | 'down'> => {
+          try {
+            return await health.checkDatabase();
+          } catch {
+            return 'down';
+          }
+        },
+      }),
       inject: [SYSTEM_HEALTH_PORT],
     },
     { provide: SYSTEM_OPERATIONS_PORT, useExisting: SystemOperationsService },
     {
       provide: 'SYSTEM_INTEGRATION_PROVIDER_REGISTRATION',
       inject: [SystemIntegrationService, GenericHttpIntegrationProvider],
-      useFactory: (integrations: SystemIntegrationService, provider: GenericHttpIntegrationProvider) => integrations.registerProvider(provider),
+      useFactory: (
+        integrations: SystemIntegrationService,
+        provider: GenericHttpIntegrationProvider,
+      ) => integrations.registerProvider(provider),
     },
   ],
-  exports: [SystemSettingsService, SystemActivityService, SYSTEM_OPERATIONS_PORT, SystemRoadmapControlService, SystemIntegrationService, SystemIntegrationReliabilityService, SystemIntegrationSyncService, SystemIntegrationCredentialService, SystemOperationalAlertService],
+  exports: [
+    SystemSettingsService,
+    SystemActivityService,
+    SYSTEM_OPERATIONS_PORT,
+    SystemRoadmapControlService,
+    SystemIntegrationService,
+    SystemIntegrationReliabilityService,
+    SystemIntegrationSyncService,
+    SystemIntegrationCredentialService,
+    SystemOperationalAlertService,
+  ],
 })
 export class SystemModule {}
