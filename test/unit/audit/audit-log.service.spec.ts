@@ -18,7 +18,9 @@ describe('AuditLogService', () => {
     };
     const logger: AuditLogger = {
       setContext: vi.fn<(context: string) => void>(),
-      error: vi.fn<(context: Record<string, unknown>, message: string) => void>(),
+      error: vi.fn<
+        (context: Record<string, unknown>, message: string) => void
+      >(),
     };
     const service = new AuditLogService(repository, logger as never);
 
@@ -34,19 +36,18 @@ describe('AuditLogService', () => {
     ).resolves.toBeUndefined();
 
     expect(repository.record).toHaveBeenCalledOnce();
-
-    const errorCall = logger.error.mock.calls.at(0);
-    if (errorCall === undefined) {
-      throw new Error('Audit logger error was not called');
-    }
-    const [context, message] = errorCall;
-    expect(context.auditAction).toBe('SYSTEM_SETTING_UPDATED');
-    expect(context.resourceType).toBe('system_setting');
-    expect(context.resourceId).toBe('setting-1');
-    expect(context.error).toEqual({
-      type: 'Error',
-      message: 'audit database unavailable',
-    });
-    expect(message).toContain('Audit write failed');
+    expect(logger.error).toHaveBeenCalledOnce();
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auditAction: 'SYSTEM_SETTING_UPDATED',
+        resourceType: 'system_setting',
+        resourceId: 'setting-1',
+        error: expect.objectContaining({
+          type: 'Error',
+          message: 'audit database unavailable',
+        }),
+      }),
+      expect.stringContaining('Audit write failed'),
+    );
   });
 });
