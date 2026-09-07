@@ -30,6 +30,7 @@ import {
   SYSTEM_WEBHOOK_REPOSITORY,
   type SystemWebhookRepository,
 } from '../../domain/repositories/system-webhook.repository.js';
+import { SystemWebhookRateLimitService } from './system-webhook-rate-limit.service.js';
 
 const FILTER_MAX_COUNT = 10;
 const FILTER_MAX_DEPTH = 5;
@@ -53,6 +54,7 @@ export class SystemWebhookService {
     @Inject(SYSTEM_WEBHOOK_NETWORK_PORT)
     private readonly network: SystemWebhookNetworkPort,
     private readonly config: ConfigService,
+    private readonly rateLimit: SystemWebhookRateLimitService,
   ) {}
 
   eventCatalog() {
@@ -184,17 +186,30 @@ export class SystemWebhookService {
     });
     for (const subscription of subscriptions.items) {
       if (
-        subscription.events.includes(eventName) &&
-        this.matchesFilters(subscription.filters, data)
-      ) {
-        await this.deliver(subscription, eventId, eventName, 1, data, eventId);
+        !subscription.events.includes(eventName) ||
+        !this.matchesFilters(subscription.filters, data)
+      )
+        continue;
+      try {
+        await this.rateLimit.consume(subscription.uuid);
+      } catch (error) {
+        if (!(error instanceof ForbiddenException)) throw error;
+        await this.auditLifecycle(
+          'system',
+          subscription.uuid,
+          'SYSTEM_WEBHOOK_RATE_LIMITED',
+          `event=${eventName}`,
+        );
+        continue;
       }
+      await this.deliver(subscription, eventId, eventName, 1, data, eventId);
     }
   }
 
   async test(actorUuid: string, uuid: string) {
     const row = await this.repository.findSubscription(uuid);
     if (!row) throw new NotFoundException('Webhook subscription not found');
+    await this.rateLimit.consume(uuid);
     const eventId = `test:${randomUUID()}`;
     const delivery = await this.deliver(
       row,
@@ -273,6 +288,7 @@ export class SystemWebhookService {
       throw new NotFoundException('Webhook subscription not found');
     if (subscription.status !== 'ACTIVE')
       throw new ForbiddenException('Webhook subscription is disabled');
+    await this.rateLimit.consume(subscription.uuid);
     const deliveryKey = `replay:${randomUUID()}`;
     const delivery = await this.deliver(
       subscription,
@@ -616,7 +632,8 @@ export class SystemWebhookService {
       | 'SYSTEM_WEBHOOK_DELETED'
       | 'SYSTEM_WEBHOOK_SECRET_ROTATED'
       | 'SYSTEM_WEBHOOK_TESTED'
-      | 'SYSTEM_WEBHOOK_REPLAYED',
+      | 'SYSTEM_WEBHOOK_REPLAYED'
+      | 'SYSTEM_WEBHOOK_RATE_LIMITED',
     metadata?: string,
   ): Promise<void> {
     await this.audit.record({
