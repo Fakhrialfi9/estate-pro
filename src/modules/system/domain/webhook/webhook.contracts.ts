@@ -54,6 +54,7 @@ export interface WebhookDeliveryRecord {
   eventName: SystemWebhookEventName;
   eventVersion: number;
   payloadHash: string;
+  payload: Record<string, unknown>;
   attemptCount: number;
   state: WebhookDeliveryState;
   httpStatus: number | null;
