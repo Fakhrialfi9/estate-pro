@@ -71,13 +71,18 @@ describe('SystemNotificationService coverage', () => {
     await expect(service.preferences('user-1')).resolves.toEqual([
       { notificationType: 'LEAD', channel: 'EMAIL', enabled: true },
     ]);
-    await expect(
+    expect(
       service.setPreference('user-1', {
         notificationType: 'LEAD',
         channel: 'EMAIL',
         enabled: false,
       }),
-    ).resolves.toMatchObject({ userUuid: 'user-1', enabled: false });
+    ).toEqual({
+      userUuid: 'user-1',
+      notificationType: 'LEAD',
+      channel: 'EMAIL',
+      enabled: false,
+    });
   });
 
   it('covers template, policy and delivery delegation', async () => {
@@ -99,7 +104,7 @@ describe('SystemNotificationService coverage', () => {
       service.updateTemplate('t1', { isActive: false }),
     ).resolves.toEqual({ uuid: 't1' });
     await expect(
-      service.setPolicy('n1', { priority: 'HIGH', templateUuid: 't1' }),
+      service.setPolicy('n1', { priority: 'HIGH' } as never),
     ).resolves.toEqual({ uuid: 'p1' });
     await expect(service.policy('n1')).resolves.toEqual({ uuid: 'p1' });
     await expect(service.createDelivery('n1', 'EMAIL', 3)).resolves.toEqual({
