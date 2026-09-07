@@ -192,7 +192,9 @@ describe('SystemExportService coverage', () => {
     });
 
     d.jobs.findByUuid.mockResolvedValueOnce({ ...job, state: 'RUNNING' });
-    await expect(service.cancel('actor-1', 'job-1')).resolves.toMatchObject({
+    const runningCancellation = await service.cancel('actor-1', 'job-1');
+    expect(runningCancellation.state).toBe('RUNNING');
+    expect(d.jobs.update).toHaveBeenCalledWith('job-1', {
       cancelRequested: true,
     });
 
