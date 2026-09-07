@@ -2,6 +2,8 @@ import {
   BadRequestException,
   Controller,
   Headers,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
@@ -24,6 +26,7 @@ export class IntegrationCallbackController {
   ) {}
 
   @Post(':uuid/callback')
+  @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Receive an authenticated integration callback' })
   @ApiResponse({
     status: 202,
