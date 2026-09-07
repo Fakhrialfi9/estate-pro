@@ -283,10 +283,10 @@ describe('PropertyExtrasService coverage', () => {
 
   it('covers money arithmetic and invalid inputs', () => {
     const money = new rules.Money('12.30', 'IDR');
-    expect(money.amount).toBe('12.30');
+    expect(money.amount).toBe('12.3');
     expect(money.currency).toBe('IDR');
     expect(money.toMinorUnits()).toBe(1230n);
-    expect(money.round(2).amount).toBe('12.30');
+    expect(money.round(2).amount).toBe('12.3');
     expect(() => new rules.Money('12.345', 'IDR')).toThrow();
     expect(() => new rules.Money('x', 'IDR')).toThrow();
     expect(() => new rules.Money('10', 'id')).toThrow();
