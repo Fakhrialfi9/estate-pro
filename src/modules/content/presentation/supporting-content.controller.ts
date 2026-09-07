@@ -136,10 +136,7 @@ export class SupportingContentController {
   }
   @Post('tags') @RequirePermissions('content.tags.create')
   @ApiResponse({ status: 201, type: Object })
-  createTag(
-    @Req() r: AuthRequest,
-    @Body() d: ResourceDto,
-  ) {
+  createTag(@Req() r: AuthRequest, @Body() d: ResourceDto) {
     return this.resources.create(
       'tag',
       d as unknown as Record<string, unknown>,
@@ -186,10 +183,7 @@ export class SupportingContentController {
   }
   @Post('pages') @RequirePermissions('content.pages.create')
   @ApiResponse({ status: 201, type: Object })
-  createPage(
-    @Req() r: AuthRequest,
-    @Body() d: ResourceDto,
-  ) {
+  createPage(@Req() r: AuthRequest, @Body() d: ResourceDto) {
     return this.resources.create(
       'page',
       d as unknown as Record<string, unknown>,
@@ -268,10 +262,7 @@ export class SupportingContentController {
   }
   @Post('faqs') @RequirePermissions('content.faqs.create')
   @ApiResponse({ status: 201, type: Object })
-  createFaq(
-    @Req() r: AuthRequest,
-    @Body() d: ResourceDto,
-  ) {
+  createFaq(@Req() r: AuthRequest, @Body() d: ResourceDto) {
     return this.resources.create(
       'faq',
       d as unknown as Record<string, unknown>,
@@ -369,10 +360,7 @@ export class SupportingContentController {
   }
   @Post('banners') @RequirePermissions('content.banners.create')
   @ApiResponse({ status: 201, type: Object })
-  createBanner(
-    @Req() r: AuthRequest,
-    @Body() d: ResourceDto,
-  ) {
+  createBanner(@Req() r: AuthRequest, @Body() d: ResourceDto) {
     return this.resources.create(
       'banner',
       d as unknown as Record<string, unknown>,
@@ -442,10 +430,7 @@ export class SupportingContentController {
   }
   @Post('menus') @RequirePermissions('content.menus.create')
   @ApiResponse({ status: 201, type: Object })
-  createMenu(
-    @Req() r: AuthRequest,
-    @Body() d: ResourceDto,
-  ) {
+  createMenu(@Req() r: AuthRequest, @Body() d: ResourceDto) {
     return this.resources.create(
       'menu',
       d as unknown as Record<string, unknown>,
