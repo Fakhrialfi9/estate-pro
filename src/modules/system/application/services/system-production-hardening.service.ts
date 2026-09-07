@@ -259,7 +259,7 @@ export class SystemProductionHardeningService {
     };
   }
 
-  async operationalCommands() {
+  operationalCommands() {
     return {
       commands: [
         { key: 'cache-invalidate', destructive: true, requiresAudit: true },
