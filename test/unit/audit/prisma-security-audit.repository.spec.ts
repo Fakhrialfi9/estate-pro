@@ -33,90 +33,62 @@ type AuditChangeCreateManyArgs = {
   }[];
 };
 
+type UserFindFirst = (
+  args: unknown,
+) => Promise<{ id: bigint; uuid: string } | null>;
+
+type AuditLogCreate = (
+  args: AuditLogCreateArgs,
+) => Promise<{ id: bigint }>;
+
+type AuditLogChangeCreateMany = (
+  args: AuditChangeCreateManyArgs,
+) => Promise<void>;
+
 type AuditTransaction = {
-  authenticationUser: {
-    findFirst: ReturnType<
-      typeof vi.fn<
-        (args: unknown) => Promise<{ id: bigint; uuid: string } | null>
-      >
-    >;
-  };
-  authorizationRole: {
-    findFirst: ReturnType<
-      typeof vi.fn<
-        (args: unknown) => Promise<{ id: bigint; uuid: string } | null>
-      >
-    >;
-  };
-  authorizationPermission: {
-    findFirst: ReturnType<
-      typeof vi.fn<
-        (args: unknown) => Promise<{ id: bigint; uuid: string } | null>
-      >
-    >;
-  };
+  authenticationUser: { findFirst: UserFindFirst };
+  authorizationRole: { findFirst: UserFindFirst };
+  authorizationPermission: { findFirst: UserFindFirst };
   auditLog: {
-    create: ReturnType<
-      typeof vi.fn<(args: AuditLogCreateArgs) => Promise<{ id: bigint }>>
-    >;
-    findMany: ReturnType<typeof vi.fn>;
-    count: ReturnType<typeof vi.fn>;
+    create: AuditLogCreate;
+    findMany: (args: unknown) => Promise<unknown>;
+    count: (args: unknown) => Promise<number>;
   };
-  auditLogChange: {
-    createMany: ReturnType<
-      typeof vi.fn<(args: AuditChangeCreateManyArgs) => Promise<void>>
-    >;
-  };
+  auditLogChange: { createMany: AuditLogChangeCreateMany };
 };
 
-type TransactionCallback = (
+type TransactionCallback = <T>(
   value: AuditTransaction,
-) => Promise<unknown> | unknown;
+) => Promise<T>;
 
-type TransactionMock = ReturnType<typeof vi.fn<(callback: TransactionCallback) => Promise<unknown>>>;
+type TransactionMock = <T>(callback: (value: AuditTransaction) => Promise<T>) => Promise<T>;
 
 const createTransaction = (
   actorUuid: string,
-  auditLogCreate: ReturnType<
-    typeof vi.fn<(args: AuditLogCreateArgs) => Promise<{ id: bigint }>>
-  >,
-  auditLogChangeCreateMany?: ReturnType<
-    typeof vi.fn<(args: AuditChangeCreateManyArgs) => Promise<void>>
-  >,
+  auditLogCreate: AuditLogCreate,
+  auditLogChangeCreateMany?: AuditLogChangeCreateMany,
 ): AuditTransaction => ({
   authenticationUser: {
-    findFirst: vi
-      .fn<
-        (args: unknown) => Promise<{ id: bigint; uuid: string } | null>
-      >()
-      .mockResolvedValue({
-        id: 7n,
-        uuid: actorUuid,
-      }),
+    findFirst: vi.fn<UserFindFirst>().mockResolvedValue({
+      id: 7n,
+      uuid: actorUuid,
+    }),
   },
   authorizationRole: {
-    findFirst: vi
-      .fn<
-        (args: unknown) => Promise<{ id: bigint; uuid: string } | null>
-      >()
-      .mockResolvedValue(null),
+    findFirst: vi.fn<UserFindFirst>().mockResolvedValue(null),
   },
   authorizationPermission: {
-    findFirst: vi
-      .fn<
-        (args: unknown) => Promise<{ id: bigint; uuid: string } | null>
-      >()
-      .mockResolvedValue(null),
+    findFirst: vi.fn<UserFindFirst>().mockResolvedValue(null),
   },
   auditLog: {
     create: auditLogCreate,
-    findMany: vi.fn(),
-    count: vi.fn(),
+    findMany: vi.fn<(args: unknown) => Promise<unknown>>().mockResolvedValue([]),
+    count: vi.fn<(args: unknown) => Promise<number>>().mockResolvedValue(0),
   },
   auditLogChange: {
     createMany:
       auditLogChangeCreateMany ??
-      vi.fn<(args: AuditChangeCreateManyArgs) => Promise<void>>().mockResolvedValue(undefined),
+      vi.fn<AuditLogChangeCreateMany>().mockResolvedValue(undefined),
   },
 });
 
@@ -133,12 +105,12 @@ describe('PrismaSecurityAuditRepository', () => {
   it('accepts authentication refresh-token audit actions and persists the event', async () => {
     const actorUuid = randomUUID();
     const auditLogCreate = vi
-      .fn<(args: AuditLogCreateArgs) => Promise<{ id: bigint }>>()
+      .fn<AuditLogCreate>()
       .mockResolvedValue({ id: 1n });
     const tx = createTransaction(actorUuid, auditLogCreate);
-    const transaction = vi
-      .fn<TransactionCallback>()
-      .mockImplementation((callback) => Promise.resolve(callback(tx)));
+    const transaction = vi.fn<TransactionMock>().mockImplementation((callback) =>
+      callback(tx),
+    );
     const repository = createRepository(transaction);
     const event: SecurityAuditEvent = {
       action: 'REFRESH_TOKEN_ISSUED',
@@ -165,19 +137,19 @@ describe('PrismaSecurityAuditRepository', () => {
   it('accepts property utilities audit events and persists sanitized changes', async () => {
     const actorUuid = randomUUID();
     const auditLogCreate = vi
-      .fn<(args: AuditLogCreateArgs) => Promise<{ id: bigint }>>()
+      .fn<AuditLogCreate>()
       .mockResolvedValue({ id: 1n });
     const auditLogChangeCreateMany = vi
-      .fn<(args: AuditChangeCreateManyArgs) => Promise<void>>()
+      .fn<AuditLogChangeCreateMany>()
       .mockResolvedValue(undefined);
     const tx = createTransaction(
       actorUuid,
       auditLogCreate,
       auditLogChangeCreateMany,
     );
-    const transaction = vi
-      .fn<TransactionCallback>()
-      .mockImplementation((callback) => Promise.resolve(callback(tx)));
+    const transaction = vi.fn<TransactionMock>().mockImplementation((callback) =>
+      callback(tx),
+    );
     const repository = createRepository(transaction);
     const entityUuid = randomUUID();
     const event: SecurityAuditEvent = {
@@ -229,7 +201,7 @@ describe('PrismaSecurityAuditRepository', () => {
   });
 
   it('rejects unknown audit resources', async () => {
-    const transaction = vi.fn<TransactionCallback>();
+    const transaction = vi.fn<TransactionMock>();
     const repository = createRepository(transaction);
 
     await expect(
