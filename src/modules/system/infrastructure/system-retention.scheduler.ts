@@ -1,13 +1,11 @@
-import {
-  Injectable,
-  type OnModuleDestroy,
-  type OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SystemRetentionService } from '../application/services/system-retention.service.js';
 
 @Injectable()
 export class SystemRetentionScheduler implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(SystemRetentionScheduler.name);
   private timer: NodeJS.Timeout | undefined;
   private running = false;
 
@@ -53,6 +51,11 @@ export class SystemRetentionScheduler implements OnModuleInit, OnModuleDestroy {
         ),
         batchSize: this.config.get<number>('system.retention.batchSize', 250),
       });
+    } catch (error: unknown) {
+      this.logger.error(
+        'System retention scheduler iteration failed',
+        error instanceof Error ? error.stack : undefined,
+      );
     } finally {
       this.running = false;
     }
