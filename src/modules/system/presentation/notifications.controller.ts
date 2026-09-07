@@ -163,7 +163,14 @@ export class NotificationsController {
   @Patch('read-all')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'Mark all current-user notifications as read' })
-  @ApiResponse({ status: 200, schema: { type: 'object', required: ['updated'], properties: { updated: { type: 'integer', minimum: 0 } } } })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      type: 'object',
+      required: ['updated'],
+      properties: { updated: { type: 'integer', minimum: 0 } },
+    },
+  })
   markAllRead(@Req() request: Request) {
     const userUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.notifications.markAllRead(userUuid);
@@ -184,7 +191,10 @@ export class NotificationsController {
   @Get('preferences')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'List current-user notification preferences' })
-  @ApiResponse({ status: 200, schema: { type: 'array', items: notificationPreferenceSchema } })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'array', items: notificationPreferenceSchema },
+  })
   preferences(@Req() request: Request) {
     const userUuid = (request.user as { sub?: string } | undefined)?.sub ?? '';
     return this.notifications.preferences(userUuid);
@@ -205,7 +215,10 @@ export class NotificationsController {
   @Get('templates')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'List notification templates' })
-  @ApiResponse({ status: 200, schema: { type: 'array', items: notificationTemplateSchema } })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'array', items: notificationTemplateSchema },
+  })
   templates() {
     return this.notifications.templates({ activeOnly: false });
   }
@@ -247,7 +260,9 @@ export class NotificationsController {
 
   @Patch(':uuid/policy')
   @RequirePermissions('system.settings.update')
-  @ApiOperation({ summary: 'Update notification priority and expiration policy' })
+  @ApiOperation({
+    summary: 'Update notification priority and expiration policy',
+  })
   @ApiResponse({ status: 200, schema: notificationPolicySchema })
   setPolicy(
     @Param('uuid', ParseUUIDPipe) uuid: string,
@@ -265,7 +280,10 @@ export class NotificationsController {
   @Get(':uuid/deliveries')
   @RequirePermissions('system.notifications.read')
   @ApiOperation({ summary: 'List notification delivery states' })
-  @ApiResponse({ status: 200, schema: { type: 'array', items: genericObjectSchema } })
+  @ApiResponse({
+    status: 200,
+    schema: { type: 'array', items: genericObjectSchema },
+  })
   deliveries(@Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.notifications.deliveries(uuid);
   }
@@ -278,7 +296,11 @@ export class NotificationsController {
     @Param('uuid', ParseUUIDPipe) uuid: string,
     @Body() dto: NotificationDeliveryDto,
   ) {
-    return this.notifications.createDelivery(uuid, dto.channel, dto.maxAttempts);
+    return this.notifications.createDelivery(
+      uuid,
+      dto.channel,
+      dto.maxAttempts,
+    );
   }
 
   @Post('deliveries/:deliveryUuid/retry')

@@ -272,7 +272,10 @@ const weightedScore = (
     scoreCriterion(
       'bedrooms',
       'bedrooms',
-      rangeMatch(candidateSpecification?.bedrooms ?? null, specification.bedrooms),
+      rangeMatch(
+        candidateSpecification?.bedrooms ?? null,
+        specification.bedrooms,
+      ),
     );
   if (specification?.bathrooms)
     scoreCriterion(
@@ -350,8 +353,8 @@ export class MatchingEngine {
     const globallyHardCriteria = rule?.hardCriteria ?? [];
     for (const candidate of candidates) {
       if (
-        evaluateHardCriteria(preference, candidate, globallyHardCriteria).length >
-        0
+        evaluateHardCriteria(preference, candidate, globallyHardCriteria)
+          .length > 0
       )
         continue;
       const result = weightedScore(

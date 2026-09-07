@@ -18,15 +18,39 @@ export class CrmCommunicationHealthService {
   }
 
   private channelStatus(channel: Channel) {
-    const raw = this.config.get<string>(`${channel.toLowerCase() === 'whatsapp' ? 'whatsapp' : channel.toLowerCase()}.providerUrl`);
-    if (!raw) return { configured: false, reachable: false, reason: 'provider_not_configured' };
+    const raw = this.config.get<string>(
+      `${channel.toLowerCase() === 'whatsapp' ? 'whatsapp' : channel.toLowerCase()}.providerUrl`,
+    );
+    if (!raw)
+      return {
+        configured: false,
+        reachable: false,
+        reason: 'provider_not_configured',
+      };
     try {
       const url = new URL(raw);
-      if (url.protocol !== 'https:' || url.username || url.password || isIP(url.hostname))
-        return { configured: true, reachable: false, reason: 'invalid_provider_endpoint' };
-      return { configured: true, reachable: false, reason: 'health_check_not_executed' };
+      if (
+        url.protocol !== 'https:' ||
+        url.username ||
+        url.password ||
+        isIP(url.hostname)
+      )
+        return {
+          configured: true,
+          reachable: false,
+          reason: 'invalid_provider_endpoint',
+        };
+      return {
+        configured: true,
+        reachable: false,
+        reason: 'health_check_not_executed',
+      };
     } catch {
-      return { configured: true, reachable: false, reason: 'invalid_provider_endpoint' };
+      return {
+        configured: true,
+        reachable: false,
+        reason: 'invalid_provider_endpoint',
+      };
     }
   }
 }

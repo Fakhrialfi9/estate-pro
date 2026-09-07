@@ -36,7 +36,11 @@ const toJsonFilters = (
     field: filter.field,
     operator: filter.operator,
     ...(filter.value !== undefined
-      ? { value: JSON.parse(JSON.stringify(filter.value)) as Prisma.InputJsonValue }
+      ? {
+          value: JSON.parse(
+            JSON.stringify(filter.value),
+          ) as Prisma.InputJsonValue,
+        }
       : {}),
   }));
 
@@ -108,7 +112,9 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     return toSubscription(row);
   }
 
-  async findSubscription(uuid: string): Promise<WebhookSubscriptionRecord | null> {
+  async findSubscription(
+    uuid: string,
+  ): Promise<WebhookSubscriptionRecord | null> {
     const row = await this.prisma.systemWebhookSubscription.findUnique({
       where: { uuid },
     });
@@ -145,7 +151,18 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
 
   async updateSubscription(
     uuid: string,
-    input: Partial<Pick<WebhookSubscriptionRecord, 'endpoint' | 'events' | 'filters' | 'status' | 'secretCiphertext' | 'secretVersion' | 'secretCreatedAt'>>,
+    input: Partial<
+      Pick<
+        WebhookSubscriptionRecord,
+        | 'endpoint'
+        | 'events'
+        | 'filters'
+        | 'status'
+        | 'secretCiphertext'
+        | 'secretVersion'
+        | 'secretCreatedAt'
+      >
+    >,
   ) {
     try {
       const { events, filters, ...rest } = input;
@@ -184,7 +201,9 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     nextAttemptAt?: Date | null;
   }): Promise<{ created: boolean; record: WebhookDeliveryRecord }> {
     try {
-      const row = await this.prisma.systemWebhookDelivery.create({ data: input });
+      const row = await this.prisma.systemWebhookDelivery.create({
+        data: input,
+      });
       return { created: true, record: toDelivery(row) };
     } catch (error: unknown) {
       if (
@@ -204,13 +223,26 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
   }
 
   async findDelivery(uuid: string): Promise<WebhookDeliveryRecord | null> {
-    const row = await this.prisma.systemWebhookDelivery.findUnique({ where: { uuid } });
+    const row = await this.prisma.systemWebhookDelivery.findUnique({
+      where: { uuid },
+    });
     return row ? toDelivery(row) : null;
   }
 
   async updateDelivery(
     uuid: string,
-    input: Partial<Pick<WebhookDeliveryRecord, 'attemptCount' | 'state' | 'httpStatus' | 'responseSummary' | 'nextAttemptAt' | 'completedAt' | 'failureReason'>>,
+    input: Partial<
+      Pick<
+        WebhookDeliveryRecord,
+        | 'attemptCount'
+        | 'state'
+        | 'httpStatus'
+        | 'responseSummary'
+        | 'nextAttemptAt'
+        | 'completedAt'
+        | 'failureReason'
+      >
+    >,
   ) {
     const row = await this.prisma.systemWebhookDelivery.update({
       where: { uuid },
@@ -259,7 +291,10 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     return rows.map(toDelivery);
   }
 
-  async countRecentDeliveries(subscriptionUuid: string, since: Date): Promise<number> {
+  async countRecentDeliveries(
+    subscriptionUuid: string,
+    since: Date,
+  ): Promise<number> {
     return this.prisma.systemWebhookDelivery.count({
       where: {
         subscription: { uuid: subscriptionUuid },

@@ -27,9 +27,7 @@ export class SystemRetentionService {
       Math.max(1, Math.trunc(input.batchSize ?? 250)),
     );
     const now = Date.now();
-    const activityBefore = new Date(
-      now - activityDays * 24 * 60 * 60 * 1000,
-    );
+    const activityBefore = new Date(now - activityDays * 24 * 60 * 60 * 1000);
     const auditBefore = new Date(now - auditDays * 24 * 60 * 60 * 1000);
 
     let activityDeleted = 0;

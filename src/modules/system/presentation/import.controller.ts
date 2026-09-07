@@ -28,12 +28,27 @@ import { ImportDto, ImportQueryDto } from './dto/import.dto.js';
 
 const importResultSchema = {
   type: 'object',
-  required: ['uuid', 'state', 'totalRows', 'processedRows', 'failedRows', 'errors', 'preview'],
+  required: [
+    'uuid',
+    'state',
+    'totalRows',
+    'processedRows',
+    'failedRows',
+    'errors',
+    'preview',
+  ],
   properties: {
     uuid: { type: 'string', format: 'uuid' },
     state: {
       type: 'string',
-      enum: ['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'RETRYABLE'],
+      enum: [
+        'QUEUED',
+        'RUNNING',
+        'SUCCEEDED',
+        'FAILED',
+        'CANCELLED',
+        'RETRYABLE',
+      ],
     },
     totalRows: { type: 'integer', minimum: 0 },
     processedRows: { type: 'integer', minimum: 0 },
@@ -72,7 +87,14 @@ const failedRowReportSchema = {
     importUuid: { type: 'string', format: 'uuid' },
     state: {
       type: 'string',
-      enum: ['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'RETRYABLE'],
+      enum: [
+        'QUEUED',
+        'RUNNING',
+        'SUCCEEDED',
+        'FAILED',
+        'CANCELLED',
+        'RETRYABLE',
+      ],
     },
     failedRows: { type: 'integer', minimum: 0 },
     errors: {
@@ -105,9 +127,15 @@ export class ImportController {
   @HttpCode(202)
   @RequirePermissions('system.import.create')
   @ApiOperation({ summary: 'Create and process a bounded CSV/JSON import' })
-  @ApiResponse({ status: 202, description: 'Import accepted and processed asynchronously.', schema: importResultSchema })
+  @ApiResponse({
+    status: 202,
+    description: 'Import accepted and processed asynchronously.',
+    schema: importResultSchema,
+  })
   create(@Req() request: Request, @Body() dto: ImportDto) {
-    const format = dto.format ?? (dto.filename.toLowerCase().endsWith('.json') ? 'json' : 'csv');
+    const format =
+      dto.format ??
+      (dto.filename.toLowerCase().endsWith('.json') ? 'json' : 'csv');
     const buffer = Buffer.from(dto.contentBase64 ?? '', 'base64');
     this.safety.inspectImport(buffer, format);
     return this.imports.execute(actor(request), dto);
@@ -115,36 +143,68 @@ export class ImportController {
 
   @Get()
   @RequirePermissions('system.import.read')
-  @ApiOperation({ summary: 'List import jobs owned by the authenticated actor' })
-  @ApiResponse({ status: 200, description: 'Import jobs returned.', schema: importListResultSchema })
+  @ApiOperation({
+    summary: 'List import jobs owned by the authenticated actor',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Import jobs returned.',
+    schema: importListResultSchema,
+  })
   list(@Req() request: Request, @Query() query: ImportQueryDto) {
-    return this.imports.list(actor(request), query.page, query.limit, query.state);
+    return this.imports.list(
+      actor(request),
+      query.page,
+      query.limit,
+      query.state,
+    );
   }
 
   @Get(':uuid')
   @RequirePermissions('system.import.read')
   @ApiOperation({ summary: 'Get an import job' })
-  @ApiResponse({ status: 200, description: 'Import job returned.', schema: importResultSchema })
+  @ApiResponse({
+    status: 200,
+    description: 'Import job returned.',
+    schema: importResultSchema,
+  })
   get(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.imports.get(actor(request), uuid);
   }
 
   @Get(':uuid/errors')
   @RequirePermissions('system.import.read')
-  @ApiOperation({ summary: 'Download the safe failed-row report for an import' })
-  @ApiResponse({ status: 200, description: 'Failed-row report returned as a JSON attachment.', content: { 'application/json': { schema: failedRowReportSchema } } })
-  async errors(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string, @Res() response: Response) {
+  @ApiOperation({
+    summary: 'Download the safe failed-row report for an import',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Failed-row report returned as a JSON attachment.',
+    content: { 'application/json': { schema: failedRowReportSchema } },
+  })
+  async errors(
+    @Req() request: Request,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Res() response: Response,
+  ) {
     const report = await this.imports.failedRowReport(actor(request), uuid);
     response.setHeader('Content-Type', 'application/json; charset=utf-8');
     response.setHeader('Cache-Control', 'private, no-store');
-    response.setHeader('Content-Disposition', `attachment; filename="${uuid}-errors.json"`);
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${uuid}-errors.json"`,
+    );
     response.status(200).json(report);
   }
 
   @Post(':uuid/retry')
   @RequirePermissions('system.import.retry')
   @ApiOperation({ summary: 'Retry an import job' })
-  @ApiResponse({ status: 200, description: 'Import retry accepted.', schema: importResultSchema })
+  @ApiResponse({
+    status: 200,
+    description: 'Import retry accepted.',
+    schema: importResultSchema,
+  })
   retry(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.imports.retry(actor(request), uuid);
   }
@@ -152,7 +212,11 @@ export class ImportController {
   @Post(':uuid/cancel')
   @RequirePermissions('system.import.cancel')
   @ApiOperation({ summary: 'Cancel an import job' })
-  @ApiResponse({ status: 200, description: 'Import job cancellation applied.', schema: importResultSchema })
+  @ApiResponse({
+    status: 200,
+    description: 'Import job cancellation applied.',
+    schema: importResultSchema,
+  })
   cancel(@Req() request: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.imports.cancel(actor(request), uuid);
   }
@@ -160,6 +224,7 @@ export class ImportController {
 
 function actor(request: Request): string {
   const actorUuid = (request.user as { sub?: string } | undefined)?.sub;
-  if (!actorUuid) throw new UnauthorizedException('Authenticated actor missing');
+  if (!actorUuid)
+    throw new UnauthorizedException('Authenticated actor missing');
   return actorUuid;
 }

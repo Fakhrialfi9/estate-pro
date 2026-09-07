@@ -12,9 +12,7 @@ export default registerAs('system', () => ({
     retentionHours: Number(process.env.SYSTEM_EXPORT_RETENTION_HOURS ?? 24),
   },
   retention: {
-    intervalMs: Number(
-      process.env.SYSTEM_RETENTION_INTERVAL_MS ?? 3_600_000,
-    ),
+    intervalMs: Number(process.env.SYSTEM_RETENTION_INTERVAL_MS ?? 3_600_000),
     activityDays: Number(process.env.SYSTEM_ACTIVITY_RETENTION_DAYS ?? 90),
     auditDays: Number(process.env.SYSTEM_AUDIT_RETENTION_DAYS ?? 365),
     batchSize: Number(process.env.SYSTEM_RETENTION_BATCH_SIZE ?? 250),

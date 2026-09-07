@@ -101,9 +101,7 @@ export class MatchingRuleService {
       throw new ConflictException('Matching rule version is stale');
     const result = await this.repository.update(uuid, expectedVersion, {
       name: input.name?.trim(),
-      weights: input.weights
-        ? this.validateWeights(input.weights)
-        : undefined,
+      weights: input.weights ? this.validateWeights(input.weights) : undefined,
       hardCriteria: input.hardCriteria
         ? this.validateHardCriteria(input.hardCriteria)
         : undefined,
@@ -182,7 +180,9 @@ export class MatchingRuleService {
       total += normalized;
     }
     if (total <= 0 || total > 1000)
-      throw new BadRequestException('Matching rule weight sum must be between 0 and 1000');
+      throw new BadRequestException(
+        'Matching rule weight sum must be between 0 and 1000',
+      );
     return output as MatchingRuleWeights;
   }
 

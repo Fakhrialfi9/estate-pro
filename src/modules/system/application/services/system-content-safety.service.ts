@@ -6,13 +6,16 @@ const FORMULA_PREFIXES = ['=', '+', '-', '@'];
 @Injectable()
 export class SystemContentSafetyService {
   inspectImport(buffer: Buffer, format: 'csv' | 'json'): void {
-    if (buffer.length === 0) throw new BadRequestException('Import content is empty');
+    if (buffer.length === 0)
+      throw new BadRequestException('Import content is empty');
     if (buffer.length > MAX_TEXT_BYTES)
       throw new BadRequestException('Import content exceeds safety limit');
 
     const sample = buffer.subarray(0, Math.min(buffer.length, 4096));
     if (sample.includes(0))
-      throw new BadRequestException('Binary content is not allowed for text import');
+      throw new BadRequestException(
+        'Binary content is not allowed for text import',
+      );
 
     const text = buffer.toString('utf8');
     if (text.includes('\uFFFD'))

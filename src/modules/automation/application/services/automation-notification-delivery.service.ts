@@ -21,8 +21,13 @@ export class AutomationNotificationDeliveryService {
     private readonly audit: SecurityAuditRepository,
   ) {}
 
-  async processDue(limit = 25): Promise<{ processed: number; sent: number; failed: number }> {
-    const due = await this.repository.listDueDeliveries(new Date(), Math.min(100, Math.max(1, limit)));
+  async processDue(
+    limit = 25,
+  ): Promise<{ processed: number; sent: number; failed: number }> {
+    const due = await this.repository.listDueDeliveries(
+      new Date(),
+      Math.min(100, Math.max(1, limit)),
+    );
     let sent = 0;
     let failed = 0;
     for (const delivery of due) {
@@ -33,12 +38,15 @@ export class AutomationNotificationDeliveryService {
     return { processed: due.length, sent, failed };
   }
 
-  async retry(uuid: string, actorUuid: string): Promise<NotificationDeliveryRecord> {
+  async retry(
+    uuid: string,
+    actorUuid: string,
+  ): Promise<NotificationDeliveryRecord> {
     const current = await this.repository.getDelivery(uuid);
-    if (!current) throw new NotFoundException('Notification delivery not found');
+    if (!current)
+      throw new NotFoundException('Notification delivery not found');
     if (current.state !== 'FAILED') return current;
-    if (current.attemptCount >= current.maxAttempts)
-      return current;
+    if (current.attemptCount >= current.maxAttempts) return current;
 
     const next = await this.repository.updateDelivery(uuid, {
       state: 'QUEUED',
