@@ -171,9 +171,11 @@ import {
     SystemProductionHardeningService,
     SystemIntegrationLogService,
     SystemRoadmapControlService,
+    SystemRetentionService,
     SystemReadOnlyGuard,
     SystemObservabilityMetricsService,
     SystemMetricsService,
+    SystemHttpMetricsInterceptor,
     PrismaSystemSettingsRepository,
     PrismaSystemActivityRepository,
     PrismaSystemImportRepository,
@@ -302,3 +304,6 @@ import {
   ],
 })
 export class SystemModule {}
+
+export { SYSTEM_OPERATIONS_PORT } from './domain/operations/system-operations.port.js';
+export type { SystemOperationsPort } from './domain/operations/system-operations.port.js';
