@@ -108,6 +108,7 @@ import {
   SYSTEM_WEBHOOK_SECRET_PORT,
   SYSTEM_WEBHOOK_SIGNER_PORT,
 } from './domain/webhook/webhook.ports.js';
+import { SYSTEM_METRICS_PORT } from './domain/observability/system-metrics.port.js';
 
 @Module({
   imports: [
@@ -281,6 +282,7 @@ import {
       inject: [SYSTEM_HEALTH_PORT],
     },
     { provide: SYSTEM_OPERATIONS_PORT, useExisting: SystemOperationsService },
+    { provide: SYSTEM_METRICS_PORT, useExisting: SystemMetricsService },
     {
       provide: 'SYSTEM_INTEGRATION_PROVIDER_REGISTRATION',
       inject: [SystemIntegrationService, GenericHttpIntegrationProvider],
