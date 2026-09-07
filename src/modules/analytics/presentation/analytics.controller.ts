@@ -11,6 +11,7 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiQuery,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
@@ -43,6 +44,7 @@ export class AnalyticsController {
     description:
       'Read-only lead volume, lifecycle, aging, funnel and assignment metrics.',
   })
+  @ApiResponse({ status: 200, type: Object })
   getLeads(
     @Req() request: AuthenticatedRequest,
     @Query() query: AnalyticsQueryDto,
@@ -56,6 +58,7 @@ export class AnalyticsController {
     description:
       'Read-only acquisition source and campaign performance metrics.',
   })
+  @ApiResponse({ status: 200, type: Object })
   getAcquisition(
     @Req() request: AuthenticatedRequest,
     @Query() query: AnalyticsQueryDto,
@@ -69,6 +72,7 @@ export class AnalyticsController {
     description:
       'Lead-to-opportunity, opportunity-to-deal and cohort conversion metrics.',
   })
+  @ApiResponse({ status: 200, type: Object })
   getConversion(
     @Req() request: AuthenticatedRequest,
     @Query() query: AnalyticsQueryDto,
@@ -82,6 +86,7 @@ export class AnalyticsController {
     description:
       'Pipeline inventory, stage velocity, opportunity aging and value analytics.',
   })
+  @ApiResponse({ status: 200, type: Object })
   getPipeline(
     @Req() request: AuthenticatedRequest,
     @Query() query: AnalyticsQueryDto,
@@ -95,6 +100,7 @@ export class AnalyticsController {
     description:
       'Property inventory, listing, lifecycle, workload, activity, conversion and scorecard metrics.',
   })
+  @ApiResponse({ status: 200, type: Object })
   getPropertyAgent(
     @Req() request: AuthenticatedRequest,
     @Query() query: AnalyticsQueryDto,
@@ -109,6 +115,7 @@ export class AnalyticsController {
     description:
       'Financially sensitive sales, closed revenue and deal-value reports.',
   })
+  @ApiResponse({ status: 200, type: Object })
   getSalesRevenue(
     @Req() request: AuthenticatedRequest,
     @Query() query: AnalyticsQueryDto,
@@ -121,6 +128,7 @@ export class AnalyticsController {
     summary: 'SLA analytics',
     description: 'Response and qualification SLA reporting.',
   })
+  @ApiResponse({ status: 200, type: Object })
   getSla(
     @Req() request: AuthenticatedRequest,
     @Query() query: AnalyticsQueryDto,
@@ -135,6 +143,7 @@ export class AnalyticsController {
     description:
       'Deterministic baseline using historical average and weighted open pipeline.',
   })
+  @ApiResponse({ status: 200, type: Object })
   getForecast(
     @Req() request: AuthenticatedRequest,
     @Query() query: AnalyticsQueryDto,
@@ -162,6 +171,18 @@ export class AnalyticsController {
       'sla',
       'forecast',
     ],
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'CSV analytics export',
+    content: {
+      'text/csv': {
+        schema: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
   })
   async exportReport(
     @Req() request: AuthenticatedRequest,
