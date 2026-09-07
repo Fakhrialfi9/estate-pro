@@ -31,9 +31,33 @@ const integrationOperations = meter.createCounter(
     description: 'Integration operations',
   },
 );
+const httpRequests = meter.createCounter('system_http_requests_total', {
+  description: 'HTTP requests completed by the application',
+});
+const httpDuration = meter.createHistogram('system_http_request_duration_ms', {
+  description: 'HTTP request duration in milliseconds',
+  unit: 'ms',
+});
+const httpErrors = meter.createCounter('system_http_errors_total', {
+  description: 'HTTP error responses',
+});
+
+type HttpSnapshot = {
+  startedAt: string;
+  requests: number;
+  errors: number;
+  latencyMs: number;
+};
 
 @Injectable()
 export class SystemMetricsService {
+  private readonly httpSnapshot: HttpSnapshot = {
+    startedAt: new Date().toISOString(),
+    requests: 0,
+    errors: 0,
+    latencyMs: 0,
+  };
+
   operation(name: string, status: 'success' | 'failure', durationMs?: number) {
     const attributes = { operation: name, status };
     operationCounter.add(1, attributes);
@@ -53,5 +77,37 @@ export class SystemMetricsService {
 
   integrationOperation(name: string, status: 'success' | 'failure') {
     integrationOperations.add(1, { operation: name, status });
+  }
+
+  httpRequest(input: {
+    method: string;
+    status: number;
+    durationMs: number;
+  }) {
+    const statusClass =
+      input.status >= 500 ? '5xx' : input.status >= 400 ? '4xx' : '2xx';
+    const attributes = {
+      method: input.method,
+      status_class: statusClass,
+    };
+    httpRequests.add(1, attributes);
+    httpDuration.record(input.durationMs, attributes);
+    this.httpSnapshot.requests += 1;
+    this.httpSnapshot.latencyMs += Math.max(0, input.durationMs);
+    if (input.status >= 400) {
+      httpErrors.add(1, attributes);
+      this.httpSnapshot.errors += 1;
+    }
+  }
+
+  httpSnapshotView() {
+    return {
+      startedAt: this.httpSnapshot.startedAt,
+      requests: this.httpSnapshot.requests,
+      errors: this.httpSnapshot.errors,
+      averageLatencyMs: this.httpSnapshot.requests
+        ? Math.round(this.httpSnapshot.latencyMs / this.httpSnapshot.requests)
+        : 0,
+    };
   }
 }
