@@ -46,6 +46,7 @@ import {
   type SecurityAuditRepository,
 } from '../../common/audit/security-audit.port.js';
 import { AutomationScheduler } from './infrastructure/scheduler/automation.scheduler.js';
+import { AutomationNotificationScheduler } from './infrastructure/scheduler/automation-notification.scheduler.js';
 
 const ACTION_HANDLERS = [
   ...AUTOMATION_ACTION_PROVIDERS,
@@ -69,6 +70,7 @@ const ACTION_HANDLERS = [
     PrismaAutomationNotificationRepository,
     AutomationNotificationService,
     AutomationNotificationDeliveryService,
+    AutomationNotificationScheduler,
     ...ACTION_HANDLERS,
     { provide: AUTOMATION_REPOSITORY, useExisting: PrismaAutomationRepository },
     {
@@ -114,14 +116,10 @@ const ACTION_HANDLERS = [
       provide: AUTOMATION_SYSTEM_PORT,
       inject: [AutomationService],
       useFactory: (automation: AutomationService): AutomationSystemPort => ({
-        listExecutions: (input, actorUuid) =>
-          automation.listExecutions(input, actorUuid),
-        getExecution: (uuid, actorUuid) =>
-          automation.getExecution(uuid, actorUuid),
-        retryExecution: (uuid, actorUuid) =>
-          automation.retryExecution(uuid, actorUuid),
-        cancelExecution: (uuid, actorUuid) =>
-          automation.cancelExecution(uuid, actorUuid),
+        listExecutions: (input, actorUuid) => automation.listExecutions(input, actorUuid),
+        getExecution: (uuid, actorUuid) => automation.getExecution(uuid, actorUuid),
+        retryExecution: (uuid, actorUuid) => automation.retryExecution(uuid, actorUuid),
+        cancelExecution: (uuid, actorUuid) => automation.cancelExecution(uuid, actorUuid),
       }),
     },
     {
@@ -138,8 +136,7 @@ const ACTION_HANDLERS = [
       ): AutomationNotificationPort => ({
         createNotification: (input) => notifications.createNotification(input),
         listNotifications: (input) => automation.listNotifications(input),
-        markNotificationRead: (uuid, userUuid) =>
-          automation.markNotificationRead(uuid, userUuid),
+        markNotificationRead: (uuid, userUuid) => automation.markNotificationRead(uuid, userUuid),
         markAllNotificationsRead: async (userUuid) => {
           let updated = 0;
           for (let iteration = 0; iteration < 100; iteration += 1) {
@@ -154,36 +151,21 @@ const ACTION_HANDLERS = [
             for (const item of items) {
               const uuid = typeof item.uuid === 'string' ? item.uuid : undefined;
               if (!uuid) continue;
-              if (await automation.markNotificationRead(uuid, userUuid))
-                updated += 1;
+              if (await automation.markNotificationRead(uuid, userUuid)) updated += 1;
             }
             if (items.length < 100) break;
           }
           return { updated };
         },
         listPreferences: (userUuid) => notifications.listPreferences(userUuid),
-        setPreference: (input) =>
-          notifications.setPreference(input.userUuid, {
-            notificationType: input.notificationType,
-            channel: input.channel,
-            enabled: input.enabled,
-          }),
+        setPreference: (input) => notifications.setPreference(input.userUuid, input),
         listTemplates: (input) => notifications.listTemplates(input),
         createTemplate: (input) => notifications.createTemplate(input),
-        updateTemplate: (input) =>
-          notifications.updateTemplate(input.uuid, input),
-        setPolicy: (input) =>
-          notifications.setPolicy(input.notificationUuid, input),
-        getPolicy: (notificationUuid) =>
-          notifications.getPolicy(notificationUuid),
-        createDelivery: (input) =>
-          notifications.createDelivery(
-            input.notificationUuid,
-            input.channel,
-            input.maxAttempts,
-          ),
-        listDeliveries: (notificationUuid) =>
-          notifications.listDeliveries(notificationUuid),
+        updateTemplate: (input) => notifications.updateTemplate(input.uuid, input),
+        setPolicy: (input) => notifications.setPolicy(input.notificationUuid, input),
+        getPolicy: (notificationUuid) => notifications.getPolicy(notificationUuid),
+        createDelivery: (input) => notifications.createDelivery(input.notificationUuid, input.channel, input.maxAttempts),
+        listDeliveries: (notificationUuid) => notifications.listDeliveries(notificationUuid),
         retryDelivery: (uuid, actorUuid) => delivery.retry(uuid, actorUuid),
         processDueDeliveries: (limit) => delivery.processDue(limit),
       }),
