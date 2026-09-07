@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { metrics } from '@opentelemetry/api';
+import type { SystemMetricsPort } from '../../domain/observability/system-metrics.port.js';
 
 const meter = metrics.getMeter('estate-pro.system');
 const operationCounter = meter.createCounter('system_operations_total', {
@@ -50,7 +51,7 @@ type HttpSnapshot = {
 };
 
 @Injectable()
-export class SystemMetricsService {
+export class SystemMetricsService implements SystemMetricsPort {
   private readonly httpSnapshot: HttpSnapshot = {
     startedAt: new Date().toISOString(),
     requests: 0,
