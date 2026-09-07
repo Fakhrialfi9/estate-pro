@@ -123,7 +123,7 @@ const arrayResponseSchema = {
 @ApiTags('Property Matching')
 @ApiBearerAuth()
 @Controller({ path: 'property-matching', version: '1' })
-@UseGuards(AuthenticatedAccessGuard)
+@UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
 export class PropertyMatchingController {
   constructor(
     private readonly matching: PropertyMatchingService,
