@@ -3,7 +3,7 @@ import { isIP } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma/prisma.service.js';
-import type { Prisma } from '../../../prisma/generated/prisma/client.js';
+import { Prisma } from '../../../prisma/generated/prisma/client.js';
 import type {
   SecurityAuditRepository,
   SecurityAuditEvent,
@@ -36,6 +36,14 @@ const ADMIN_RESOURCE_TYPES = new Set([
   'role_permission',
   'user_role',
 ]);
+
+type AuditChangeValue = string | boolean | number | null;
+
+type PrismaAuditChangeValue = Prisma.InputJsonValue | typeof Prisma.JsonNull;
+
+const toPrismaAuditChangeValue = (
+  value: AuditChangeValue,
+): PrismaAuditChangeValue => (value === null ? Prisma.JsonNull : value);
 
 @Injectable()
 export class PrismaSecurityAuditRepository
@@ -156,8 +164,8 @@ export class PrismaSecurityAuditRepository
           data: safeChanges.map((change) => ({
             auditLogId: log.id,
             field: change.field,
-            oldValue: change.oldValue,
-            newValue: change.newValue,
+            oldValue: toPrismaAuditChangeValue(change.oldValue),
+            newValue: toPrismaAuditChangeValue(change.newValue),
           })),
         });
       }
