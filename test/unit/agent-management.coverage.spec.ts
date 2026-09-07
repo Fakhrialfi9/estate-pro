@@ -59,6 +59,7 @@ const dependencies = () => ({
     resolve: vi.fn().mockResolvedValue({
       userUuid: uuid,
       permissionCodes: [
+        'agents.access',
         'agents.manage',
         'agents.read',
         'agents.specialization.manage',
@@ -69,6 +70,20 @@ const dependencies = () => ({
       ],
       roleCodes: [],
     }),
+    assertPermissions: vi.fn(
+      (snapshot: { permissionCodes: string[] }, required: readonly string[]) => {
+        if (
+          !required.every(
+            (permission) =>
+              snapshot.permissionCodes.includes(permission) ||
+              (permission.startsWith('agents.') &&
+                snapshot.permissionCodes.includes('agents.manage')),
+          )
+        ) {
+          throw new ForbiddenException();
+        }
+      },
+    ),
   },
   users: {
     getUser: vi.fn().mockResolvedValue({
