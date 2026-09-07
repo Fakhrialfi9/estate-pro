@@ -55,7 +55,8 @@ export async function assertSafeOutboundUrl(
     );
   }
 
-  const isLocalhost = hostname === 'localhost' || hostname.endsWith('.localhost');
+  const isLocalhost =
+    hostname === 'localhost' || hostname.endsWith('.localhost');
   const localHttpAllowed =
     url.protocol === 'http:' &&
     allowLocalhostHttp &&
