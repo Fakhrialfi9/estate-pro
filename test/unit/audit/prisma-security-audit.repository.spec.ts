@@ -36,9 +36,11 @@ type AuditChangeCreateManyArgs = {
 type UserFindFirst = (
   args: unknown,
 ) => Promise<{ id: bigint; uuid: string } | null>;
+
 type AuditLogCreate = (
   args: AuditLogCreateArgs,
 ) => Promise<{ id: bigint }>;
+
 type AuditLogChangeCreateMany = (
   args: AuditChangeCreateManyArgs,
 ) => Promise<void>;
@@ -47,7 +49,11 @@ type AuditTransaction = {
   authenticationUser: { findFirst: UserFindFirst };
   authorizationRole: { findFirst: UserFindFirst };
   authorizationPermission: { findFirst: UserFindFirst };
-  auditLog: { create: AuditLogCreate };
+  auditLog: {
+    create: AuditLogCreate;
+    findMany: (args: unknown) => Promise<unknown>;
+    count: (args: unknown) => Promise<number>;
+  };
   auditLogChange: { createMany: AuditLogChangeCreateMany };
 };
 
@@ -74,6 +80,12 @@ const createTransaction = (
   },
   auditLog: {
     create: auditLogCreate,
+    findMany: vi
+      .fn<(args: unknown) => Promise<unknown>>()
+      .mockResolvedValue([]),
+    count: vi
+      .fn<(args: unknown) => Promise<number>>()
+      .mockResolvedValue(0),
   },
   auditLogChange: {
     createMany:
@@ -92,105 +104,103 @@ const createRepository = (
 };
 
 describe('PrismaSecurityAuditRepository', () => {
-  it(
-    'accepts authentication refresh-token audit actions and persists the event',
-    async () => {
-      const actorUuid = randomUUID();
-      const auditLogCreate = vi.fn<AuditLogCreate>().mockResolvedValue({ id: 1n });
-      const tx = createTransaction(actorUuid, auditLogCreate);
-      const transaction = vi
-        .fn<TransactionMock>()
-        .mockImplementation((callback) => callback(tx));
-      const repository = createRepository(transaction);
-      const event: SecurityAuditEvent = {
-        action: 'REFRESH_TOKEN_ISSUED',
-        actorUuid,
-        subjectUuid: actorUuid,
-        entityType: 'authentication_refresh_token',
-        result: 'SUCCESS',
-        requestId: 'refresh-issue-request',
-      };
+  it('accepts authentication refresh-token audit actions and persists the event', async () => {
+    const actorUuid = randomUUID();
+    const auditLogCreate = vi
+      .fn<AuditLogCreate>()
+      .mockResolvedValue({ id: 1n });
+    const tx = createTransaction(actorUuid, auditLogCreate);
+    const transaction = vi
+      .fn<TransactionMock>()
+      .mockImplementation((callback) => callback(tx));
+    const repository = createRepository(transaction);
+    const event: SecurityAuditEvent = {
+      action: 'REFRESH_TOKEN_ISSUED',
+      actorUuid,
+      subjectUuid: actorUuid,
+      entityType: 'authentication_refresh_token',
+      result: 'SUCCESS',
+      requestId: 'refresh-issue-request',
+    };
 
-      await repository.record(event);
+    await repository.record(event);
 
-      expect(transaction).toHaveBeenCalledOnce();
-      expect(auditLogCreate).toHaveBeenCalledOnce();
-      const call = auditLogCreate.mock.calls[0]?.[0];
-      expect(call).toBeDefined();
-      expect(call?.data.action).toBe('REFRESH_TOKEN_ISSUED');
-      expect(call?.data.entityType).toBe('authentication_refresh_token');
-      expect(call?.data.resourceId).toBeNull();
-      expect(call?.data.result).toBe('SUCCESS');
-      expect(call?.data.requestId).toBe('refresh-issue-request');
-    },
-  );
+    expect(transaction).toHaveBeenCalledOnce();
+    expect(auditLogCreate).toHaveBeenCalledOnce();
+    const call = auditLogCreate.mock.calls[0]?.[0];
+    expect(call).toBeDefined();
+    expect(call?.data.action).toBe('REFRESH_TOKEN_ISSUED');
+    expect(call?.data.entityType).toBe('authentication_refresh_token');
+    expect(call?.data.resourceId).toBeNull();
+    expect(call?.data.result).toBe('SUCCESS');
+    expect(call?.data.requestId).toBe('refresh-issue-request');
+  });
 
-  it(
-    'accepts property utilities audit events and persists sanitized changes',
-    async () => {
-      const actorUuid = randomUUID();
-      const auditLogCreate = vi.fn<AuditLogCreate>().mockResolvedValue({ id: 1n });
-      const auditLogChangeCreateMany = vi
-        .fn<AuditLogChangeCreateMany>()
-        .mockResolvedValue(undefined);
-      const tx = createTransaction(
-        actorUuid,
-        auditLogCreate,
-        auditLogChangeCreateMany,
-      );
-      const transaction = vi
-        .fn<TransactionMock>()
-        .mockImplementation((callback) => callback(tx));
-      const repository = createRepository(transaction);
-      const entityUuid = randomUUID();
-      const event: SecurityAuditEvent = {
-        action: 'property.utilities.update',
-        actorUuid,
-        subjectUuid: actorUuid,
-        actorType: 'AUTHENTICATED',
-        entityType: 'property_utilities',
-        entityUuid,
-        requestId: 'request-123',
-        result: 'SUCCESS',
-        changes: [
-          { field: 'electricityProvider', oldValue: null, newValue: 'PLN' },
-          {
-            field: 'electricityMeterNumberMasked',
-            oldValue: null,
-            newValue: '1234****5678',
-          },
-          {
-            field: 'password',
-            oldValue: null,
-            newValue: 'must-not-be-recorded',
-          },
-        ],
-      };
+  it('accepts property utilities audit events and persists sanitized changes', async () => {
+    const actorUuid = randomUUID();
+    const auditLogCreate = vi
+      .fn<AuditLogCreate>()
+      .mockResolvedValue({ id: 1n });
+    const auditLogChangeCreateMany = vi
+      .fn<AuditLogChangeCreateMany>()
+      .mockResolvedValue(undefined);
+    const tx = createTransaction(
+      actorUuid,
+      auditLogCreate,
+      auditLogChangeCreateMany,
+    );
+    const transaction = vi
+      .fn<TransactionMock>()
+      .mockImplementation((callback) => callback(tx));
+    const repository = createRepository(transaction);
+    const entityUuid = randomUUID();
+    const event: SecurityAuditEvent = {
+      action: 'property.utilities.update',
+      actorUuid,
+      subjectUuid: actorUuid,
+      actorType: 'AUTHENTICATED',
+      entityType: 'property_utilities',
+      entityUuid,
+      requestId: 'request-123',
+      result: 'SUCCESS',
+      changes: [
+        { field: 'electricityProvider', oldValue: null, newValue: 'PLN' },
+        {
+          field: 'electricityMeterNumberMasked',
+          oldValue: null,
+          newValue: '1234****5678',
+        },
+        {
+          field: 'password',
+          oldValue: null,
+          newValue: 'must-not-be-recorded',
+        },
+      ],
+    };
 
-      await repository.record(event);
+    await repository.record(event);
 
-      expect(transaction).toHaveBeenCalledOnce();
-      expect(auditLogCreate).toHaveBeenCalledOnce();
-      const call = auditLogCreate.mock.calls[0]?.[0];
-      expect(call).toBeDefined();
-      expect(call?.data.action).toBe('property.utilities.update');
-      expect(call?.data.entityType).toBe('property_utilities');
-      expect(call?.data.entityId).toBeNull();
-      expect(call?.data.resourceId).toBe(entityUuid);
-      expect(call?.data.result).toBe('SUCCESS');
+    expect(transaction).toHaveBeenCalledOnce();
+    expect(auditLogCreate).toHaveBeenCalledOnce();
+    const call = auditLogCreate.mock.calls[0]?.[0];
+    expect(call).toBeDefined();
+    expect(call?.data.action).toBe('property.utilities.update');
+    expect(call?.data.entityType).toBe('property_utilities');
+    expect(call?.data.entityId).toBeNull();
+    expect(call?.data.resourceId).toBe(entityUuid);
+    expect(call?.data.result).toBe('SUCCESS');
 
-      expect(auditLogChangeCreateMany).toHaveBeenCalledWith({
-        data: [
-          {
-            auditLogId: 1n,
-            field: 'electricityProvider',
-            oldValue: Prisma.JsonNull,
-            newValue: 'PLN',
-          },
-        ],
-      });
-    },
-  );
+    expect(auditLogChangeCreateMany).toHaveBeenCalledWith({
+      data: [
+        {
+          auditLogId: 1n,
+          field: 'electricityProvider',
+          oldValue: Prisma.JsonNull,
+          newValue: 'PLN',
+        },
+      ],
+    });
+  });
 
   it('rejects unknown audit resources', async () => {
     const transaction = vi.fn<TransactionMock>();
