@@ -19,7 +19,9 @@ const toRecord = (row: MatchingRuleRow): MatchingRuleRecord => ({
   name: row.name,
   version: row.version,
   weights:
-    row.weights && typeof row.weights === 'object' && !Array.isArray(row.weights)
+    row.weights &&
+    typeof row.weights === 'object' &&
+    !Array.isArray(row.weights)
       ? (row.weights as MatchingRuleWeights)
       : {},
   hardCriteria: Array.isArray(row.hardCriteria)

@@ -34,10 +34,25 @@ export class SystemObservabilityService {
       }),
     ]);
 
-    const byDay = new Map<string, {
-      imports: { count: number; rows: number; failedRows: number; succeeded: number; failed: number };
-      exports: { count: number; rows: number; bytes: number; succeeded: number; failed: number };
-    }>();
+    const byDay = new Map<
+      string,
+      {
+        imports: {
+          count: number;
+          rows: number;
+          failedRows: number;
+          succeeded: number;
+          failed: number;
+        };
+        exports: {
+          count: number;
+          rows: number;
+          bytes: number;
+          succeeded: number;
+          failed: number;
+        };
+      }
+    >();
     const bucket = (date: Date) => date.toISOString().slice(0, 10);
     for (const job of imports) {
       const key = bucket(job.createdAt);
@@ -103,7 +118,10 @@ export class SystemObservabilityService {
       if (row.attemptCount > 1) retries += 1;
       if (row.httpStatus != null && row.httpStatus >= 400) httpFailures += 1;
       if (row.completedAt) {
-        totalLatency += Math.max(0, row.completedAt.getTime() - row.createdAt.getTime());
+        totalLatency += Math.max(
+          0,
+          row.completedAt.getTime() - row.createdAt.getTime(),
+        );
         latencyCount += 1;
       }
     }
@@ -115,37 +133,68 @@ export class SystemObservabilityService {
       states,
       retries,
       httpFailures,
-      averageLatencyMs: latencyCount ? Math.round(totalLatency / latencyCount) : 0,
+      averageLatencyMs: latencyCount
+        ? Math.round(totalLatency / latencyCount)
+        : 0,
     };
   }
 
-  private summarizeImports(rows: readonly { state: string; processedRows: number; totalRows: number; failedRows: number }[]) {
+  private summarizeImports(
+    rows: readonly {
+      state: string;
+      processedRows: number;
+      totalRows: number;
+      failedRows: number;
+    }[],
+  ) {
     return {
       count: rows.length,
       succeeded: rows.filter((row) => row.state === 'SUCCEEDED').length,
       failed: rows.filter((row) => row.state === 'FAILED').length,
-      processedRows: rows.reduce((sum, row) => sum + (row.processedRows || row.totalRows), 0),
+      processedRows: rows.reduce(
+        (sum, row) => sum + (row.processedRows || row.totalRows),
+        0,
+      ),
       failedRows: rows.reduce((sum, row) => sum + row.failedRows, 0),
     };
   }
 
-  private summarizeExports(rows: readonly { state: string; rows: number; processedRows: number; artifactBytes: bigint | null }[]) {
+  private summarizeExports(
+    rows: readonly {
+      state: string;
+      rows: number;
+      processedRows: number;
+      artifactBytes: bigint | null;
+    }[],
+  ) {
     return {
       count: rows.length,
       succeeded: rows.filter((row) => row.state === 'SUCCEEDED').length,
       failed: rows.filter((row) => row.state === 'FAILED').length,
-      processedRows: rows.reduce((sum, row) => sum + (row.processedRows || row.rows), 0),
-      artifactBytes: rows.reduce((sum, row) => sum + Number(row.artifactBytes ?? 0n), 0),
+      processedRows: rows.reduce(
+        (sum, row) => sum + (row.processedRows || row.rows),
+        0,
+      ),
+      artifactBytes: rows.reduce(
+        (sum, row) => sum + Number(row.artifactBytes ?? 0n),
+        0,
+      ),
     };
   }
 
   private range(from?: Date, to?: Date): { from: Date; to: Date } {
     const end = to ?? new Date();
     const start = from ?? new Date(end.getTime() - 24 * 60 * 60 * 1000);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end)
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      start >= end
+    )
       throw new BadRequestException('Invalid observability date range');
     if (end.getTime() - start.getTime() > MAX_DAYS * 24 * 60 * 60 * 1000)
-      throw new BadRequestException(`Observability range cannot exceed ${MAX_DAYS} days`);
+      throw new BadRequestException(
+        `Observability range cannot exceed ${MAX_DAYS} days`,
+      );
     return { from: start, to: end };
   }
 }

@@ -7,7 +7,9 @@ import { ConfigService } from '@nestjs/config';
 import { AutomationNotificationDeliveryService } from '../../application/services/automation-notification-delivery.service.js';
 
 @Injectable()
-export class AutomationNotificationScheduler implements OnModuleInit, OnModuleDestroy {
+export class AutomationNotificationScheduler
+  implements OnModuleInit, OnModuleDestroy
+{
   private timer: NodeJS.Timeout | undefined;
   private running = false;
 

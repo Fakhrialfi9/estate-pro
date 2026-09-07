@@ -31,7 +31,14 @@ import { CRM_AGENT_WORKLOAD_PORT } from '../../common/contracts/crm-agent-worklo
 import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, AuthorizationModule, PropertyModule, UsersModule, SalesModule],
+  imports: [
+    DatabaseModule,
+    AuditModule,
+    AuthorizationModule,
+    PropertyModule,
+    UsersModule,
+    SalesModule,
+  ],
   controllers: [
     CrmController,
     CrmPublicInquiryController,
@@ -54,9 +61,15 @@ import { PrismaCrmAgentWorkloadAdapter } from './crm-agent-workload.adapter.js';
     QualificationPolicy,
     ClosurePolicy,
     { provide: CRM_REPOSITORY, useClass: PrismaCrmRepository },
-    { provide: COMMUNICATION_REPOSITORY, useExisting: PrismaCommunicationRepository },
+    {
+      provide: COMMUNICATION_REPOSITORY,
+      useExisting: PrismaCommunicationRepository,
+    },
     { provide: CRM_AUTOMATION_PORT, useExisting: CrmAutomationAdapter },
-    { provide: CRM_AGENT_WORKLOAD_PORT, useClass: PrismaCrmAgentWorkloadAdapter },
+    {
+      provide: CRM_AGENT_WORKLOAD_PORT,
+      useClass: PrismaCrmAgentWorkloadAdapter,
+    },
   ],
   exports: [
     CRM_REPOSITORY,

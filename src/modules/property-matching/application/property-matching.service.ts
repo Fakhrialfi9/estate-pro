@@ -240,9 +240,12 @@ export class PropertyMatchingService {
         actor.actorUuid,
         pool.map((candidate) => candidate.listingUuid),
       );
-      const ranked = this.engine.evaluate(preference, pool, signals, rule).filter(
-        (item) => item.score >= this.minimum(options.minScore, rule.minimumScore),
-      );
+      const ranked = this.engine
+        .evaluate(preference, pool, signals, rule)
+        .filter(
+          (item) =>
+            item.score >= this.minimum(options.minScore, rule.minimumScore),
+        );
       const page = Math.max(1, options.page ?? 1);
       const limit = Math.min(
         MAX_MATCH_PAGE_SIZE,
@@ -298,7 +301,10 @@ export class PropertyMatchingService {
       );
       const results = this.engine
         .evaluate(preference, pool, signals, rule)
-        .filter((item) => item.score >= this.minimum(options.minScore, rule.minimumScore))
+        .filter(
+          (item) =>
+            item.score >= this.minimum(options.minScore, rule.minimumScore),
+        )
         .slice(
           0,
           Math.min(MAX_MATCH_PAGE_SIZE, Math.max(1, options.limit ?? 20)),
@@ -432,7 +438,10 @@ export class PropertyMatchingService {
   private minimum(requested: number | undefined, ruleMinimum = 0): number {
     return Math.min(
       100,
-      Math.max(MIN_SAFE_SCORE, Math.max(ruleMinimum, requested ?? MIN_SAFE_SCORE)),
+      Math.max(
+        MIN_SAFE_SCORE,
+        Math.max(ruleMinimum, requested ?? MIN_SAFE_SCORE),
+      ),
     );
   }
 

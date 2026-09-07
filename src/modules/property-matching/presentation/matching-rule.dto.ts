@@ -29,9 +29,9 @@ export class MatchingRuleWeightsDto {
   toRecord() {
     const source = this as Record<string, unknown>;
     return Object.fromEntries(
-      MATCHING_RULE_WEIGHT_KEYS
-        .filter((key) => source[key] !== undefined)
-        .map((key) => [key, source[key]]),
+      MATCHING_RULE_WEIGHT_KEYS.filter((key) => source[key] !== undefined).map(
+        (key) => [key, source[key]],
+      ),
     );
   }
 }
@@ -39,16 +39,27 @@ export class MatchingRuleWeightsDto {
 export class CreateMatchingRuleDto {
   @IsString() @Matches(/^[A-Za-z0-9_. -]{1,120}$/) name!: string;
 
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(10000)
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(10000)
   version?: number;
 
-  @IsOptional() @Type(() => MatchingRuleWeightsDto)
+  @IsOptional()
+  @Type(() => MatchingRuleWeightsDto)
   weights?: MatchingRuleWeightsDto;
 
-  @IsOptional() @IsString({ each: true }) @MaxLength(40, { each: true })
+  @IsOptional()
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
   hardCriteria?: string[];
 
-  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(100)
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
   minimumScore?: number;
 
   @IsOptional() @IsBoolean() activate?: boolean;
@@ -57,10 +68,17 @@ export class CreateMatchingRuleDto {
 export class UpdateMatchingRuleDto {
   @Type(() => Number) @IsInt() @Min(1) @Max(10000) version!: number;
   @IsOptional() @IsString() @Matches(/^[A-Za-z0-9_. -]{1,120}$/) name?: string;
-  @IsOptional() @Type(() => MatchingRuleWeightsDto)
+  @IsOptional()
+  @Type(() => MatchingRuleWeightsDto)
   weights?: MatchingRuleWeightsDto;
-  @IsOptional() @IsString({ each: true }) @MaxLength(40, { each: true })
+  @IsOptional()
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
   hardCriteria?: string[];
-  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(100)
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
   minimumScore?: number;
 }

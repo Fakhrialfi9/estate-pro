@@ -13,10 +13,12 @@ export class PrismaSystemWebhookRateLimitRepository
     bucketStart: Date,
     limit: number,
   ): Promise<{ allowed: boolean; requestCount: number; blockedCount: number }> {
-    const subscription = await this.prisma.systemWebhookSubscription.findUnique({
-      where: { uuid: subscriptionUuid },
-      select: { id: true },
-    });
+    const subscription = await this.prisma.systemWebhookSubscription.findUnique(
+      {
+        where: { uuid: subscriptionUuid },
+        select: { id: true },
+      },
+    );
     if (!subscription)
       throw new NotFoundException('Webhook subscription not found');
 

@@ -21,9 +21,7 @@ import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
-import {
-  MatchingRuleService,
-} from '../application/matching-rule.service.js';
+import { MatchingRuleService } from '../application/matching-rule.service.js';
 import {
   PropertyMatchingService,
   type MatchingActor,
@@ -162,7 +160,8 @@ export class PropertyMatchingController {
   @ApiResponse({ status: 201, schema: objectResponseSchema })
   createRule(@Body() dto: CreateMatchingRuleDto, @Req() request: Request) {
     const actor = actorOf(request);
-    if (!actor.actorUuid) throw new BadRequestException('Authenticated actor missing');
+    if (!actor.actorUuid)
+      throw new BadRequestException('Authenticated actor missing');
     return this.rules.create({
       name: dto.name,
       version: dto.version,
@@ -184,7 +183,8 @@ export class PropertyMatchingController {
     @Req() request: Request,
   ) {
     const actor = actorOf(request);
-    if (!actor.actorUuid) throw new BadRequestException('Authenticated actor missing');
+    if (!actor.actorUuid)
+      throw new BadRequestException('Authenticated actor missing');
     return this.rules.update(
       uuid,
       dto.version,
@@ -205,7 +205,8 @@ export class PropertyMatchingController {
   @ApiResponse({ status: 200, schema: objectResponseSchema })
   activateRule(@Param('uuid') uuid: string, @Req() request: Request) {
     const actor = actorOf(request);
-    if (!actor.actorUuid) throw new BadRequestException('Authenticated actor missing');
+    if (!actor.actorUuid)
+      throw new BadRequestException('Authenticated actor missing');
     return this.rules.activate(uuid, actor.actorUuid);
   }
 

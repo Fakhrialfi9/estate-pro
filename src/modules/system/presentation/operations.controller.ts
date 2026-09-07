@@ -70,17 +70,31 @@ export class OperationsController {
   @Patch('maintenance')
   @RequirePermissions('system.operations.update')
   @ApiOperation({ summary: 'Toggle system maintenance mode' })
-  @ApiResponse({ status: 200, description: 'System operational state returned after the update.', schema: operationalStateSchema })
+  @ApiResponse({
+    status: 200,
+    description: 'System operational state returned after the update.',
+    schema: operationalStateSchema,
+  })
   maintenance(@Req() request: Request, @Body() dto: ToggleOperationDto) {
-    return this.operations.setMaintenance(this.actor(request), dto.enabled === true);
+    return this.operations.setMaintenance(
+      this.actor(request),
+      dto.enabled === true,
+    );
   }
 
   @Patch('read-only')
   @RequirePermissions('system.operations.update')
   @ApiOperation({ summary: 'Toggle system read-only mode' })
-  @ApiResponse({ status: 200, description: 'System operational state returned after the update.', schema: operationalStateSchema })
+  @ApiResponse({
+    status: 200,
+    description: 'System operational state returned after the update.',
+    schema: operationalStateSchema,
+  })
   readOnly(@Req() request: Request, @Body() dto: ToggleOperationDto) {
-    return this.operations.setReadOnly(this.actor(request), dto.enabled === true);
+    return this.operations.setReadOnly(
+      this.actor(request),
+      dto.enabled === true,
+    );
   }
 
   private actor(request: Request): string {

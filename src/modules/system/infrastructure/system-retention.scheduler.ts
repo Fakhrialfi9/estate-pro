@@ -51,10 +51,7 @@ export class SystemRetentionScheduler implements OnModuleInit, OnModuleDestroy {
           'system.retention.auditDays',
           365,
         ),
-        batchSize: this.config.get<number>(
-          'system.retention.batchSize',
-          250,
-        ),
+        batchSize: this.config.get<number>('system.retention.batchSize', 250),
       });
     } finally {
       this.running = false;

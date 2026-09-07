@@ -8,7 +8,10 @@ export const MATCHING_RULE_REPOSITORY = Symbol('MATCHING_RULE_REPOSITORY');
 export interface MatchingRuleRepository {
   getActive(): Promise<MatchingRuleRecord | null>;
   get(uuid: string): Promise<MatchingRuleRecord | null>;
-  list(page: number, limit: number): Promise<{
+  list(
+    page: number,
+    limit: number,
+  ): Promise<{
     items: readonly MatchingRuleRecord[];
     total: number;
   }>;

@@ -13,8 +13,7 @@ export const MATCHING_RULE_WEIGHT_KEYS = [
   'behavior',
 ] as const;
 
-export type MatchingRuleWeightKey =
-  (typeof MATCHING_RULE_WEIGHT_KEYS)[number];
+export type MatchingRuleWeightKey = (typeof MATCHING_RULE_WEIGHT_KEYS)[number];
 
 export type MatchingRuleWeights = Readonly<
   Partial<Record<MatchingRuleWeightKey, number>>
