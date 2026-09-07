@@ -9,6 +9,10 @@ import { PrismaSystemWebhookRepository } from '../../src/modules/system/infrastr
 
 const endpoint = 'https://example.test/webhook';
 
+type PersistedPayload = {
+  index: number;
+};
+
 type PersistedDelivery = Prisma.SystemWebhookDeliveryGetPayload<{
   select: {
     uuid: true;
@@ -17,6 +21,34 @@ type PersistedDelivery = Prisma.SystemWebhookDeliveryGetPayload<{
     payload: true;
   };
 }>;
+
+const isPersistedPayload = (value: unknown): value is PersistedPayload => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  if (!('index' in value)) return false;
+  return typeof value.index === 'number';
+};
+
+const parsePersistedPayload = (value: unknown): PersistedPayload => {
+  if (typeof value === 'string') {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(value);
+    } catch (error: unknown) {
+      throw new Error('Persisted webhook payload is not valid JSON', {
+        cause: error,
+      });
+    }
+
+    if (isPersistedPayload(parsed)) return parsed;
+    throw new Error('Persisted webhook payload has an invalid shape');
+  }
+
+  if (isPersistedPayload(value)) return value;
+  throw new Error('Persisted webhook payload has an invalid runtime type');
+};
 
 describe('System webhook repository integration', () => {
   let moduleRef: TestingModule;
@@ -111,18 +143,8 @@ describe('System webhook repository integration', () => {
 
     expect(row.eventId).toBe(eventId);
     expect(row.deliveryKey).toBe(eventId);
-    expect(typeof row.payload).toBe('object');
-    expect(row.payload).not.toBeNull();
-    if (
-      typeof row.payload !== 'object' ||
-      row.payload === null ||
-      Array.isArray(row.payload)
-    ) {
-      return;
-    }
 
-    expect('index' in row.payload).toBe(true);
-    if (!('index' in row.payload)) return;
-    expect(typeof row.payload.index).toBe('number');
+    const payload = parsePersistedPayload(row.payload);
+    expect(typeof payload.index).toBe('number');
   });
 });
