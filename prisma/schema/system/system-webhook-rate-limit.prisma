@@ -1,0 +1,13 @@
+model SystemWebhookRateLimitBucket {
+  id             BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  subscriptionId BigInt   @map("subscription_id") @db.UnsignedBigInt
+  bucketStart    DateTime @map("bucket_start") @db.DateTime(3)
+  requestCount   Int      @default(0) @map("request_count")
+  blockedCount   Int      @default(0) @map("blocked_count")
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  subscription   SystemWebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, bucketStart], map: "system_webhook_rate_bucket_key")
+  @@index([bucketStart])
+  @@map("system_webhook_rate_limit_buckets")
+}
