@@ -59,6 +59,7 @@ import { SystemIntegrationLogService } from './application/services/system-integ
 import { SystemRoadmapControlService } from './application/services/system-roadmap-control.service.js';
 import { SystemRetentionService } from './application/services/system-retention.service.js';
 import { SystemContentSafetyService } from './application/services/system-content-safety.service.js';
+import { SystemObservabilityMetricsService } from './application/services/system-observability-metrics.service.js';
 import { SystemReadOnlyGuard } from './application/guards/system-read-only.guard.js';
 import { PrismaSystemActivityRepository } from './infrastructure/persistence/prisma-system-activity.repository.js';
 import { PrismaSystemExportRepository } from './infrastructure/persistence/prisma-system-export.repository.js';
@@ -171,8 +172,8 @@ import {
     SystemIntegrationLogService,
     SystemRoadmapControlService,
     SystemReadOnlyGuard,
+    SystemObservabilityMetricsService,
     SystemMetricsService,
-    SystemHttpMetricsInterceptor,
     PrismaSystemSettingsRepository,
     PrismaSystemActivityRepository,
     PrismaSystemImportRepository,
