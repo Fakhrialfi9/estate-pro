@@ -2,8 +2,8 @@ import {
   Inject,
   Injectable,
   Logger,
-  OnModuleDestroy,
-  OnModuleInit,
+  type OnModuleDestroy,
+  type OnModuleInit,
 } from '@nestjs/common';
 import {
   SYSTEM_INTEGRATION_REPOSITORY,
@@ -34,22 +34,26 @@ export class SystemIntegrationCallbackWorker
     private readonly callbacks: SystemIntegrationCallbackService,
   ) {}
 
-  onModuleInit() {
+  onModuleInit(): void {
     this.timer = setInterval(() => void this.poll(), POLL_MS);
+    this.timer.unref?.();
     void this.poll();
   }
 
-  onModuleDestroy() {
+  onModuleDestroy(): void {
     if (this.timer) clearInterval(this.timer);
   }
 
-  private async poll() {
+  private async poll(): Promise<void> {
     if (this.running) return;
     this.running = true;
     const startedAt = Date.now();
     let processed = 0;
     try {
-      const integrations = await this.integrations.list(1, 100);
+      const integrations = await this.integrations.list({
+        page: 1,
+        limit: 100,
+      });
       for (const integration of integrations.items) {
         if (processed >= BATCH_SIZE) break;
         const events = await this.roadmap.event.list(
@@ -62,7 +66,7 @@ export class SystemIntegrationCallbackWorker
           try {
             await this.callbacks.processQueuedEvent(integration.id, event.uuid);
             processed += 1;
-          } catch (error) {
+          } catch (error: unknown) {
             this.logger.error('Inbound integration event processing failed', {
               integrationUuid: integration.uuid,
               eventUuid: event.uuid,
@@ -71,7 +75,7 @@ export class SystemIntegrationCallbackWorker
           }
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Inbound integration callback worker poll failed', {
         error: error instanceof Error ? error.message : String(error),
       });
