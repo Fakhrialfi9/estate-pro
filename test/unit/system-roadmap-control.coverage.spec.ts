@@ -126,7 +126,7 @@ describe('SystemRoadmapControlService coverage', () => {
     const result = await service.dashboard();
 
     expect(result.total).toBe(4);
-    expect(result.environment).toBe('test');
+    expect(result.environment.environment).toBe('test');
     expect(result.integrationHealth).toEqual([
       expect.objectContaining({
         uuid: 'integration-1',
