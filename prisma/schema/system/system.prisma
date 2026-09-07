@@ -16,19 +16,19 @@ model SystemSetting {
 }
 
 model SystemActivity {
-  id               BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid             String   @unique @db.Char(36)
-  actorUuid        String?  @db.Char(36)
-  eventType        String   @db.VarChar(80)
-  category         String   @db.VarChar(40)
-  resourceType     String?  @db.VarChar(80)
-  resourceUuid     String?  @db.Char(36)
-  summary          String   @db.VarChar(500)
-  metadata         Json
-  requestId        String?  @db.VarChar(120)
-  retentionHold    Boolean  @default(false) @map("retention_hold")
+  id                 BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid               String    @unique @db.Char(36)
+  actorUuid          String?   @db.Char(36)
+  eventType          String    @db.VarChar(80)
+  category           String    @db.VarChar(40)
+  resourceType       String?   @db.VarChar(80)
+  resourceUuid       String?   @db.Char(36)
+  summary            String    @db.VarChar(500)
+  metadata           Json
+  requestId          String?   @db.VarChar(120)
+  retentionHold      Boolean   @default(false) @map("retention_hold")
   retentionHoldUntil DateTime? @map("retention_hold_until") @db.DateTime(3)
-  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  createdAt          DateTime  @default(now()) @db.DateTime(3)
   @@index([actorUuid, createdAt])
   @@index([resourceType, resourceUuid, createdAt])
   @@index([category, createdAt])
@@ -127,7 +127,7 @@ model SystemWebhookDelivery {
   responseSummary   String?  @map("response_summary") @db.VarChar(500)
   nextAttemptAt     DateTime? @map("next_attempt_at") @db.DateTime(3)
   signedAt          DateTime @db.DateTime(3) @map("signed_at")
-  completedAt       DateTime? @db.DateTime(3)
+  completedAt       DateTime? @map("completed_at") @db.DateTime(3)
   failureReason     String?  @map("failure_reason") @db.VarChar(500)
   createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.DateTime(3)
