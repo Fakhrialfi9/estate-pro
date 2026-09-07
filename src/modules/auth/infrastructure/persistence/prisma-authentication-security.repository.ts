@@ -41,7 +41,14 @@ export class PrismaAuthenticationSecurityRepository
         include: { user: { select: { uuid: true } } },
       });
       return this.toState(created);
-    } catch {
+    } catch (error: unknown) {
+      if (
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== 'P2002'
+      ) {
+        throw error;
+      }
+
       const raced = await this.prisma.authenticationUserSecurity.findFirst({
         where: { user: { uuid: userUuid } },
         include: { user: { select: { uuid: true } } },
