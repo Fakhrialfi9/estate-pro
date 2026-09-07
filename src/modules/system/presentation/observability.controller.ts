@@ -29,7 +29,11 @@ export class ObservabilityController {
   @ApiResponse({ status: 200, schema: metricsSchema })
   importExportMetrics(@Query() query: ObservabilityQueryDto) {
     const dates = query.toDates();
-    return this.observability.importExportMetrics(dates.from, dates.to);
+    return this.observability.importExportMetrics(
+      dates.from,
+      dates.to,
+      dates.granularity,
+    );
   }
 
   @Get('delivery-metrics')
@@ -42,6 +46,7 @@ export class ObservabilityController {
       dates.from,
       dates.to,
       dates.subscriptionUuid,
+      dates.granularity,
     );
   }
 }
