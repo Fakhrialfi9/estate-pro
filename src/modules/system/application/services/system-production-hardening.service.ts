@@ -279,10 +279,7 @@ export class SystemProductionHardeningService {
     input: { dryRun?: boolean; olderThanHours?: number },
     actorUuid: string,
   ) {
-    const hours = Math.min(
-      24 * 365,
-      Math.max(1, input.olderThanHours ?? 24),
-    );
+    const hours = Math.min(24 * 365, Math.max(1, input.olderThanHours ?? 24));
     const cutoff = new Date(Date.now() - hours * 3_600_000);
     const candidates = await this.prisma.systemIntegrationOperation.findMany({
       where: { state: 'FAILED', createdAt: { lt: cutoff } },

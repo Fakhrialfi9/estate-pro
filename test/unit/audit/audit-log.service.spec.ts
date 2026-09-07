@@ -18,9 +18,8 @@ describe('AuditLogService', () => {
     };
     const logger: AuditLogger = {
       setContext: vi.fn<(context: string) => void>(),
-      error: vi.fn<
-        (context: Record<string, unknown>, message: string) => void
-      >(),
+      error:
+        vi.fn<(context: Record<string, unknown>, message: string) => void>(),
     };
     const service = new AuditLogService(repository, logger as never);
 
