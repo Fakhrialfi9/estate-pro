@@ -2,6 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { AuditLogService } from '../../../src/modules/audit/application/audit-log.service.js';
 import type { AuditLogRepository } from '../../../src/modules/audit/domain/repositories/audit-log.repository.js';
 
+type AuditLogger = {
+  setContext: (context: string) => void;
+  error: (context: Record<string, unknown>, message: string) => void;
+};
+
 describe('AuditLogService', () => {
   it('does not propagate audit persistence failures to the business caller', async () => {
     const record = vi
@@ -11,9 +16,9 @@ describe('AuditLogService', () => {
       record,
       list: vi.fn<AuditLogRepository['list']>(),
     };
-    const logger = {
-      setContext: vi.fn(),
-      error: vi.fn(),
+    const logger: AuditLogger = {
+      setContext: vi.fn<(context: string) => void>(),
+      error: vi.fn<(context: Record<string, unknown>, message: string) => void>(),
     };
     const service = new AuditLogService(repository, logger as never);
 
@@ -29,17 +34,19 @@ describe('AuditLogService', () => {
     ).resolves.toBeUndefined();
 
     expect(repository.record).toHaveBeenCalledOnce();
-    expect(logger.error).toHaveBeenCalledWith(
-      expect.objectContaining({
-        auditAction: 'SYSTEM_SETTING_UPDATED',
-        resourceType: 'system_setting',
-        resourceId: 'setting-1',
-        error: expect.objectContaining({
-          type: 'Error',
-          message: 'audit database unavailable',
-        }),
-      }),
-      expect.stringContaining('Audit write failed'),
-    );
+
+    const errorCall = logger.error.mock.calls.at(0);
+    if (errorCall === undefined) {
+      throw new Error('Audit logger error was not called');
+    }
+    const [context, message] = errorCall;
+    expect(context.auditAction).toBe('SYSTEM_SETTING_UPDATED');
+    expect(context.resourceType).toBe('system_setting');
+    expect(context.resourceId).toBe('setting-1');
+    expect(context.error).toEqual({
+      type: 'Error',
+      message: 'audit database unavailable',
+    });
+    expect(message).toContain('Audit write failed');
   });
 });
