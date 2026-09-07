@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
-import type { SystemRetentionRepository } from '../../system/domain/repositories/system-retention.repository.js';
+import type { SystemRetentionRepository } from '../../domain/repositories/system-retention.repository.js';
 
 @Injectable()
-export class PrismaSystemRetentionRepository implements SystemRetentionRepository {
+export class PrismaSystemRetentionRepository
+  implements SystemRetentionRepository
+{
   constructor(private readonly prisma: PrismaService) {}
 
   async purgeActivity(before: Date, limit: number): Promise<number> {
