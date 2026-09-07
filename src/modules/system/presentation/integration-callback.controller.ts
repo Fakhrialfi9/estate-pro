@@ -26,8 +26,8 @@ export class IntegrationCallbackController {
   @Post(':uuid/callback')
   @ApiOperation({ summary: 'Receive an authenticated integration callback' })
   @ApiResponse({
-    status: 201,
-    description: 'Integration callback processed.',
+    status: 202,
+    description: 'Integration callback durably queued for asynchronous processing.',
     schema: {
       type: 'object',
       additionalProperties: true,
@@ -55,7 +55,7 @@ export class IntegrationCallbackController {
 
     await this.webhookRateLimit.consume(uuid);
     const provider = await this.integrations.providerFor(uuid);
-    return this.callbacks.handle(
+    return this.callbacks.enqueue(
       uuid,
       {
         timestamp,
