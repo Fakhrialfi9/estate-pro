@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../prisma/generated/prisma/client.js';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import { SystemMetricsService } from '../../infrastructure/observability/system-metrics.service.js';
 
 const MAX_DAYS = 90;
@@ -30,7 +30,10 @@ export class SystemObservabilityMetricsService {
   ) {
     const range = this.range(from, to);
     const started = performance.now();
-    let database = { status: 'UP' as const, latencyMs: 0 };
+    let database: { status: 'UP' | 'DOWN'; latencyMs: number } = {
+      status: 'UP',
+      latencyMs: 0,
+    };
     try {
       await this.prisma.$queryRaw(Prisma.sql`SELECT 1`);
       database.latencyMs = Math.round(performance.now() - started);
@@ -428,14 +431,17 @@ function rangeOf(from?: Date, to?: Date) {
   return { from: start, to: end };
 }
 
-function number(value: bigint | number | string | null | undefined) {
+function number(value: bigint | number | string | null | undefined): number {
   if (typeof value === 'bigint') return Number(value);
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
 }
 
-function redact(value: string | null) {
+function redact(value: string | null): string | null {
   return value
     ? value
         .replace(
