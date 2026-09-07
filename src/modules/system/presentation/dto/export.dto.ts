@@ -1,4 +1,7 @@
 import {
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
+import {
   IsDateString,
   IsIn,
   IsInt,
@@ -29,6 +32,7 @@ export class ExportDto {
   @IsIn(['csv', 'json', 'xlsx'])
   format!: 'csv' | 'json' | 'xlsx';
 
+  @ApiPropertyOptional({ minimum: 1, maximum: 10000, default: 10000 })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -63,11 +67,13 @@ export class ExportDto {
 }
 
 export class ExportQueryDto {
+  @ApiPropertyOptional({ minimum: 1, default: 1 })
   @IsOptional()
   @IsInt()
   @Min(1)
   page = 1;
 
+  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 20 })
   @IsOptional()
   @IsInt()
   @Min(1)
