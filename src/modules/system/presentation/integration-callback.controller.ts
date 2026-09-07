@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { SystemWebhookRateLimitService } from '../application/services/system-webhook-rate-limit.service.js';
 import { SystemIntegrationCallbackService } from '../application/services/system-integration-callback.service.js';
 import { SystemIntegrationService } from '../application/services/system-integration.service.js';
 
@@ -19,6 +20,7 @@ export class IntegrationCallbackController {
   constructor(
     private readonly callbacks: SystemIntegrationCallbackService,
     private readonly integrations: SystemIntegrationService,
+    private readonly webhookRateLimit: SystemWebhookRateLimitService,
   ) {}
 
   @Post(':uuid/callback')
@@ -50,6 +52,8 @@ export class IntegrationCallbackController {
       throw new UnauthorizedException('Callback authentication required');
     if (!request.rawBody)
       throw new BadRequestException('Raw callback body is required');
+
+    await this.webhookRateLimit.consume(uuid);
     const provider = await this.integrations.providerFor(uuid);
     return this.callbacks.handle(
       uuid,
