@@ -8,7 +8,6 @@ import {
 import type { SecurityAuditRepository } from '../../../common/audit/security-audit.port.js';
 import { SECURITY_AUDIT_REPOSITORY } from '../../../common/audit/security-audit.port.js';
 import {
-  DEFAULT_MATCHING_HARD_CRITERIA,
   DEFAULT_MATCHING_RULE,
   MATCHING_RULE_WEIGHT_KEYS,
   type MatchingRuleWeights,
@@ -18,7 +17,7 @@ import {
   type MatchingRuleRepository,
 } from '../domain/repositories/matching-rule.repository.js';
 
-const hardCriteria = new Set([
+const HARD_CRITERIA = new Set([
   'transactionType',
   'propertyType',
   'propertyCategory',
@@ -36,19 +35,21 @@ export class MatchingRuleService {
   ) {}
 
   async active() {
-    return (await this.repository.getActive()) ?? {
-      uuid: 'default',
-      name: 'default',
-      version: 1,
-      weights: DEFAULT_MATCHING_RULE,
-      hardCriteria: DEFAULT_MATCHING_HARD_CRITERIA,
-      minimumScore: 0,
-      isActive: true,
-      createdBy: 'system',
-      activatedAt: null,
-      createdAt: new Date(0),
-      updatedAt: new Date(0),
-    };
+    return (
+      (await this.repository.getActive()) ?? {
+        uuid: 'default',
+        name: 'default',
+        version: 1,
+        weights: DEFAULT_MATCHING_RULE,
+        hardCriteria: [] as readonly string[],
+        minimumScore: 0,
+        isActive: true,
+        createdBy: 'system',
+        activatedAt: null,
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+      }
+    );
   }
 
   async get(uuid: string) {
@@ -100,7 +101,9 @@ export class MatchingRuleService {
       throw new ConflictException('Matching rule version is stale');
     const result = await this.repository.update(uuid, expectedVersion, {
       name: input.name?.trim(),
-      weights: input.weights ? this.validateWeights(input.weights) : undefined,
+      weights: input.weights
+        ? this.validateWeights(input.weights)
+        : undefined,
       hardCriteria: input.hardCriteria
         ? this.validateHardCriteria(input.hardCriteria)
         : undefined,
@@ -151,10 +154,12 @@ export class MatchingRuleService {
     return {
       name,
       version,
-      weights: input.weights ? this.validateWeights(input.weights) : DEFAULT_MATCHING_RULE,
+      weights: input.weights
+        ? this.validateWeights(input.weights)
+        : DEFAULT_MATCHING_RULE,
       hardCriteria: input.hardCriteria
         ? this.validateHardCriteria(input.hardCriteria)
-        : DEFAULT_MATCHING_HARD_CRITERIA,
+        : [],
       minimumScore:
         input.minimumScore === undefined
           ? 0
@@ -176,21 +181,23 @@ export class MatchingRuleService {
       output[key] = normalized;
       total += normalized;
     }
-    if (total <= 0 || total > 100)
-      throw new BadRequestException('Matching rule weight sum must be between 0 and 100');
+    if (total <= 0 || total > 1000)
+      throw new BadRequestException('Matching rule weight sum must be between 0 and 1000');
     return output as MatchingRuleWeights;
   }
 
   private validateHardCriteria(criteria: readonly string[]): readonly string[] {
     const unique = [...new Set(criteria)];
-    if (unique.some((value) => !hardCriteria.has(value)))
+    if (unique.some((value) => !HARD_CRITERIA.has(value)))
       throw new BadRequestException('Invalid matching hard criterion');
     return unique;
   }
 
   private validateMinimumScore(value: number): number {
     if (!Number.isFinite(value) || value < 0 || value > 100)
-      throw new BadRequestException('Matching rule minimumScore must be between 0 and 100');
+      throw new BadRequestException(
+        'Matching rule minimumScore must be between 0 and 100',
+      );
     return Math.round(value * 100) / 100;
   }
 }
