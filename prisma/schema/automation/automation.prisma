@@ -73,7 +73,7 @@ model AutomationWorkflowExecution {
   actions              AutomationActionExecution[]
 
   @@unique([workflowVersionUuid, eventId])
-  @@index([state, retryAt, priority, createdAt])
+  @@index([state, retryAt, priority, createdAt], map: "automation_exec_state_retry_priority_created_idx")
   @@index([leaseUntil, state])
   @@index([workflowUuid, state, createdAt])
   @@index([entityType, entityUuid, createdAt])
@@ -136,7 +136,7 @@ model AutomationSlaPolicy {
   targetEntityType String                  @db.VarChar(60)
   startEventType   String                  @db.VarChar(80)
   stopEventTypes   Json
-  durationMinutes  Int
+  durationMinutes  Int                     
   timezone         String                  @db.VarChar(80)
   businessHours    Json
   isActive         Boolean                 @default(true)
@@ -156,7 +156,7 @@ model AutomationSlaInstance {
   policyUuid    String              @db.Char(36)
   entityType    String              @db.VarChar(60)
   entityUuid    String              @db.Char(36)
-  policyVersion Int                 
+  policyVersion Int
   startedAt     DateTime            @db.DateTime(3)
   deadlineAt    DateTime            @db.DateTime(3)
   completedAt   DateTime?           @db.DateTime(3)
@@ -176,7 +176,7 @@ model AutomationSlaInstance {
 
 model AutomationEscalationPolicy {
   id              BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid             String             @unique @db.Char(36)
+  uuid            String             @unique @db.Char(36)
   workflowUuid    String             @db.Char(36)
   name            String             @db.VarChar(180)
   levels          Json
@@ -204,6 +204,7 @@ model AutomationNotification {
   readAt     DateTime? @db.DateTime(3)
   createdAt  DateTime  @default(now()) @db.DateTime(3)
   policies   AutomationNotificationPolicy[]
+  deliveries AutomationNotificationDelivery[]
 
   @@index([userUuid, status, createdAt])
   @@index([entityType, entityUuid, createdAt])
@@ -243,16 +244,38 @@ model AutomationNotificationPreference {
 }
 
 model AutomationNotificationPolicy {
-  id            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid          String    @unique @db.Char(36)
-  notificationUuid String  @db.Char(36)
-  templateUuid  String?   @db.Char(36)
-  priority      String    @db.VarChar(16)
-  expiresAt     DateTime? @db.DateTime(3)
-  createdAt     DateTime  @default(now()) @db.DateTime(3)
-  updatedAt     DateTime  @updatedAt @db.DateTime(3)
-  notification  AutomationNotification @relation(fields: [notificationUuid], references: [uuid], onDelete: Cascade)
+  id               BigInt                        @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid             String                        @unique @db.Char(36)
+  notificationUuid String                        @unique @db.Char(36)
+  templateUuid     String?                       @db.Char(36)
+  priority         String                        @default("NORMAL") @db.VarChar(16)
+  expiresAt        DateTime?                     @db.DateTime(3)
+  createdAt        DateTime                      @default(now()) @db.DateTime(3)
+  updatedAt        DateTime                      @updatedAt @db.DateTime(3)
+  notification     AutomationNotification        @relation(fields: [notificationUuid], references: [uuid], onDelete: Cascade)
 
-  @@index([notificationUuid])
+  @@index([priority, expiresAt])
   @@map("automation_notification_policies")
+}
+
+model AutomationNotificationDelivery {
+  id                BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid              String                 @unique @db.Char(36)
+  notificationUuid  String                 @db.Char(36)
+  channel           String                 @db.VarChar(20)
+  state             String                 @default("QUEUED") @db.VarChar(16)
+  attemptCount      Int                    @default(0) @map("attempt_count")
+  maxAttempts       Int                    @default(3) @map("max_attempts")
+  availableAt       DateTime?              @map("available_at") @db.DateTime(3)
+  sentAt            DateTime?              @map("sent_at") @db.DateTime(3)
+  providerMessageId String?                @map("provider_message_id") @db.VarChar(255)
+  errorMessage      String?                @map("error_message") @db.VarChar(500)
+  createdAt         DateTime               @default(now()) @map("createdAt") @db.DateTime(3)
+  updatedAt         DateTime               @updatedAt @map("updatedAt") @db.DateTime(3)
+  notification      AutomationNotification @relation(fields: [notificationUuid], references: [uuid], onDelete: Cascade)
+
+  @@unique([notificationUuid, channel])
+  @@index([state, availableAt, createdAt])
+  @@index([channel, state, availableAt])
+  @@map("automation_notification_deliveries")
 }
