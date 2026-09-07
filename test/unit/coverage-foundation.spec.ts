@@ -116,7 +116,8 @@ describe('coverage foundation', () => {
     ).toBe('REVOKED');
     const expired = RefreshTokenEntity.create({
       ...base,
-      expiresAt: new Date('2025-12-31T23:00:00.000Z'),
+      issuedAt: new Date('2025-12-31T23:00:00.000Z'),
+      expiresAt: new Date('2025-12-31T23:30:00.000Z'),
     });
     expect(expired.state(now)).toBe('EXPIRED');
     expect(() => expired.assertRefreshable(now)).toThrow(
