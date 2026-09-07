@@ -61,14 +61,16 @@ const deps = () => ({
       .mockResolvedValue(0),
     create: vi
       .fn<SystemExportRepository['create']>()
-      .mockImplementation(async (input) =>
-        job({
-          ...(input as Partial<SystemExportJobRecord>),
-          state: 'QUEUED',
-          artifactPath: null,
-          rows: 0,
-          processedRows: 0,
-        }),
+      .mockImplementation((input) =>
+        Promise.resolve(
+          job({
+            ...(input as Partial<SystemExportJobRecord>),
+            state: 'QUEUED',
+            artifactPath: null,
+            rows: 0,
+            processedRows: 0,
+          }),
+        ),
       ),
     claimQueued: vi
       .fn<SystemExportRepository['claimQueued']>()
@@ -85,11 +87,13 @@ const deps = () => ({
       .mockResolvedValue([job()]),
     update: vi
       .fn<SystemExportRepository['update']>()
-      .mockImplementation(async (_uuid, input) =>
-        job({
-          ...(input as Partial<SystemExportJobRecord>),
-          state: (input as Partial<SystemExportJobRecord>).state ?? 'RUNNING',
-        }),
+      .mockImplementation((_uuid, input) =>
+        Promise.resolve(
+          job({
+            ...(input as Partial<SystemExportJobRecord>),
+            state: (input as Partial<SystemExportJobRecord>).state ?? 'RUNNING',
+          }),
+        ),
       ),
     deleteMany: vi
       .fn<SystemExportRepository['deleteMany']>()
