@@ -43,9 +43,7 @@ export class PrismaAuthenticationSecurityRepository
   private readonly security: Delegate;
 
   constructor(private readonly prisma: PrismaService) {
-    this.security = (
-      prisma as unknown as PrismaShape
-    ).authenticationUserSecurity;
+    this.security = (prisma as unknown as PrismaShape).authenticationUserSecurity;
   }
 
   async getState(userUuid: string): Promise<AuthenticationSecurityState> {
@@ -100,7 +98,9 @@ export class PrismaAuthenticationSecurityRepository
       `);
 
       if (!locked) {
-        throw new Error('Authentication security state disappeared during update');
+        throw new Error(
+          'Authentication security state disappeared during update',
+        );
       }
 
       const next = this.nextFailedLoginState(locked, now, policy);
