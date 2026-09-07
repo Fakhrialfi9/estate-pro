@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   format:
-    if: github.sha == '7a361616ac492bc375f5fda994cbf905dde3d3fe'
+    if: github.sha == '3e361e6530abcf06b80268890c3836afcacf5343'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout formatting target
