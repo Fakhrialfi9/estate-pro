@@ -56,7 +56,7 @@ export class SystemProductionHardeningService {
         AND o.created_at < ${range.to}
       GROUP BY bucket, o.state
       ORDER BY bucket ASC, o.state ASC
-    `;
+    `);
 
     const series = new Map<
       string,
@@ -163,7 +163,7 @@ export class SystemProductionHardeningService {
   }
 
   async integrationHealth() {
-    const list = await this.integrations.list({ page: 1, limit: MAX_ROWS });
+    const list = await this.integrations.list(1, MAX_ROWS);
     const checks = await Promise.all(
       list.items.map(async (integration) => ({
         uuid: integration.uuid,
@@ -282,13 +282,12 @@ export class SystemProductionHardeningService {
       Math.max(1, input.olderThanHours ?? 24),
     );
     const cutoff = new Date(Date.now() - hours * 3_600_000);
-    const candidates =
-      await this.prisma.systemIntegrationOperation.findMany({
-        where: { state: 'FAILED', createdAt: { lt: cutoff } },
-        orderBy: { createdAt: 'asc' },
-        take: 25,
-        select: { uuid: true, createdAt: true, state: true },
-      });
+    const candidates = await this.prisma.systemIntegrationOperation.findMany({
+      where: { state: 'FAILED', createdAt: { lt: cutoff } },
+      orderBy: { createdAt: 'asc' },
+      take: 25,
+      select: { uuid: true, createdAt: true, state: true },
+    });
     if (input.dryRun !== false)
       return { dryRun: true, cutoff: cutoff.toISOString(), candidates };
     const deleted = await this.prisma.systemIntegrationOperation.deleteMany({
