@@ -6,6 +6,15 @@ export const MIN_SAFE_SCORE = 35;
 
 export const MATCHING_SUBJECT_TYPES = ['USER', 'CONTACT', 'LEAD'] as const;
 export type MatchingSubjectType = (typeof MATCHING_SUBJECT_TYPES)[number];
+
+export const MATCHING_RECOMMENDATION_SOURCES = [
+  'GENERATED',
+  'REFRESHED',
+  'RECALCULATED',
+] as const;
+export type MatchingRecommendationSource =
+  (typeof MATCHING_RECOMMENDATION_SOURCES)[number];
+
 export const HARD_CRITERIA = [
   'transactionType',
   'propertyType',
