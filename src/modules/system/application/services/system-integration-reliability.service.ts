@@ -105,6 +105,7 @@ export class SystemIntegrationReliabilityService {
           runtime.integrationId,
           integrationUuid,
           runtime,
+          policy,
         );
         return {
           value,
@@ -231,14 +232,14 @@ export class SystemIntegrationReliabilityService {
     integrationId: bigint,
     integrationUuid: string,
     runtime: Awaited<ReturnType<SystemIntegrationService['runtimeFor']>>,
+    policy: RetryPolicy,
   ) {
     const window = this.failureWindows.get(integrationUuid) ?? [];
     const now = Date.now();
     this.failureWindows.set(
       integrationUuid,
       window.filter(
-        (timestamp) =>
-          now - timestamp <= DEFAULT_INTEGRATION_RETRY_POLICY.circuitWindowMs,
+        (timestamp) => now - timestamp <= policy.circuitWindowMs,
       ),
     );
     await this.roadmap.runtime.update(integrationId, {
