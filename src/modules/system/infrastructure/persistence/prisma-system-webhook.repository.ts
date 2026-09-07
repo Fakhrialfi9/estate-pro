@@ -29,6 +29,11 @@ const filterList = (value: unknown): readonly WebhookEventFilter[] =>
       )
     : [];
 
+const payloadRecord = (value: unknown): Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
 const toJsonFilters = (
   filters: readonly WebhookEventFilter[],
 ): Prisma.InputJsonArray =>
@@ -72,6 +77,7 @@ const toDelivery = (row: {
   eventName: string;
   eventVersion: number;
   payloadHash: string;
+  payload: unknown;
   attemptCount: number;
   state: string;
   httpStatus: number | null;
@@ -84,6 +90,7 @@ const toDelivery = (row: {
   updatedAt: Date;
 }): WebhookDeliveryRecord => ({
   ...row,
+  payload: payloadRecord(row.payload),
   eventName: row.eventName as SystemWebhookEventName,
   state: row.state as WebhookDeliveryState,
 });
@@ -196,13 +203,17 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
     eventName: SystemWebhookEventName;
     eventVersion: number;
     payloadHash: string;
+    payload: Record<string, unknown>;
     state: WebhookDeliveryState;
     signedAt: Date;
     nextAttemptAt?: Date | null;
   }): Promise<{ created: boolean; record: WebhookDeliveryRecord }> {
     try {
       const row = await this.prisma.systemWebhookDelivery.create({
-        data: input,
+        data: {
+          ...input,
+          payload: JSON.parse(JSON.stringify(input.payload)) as Prisma.InputJsonValue,
+        },
       });
       return { created: true, record: toDelivery(row) };
     } catch (error: unknown) {
@@ -301,6 +312,34 @@ export class PrismaSystemWebhookRepository implements SystemWebhookRepository {
         createdAt: { gte: since },
       },
     });
+  }
+
+  async listDueDeliveries(now: Date, limit: number) {
+    const rows = await this.prisma.systemWebhookDelivery.findMany({
+      where: {
+        state: { in: ['PENDING', 'RETRYING'] },
+        OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
+      },
+      orderBy: [{ nextAttemptAt: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+      take: Math.min(100, Math.max(1, limit)),
+      include: { subscription: true },
+    });
+    return rows.map((row) => ({
+      delivery: toDelivery(row),
+      subscription: toSubscription(row.subscription),
+    }));
+  }
+
+  async claimDelivery(uuid: string, now: Date): Promise<boolean> {
+    const result = await this.prisma.systemWebhookDelivery.updateMany({
+      where: {
+        uuid,
+        state: { in: ['PENDING', 'RETRYING'] },
+        OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
+      },
+      data: { state: 'DELIVERING' },
+    });
+    return result.count === 1;
   }
 
   async listExpiredDeliveries(before: Date, limit: number) {
