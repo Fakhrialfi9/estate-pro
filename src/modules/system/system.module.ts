@@ -171,7 +171,6 @@ import {
     SystemProductionHardeningService,
     SystemIntegrationLogService,
     SystemRoadmapControlService,
-    SystemRetentionService,
     SystemReadOnlyGuard,
     SystemObservabilityMetricsService,
     SystemMetricsService,
