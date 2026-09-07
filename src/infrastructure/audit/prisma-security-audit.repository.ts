@@ -3,6 +3,7 @@ import { isIP } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma/prisma.service.js';
+import type { Prisma } from '../../../prisma/generated/prisma/client.js';
 import type {
   SecurityAuditRepository,
   SecurityAuditEvent,
@@ -36,47 +37,6 @@ const ADMIN_RESOURCE_TYPES = new Set([
   'user_role',
 ]);
 
-interface AuditShape {
-  authenticationUser: {
-    findFirst(args: unknown): Promise<{ id: bigint; uuid: string } | null>;
-  };
-  authorizationRole: {
-    findFirst(args: unknown): Promise<{ id: bigint; uuid: string } | null>;
-  };
-  authorizationPermission: {
-    findFirst(args: unknown): Promise<{ id: bigint; uuid: string } | null>;
-  };
-  auditLog: {
-    create(args: unknown): Promise<{ id: bigint }>;
-    findMany(args: unknown): Promise<AuditRecord[]>;
-    count(args: unknown): Promise<number>;
-  };
-  auditLogChange: { createMany(args: unknown): Promise<unknown> };
-  $transaction<T>(callback: (tx: AuditShape) => Promise<T>): Promise<T>;
-}
-
-type AuditRecord = {
-  uuid: string;
-  action: string;
-  actorType: string;
-  actor: { uuid: string } | null;
-  user: { uuid: string } | null;
-  entityType: string | null;
-  resourceId: string | null;
-  result: string;
-  reason: string | null;
-  ipAddress: string | null;
-  userAgent: string | null;
-  requestId: string | null;
-  createdAt: Date;
-  changes: Array<{
-    id: bigint;
-    field: string;
-    oldValue: unknown;
-    newValue: unknown;
-  }>;
-};
-
 @Injectable()
 export class PrismaSecurityAuditRepository
   implements SecurityAuditRepository, AuditLogRepository
@@ -95,8 +55,8 @@ export class PrismaSecurityAuditRepository
     );
     const entityUuid = event.entityUuid ?? event.resourceId;
     if (
-      resourceType &&
-      !(AUDIT_RESOURCE_TYPES as readonly string[]).includes(resourceType)
+      resourceType !== null &&
+      !AUDIT_RESOURCE_TYPES.some((supported) => supported === resourceType)
     )
       throw new Error('Unsupported audit resource');
 
@@ -123,10 +83,14 @@ export class PrismaSecurityAuditRepository
       resourceType ?? 'authentication',
       event.changes,
     );
-    const inferredReason = event.changes?.find(
+    const inferredReasonChange = event.changes?.find(
       (change) =>
         change.field === 'reason' && typeof change.newValue === 'string',
-    )?.newValue as string | undefined;
+    );
+    const inferredReason =
+      typeof inferredReasonChange?.newValue === 'string'
+        ? inferredReasonChange.newValue
+        : undefined;
     const result =
       event.result ??
       (FAILURE_ACTION_PATTERN.test(event.action) ? 'FAILURE' : 'SUCCESS');
@@ -134,25 +98,24 @@ export class PrismaSecurityAuditRepository
       event.reason ?? event.metadata ?? inferredReason,
     );
 
-    const client = this.prisma as unknown as AuditShape;
-    await client.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       const [actor, subject] = await Promise.all([
         actorUuid
           ? tx.authenticationUser.findFirst({
               where: { uuid: actorUuid },
               select: { id: true, uuid: true },
             })
-          : Promise.resolve(null),
+          : null,
         subjectUuid
           ? tx.authenticationUser.findFirst({
               where: { uuid: subjectUuid },
               select: { id: true, uuid: true },
             })
-          : Promise.resolve(null),
+          : null,
       ]);
 
       let entityId: bigint | null = null;
-      if (entityUuid && resourceType === 'role')
+      if (entityUuid && resourceType === 'role') {
         entityId =
           (
             await tx.authorizationRole.findFirst({
@@ -160,7 +123,7 @@ export class PrismaSecurityAuditRepository
               select: { id: true, uuid: true },
             })
           )?.id ?? null;
-      else if (entityUuid && resourceType === 'permission')
+      } else if (entityUuid && resourceType === 'permission') {
         entityId =
           (
             await tx.authorizationPermission.findFirst({
@@ -168,6 +131,7 @@ export class PrismaSecurityAuditRepository
               select: { id: true, uuid: true },
             })
           )?.id ?? null;
+      }
 
       const log = await tx.auditLog.create({
         data: {
@@ -187,7 +151,7 @@ export class PrismaSecurityAuditRepository
         },
       });
 
-      if (safeChanges.length > 0)
+      if (safeChanges.length > 0) {
         await tx.auditLogChange.createMany({
           data: safeChanges.map((change) => ({
             auditLogId: log.id,
@@ -196,6 +160,7 @@ export class PrismaSecurityAuditRepository
             newValue: change.newValue,
           })),
         });
+      }
     });
   }
 
@@ -205,25 +170,22 @@ export class PrismaSecurityAuditRepository
     const resourceType = query.resourceType
       ? normalizeAuditResourceType(query.resourceType)
       : undefined;
-    const where: Record<string, unknown> = {
-      ...(query.actorUuid ? { actor: { uuid: query.actorUuid } } : {}),
-      ...(query.action ? { action: query.action } : {}),
-      ...(resourceType ? { entityType: resourceType } : {}),
-      ...(query.resourceId ? { resourceId: query.resourceId } : {}),
-      ...(query.result ? { result: query.result } : {}),
-      ...(query.from || query.to
-        ? {
-            createdAt: {
-              ...(query.from ? { gte: query.from } : {}),
-              ...(query.to ? { lte: query.to } : {}),
-            },
-          }
-        : {}),
-    };
 
-    const client = this.prisma as unknown as AuditShape;
+    const where: Prisma.AuditLogWhereInput = {};
+    if (query.actorUuid) where.actor = { uuid: query.actorUuid };
+    if (query.action) where.action = query.action;
+    if (resourceType) where.entityType = resourceType;
+    if (query.resourceId) where.resourceId = query.resourceId;
+    if (query.result) where.result = query.result;
+    if (query.from || query.to) {
+      where.createdAt = {
+        ...(query.from ? { gte: query.from } : {}),
+        ...(query.to ? { lte: query.to } : {}),
+      };
+    }
+
     const [records, total] = await Promise.all([
-      client.auditLog.findMany({
+      this.prisma.auditLog.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -248,7 +210,7 @@ export class PrismaSecurityAuditRepository
           },
         },
       }),
-      client.auditLog.count({ where }),
+      this.prisma.auditLog.count({ where }),
     ]);
 
     return {
