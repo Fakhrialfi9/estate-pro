@@ -37,15 +37,15 @@ describe('AuditLogService', () => {
     expect(repository.record).toHaveBeenCalledOnce();
     expect(logger.error).toHaveBeenCalledOnce();
     expect(logger.error).toHaveBeenCalledWith(
-      expect.objectContaining({
+      {
         auditAction: 'SYSTEM_SETTING_UPDATED',
         resourceType: 'system_setting',
         resourceId: 'setting-1',
-        error: expect.objectContaining({
+        error: {
           type: 'Error',
           message: 'audit database unavailable',
-        }),
-      }),
+        },
+      },
       expect.stringContaining('Audit write failed'),
     );
   });
