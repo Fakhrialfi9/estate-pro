@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
+import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import type {
   AuthenticationLockoutPolicy,
   AuthenticationSecurityRepository,
@@ -16,11 +17,23 @@ type SecurityRecord = {
   lastLoginIp: string | null;
   updatedAt: Date;
 };
+
+type LockedSecurityRecord = {
+  id: bigint;
+  user_uuid: string;
+  failed_login_attempts: number;
+  locked_until: Date | null;
+  last_login_at: Date | null;
+  last_login_ip: string | null;
+  updated_at: Date;
+};
+
 type Delegate = {
   findFirst(args: unknown): Promise<SecurityRecord | null>;
   create(args: unknown): Promise<SecurityRecord>;
   updateMany(args: unknown): Promise<{ count: number }>;
 };
+
 type PrismaShape = { authenticationUserSecurity: Delegate };
 
 @Injectable()
@@ -29,7 +42,7 @@ export class PrismaAuthenticationSecurityRepository
 {
   private readonly security: Delegate;
 
-  constructor(prisma: PrismaService) {
+  constructor(private readonly prisma: PrismaService) {
     this.security = (
       prisma as unknown as PrismaShape
     ).authenticationUserSecurity;
@@ -65,38 +78,73 @@ export class PrismaAuthenticationSecurityRepository
     now: Date,
     policy: AuthenticationLockoutPolicy,
   ): Promise<AuthenticationSecurityState> {
-    await this.getState(userUuid);
-    const windowStart = new Date(now.getTime() - policy.windowMs);
-    const reset = await this.security.updateMany({
-      where: {
-        user: { uuid: userUuid },
-        updatedAt: { lt: windowStart },
-        lockedUntil: null,
-      },
-      data: { failedLoginAttempts: 1 },
-    });
-    if (reset.count === 0) {
-      await this.security.updateMany({
-        where: { user: { uuid: userUuid }, lockedUntil: { lte: now } },
-        data: { failedLoginAttempts: { increment: 1 } },
-      });
-    }
-    let state = await this.getState(userUuid);
-    if (
-      state.failedLoginAttempts >= policy.threshold &&
-      (!state.lockedUntil || state.lockedUntil <= now)
-    ) {
-      await this.security.updateMany({
-        where: {
-          user: { uuid: userUuid },
-          failedLoginAttempts: { gte: policy.threshold },
-          lockedUntil: null,
+    return this.prisma.$transaction(async (tx) => {
+      const [locked] = await tx.$queryRaw<LockedSecurityRecord[]>(Prisma.sql`
+        SELECT
+          s.id,
+          u.uuid AS user_uuid,
+          s.failed_login_attempts,
+          s.locked_until,
+          s.last_login_at,
+          s.last_login_ip,
+          s.updated_at
+        FROM authentication_user_security s
+        INNER JOIN authentication_users u ON u.id = s.user_id
+        WHERE u.uuid = ${userUuid}
+        LIMIT 1
+        FOR UPDATE
+      `);
+
+      if (!locked) {
+        await tx.authenticationUserSecurity.create({
+          data: { user: { connect: { uuid: userUuid } } },
+        });
+
+        const [created] = await tx.$queryRaw<LockedSecurityRecord[]>(
+          Prisma.sql`
+            SELECT
+              s.id,
+              u.uuid AS user_uuid,
+              s.failed_login_attempts,
+              s.locked_until,
+              s.last_login_at,
+              s.last_login_ip,
+              s.updated_at
+            FROM authentication_user_security s
+            INNER JOIN authentication_users u ON u.id = s.user_id
+            WHERE u.uuid = ${userUuid}
+            LIMIT 1
+            FOR UPDATE
+          `,
+        );
+
+        if (!created) {
+          throw new Error('Unable to initialize authentication security state');
+        }
+
+        const next = this.nextFailedLoginState(created, now, policy);
+        const updated = await tx.authenticationUserSecurity.update({
+          where: { id: created.id },
+          data: {
+            failedLoginAttempts: next.failedLoginAttempts,
+            lockedUntil: next.lockedUntil,
+          },
+          include: { user: { select: { uuid: true } } },
+        });
+        return this.toState(updated);
+      }
+
+      const next = this.nextFailedLoginState(locked, now, policy);
+      const updated = await tx.authenticationUserSecurity.update({
+        where: { id: locked.id },
+        data: {
+          failedLoginAttempts: next.failedLoginAttempts,
+          lockedUntil: next.lockedUntil,
         },
-        data: { lockedUntil: new Date(now.getTime() + policy.durationMs) },
+        include: { user: { select: { uuid: true } } },
       });
-      state = await this.getState(userUuid);
-    }
-    return state;
+      return this.toState(updated);
+    });
   }
 
   async recordSuccessfulLogin(
@@ -116,6 +164,33 @@ export class PrismaAuthenticationSecurityRepository
         lastLoginIp: context.ipAddress ?? null,
       },
     });
+  }
+
+  private nextFailedLoginState(
+    current: LockedSecurityRecord,
+    now: Date,
+    policy: AuthenticationLockoutPolicy,
+  ): { failedLoginAttempts: number; lockedUntil: Date | null } {
+    const windowStart = new Date(now.getTime() - policy.windowMs);
+
+    if (current.locked_until !== null && current.locked_until > now) {
+      return {
+        failedLoginAttempts: current.failed_login_attempts,
+        lockedUntil: current.locked_until,
+      };
+    }
+
+    const failedLoginAttempts =
+      current.updated_at < windowStart
+        ? 1
+        : current.failed_login_attempts + 1;
+
+    const lockedUntil =
+      failedLoginAttempts >= policy.threshold
+        ? new Date(now.getTime() + policy.durationMs)
+        : null;
+
+    return { failedLoginAttempts, lockedUntil };
   }
 
   private toState(record: SecurityRecord): AuthenticationSecurityState {
