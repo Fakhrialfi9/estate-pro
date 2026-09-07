@@ -3,14 +3,15 @@ import { Prisma } from '../../../../prisma/generated/prisma/client.js';
 import type { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
 import type {
   MatchingRepository,
-  StoredPreference,
-  StoredRecommendation,
   RecommendationHistoryItem,
   SavedProperty,
+  StoredPreference,
+  StoredRecommendation,
 } from '../application/matching.ports.js';
 import type {
   BehavioralSignal,
   MatchCandidate,
+  MatchingRecommendationSource,
   MatchingSubjectType,
   PriceFrequency,
   PropertyPreferenceState,
@@ -473,7 +474,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
     subjectUuid: string;
     preferenceVersion: number;
     algorithmVersion: number;
-    source: string;
+    source: MatchingRecommendationSource;
     candidateCount: number;
     items: readonly {
       propertyUuid: string;
@@ -491,7 +492,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
           subjectUuid: input.subjectUuid,
           preferenceVersion: input.preferenceVersion,
           algorithmVersion: input.algorithmVersion,
-          source: input.source as never,
+          source: input.source,
           generatedAt: input.now,
           candidateCount: input.candidateCount,
         },
@@ -531,7 +532,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
           recommendationId: recommendation.id,
           subjectType: input.subjectType,
           subjectUuid: input.subjectUuid,
-          source: input.source as never,
+          source: input.source,
           preferenceVersion: input.preferenceVersion,
           algorithmVersion: input.algorithmVersion,
           candidateCount: input.candidateCount,
@@ -621,22 +622,13 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
     page: number,
     limit: number,
   ): Promise<{ items: readonly RecommendationHistoryItem[]; total: number }> {
+    const skip = (page - 1) * limit;
     const [items, total] = await Promise.all([
       this.prisma.recommendationHistory.findMany({
         where: { subjectType, subjectUuid },
         orderBy: [{ generatedAt: 'desc' }, { id: 'desc' }],
-        skip: (page - 1) * limit,
+        skip,
         take: limit,
-        select: {
-          uuid: true,
-          recommendationId: true,
-          source: true,
-          preferenceVersion: true,
-          algorithmVersion: true,
-          candidateCount: true,
-          generatedAt: true,
-          actorUuid: true,
-        },
       }),
       this.prisma.recommendationHistory.count({
         where: { subjectType, subjectUuid },
@@ -644,8 +636,14 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
     ]);
     return {
       items: items.map((item) => ({
-        ...item,
+        uuid: item.uuid,
         recommendationId: item.recommendationId.toString(),
+        source: item.source,
+        preferenceVersion: item.preferenceVersion,
+        algorithmVersion: item.algorithmVersion,
+        candidateCount: item.candidateCount,
+        generatedAt: item.generatedAt,
+        actorUuid: item.actorUuid,
       })),
       total,
     };
@@ -658,26 +656,12 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
     propertyUuid: string;
     listingUuid: string;
     feedback: string;
-  }) {
+  }): Promise<unknown> {
     const item = await this.prisma.recommendationItem.findUnique({
       where: { uuid: input.recommendationItemUuid },
-      select: {
-        id: true,
-        propertyUuid: true,
-        listingUuid: true,
-        recommendation: { select: { subjectType: true, subjectUuid: true } },
-      },
+      select: { id: true },
     });
-    if (
-      !item ||
-      item.propertyUuid !== input.propertyUuid ||
-      item.listingUuid !== input.listingUuid ||
-      item.recommendation.subjectType !== input.subjectType ||
-      item.recommendation.subjectUuid !== input.subjectUuid
-    )
-      throw new ConflictException(
-        'Recommendation item is outside subject scope',
-      );
+    if (!item) throw new ConflictException('Recommendation item not found');
     return this.prisma.matchFeedback.upsert({
       where: {
         recommendationItemId_subjectType_subjectUuid: {
@@ -686,7 +670,6 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
           subjectUuid: input.subjectUuid,
         },
       },
-      update: { feedback: input.feedback as never },
       create: {
         recommendationItemId: item.id,
         subjectType: input.subjectType,
@@ -694,6 +677,12 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
         propertyUuid: input.propertyUuid,
         listingUuid: input.listingUuid,
         feedback: input.feedback as never,
+      },
+      update: {
+        propertyUuid: input.propertyUuid,
+        listingUuid: input.listingUuid,
+        feedback: input.feedback as never,
+        updatedAt: new Date(),
       },
     });
   }
@@ -709,70 +698,33 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
       });
       return user ? { uuid: user.uuid, ownerUserUuid: user.uuid } : null;
     }
-    if (subjectType === 'CONTACT')
-      return this.prisma.crmContact.findUnique({
+    if (subjectType === 'CONTACT') {
+      const contact = await this.prisma.crmContact.findUnique({
         where: { uuid: subjectUuid },
-        select: { uuid: true, ownerUserUuid: true },
+        select: { uuid: true, ownerUser: { select: { uuid: true } } },
       });
-    return this.prisma.crmLead.findUnique({
+      return contact
+        ? { uuid: contact.uuid, ownerUserUuid: contact.ownerUser?.uuid ?? null }
+        : null;
+    }
+    const lead = await this.prisma.crmLead.findUnique({
       where: { uuid: subjectUuid },
-      select: { uuid: true, ownerUserUuid: true },
+      select: { uuid: true, ownerUser: { select: { uuid: true } } },
     });
-  }
-
-  async listSavedListings(
-    subjectUuid: string,
-  ): Promise<readonly SavedProperty[]> {
-    const rows = await this.prisma.propertyListingEngagement.findMany({
-      where: {
-        userUuid: subjectUuid,
-        isSaved: true,
-        listing: {
-          status: 'PUBLISHED',
-          visibility: 'PUBLIC',
-          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-          property: {
-            is: {
-              deletedAt: null,
-              status: 'ACTIVE',
-              availabilityStatus: 'AVAILABLE',
-            },
-          },
-        },
-      },
-      select: {
-        listing: {
-          select: {
-            uuid: true,
-            transactionType: true,
-            publishedAt: true,
-            property: { select: { uuid: true, title: true } },
-            price: {
-              select: {
-                currency: true,
-                priceType: true,
-                minPrice: true,
-                maxPrice: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: { listing: { publishedAt: 'desc' } },
-    });
-    return rows.map((row) => row.listing);
+    return lead
+      ? { uuid: lead.uuid, ownerUserUuid: lead.ownerUser?.uuid ?? null }
+      : null;
   }
 
   private preferenceData(
     subjectType: MatchingSubjectType,
     subjectUuid: string,
     preference: PropertyPreferenceState,
-  ) {
+  ): Prisma.PropertyPreferenceUncheckedCreateInput {
     return {
       subjectType,
       subjectUuid,
       version: preference.version,
-      status: 'ACTIVE' as const,
       transactionTypes: preference.transactionTypes,
       propertyTypeUuids: preference.propertyTypeUuids,
       propertyCategoryUuids: preference.propertyCategoryUuids,
@@ -785,17 +737,29 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
       radiusKm: preference.location?.radiusKm ?? null,
       latitude: preference.location?.latitude ?? null,
       longitude: preference.location?.longitude ?? null,
-      budgetMin: preference.budget?.min ?? null,
-      budgetMax: preference.budget?.max ?? null,
+      budgetMin: preference.budget?.min
+        ? new Prisma.Decimal(preference.budget.min)
+        : null,
+      budgetMax: preference.budget?.max
+        ? new Prisma.Decimal(preference.budget.max)
+        : null,
       budgetCurrency: preference.budget?.currency ?? null,
       budgetFrequency: preference.budget?.frequency ?? null,
       tolerancePercent: preference.budget?.tolerancePercent ?? null,
       bedroomsMin: preference.specification?.bedrooms?.min ?? null,
       bedroomsMax: preference.specification?.bedrooms?.max ?? null,
-      bathroomsMin: preference.specification?.bathrooms?.min ?? null,
-      bathroomsMax: preference.specification?.bathrooms?.max ?? null,
-      areaSqmMin: preference.specification?.areaSqm?.min ?? null,
-      areaSqmMax: preference.specification?.areaSqm?.max ?? null,
+      bathroomsMin: preference.specification?.bathrooms?.min
+        ? new Prisma.Decimal(preference.specification.bathrooms.min)
+        : null,
+      bathroomsMax: preference.specification?.bathrooms?.max
+        ? new Prisma.Decimal(preference.specification.bathrooms.max)
+        : null,
+      areaSqmMin: preference.specification?.areaSqm?.min
+        ? new Prisma.Decimal(preference.specification.areaSqm.min)
+        : null,
+      areaSqmMax: preference.specification?.areaSqm?.max
+        ? new Prisma.Decimal(preference.specification.areaSqm.max)
+        : null,
       parkingSpacesMin: preference.specification?.parkingSpaces?.min ?? null,
       parkingSpacesMax: preference.specification?.parkingSpaces?.max ?? null,
       furnishedStatus: preference.specification?.furnishedStatus ?? null,
