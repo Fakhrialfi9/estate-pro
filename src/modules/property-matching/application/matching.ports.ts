@@ -1,6 +1,7 @@
 import type {
   BehavioralSignal,
   MatchCandidate,
+  MatchingRecommendationSource,
   MatchingSubjectType,
   PropertyPreferenceState,
 } from '../domain/matching.types.js';
@@ -101,7 +102,7 @@ export interface MatchingRepository extends SavedPropertyPort {
     subjectUuid: string;
     preferenceVersion: number;
     algorithmVersion: number;
-    source: string;
+    source: MatchingRecommendationSource;
     candidateCount: number;
     items: readonly {
       propertyUuid: string;
