@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import {
   AUTOMATION_HEALTH_PORT,
   type AutomationHealthPort,
@@ -74,6 +75,7 @@ import { SystemExportScheduler } from './infrastructure/export/system-export.sch
 import { SystemRetentionScheduler } from './infrastructure/system-retention.scheduler.js';
 import { SystemXlsxExporterAdapter } from './infrastructure/export/system-xlsx-exporter.adapter.js';
 import { SystemMetricsService } from './infrastructure/observability/system-metrics.service.js';
+import { SystemHttpMetricsInterceptor } from './infrastructure/observability/system-http-metrics.interceptor.js';
 import { WebhookNetworkService } from './infrastructure/webhook/webhook-network.service.js';
 import { WebhookSecretService } from './infrastructure/webhook/webhook-secret.service.js';
 import { WebhookSignerService } from './infrastructure/webhook/webhook-signer.service.js';
@@ -170,6 +172,7 @@ import {
     SystemRoadmapControlService,
     SystemReadOnlyGuard,
     SystemMetricsService,
+    SystemHttpMetricsInterceptor,
     PrismaSystemSettingsRepository,
     PrismaSystemActivityRepository,
     PrismaSystemImportRepository,
@@ -184,6 +187,10 @@ import {
     WebhookNetworkService,
     WebhookSecretService,
     WebhookSignerService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SystemHttpMetricsInterceptor,
+    },
     {
       provide: SYSTEM_SETTINGS_REPOSITORY,
       useExisting: PrismaSystemSettingsRepository,
