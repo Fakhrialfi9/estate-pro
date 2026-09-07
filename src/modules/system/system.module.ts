@@ -77,6 +77,7 @@ import { WebhookSignerService } from './infrastructure/webhook/webhook-signer.se
 import { EnvironmentIntegrationSecretResolverService } from './infrastructure/integration/environment-integration-secret-resolver.service.js';
 import { GenericHttpIntegrationProvider } from './infrastructure/integration/generic-http-integration.provider.js';
 import { SystemWebhookRetryWorker } from './infrastructure/webhook/system-webhook-retry.worker.js';
+import { SystemIntegrationCallbackWorker } from './infrastructure/integration/system-integration-callback.worker.js';
 import { SYSTEM_ACTIVITY_REPOSITORY } from './domain/repositories/system-activity.repository.js';
 import { SYSTEM_ARTIFACT_STORAGE } from './domain/repositories/system-artifact.storage.js';
 import { SYSTEM_EXPORT_REPOSITORY } from './domain/repositories/system-export.repository.js';
@@ -143,6 +144,7 @@ import {
     SystemImportMappingService,
     SystemEnvironmentService,
     SystemIntegrationCallbackService,
+    SystemIntegrationCallbackWorker,
     SystemIntegrationCredentialService,
     SystemIntegrationMappingService,
     SystemIntegrationReliabilityService,
