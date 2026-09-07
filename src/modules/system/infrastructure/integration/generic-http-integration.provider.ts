@@ -1,7 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
 import { Inject, Injectable } from '@nestjs/common';
+import { assertSafeOutboundUrl } from '../../../../common/security/outbound-url-policy.js';
 import type { IntegrationProviderPort } from '../../domain/integration/integration.contracts.js';
 import type {
   CanonicalIntegrationRequest,
@@ -405,39 +404,15 @@ function errorCode(error: unknown) {
 }
 
 export async function assertPublicHttpsUrl(raw: string): Promise<string> {
-  let url: URL;
   try {
-    url = new URL(raw);
-  } catch {
-    throw new Error('Integration provider URL is invalid');
-  }
-  if (url.protocol !== 'https:')
-    throw new Error('Integration provider URL must use HTTPS');
-  if (url.username || url.password)
-    throw new Error('Integration provider URL cannot contain credentials');
-  if (isPrivateHost(url.hostname))
-    throw new Error('Integration provider URL targets a private network');
-  const addresses = await lookup(url.hostname, { all: true, verbatim: true });
-  if (addresses.some((entry) => isPrivateHost(entry.address)))
-    throw new Error('Integration provider URL resolves to a private network');
-  return url.toString();
-}
-
-function isPrivateHost(address: string) {
-  const version = isIP(address);
-  if (version === 4) {
-    const [a = Number.NaN, b = Number.NaN] = address.split('.').map(Number);
-    return (
-      a === 10 ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 192 && b === 168) ||
-      (a === 172 && b >= 16 && b <= 31)
+    return await assertSafeOutboundUrl(raw);
+  } catch (error: unknown) {
+    throw new Error(
+      error instanceof Error
+        ? error.message.replace(/^Outbound/, 'Integration provider')
+        : 'Integration provider URL is unsafe',
     );
   }
-  return (
-    version === 6 && (address === '::1' || /^(fc|fd|fe80:)/i.test(address))
-  );
 }
 
 async function readJson(
