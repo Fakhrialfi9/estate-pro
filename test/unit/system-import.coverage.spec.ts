@@ -310,7 +310,7 @@ describe('SystemImportService coverage', () => {
 
     d.jobs.findByUuid.mockResolvedValueOnce({
       ...baseJob,
-      state: 'RUNNING',
+      state: 'SUCCEEDED',
     });
     await expect(service.cancel('actor-1', 'job-1')).rejects.toThrow(
       'Import job is not cancellable',
