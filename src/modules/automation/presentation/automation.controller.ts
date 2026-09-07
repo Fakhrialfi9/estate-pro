@@ -45,6 +45,7 @@ export class AutomationController {
   @Get('workflows')
   @RequirePermissions('automation.workflows.read')
   @ApiOperation({ summary: 'List automation workflows' })
+  @ApiResponse({ status: 200, type: Object })
   list(@Req() req: Request, @Query() query: PageAutomationQueryDto) {
     return this.automation.listWorkflows(query, actor(req));
   }
@@ -52,18 +53,21 @@ export class AutomationController {
   @Post('workflows')
   @RequirePermissions('automation.workflows.create')
   @ApiOperation({ summary: 'Create an automation workflow' })
+  @ApiResponse({ status: 201, type: Object })
   create(@Req() req: Request, @Body() dto: CreateAutomationWorkflowDto) {
     return this.automation.createWorkflow(dto, actor(req));
   }
 
   @Get('workflows/:uuid')
   @RequirePermissions('automation.workflows.read')
+  @ApiResponse({ status: 200, type: Object })
   get(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.getWorkflow(uuid, actor(req));
   }
 
   @Patch('workflows/:uuid')
   @RequirePermissions('automation.workflows.update')
+  @ApiResponse({ status: 200, type: Object })
   update(
     @Req() req: Request,
     @Param('uuid', ParseUUIDPipe) uuid: string,
@@ -74,6 +78,7 @@ export class AutomationController {
 
   @Post('workflows/:uuid/versions')
   @RequirePermissions('automation.workflows.update')
+  @ApiResponse({ status: 201, type: Object })
   createVersion(
     @Req() req: Request,
     @Param('uuid', ParseUUIDPipe) uuid: string,
@@ -91,6 +96,7 @@ export class AutomationController {
 
   @Post('workflows/:uuid/versions/:versionUuid/activate')
   @RequirePermissions('automation.workflows.activate')
+  @ApiResponse({ status: 201, type: Object })
   activate(
     @Req() req: Request,
     @Param('uuid', ParseUUIDPipe) uuid: string,
@@ -101,12 +107,14 @@ export class AutomationController {
 
   @Post('workflows/:uuid/pause')
   @RequirePermissions('automation.workflows.pause')
+  @ApiResponse({ status: 201, type: Object })
   pause(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.pauseWorkflow(uuid, actor(req));
   }
 
   @Post('workflows/:uuid/archive')
   @RequirePermissions('automation.workflows.archive')
+  @ApiResponse({ status: 201, type: Object })
   archive(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.archiveWorkflow(uuid, actor(req));
   }
@@ -114,6 +122,7 @@ export class AutomationController {
   @Post('events')
   @RequirePermissions('automation.execute')
   @ApiOperation({ summary: 'Dispatch a normalized automation event' })
+  @ApiResponse({ status: 201, type: Object, isArray: true })
   dispatch(@Body() dto: DispatchAutomationEventDto) {
     return this.automation.dispatch({
       eventId: dto.eventId,
@@ -129,30 +138,35 @@ export class AutomationController {
 
   @Get('executions')
   @RequirePermissions('automation.executions.read')
+  @ApiResponse({ status: 200, type: Object })
   executions(@Req() req: Request, @Query() query: PageAutomationQueryDto) {
     return this.automation.listExecutions(query, actor(req));
   }
 
   @Get('executions/:uuid')
   @RequirePermissions('automation.executions.read')
+  @ApiResponse({ status: 200, type: Object })
   execution(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.getExecution(uuid, actor(req));
   }
 
   @Post('executions/:uuid/retry')
   @RequirePermissions('automation.executions.retry')
+  @ApiResponse({ status: 201, type: Object })
   retry(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.retryExecution(uuid, actor(req));
   }
 
   @Post('executions/:uuid/cancel')
   @RequirePermissions('automation.executions.cancel')
+  @ApiResponse({ status: 201, type: Object })
   cancel(@Req() req: Request, @Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.automation.cancelExecution(uuid, actor(req));
   }
 
   @Post('workflows/:uuid/assignment-rules')
   @RequirePermissions('automation.workflows.update')
+  @ApiResponse({ status: 201, type: Object })
   assignmentRule(
     @Req() req: Request,
     @Param('uuid', ParseUUIDPipe) uuid: string,
@@ -163,6 +177,7 @@ export class AutomationController {
 
   @Post('workflows/:uuid/sla-policies')
   @RequirePermissions('automation.workflows.update')
+  @ApiResponse({ status: 201, type: Object })
   slaPolicy(
     @Req() req: Request,
     @Param('uuid', ParseUUIDPipe) uuid: string,
@@ -173,6 +188,7 @@ export class AutomationController {
 
   @Post('workflows/:uuid/escalation-policies')
   @RequirePermissions('automation.workflows.update')
+  @ApiResponse({ status: 201, type: Object })
   escalationPolicy(
     @Req() req: Request,
     @Param('uuid', ParseUUIDPipe) uuid: string,
@@ -183,7 +199,7 @@ export class AutomationController {
 
   @Get('metrics')
   @RequirePermissions('automation.executions.read')
-  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 200, type: Object })
   metrics(@Req() req: Request) {
     return this.automation.dashboard(actor(req));
   }

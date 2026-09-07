@@ -35,7 +35,7 @@ APP_HOST="127.0.0.1" \
 APP_PORT="$PORT" \
 API_PREFIX="api" \
 API_VERSION="v1" \
-DATABASE_URL="mysql://test:test-password@127.0.0.1:3306/estate_pro_test" \
+DATABASE_URL="mysql://dev:dev123@127.0.0.1:3306/estate_pro_test?allowPublicKeyRetrieval=true" \
 JWT_SECRET="test-only-secret-that-is-at-least-32-chars" \
 SECURITY_CORS_ORIGINS="http://localhost:3000" \
 SWAGGER_ENABLED="true" \

@@ -10,6 +10,12 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor(configService: ConfigService) {
+    const databaseUrl = configService.get<string>('database.url');
+    const allowPublicKeyRetrieval =
+      databaseUrl !== undefined &&
+      new URL(databaseUrl).searchParams.get('allowPublicKeyRetrieval') ===
+        'true';
+
     const adapter = new PrismaMariaDb({
       host: configService.getOrThrow<string>('database.host'),
       port: configService.getOrThrow<number>('database.port'),
@@ -28,6 +34,7 @@ export class PrismaService
       idleTimeout: configService.getOrThrow<number>(
         'database.pool.idleTimeoutSec',
       ),
+      allowPublicKeyRetrieval,
     });
 
     super({

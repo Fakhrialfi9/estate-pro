@@ -127,7 +127,7 @@ export class ContentController {
   @Post('articles')
   @RequirePermissions('content.articles.create')
   @ApiOperation({ summary: 'Create article' })
-  @ApiResponse({ status: 201 })
+  @ApiResponse({ status: 201, type: Object })
   async create(@Req() req: AuthRequest, @Body() dto: ArticleCreateDto) {
     try {
       return await this.createArticle.execute(
@@ -141,6 +141,7 @@ export class ContentController {
   @Get('articles')
   @RequirePermissions('content.articles.read')
   @ApiOperation({ summary: 'List articles' })
+  @ApiResponse({ status: 200, type: Object })
   async list(@Query() q: ContentQueryDto) {
     return this.listArticles.execute(q);
   }
@@ -148,6 +149,7 @@ export class ContentController {
   @RequirePermissions('content.articles.read')
   @ApiOperation({ summary: 'Get article' })
   @ApiParam({ name: 'uuid', format: 'uuid' })
+  @ApiResponse({ status: 200, type: Object })
   async get(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     try {
       return await this.getArticle.execute(uuid, false, this.permissions(req));
@@ -158,6 +160,7 @@ export class ContentController {
   @Patch('articles/:uuid')
   @RequirePermissions('content.articles.update')
   @ApiOperation({ summary: 'Update article' })
+  @ApiResponse({ status: 200, type: Object })
   async update(
     @Req() req: AuthRequest,
     @Param('uuid') uuid: string,
@@ -187,6 +190,7 @@ export class ContentController {
   @Post('articles/:uuid/restore')
   @RequirePermissions('content.articles.restore')
   @ApiOperation({ summary: 'Restore article' })
+  @ApiResponse({ status: 201, type: Object })
   async restore(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     try {
       return await this.restoreArticle.execute(uuid, this.ctx(req));
@@ -197,6 +201,7 @@ export class ContentController {
   @Post('articles/:uuid/duplicate')
   @RequirePermissions('content.articles.create')
   @ApiOperation({ summary: 'Duplicate article' })
+  @ApiResponse({ status: 201, type: Object })
   async duplicate(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     try {
       return await this.duplicateArticle.execute(uuid, this.ctx(req));
@@ -207,6 +212,7 @@ export class ContentController {
   @Post('articles/:uuid/publish')
   @RequirePermissions('content.articles.publish')
   @ApiOperation({ summary: 'Publish article' })
+  @ApiResponse({ status: 201, type: Object })
   async publish(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     try {
       return await this.publishArticle.execute(uuid, this.ctx(req));
@@ -217,6 +223,7 @@ export class ContentController {
   @Post('articles/:uuid/unpublish')
   @RequirePermissions('content.articles.publish')
   @ApiOperation({ summary: 'Unpublish article' })
+  @ApiResponse({ status: 201, type: Object })
   async unpublish(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     try {
       return await this.unpublishArticle.execute(uuid, this.ctx(req));
@@ -227,6 +234,7 @@ export class ContentController {
   @Post('articles/:uuid/archive')
   @RequirePermissions('content.articles.archive')
   @ApiOperation({ summary: 'Archive article' })
+  @ApiResponse({ status: 201, type: Object })
   async archive(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     try {
       return await this.archiveArticle.execute(uuid, this.ctx(req));
@@ -237,12 +245,14 @@ export class ContentController {
   @Get('articles/:uuid/revisions')
   @RequirePermissions('content.articles.read')
   @ApiOperation({ summary: 'List article revisions' })
+  @ApiResponse({ status: 200, type: Object })
   revisionsList(@Param('uuid') uuid: string) {
     return this.revisions.execute('article', uuid);
   }
   @Post('articles/:uuid/revisions/:revisionUuid/restore')
   @RequirePermissions('content.articles.restore')
   @ApiOperation({ summary: 'Restore article revision' })
+  @ApiResponse({ status: 201, type: Object })
   async revisionRestore(
     @Req() req: AuthRequest,
     @Param('uuid') uuid: string,
@@ -262,6 +272,7 @@ export class ContentController {
   @Put('articles/:uuid/seo')
   @RequirePermissions('content.articles.update')
   @ApiOperation({ summary: 'Upsert article SEO' })
+  @ApiResponse({ status: 200, type: Object })
   async seo(
     @Req() req: AuthRequest,
     @Param('uuid') uuid: string,
@@ -281,18 +292,21 @@ export class ContentController {
   @Get('media')
   @RequirePermissions('content.media.read')
   @ApiOperation({ summary: 'List media' })
+  @ApiResponse({ status: 200, type: Object })
   listMedia(@Query() q: ContentQueryDto) {
     return this.resources.list('media', q);
   }
   @Get('media/:uuid')
   @RequirePermissions('content.media.read')
   @ApiOperation({ summary: 'Get media' })
+  @ApiResponse({ status: 200, type: Object })
   getMedia(@Param('uuid') uuid: string) {
     return this.resources.get('media', uuid);
   }
   @Patch('media/:uuid')
   @RequirePermissions('content.media.update')
   @ApiOperation({ summary: 'Update media metadata' })
+  @ApiResponse({ status: 200, type: Object })
   updateMedia(
     @Req() req: AuthRequest,
     @Param('uuid') uuid: string,
@@ -315,6 +329,7 @@ export class ContentController {
   @Post('media/:uuid/restore')
   @RequirePermissions('content.media.restore')
   @ApiOperation({ summary: 'Restore media' })
+  @ApiResponse({ status: 201, type: Object })
   restoreMedia(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     return this.resources.restore('media', uuid, this.ctx(req));
   }
@@ -336,6 +351,7 @@ export class ContentController {
     },
   })
   @ApiOperation({ summary: 'Upload media' })
+  @ApiResponse({ status: 201, type: Object })
   async uploadMedia(
     @Req() req: AuthRequest,
     @UploadedFile()
@@ -369,6 +385,7 @@ export class ContentController {
   @Post('relations')
   @RequirePermissions('content.relations.create')
   @ApiOperation({ summary: 'Create content relation' })
+  @ApiResponse({ status: 201, type: Object })
   addRelation(@Req() req: AuthRequest, @Body() dto: RelationDto) {
     return this.service.addRelation(
       dto as unknown as Record<string, unknown>,
@@ -378,6 +395,7 @@ export class ContentController {
   @Get('relations/:sourceUuid')
   @RequirePermissions('content.relations.read')
   @ApiOperation({ summary: 'List content relations' })
+  @ApiResponse({ status: 200, type: Object })
   relationList(
     @Param('sourceUuid') uuid: string,
     @Query('relationType') type?: string,
@@ -392,6 +410,7 @@ export class ContentController {
   }
   @Post('articles/:uuid/likes')
   @RequirePermissions('content.articles.interact')
+  @ApiResponse({ status: 201, type: Object })
   async like(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     if (!req.user?.sub)
       throw new BadRequestException('Authenticated user is required');
@@ -399,6 +418,7 @@ export class ContentController {
   }
   @Delete('articles/:uuid/likes')
   @RequirePermissions('content.articles.interact')
+  @ApiResponse({ status: 200, type: Object })
   async unlike(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     if (!req.user?.sub)
       throw new BadRequestException('Authenticated user is required');
@@ -406,6 +426,7 @@ export class ContentController {
   }
   @Post('articles/:uuid/bookmark')
   @RequirePermissions('content.articles.interact')
+  @ApiResponse({ status: 201, type: Object })
   async bookmark(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     if (!req.user?.sub)
       throw new BadRequestException('Authenticated user is required');
@@ -413,6 +434,7 @@ export class ContentController {
   }
   @Delete('articles/:uuid/bookmark')
   @RequirePermissions('content.articles.interact')
+  @ApiResponse({ status: 200, type: Object })
   async unbookmark(@Req() req: AuthRequest, @Param('uuid') uuid: string) {
     if (!req.user?.sub)
       throw new BadRequestException('Authenticated user is required');
@@ -420,6 +442,7 @@ export class ContentController {
   }
   @Post('articles/:uuid/comments')
   @RequirePermissions('content.comments.create')
+  @ApiResponse({ status: 201, type: Object })
   async comment(
     @Req() req: AuthRequest,
     @Param('uuid') uuid: string,
@@ -437,6 +460,7 @@ export class ContentController {
   }
   @Post('comments/:uuid/moderate')
   @RequirePermissions('content.comments.moderate')
+  @ApiResponse({ status: 201, type: Object })
   async moderate(
     @Req() req: AuthRequest,
     @Param('uuid') uuid: string,

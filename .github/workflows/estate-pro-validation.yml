@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test
+  DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test?allowPublicKeyRetrieval=true
   DATABASE_POOL_CONNECTION_LIMIT: 2
   DATABASE_CONNECT_TIMEOUT_MS: 5000
   DATABASE_ACQUIRE_TIMEOUT_MS: 10000
@@ -71,7 +71,7 @@ jobs:
 
       - name: Validate seed reproducibility on isolated fresh database
         env:
-          DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_seed_test
+          DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_seed_test?allowPublicKeyRetrieval=true
         run: |
           export SEED_ADMIN_PASSWORD="$(openssl rand -hex 32)"
           export SEED_DEVELOPMENT_USER_PASSWORD="$(openssl rand -hex 32)"
@@ -163,7 +163,7 @@ jobs:
 
       - name: Migration rehearsal
         env:
-          DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_rehearsal
+          DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_rehearsal?allowPublicKeyRetrieval=true
         run: |
           sudo mysql -e "DROP DATABASE IF EXISTS estate_pro_rehearsal; CREATE DATABASE estate_pro_rehearsal;"
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_rehearsal.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"

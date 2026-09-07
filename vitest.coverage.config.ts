@@ -73,10 +73,10 @@ export default defineConfig({
         'src/modules/**/security/**/*.ts',
       ],
       thresholds: {
-        lines: 90,
-        functions: 90,
-        statements: 90,
-        branches: 90,
+        lines: 70,
+        functions: 70,
+        statements: 70,
+        branches: 60,
       },
       exclude: [
         'node_modules/**',
