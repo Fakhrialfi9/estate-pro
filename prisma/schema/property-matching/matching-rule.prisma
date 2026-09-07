@@ -1,0 +1,18 @@
+model MatchingRule {
+  id               BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid             String   @unique @default(uuid()) @db.Char(36)
+  name             String   @db.VarChar(120)
+  version          Int
+  weights          Json
+  hardCriteria     Json     @map("hard_criteria")
+  minimumScore     Decimal  @map("minimum_score") @db.Decimal(6, 2)
+  isActive         Boolean  @default(false) @map("is_active")
+  createdBy        String   @map("created_by") @db.Char(36)
+  activatedAt      DateTime? @map("activated_at") @db.DateTime(3)
+  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@unique([name, version], map: "matching_rules_name_version_key")
+  @@index([isActive, version], map: "matching_rules_active_version_idx")
+  @@map("matching_rules")
+}
