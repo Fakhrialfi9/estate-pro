@@ -142,20 +142,20 @@ export class SystemProductionHardeningService {
     const bucket = this.bucketFormat(granularity);
     const rows = await this.prisma.$queryRaw<MetricRow[]>(Prisma.sql`
       SELECT
-        DATE_FORMAT(created_at, ${bucket}) AS bucket,
+        DATE_FORMAT(createdAt, ${bucket}) AS bucket,
         state AS state,
         COUNT(*) AS count,
-        COALESCE(SUM(CASE WHEN attempt_count > 1 THEN 1 ELSE 0 END), 0) AS retries,
+        COALESCE(SUM(CASE WHEN attemptCount > 1 THEN 1 ELSE 0 END), 0) AS retries,
         COALESCE(SUM(CASE WHEN state IN ('FAILED', 'DEAD_LETTER') THEN 1 ELSE 0 END), 0) AS failures,
         AVG(
           CASE
-            WHEN completed_at IS NULL THEN NULL
-            ELSE TIMESTAMPDIFF(MICROSECOND, created_at, completed_at) / 1000
+            WHEN completedAt IS NULL THEN NULL
+            ELSE TIMESTAMPDIFF(MICROSECOND, createdAt, completedAt) / 1000
           END
         ) AS averageLatencyMs
       FROM automation_workflow_executions
-      WHERE created_at >= ${range.from}
-        AND created_at < ${range.to}
+      WHERE createdAt >= ${range.from}
+        AND createdAt < ${range.to}
       GROUP BY bucket, state
       ORDER BY bucket ASC, state ASC
     `;
