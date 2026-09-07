@@ -34,9 +34,8 @@ describe('AutomationNotificationDeliveryService', () => {
     const repository = {
       getDelivery,
       updateDelivery,
-      listDueDeliveries: vi.fn<
-        AutomationNotificationRepository['listDueDeliveries']
-      >(),
+      listDueDeliveries:
+        vi.fn<AutomationNotificationRepository['listDueDeliveries']>(),
     };
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
     const service = new AutomationNotificationDeliveryService(
@@ -114,9 +113,8 @@ describe('AutomationNotificationDeliveryService', () => {
     const getDelivery = vi
       .fn<AutomationNotificationRepository['getDelivery']>()
       .mockResolvedValue(current);
-    const updateDelivery = vi.fn<
-      AutomationNotificationRepository['updateDelivery']
-    >();
+    const updateDelivery =
+      vi.fn<AutomationNotificationRepository['updateDelivery']>();
     const repository = {
       getDelivery,
       updateDelivery,
