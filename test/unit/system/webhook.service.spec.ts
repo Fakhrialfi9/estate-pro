@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ConfigService } from '@nestjs/config';
 
 import { SystemWebhookService } from '../../../src/modules/system/application/services/system-webhook.service.js';
+import { SystemWebhookRateLimitService } from '../../../src/modules/system/application/services/system-webhook-rate-limit.service.js';
 import type { SystemWebhookRepository } from '../../../src/modules/system/domain/repositories/system-webhook.repository.js';
+import type { SystemWebhookRateLimitRepository } from '../../../src/modules/system/domain/webhook/webhook-rate-limit.repository.js';
 import type {
   WebhookDeliveryRecord,
   WebhookSubscriptionRecord,
@@ -119,9 +122,18 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     >();
   send.mockResolvedValue({ status: 200 });
   const network = { validateTarget, send };
-  const config = {
-    get: vi.fn((_key: string, fallback: unknown) => fallback),
+  const config = new ConfigService();
+  const rateLimitRepository: SystemWebhookRateLimitRepository = {
+    consume: vi.fn().mockResolvedValue({
+      allowed: true,
+      requestCount: 1,
+      blockedCount: 0,
+    }),
   };
+  const rateLimit = new SystemWebhookRateLimitService(
+    rateLimitRepository,
+    config,
+  );
 
   const service = new SystemWebhookService(
     repository,
@@ -129,7 +141,8 @@ const createService = (rows: readonly WebhookSubscriptionRecord[]) => {
     secrets,
     signer,
     network,
-    config as never,
+    config,
+    rateLimit,
   );
   return {
     service,
