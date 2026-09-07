@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   format:
-    if: github.sha == 'af7d3371c8e42d7e6233b7f16451e0cf5e7ff87b'
+    if: github.event.head_commit.message != 'style: normalize repository formatting'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout formatting target
