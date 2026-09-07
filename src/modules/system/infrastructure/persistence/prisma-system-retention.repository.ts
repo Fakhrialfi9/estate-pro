@@ -10,7 +10,14 @@ export class PrismaSystemRetentionRepository
 
   async purgeActivity(before: Date, limit: number): Promise<number> {
     const rows = await this.prisma.systemActivity.findMany({
-      where: { createdAt: { lt: before } },
+      where: {
+        createdAt: { lt: before },
+        retentionHold: false,
+        OR: [
+          { retentionHoldUntil: null },
+          { retentionHoldUntil: { lte: new Date() } },
+        ],
+      },
       select: { id: true },
       orderBy: { id: 'asc' },
       take: limit,
@@ -24,7 +31,14 @@ export class PrismaSystemRetentionRepository
 
   async purgeAudit(before: Date, limit: number): Promise<number> {
     const rows = await this.prisma.auditLog.findMany({
-      where: { createdAt: { lt: before } },
+      where: {
+        createdAt: { lt: before },
+        retentionHold: false,
+        OR: [
+          { retentionHoldUntil: null },
+          { retentionHoldUntil: { lte: new Date() } },
+        ],
+      },
       select: { id: true },
       orderBy: { id: 'asc' },
       take: limit,
@@ -40,5 +54,29 @@ export class PrismaSystemRetentionRepository
       });
       return result.count;
     });
+  }
+
+  async setActivityHold(
+    uuid: string,
+    retentionHold: boolean,
+    retentionHoldUntil: Date | null,
+  ): Promise<boolean> {
+    const result = await this.prisma.systemActivity.updateMany({
+      where: { uuid },
+      data: { retentionHold, retentionHoldUntil },
+    });
+    return result.count > 0;
+  }
+
+  async setAuditHold(
+    uuid: string,
+    retentionHold: boolean,
+    retentionHoldUntil: Date | null,
+  ): Promise<boolean> {
+    const result = await this.prisma.auditLog.updateMany({
+      where: { uuid },
+      data: { retentionHold, retentionHoldUntil },
+    });
+    return result.count > 0;
   }
 }
