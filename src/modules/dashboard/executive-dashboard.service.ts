@@ -234,7 +234,7 @@ export class ExecutiveDashboardService {
   }
 
   private firstRow(value: unknown): AnalyticsRow {
-    if (Array.isArray(value)) {
+    if (this.isUnknownArray(value)) {
       const first = value[0];
       return this.isRow(first) ? first : {};
     }
@@ -242,9 +242,13 @@ export class ExecutiveDashboardService {
   }
 
   private rows(value: unknown): AnalyticsRow[] {
-    return Array.isArray(value)
+    return this.isUnknownArray(value)
       ? value.filter((item): item is AnalyticsRow => this.isRow(item))
       : [];
+  }
+
+  private isUnknownArray(value: unknown): value is readonly unknown[] {
+    return Array.isArray(value);
   }
 
   private isRow(value: unknown): value is AnalyticsRow {
@@ -456,73 +460,54 @@ export class ExecutiveDashboardService {
 
   private mapSalesValue(rows: AnalyticsRow[]): SalesValueKpi[] {
     return rows.map((row) => ({
-      currency: this.string(row.currency, 'UNKNOWN'),
-      opportunities: this.number(row.opportunities),
+      stageUuid: this.stringOrNull(row.stageUuid),
+      count: this.number(row.count),
       totalValue: this.money(row.totalValue),
-      averageValue: this.money(row.averageValue),
+      weightedValue: this.money(row.weightedValue),
     }));
   }
 
   private mapSalesVolume(rows: AnalyticsRow[]): SalesVolumeKpi[] {
     return rows.map((row) => ({
       period: this.string(row.period),
-      status: this.string(row.status),
-      opportunities: this.number(row.opportunities),
-      won: this.number(row.won),
-      lost: this.number(row.lost),
-      deals: this.number(row.deals),
+      count: this.number(row.count),
     }));
   }
 
   private mapSalesRevenue(rows: AnalyticsRow[]): SalesRevenueKpi[] {
     return rows.map((row) => ({
       period: this.string(row.period),
-      currency: this.string(row.currency, 'UNKNOWN'),
-      closedRevenue: this.money(row.closedRevenue),
-      deals: this.number(row.deals),
+      revenue: this.money(row.revenue),
     }));
   }
 
   private mapAverageDeal(rows: AnalyticsRow[]): SalesAverageDealKpi[] {
     return rows.map((row) => ({
-      currency: this.string(row.currency, 'UNKNOWN'),
-      deals: this.number(row.deals),
-      averageValue: this.money(row.averageValue),
-      minValue: this.money(row.minValue),
-      maxValue: this.money(row.maxValue),
+      period: this.string(row.period),
+      averageDeal: this.money(row.averageDeal),
     }));
   }
 
   private mapForecast(row: AnalyticsRow): SalesForecastKpi {
     return {
-      target: 'expected-revenue',
-      forecast: this.number(row.forecast),
-      methodology: this.string(row.methodology),
-      confidence: row.confidence === 'NORMAL' ? 'NORMAL' : 'INSUFFICIENT_DATA',
-      minimumHistoricalDeals: this.number(row.minimumHistoricalDeals),
-      historicalAverageDeal: this.number(row.historicalAverageDeal),
-      weightedPipeline: this.number(row.weightedPipeline),
+      horizonDays: this.number(row.horizonDays),
+      expectedValue: this.money(row.expectedValue),
+      confidence: this.number(row.confidence),
     };
   }
 
   private mapAgentWorkload(rows: AnalyticsRow[]): AgentWorkloadKpi[] {
     return rows.map((row) => ({
-      agentUuid: this.string(row.agentUuid),
-      displayName: this.string(row.displayName),
-      leads: this.number(row.leads),
-      opportunities: this.number(row.opportunities),
-      properties: this.number(row.properties),
-      activities: this.number(row.activities),
+      agentUserUuid: this.string(row.agentUserUuid),
+      count: this.number(row.count),
     }));
   }
 
   private mapAgentActivity(rows: AnalyticsRow[]): AgentActivityKpi[] {
     return rows.map((row) => ({
-      agentUuid: this.string(row.agentUuid),
-      type: this.string(row.type),
-      status: this.string(row.status),
-      count: this.number(row.count),
+      agentUserUuid: this.string(row.agentUserUuid),
       category: this.string(row.category, 'OTHER'),
+      count: this.number(row.count),
     }));
   }
 
@@ -531,18 +516,18 @@ export class ExecutiveDashboardService {
     canReadRevenue: boolean,
   ): AgentConversionKpi[] {
     return rows.map((row) => ({
-      agentUuid: this.string(row.agentUuid),
+      agentUserUuid: this.string(row.agentUserUuid),
       opportunities: this.number(row.opportunities),
       wonDeals: this.number(row.wonDeals),
+      conversionRate: this.number(row.conversionRate),
       ...(canReadRevenue ? { revenue: this.money(row.revenue) } : {}),
     }));
   }
 
   private mapAgentProperties(rows: AnalyticsRow[]): AgentPropertyKpi[] {
     return rows.map((row) => ({
-      agentUuid: this.string(row.agentUuid),
-      activeProperties: this.number(row.activeProperties),
-      publishedProperties: this.number(row.publishedProperties),
+      agentUserUuid: this.string(row.agentUserUuid),
+      propertyCount: this.number(row.propertyCount),
     }));
   }
 
@@ -551,14 +536,10 @@ export class ExecutiveDashboardService {
     canReadRevenue: boolean,
   ): AgentScorecardKpi[] {
     return rows.map((row) => ({
-      agentUuid: this.string(row.agentUuid),
-      displayName: this.string(row.displayName),
+      agentUserUuid: this.string(row.agentUserUuid),
       leads: this.number(row.leads),
+      qualified: this.number(row.qualified),
       opportunities: this.number(row.opportunities),
-      properties: this.number(row.properties),
-      activities: this.number(row.activities),
-      activeProperties: this.number(row.activeProperties),
-      publishedProperties: this.number(row.publishedProperties),
       wonDeals: this.number(row.wonDeals),
       conversionRate: this.number(row.conversionRate),
       ...(canReadRevenue ? { revenue: this.money(row.revenue) } : {}),
@@ -572,9 +553,6 @@ export class ExecutiveDashboardService {
   }
 
   private canForecast(user: AccessTokenClaims): boolean {
-    return (
-      (user.permissions ?? []).includes('analytics.forecast') ||
-      (user.permissions ?? []).includes('analytics.manage')
-    );
+    return (user.permissions ?? []).includes('analytics.forecast.read');
   }
 }
