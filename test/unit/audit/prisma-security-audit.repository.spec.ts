@@ -36,11 +36,9 @@ type AuditChangeCreateManyArgs = {
 type UserFindFirst = (
   args: unknown,
 ) => Promise<{ id: bigint; uuid: string } | null>;
-
 type AuditLogCreate = (
   args: AuditLogCreateArgs,
 ) => Promise<{ id: bigint }>;
-
 type AuditLogChangeCreateMany = (
   args: AuditChangeCreateManyArgs,
 ) => Promise<void>;
@@ -49,11 +47,7 @@ type AuditTransaction = {
   authenticationUser: { findFirst: UserFindFirst };
   authorizationRole: { findFirst: UserFindFirst };
   authorizationPermission: { findFirst: UserFindFirst };
-  auditLog: {
-    create: AuditLogCreate;
-    findMany: (args: unknown) => Promise<unknown>;
-    count: (args: unknown) => Promise<number>;
-  };
+  auditLog: { create: AuditLogCreate };
   auditLogChange: { createMany: AuditLogChangeCreateMany };
 };
 
@@ -80,12 +74,6 @@ const createTransaction = (
   },
   auditLog: {
     create: auditLogCreate,
-    findMany: vi
-      .fn<(args: unknown) => Promise<unknown>>()
-      .mockResolvedValue([]),
-    count: vi
-      .fn<(args: unknown) => Promise<number>>()
-      .mockResolvedValue(0),
   },
   auditLogChange: {
     createMany:
