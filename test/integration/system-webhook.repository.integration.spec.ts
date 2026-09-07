@@ -93,19 +93,23 @@ describe('System webhook repository integration', () => {
     expect(createdCount).toBe(1);
     expect(new Set(results.map((result) => result.record.uuid)).size).toBe(1);
 
-    const persisted = await prisma.$queryRaw<PersistedDelivery[]>(Prisma.sql`
-      SELECT
-        uuid,
-        event_id AS eventId,
-        delivery_key AS deliveryKey,
-        payload
-      FROM system_webhook_deliveries
-      WHERE subscription_id = ${subscriptionId}
-        AND event_id = ${eventId}
-    `);
-    expect(persisted).toHaveLength(1);
-    expect(persisted[0]?.eventId).toBe(eventId);
-    expect(persisted[0]?.deliveryKey).toBe(eventId);
-    expect(persisted[0]?.payload).toEqual({ index: expect.any(Number) });
+    await expect(
+      prisma.$queryRaw<PersistedDelivery[]>(Prisma.sql`
+        SELECT
+          uuid,
+          event_id AS eventId,
+          delivery_key AS deliveryKey,
+          payload
+        FROM system_webhook_deliveries
+        WHERE subscription_id = ${subscriptionId}
+          AND event_id = ${eventId}
+      `),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        eventId,
+        deliveryKey: eventId,
+        payload: { index: expect.any(Number) },
+      }),
+    ]);
   });
 });
