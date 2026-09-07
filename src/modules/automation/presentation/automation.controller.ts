@@ -199,7 +199,7 @@ export class AutomationController {
 
   @Get('metrics')
   @RequirePermissions('automation.executions.read')
-  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 200, type: Object })
   metrics(@Req() req: Request) {
     return this.automation.dashboard(actor(req));
   }
