@@ -88,8 +88,7 @@ const deps = () => ({
       .mockImplementation(async (_uuid, input) =>
         job({
           ...(input as Partial<SystemExportJobRecord>),
-          state:
-            (input as Partial<SystemExportJobRecord>).state ?? 'RUNNING',
+          state: (input as Partial<SystemExportJobRecord>).state ?? 'RUNNING',
         }),
       ),
     deleteMany: vi
@@ -104,9 +103,7 @@ const deps = () => ({
   },
   storage: {
     remove: vi.fn().mockResolvedValue(undefined),
-    putStream: vi
-      .fn()
-      .mockResolvedValue({ path: 'exports/job-1.csv' }),
+    putStream: vi.fn().mockResolvedValue({ path: 'exports/job-1.csv' }),
     size: vi.fn().mockResolvedValue(100),
     stream: vi.fn().mockReturnValue('stream'),
   },
@@ -230,51 +227,49 @@ describe('SystemExportService coverage', () => {
     expect(d.storage.remove).toHaveBeenCalledWith('exports/job-1.csv');
 
     d.jobs.findByUuid.mockResolvedValueOnce(null);
-    await expect(
-      service.retry('actor-1', 'missing'),
-    ).rejects.toBeInstanceOf(NotFoundException);
-
-    d.jobs.findByUuid.mockResolvedValueOnce(
-      job({ state: 'SUCCEEDED' }),
+    await expect(service.retry('actor-1', 'missing')).rejects.toBeInstanceOf(
+      NotFoundException,
     );
-    await expect(
-      service.retry('actor-1', 'job-1'),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    d.jobs.findByUuid.mockResolvedValueOnce(job({ state: 'SUCCEEDED' }));
+    await expect(service.retry('actor-1', 'job-1')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
 
     d.jobs.findByUuid.mockResolvedValueOnce(
       job({ state: 'FAILED', artifactPath: null }),
     );
     d.jobs.countRunning.mockResolvedValueOnce(2);
-    await expect(
-      service.retry('actor-1', 'job-1'),
-    ).rejects.toMatchObject({ status: 429 });
+    await expect(service.retry('actor-1', 'job-1')).rejects.toMatchObject({
+      status: 429,
+    });
   });
 
   it('covers cancel and cleanup branches', async () => {
     d.jobs.findByUuid.mockResolvedValueOnce(job({ state: 'QUEUED' }));
-    await expect(
-      service.cancel('actor-1', 'job-1'),
-    ).resolves.toMatchObject({ state: 'CANCELLED' });
+    await expect(service.cancel('actor-1', 'job-1')).resolves.toMatchObject({
+      state: 'CANCELLED',
+    });
 
     d.jobs.findByUuid.mockResolvedValueOnce(job({ state: 'RUNNING' }));
-    await expect(
-      service.cancel('actor-1', 'job-1'),
-    ).resolves.toMatchObject({ state: 'RUNNING' });
+    await expect(service.cancel('actor-1', 'job-1')).resolves.toMatchObject({
+      state: 'RUNNING',
+    });
     expect(d.jobs.update).toHaveBeenCalledWith('job-1', {
       cancelRequested: true,
     });
 
     for (const state of ['SUCCEEDED', 'FAILED', 'CANCELLED'] as const) {
       d.jobs.findByUuid.mockResolvedValueOnce(job({ state }));
-      await expect(
-        service.cancel('actor-1', 'job-1'),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(service.cancel('actor-1', 'job-1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
     }
 
     d.jobs.findByUuid.mockResolvedValueOnce(null);
-    await expect(
-      service.cancel('actor-1', 'missing'),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.cancel('actor-1', 'missing')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
 
     d.jobs.listExpired.mockResolvedValueOnce([]);
     await expect(service.cleanup(0)).resolves.toEqual({
@@ -361,8 +356,7 @@ describe('SystemExportService coverage', () => {
           format,
           filters: {
             limit: 1,
-            columns:
-              format === 'csv' ? ['uuid', 'summary'] : undefined,
+            columns: format === 'csv' ? ['uuid', 'summary'] : undefined,
           },
           artifactPath: null,
         }),
@@ -441,7 +435,7 @@ describe('SystemExportService coverage', () => {
         job({
           state: 'QUEUED',
           format: 'csv',
-          filters: { limit: 1, columns } as never,
+          filters: { limit: 1, columns },
         }),
       );
       d.jobs.findByUuid.mockResolvedValue(
