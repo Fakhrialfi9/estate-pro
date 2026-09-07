@@ -1,12 +1,16 @@
 import { MIN_SAFE_SCORE } from './matching.types.js';
 import type {
-  BudgetPreference,
   BehavioralSignal,
   MatchCandidate,
   MatchExplanation,
   MatchResult,
   PropertyPreferenceState,
 } from './matching.types.js';
+import {
+  DEFAULT_MATCHING_RULE,
+  type MatchingRuleRecord,
+  type MatchingRuleWeightKey,
+} from './matching-rule.js';
 
 const clamp = (value: number, min = 0, max = 100): number =>
   Math.min(max, Math.max(min, value));
@@ -129,7 +133,7 @@ const moneyToCents = (value: string | null | undefined): bigint | null => {
   return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
 };
 const budgetFit = (
-  preference: BudgetPreference | undefined,
+  preference: PropertyPreferenceState['budget'],
   candidate: MatchCandidate,
 ): boolean => {
   if (!preference) return true;
@@ -160,43 +164,48 @@ const budgetFit = (
   if (effectiveMin != null && high < effectiveMin) return false;
   return true;
 };
+
 const evaluateHardCriteria = (
   preference: PropertyPreferenceState,
   candidate: MatchCandidate,
+  globallyHardCriteria: readonly string[],
 ): string[] => {
   const failures: string[] = [];
+  const hard = new Set([...preference.hardCriteria, ...globallyHardCriteria]);
   if (
-    preference.hardCriteria.includes('transactionType') &&
+    hard.has('transactionType') &&
     !preference.transactionTypes.includes(candidate.transactionType)
   )
     failures.push('transactionType');
   if (
-    preference.hardCriteria.includes('propertyType') &&
+    hard.has('propertyType') &&
     !preference.propertyTypeUuids.includes(candidate.propertyTypeUuid)
   )
     failures.push('propertyType');
   if (
-    preference.hardCriteria.includes('propertyCategory') &&
+    hard.has('propertyCategory') &&
     !preference.propertyCategoryUuids.includes(candidate.propertyCategoryUuid)
   )
     failures.push('propertyCategory');
   if (
-    preference.hardCriteria.includes('location') &&
+    hard.has('location') &&
     !locationHardMatch(preference.location, candidate.location)
   )
     failures.push('location');
-  if (
-    preference.hardCriteria.includes('budget') &&
-    !budgetFit(preference.budget, candidate)
-  )
+  if (hard.has('budget') && !budgetFit(preference.budget, candidate))
     failures.push('budget');
   return failures;
 };
+
 const weightedScore = (
   preference: PropertyPreferenceState,
   candidate: MatchCandidate,
   signal: BehavioralSignal,
+  rule: MatchingRuleRecord | undefined,
 ): { score: number; explanation: MatchExplanation } => {
+  const weights = rule?.weights ?? DEFAULT_MATCHING_RULE;
+  const weight = (key: MatchingRuleWeightKey): number =>
+    weights[key] ?? DEFAULT_MATCHING_RULE[key] ?? 0;
   const contributions: { criterion: string; points: number }[] = [];
   const matched: string[] = [];
   const missed: string[] = [];
@@ -207,127 +216,118 @@ const weightedScore = (
   };
   let possible = 0;
   let earned = 0;
-  const hard = new Set(preference.hardCriteria);
-  if (preference.transactionTypes.length > 0 && !hard.has('transactionType')) {
-    possible += 30;
-    const points = preference.transactionTypes.includes(
-      candidate.transactionType,
-    )
-      ? 30
-      : 0;
-    earned += points;
-    add('transactionType', points, points > 0);
-  }
-  if (preference.propertyTypeUuids.length > 0 && !hard.has('propertyType')) {
-    possible += 15;
-    const points = preference.propertyTypeUuids.includes(
-      candidate.propertyTypeUuid,
-    )
-      ? 15
-      : 0;
-    earned += points;
-    add('propertyType', points, points > 0);
-  }
+  const hard = new Set([
+    ...preference.hardCriteria,
+    ...(rule?.hardCriteria ?? []),
+  ]);
+  const scoreCriterion = (
+    key: MatchingRuleWeightKey,
+    criterion: string,
+    ok: boolean,
+  ): void => {
+    const points = weight(key);
+    if (points <= 0) return;
+    possible += points;
+    const earnedPoints = ok ? points : 0;
+    earned += earnedPoints;
+    add(criterion, earnedPoints, ok);
+  };
+
+  if (preference.transactionTypes.length > 0 && !hard.has('transactionType'))
+    scoreCriterion(
+      'transactionType',
+      'transactionType',
+      preference.transactionTypes.includes(candidate.transactionType),
+    );
+  if (preference.propertyTypeUuids.length > 0 && !hard.has('propertyType'))
+    scoreCriterion(
+      'propertyType',
+      'propertyType',
+      preference.propertyTypeUuids.includes(candidate.propertyTypeUuid),
+    );
   if (
     preference.propertyCategoryUuids.length > 0 &&
     !hard.has('propertyCategory')
-  ) {
-    possible += 10;
-    const points = preference.propertyCategoryUuids.includes(
-      candidate.propertyCategoryUuid,
-    )
-      ? 10
-      : 0;
-    earned += points;
-    add('propertyCategory', points, points > 0);
-  }
-  if (preference.budget && !hard.has('budget')) {
-    possible += 20;
-    const points = budgetFit(preference.budget, candidate) ? 20 : 0;
-    earned += points;
-    add('budget', points, points > 0);
-    if (!points) penalties.push('budget_mismatch');
-  }
-  if (preference.location && !hard.has('location')) {
-    possible += 15;
-    const points = Math.round(
-      locationScore(preference.location, candidate.location) * 15,
+  )
+    scoreCriterion(
+      'propertyCategory',
+      'propertyCategory',
+      preference.propertyCategoryUuids.includes(candidate.propertyCategoryUuid),
     );
-    earned += points;
-    add('location', points, points > 0);
+  if (preference.budget && !hard.has('budget')) {
+    const ok = budgetFit(preference.budget, candidate);
+    scoreCriterion('budget', 'budget', ok);
+    if (!ok) penalties.push('budget_mismatch');
   }
+  if (preference.location && !hard.has('location'))
+    scoreCriterion(
+      'location',
+      'location',
+      locationScore(preference.location, candidate.location) > 0,
+    );
+
   const specification = preference.specification;
   const candidateSpecification = candidate.specification;
-  if (specification?.bedrooms) {
-    possible += 5;
-    const points = rangeMatch(
-      candidateSpecification?.bedrooms ?? null,
-      specification.bedrooms,
-    )
-      ? 5
-      : 0;
-    earned += points;
-    add('bedrooms', points, points > 0);
+  if (specification?.bedrooms)
+    scoreCriterion(
+      'bedrooms',
+      'bedrooms',
+      rangeMatch(candidateSpecification?.bedrooms ?? null, specification.bedrooms),
+    );
+  if (specification?.bathrooms)
+    scoreCriterion(
+      'bathrooms',
+      'bathrooms',
+      stringRangeMatch(
+        candidateSpecification?.bathrooms ?? null,
+        specification.bathrooms,
+      ),
+    );
+  if (specification?.areaSqm)
+    scoreCriterion(
+      'areaSqm',
+      'areaSqm',
+      stringRangeMatch(
+        candidateSpecification?.buildingAreaSqm ?? null,
+        specification.areaSqm,
+      ),
+    );
+  if (specification?.parkingSpaces)
+    scoreCriterion(
+      'parkingSpaces',
+      'parkingSpaces',
+      rangeMatch(
+        candidateSpecification?.parkingSpaces ?? null,
+        specification.parkingSpaces,
+      ),
+    );
+  if (specification?.furnishedStatus)
+    scoreCriterion(
+      'furnishedStatus',
+      'furnishedStatus',
+      candidateSpecification?.furnishedStatus === specification.furnishedStatus,
+    );
+  if (specification?.condition)
+    scoreCriterion(
+      'condition',
+      'condition',
+      candidateSpecification?.condition === specification.condition,
+    );
+
+  const behaviorWeight = weight('behavior');
+  if (behaviorWeight > 0) {
+    possible += behaviorWeight;
+    let behavior = 0;
+    if (signal.saved) behavior += behaviorWeight * 0.4;
+    if (signal.viewedAt) behavior += behaviorWeight * 0.2;
+    if (signal.inquiryCount > 0) behavior += behaviorWeight * 0.4;
+    else if (signal.viewCount > 0) behavior += behaviorWeight * 0.1;
+    behavior = Math.min(behaviorWeight, behavior);
+    earned += behavior;
+    contributions.push({ criterion: 'behavior', points: behavior });
+    if (behavior > 0) matched.push('behavior');
   }
-  if (specification?.bathrooms) {
-    possible += 5;
-    const points = stringRangeMatch(
-      candidateSpecification?.bathrooms ?? null,
-      specification.bathrooms,
-    )
-      ? 5
-      : 0;
-    earned += points;
-    add('bathrooms', points, points > 0);
-  }
-  if (specification?.areaSqm) {
-    possible += 5;
-    const points = stringRangeMatch(
-      candidateSpecification?.buildingAreaSqm ?? null,
-      specification.areaSqm,
-    )
-      ? 5
-      : 0;
-    earned += points;
-    add('areaSqm', points, points > 0);
-  }
-  if (specification?.parkingSpaces) {
-    possible += 5;
-    const points = rangeMatch(
-      candidateSpecification?.parkingSpaces ?? null,
-      specification.parkingSpaces,
-    )
-      ? 5
-      : 0;
-    earned += points;
-    add('parkingSpaces', points, points > 0);
-  }
-  if (specification?.furnishedStatus) {
-    possible += 5;
-    const points =
-      candidateSpecification?.furnishedStatus === specification.furnishedStatus
-        ? 5
-        : 0;
-    earned += points;
-    add('furnishedStatus', points, points > 0);
-  }
-  if (specification?.condition) {
-    possible += 5;
-    const points =
-      candidateSpecification?.condition === specification.condition ? 5 : 0;
-    earned += points;
-    add('condition', points, points > 0);
-  }
-  possible += 10;
-  let behavior = 0;
-  if (signal.saved) behavior += 4;
-  if (signal.viewedAt) behavior += 2;
-  if (signal.inquiryCount > 0) behavior += 4;
-  else if (signal.viewCount > 0) behavior += 1;
-  behavior = Math.min(10, behavior);
-  earned += behavior;
-  contributions.push({ criterion: 'behavior', points: behavior });
-  if (behavior > 0) matched.push('behavior');
+
   const score =
     possible === 0 ? 0 : Math.round((earned / possible) * 10000) / 100;
   return {
@@ -341,13 +341,19 @@ export class MatchingEngine {
     preference: PropertyPreferenceState,
     candidates: readonly MatchCandidate[],
     signals: ReadonlyMap<string, BehavioralSignal>,
+    rule?: MatchingRuleRecord,
   ): MatchResult[] {
     const candidateByListing = new Map(
       candidates.map((candidate) => [candidate.listingUuid, candidate]),
     );
     const results: MatchResult[] = [];
+    const globallyHardCriteria = rule?.hardCriteria ?? [];
     for (const candidate of candidates) {
-      if (evaluateHardCriteria(preference, candidate).length > 0) continue;
+      if (
+        evaluateHardCriteria(preference, candidate, globallyHardCriteria).length >
+        0
+      )
+        continue;
       const result = weightedScore(
         preference,
         candidate,
@@ -357,8 +363,10 @@ export class MatchingEngine {
           inquiryCount: 0,
           viewCount: 0,
         },
+        rule,
       );
-      if (result.score < MIN_SAFE_SCORE) continue;
+      if (result.score < Math.max(MIN_SAFE_SCORE, rule?.minimumScore ?? 0))
+        continue;
       results.push({
         propertyUuid: candidate.propertyUuid,
         listingUuid: candidate.listingUuid,
