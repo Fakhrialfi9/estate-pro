@@ -43,7 +43,9 @@ export class PrismaAuthenticationSecurityRepository
   private readonly security: Delegate;
 
   constructor(private readonly prisma: PrismaService) {
-    this.security = (prisma as unknown as PrismaShape).authenticationUserSecurity;
+    this.security = (
+      prisma as unknown as PrismaShape
+    ).authenticationUserSecurity;
   }
 
   async getState(userUuid: string): Promise<AuthenticationSecurityState> {
