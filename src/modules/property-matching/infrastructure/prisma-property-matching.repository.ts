@@ -776,6 +776,7 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
       version: preference.version,
       transactionTypes: preference.transactionTypes,
       propertyTypeUuids: preference.propertyTypeUuids,
+      propertyCategoryUuids: preference.propertyCategoryUuids,
       hardCriteria: preference.hardCriteria,
       countryUuid: preference.location?.countryUuid ?? null,
       provinceUuid: preference.location?.provinceUuid ?? null,
