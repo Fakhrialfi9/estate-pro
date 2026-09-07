@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   format:
@@ -33,13 +33,17 @@ jobs:
           "test/**/*.ts"
           --no-error-on-unmatched-pattern
 
-      - name: Remove formatter workflow
-        run: git rm .github/workflows/_format-once.yml
-
-      - name: Commit formatted baseline
+      - name: Collect formatted files
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "style: normalize repository formatting [skip ci]"
-          git push origin HEAD:main
+          git diff --name-only > /tmp/formatted-files.txt
+          git diff --binary > /tmp/repository-format.patch
+          tar -czf /tmp/formatted-files.tar.gz -T /tmp/formatted-files.txt
+
+      - name: Upload formatting artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: estate-pro-format-patch
+          path: |
+            /tmp/formatted-files.txt
+            /tmp/repository-format.patch
+            /tmp/formatted-files.tar.gz
