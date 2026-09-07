@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -10,9 +10,7 @@ import type { Request } from 'express';
 import { AuthenticatedAccessGuard } from '../../../common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../../common/security/authorization.guard.js';
 import { RequirePermissions } from '../../../common/security/authorization.decorators.js';
-import { SystemObservabilityService } from '../application/services/system-observability.service.js';
 import { SystemOperationsService } from '../application/services/system-operations.service.js';
-import { ObservabilityQueryDto } from './dto/observability-query.dto.js';
 
 const operationalStateSchema = {
   type: 'object',
@@ -41,11 +39,6 @@ const diagnosticsSchema = {
   },
 };
 
-const metricSchema = {
-  type: 'object',
-  additionalProperties: true,
-};
-
 class ToggleOperationDto {
   @IsBoolean()
   enabled!: boolean;
@@ -56,10 +49,7 @@ class ToggleOperationDto {
 @Controller({ path: 'system/operations', version: '1' })
 @UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
 export class OperationsController {
-  constructor(
-    private readonly operations: SystemOperationsService,
-    private readonly observability: SystemObservabilityService,
-  ) {}
+  constructor(private readonly operations: SystemOperationsService) {}
 
   @Get()
   @RequirePermissions('system.operations.read')
@@ -75,28 +65,6 @@ export class OperationsController {
   @ApiResponse({ status: 200, schema: diagnosticsSchema })
   diagnostics() {
     return this.operations.diagnostics();
-  }
-
-  @Get('/../observability/import-export-metrics')
-  @RequirePermissions('system.operations.read')
-  @ApiOperation({ summary: 'Read bounded import/export operational metrics' })
-  @ApiResponse({ status: 200, schema: metricSchema })
-  importExportMetrics(@Query() query: ObservabilityQueryDto) {
-    const dates = query.toDates();
-    return this.observability.importExportMetrics(dates.from, dates.to);
-  }
-
-  @Get('/../observability/delivery-metrics')
-  @RequirePermissions('system.operations.read')
-  @ApiOperation({ summary: 'Read bounded webhook delivery metrics' })
-  @ApiResponse({ status: 200, schema: metricSchema })
-  deliveryMetrics(@Query() query: ObservabilityQueryDto) {
-    const dates = query.toDates();
-    return this.observability.deliveryMetrics(
-      dates.from,
-      dates.to,
-      dates.subscriptionUuid,
-    );
   }
 
   @Patch('maintenance')
