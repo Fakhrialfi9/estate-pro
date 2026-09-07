@@ -5,8 +5,60 @@ const SUBJECT_TYPE = 'CRM_CONTACT';
 const SUBJECT_UUID = seedUuid('crm-contact', 'buyer-01');
 const PROPERTY_UUID = seedUuid('property', 'dago-apartment');
 const LISTING_UUID = seedUuid('property-listing', 'dago-apartment');
+const MATCHING_RULE_UUID = seedUuid('matching-rule', 'default-v1');
 
 export async function seedPropertyMatching(tx: SeedTransaction): Promise<void> {
+  await tx.matchingRule.upsert({
+    where: { uuid: MATCHING_RULE_UUID },
+    update: {
+      name: 'default',
+      version: 1,
+      weights: {
+        transactionType: 30,
+        propertyType: 15,
+        propertyCategory: 10,
+        budget: 20,
+        location: 15,
+        bedrooms: 5,
+        bathrooms: 5,
+        areaSqm: 5,
+        parkingSpaces: 5,
+        furnishedStatus: 5,
+        condition: 5,
+        behavior: 10,
+      },
+      hardCriteria: [],
+      minimumScore: '0.00',
+      isActive: true,
+      createdBy: 'system',
+      activatedAt: SEED_REFERENCE_DATE,
+    },
+    create: {
+      uuid: MATCHING_RULE_UUID,
+      name: 'default',
+      version: 1,
+      weights: {
+        transactionType: 30,
+        propertyType: 15,
+        propertyCategory: 10,
+        budget: 20,
+        location: 15,
+        bedrooms: 5,
+        bathrooms: 5,
+        areaSqm: 5,
+        parkingSpaces: 5,
+        furnishedStatus: 5,
+        condition: 5,
+        behavior: 10,
+      },
+      hardCriteria: [],
+      minimumScore: '0.00',
+      isActive: true,
+      createdBy: 'system',
+      activatedAt: SEED_REFERENCE_DATE,
+    },
+  });
+
   await tx.propertyPreference.upsert({
     where: { subjectType_subjectUuid: { subjectType: SUBJECT_TYPE, subjectUuid: SUBJECT_UUID } },
     update: {
