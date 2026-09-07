@@ -109,6 +109,7 @@ describe('SystemIntegrationService coverage', () => {
         capabilities: [],
       } as never),
     ).toThrow('Integration provider identity is required');
+    d.repository.get.mockResolvedValueOnce(null);
     await expect(service.providerFor('missing')).rejects.toBeInstanceOf(
       NotFoundException,
     );
