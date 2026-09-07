@@ -26,7 +26,7 @@ const agent = {
   licenseNumberMasked: null,
   timeZone: 'UTC',
   maxActiveAssignments: 10,
-  availability: { status: 'ACTIVE', timeZone: 'UTC' },
+  availability: { status: 'AVAILABLE', timeZone: 'UTC' },
   weeklySchedules: [],
   availabilityExceptions: [],
   assignments: [],
@@ -281,6 +281,20 @@ describe('AgentManagementService coverage', () => {
   });
 
   it('covers assignment history and current views', async () => {
+    const now = new Date();
+    d.repo.findProfile.mockResolvedValue({
+      ...agent,
+      availability: { status: 'ACTIVE', timeZone: 'UTC' },
+      weeklySchedules: [
+        {
+          weekday: now.getUTCDay(),
+          startTime: '00:00',
+          endTime: '23:59',
+        },
+      ],
+      availabilityExceptions: [],
+    });
+
     await expect(
       service.assign('property-1', 'agent-1', actor, 'manual'),
     ).resolves.toEqual({ uuid: 'assignment-1' });
