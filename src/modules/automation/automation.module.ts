@@ -126,10 +126,15 @@ const ACTION_HANDLERS = [
     },
     {
       provide: AUTOMATION_NOTIFICATION_PORT,
-      inject: [AutomationService, AutomationNotificationService],
+      inject: [
+        AutomationService,
+        AutomationNotificationService,
+        AutomationNotificationDeliveryService,
+      ],
       useFactory: (
         automation: AutomationService,
         notifications: AutomationNotificationService,
+        delivery: AutomationNotificationDeliveryService,
       ): AutomationNotificationPort => ({
         createNotification: (input) => notifications.createNotification(input),
         listNotifications: (input) => automation.listNotifications(input),
@@ -179,6 +184,8 @@ const ACTION_HANDLERS = [
           ),
         listDeliveries: (notificationUuid) =>
           notifications.listDeliveries(notificationUuid),
+        retryDelivery: (uuid, actorUuid) => delivery.retry(uuid, actorUuid),
+        processDueDeliveries: (limit) => delivery.processDue(limit),
       }),
     },
     AutomationScheduler,
