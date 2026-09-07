@@ -57,7 +57,11 @@ export class AgentManagementController {
   @Get()
   @RequirePermissions('agents.read')
   @ApiOperation({ summary: 'List agents' })
-  @ApiResponse({ status: 200, description: 'Cursor-paginated agent directory', type: Object })
+  @ApiResponse({
+    status: 200,
+    description: 'Cursor-paginated agent directory',
+    type: Object,
+  })
   list(
     @Req() r: AuthRequest,
     @Query('limit') limit?: string,
