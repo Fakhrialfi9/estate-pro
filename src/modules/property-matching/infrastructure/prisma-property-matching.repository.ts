@@ -687,6 +687,55 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
     });
   }
 
+  async listSavedListings(
+    subjectUuid: string,
+  ): Promise<readonly SavedProperty[]> {
+    const rows = await this.prisma.propertyListingEngagement.findMany({
+      where: {
+        userUuid: subjectUuid,
+        isSaved: true,
+        listing: {
+          status: 'PUBLISHED',
+          visibility: 'PUBLIC',
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          property: {
+            is: {
+              deletedAt: null,
+              status: 'ACTIVE',
+              availabilityStatus: 'AVAILABLE',
+            },
+          },
+        },
+      },
+      select: {
+        listing: {
+          select: {
+            uuid: true,
+            transactionType: true,
+            publishedAt: true,
+            property: { select: { uuid: true, title: true } },
+            price: {
+              select: {
+                currency: true,
+                priceType: true,
+                minPrice: true,
+                maxPrice: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { listing: { publishedAt: 'desc' } },
+    });
+    return rows.map((row) => ({
+      uuid: row.listing.uuid,
+      transactionType: row.listing.transactionType,
+      publishedAt: row.listing.publishedAt,
+      property: row.listing.property,
+      price: row.listing.price,
+    }));
+  }
+
   async getPreferenceSubjectScope(
     subjectType: MatchingSubjectType,
     subjectUuid: string,
@@ -701,18 +750,18 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
     if (subjectType === 'CONTACT') {
       const contact = await this.prisma.crmContact.findUnique({
         where: { uuid: subjectUuid },
-        select: { uuid: true, ownerUser: { select: { uuid: true } } },
+        select: { uuid: true, ownerUserUuid: true },
       });
       return contact
-        ? { uuid: contact.uuid, ownerUserUuid: contact.ownerUser?.uuid ?? null }
+        ? { uuid: contact.uuid, ownerUserUuid: contact.ownerUserUuid }
         : null;
     }
     const lead = await this.prisma.crmLead.findUnique({
       where: { uuid: subjectUuid },
-      select: { uuid: true, ownerUser: { select: { uuid: true } } },
+      select: { uuid: true, ownerUserUuid: true },
     });
     return lead
-      ? { uuid: lead.uuid, ownerUserUuid: lead.ownerUser?.uuid ?? null }
+      ? { uuid: lead.uuid, ownerUserUuid: lead.ownerUserUuid }
       : null;
   }
 
@@ -727,7 +776,6 @@ export class PrismaPropertyMatchingRepository implements MatchingRepository {
       version: preference.version,
       transactionTypes: preference.transactionTypes,
       propertyTypeUuids: preference.propertyTypeUuids,
-      propertyCategoryUuids: preference.propertyCategoryUuids,
       hardCriteria: preference.hardCriteria,
       countryUuid: preference.location?.countryUuid ?? null,
       provinceUuid: preference.location?.provinceUuid ?? null,
