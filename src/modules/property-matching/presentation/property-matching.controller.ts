@@ -123,7 +123,7 @@ const arrayResponseSchema = {
 @ApiTags('Property Matching')
 @ApiBearerAuth()
 @Controller({ path: 'property-matching', version: '1' })
-@UseGuards(AuthenticatedAccessGuard, AuthorizationGuard)
+@UseGuards(AuthenticatedAccessGuard)
 export class PropertyMatchingController {
   constructor(
     private readonly matching: PropertyMatchingService,
@@ -131,6 +131,7 @@ export class PropertyMatchingController {
   ) {}
 
   @Get('rules/active')
+  @UseGuards(AuthorizationGuard)
   @RequirePermissions('property-matching.rules.read')
   @ApiOperation({ summary: 'Read the active property matching rule' })
   @ApiResponse({ status: 200, schema: objectResponseSchema })
@@ -139,6 +140,7 @@ export class PropertyMatchingController {
   }
 
   @Get('rules')
+  @UseGuards(AuthorizationGuard)
   @RequirePermissions('property-matching.rules.read')
   @ApiOperation({ summary: 'List versioned property matching rules' })
   @ApiResponse({ status: 200, schema: objectResponseSchema })
@@ -147,6 +149,7 @@ export class PropertyMatchingController {
   }
 
   @Get('rules/:uuid')
+  @UseGuards(AuthorizationGuard)
   @RequirePermissions('property-matching.rules.read')
   @ApiOperation({ summary: 'Read a property matching rule version' })
   @ApiResponse({ status: 200, schema: objectResponseSchema })
@@ -155,6 +158,7 @@ export class PropertyMatchingController {
   }
 
   @Post('rules')
+  @UseGuards(AuthorizationGuard)
   @RequirePermissions('property-matching.rules.manage')
   @ApiOperation({ summary: 'Create a versioned property matching rule' })
   @ApiResponse({ status: 201, schema: objectResponseSchema })
@@ -174,6 +178,7 @@ export class PropertyMatchingController {
   }
 
   @Patch('rules/:uuid')
+  @UseGuards(AuthorizationGuard)
   @RequirePermissions('property-matching.rules.manage')
   @ApiOperation({ summary: 'Create the next immutable matching rule version' })
   @ApiResponse({ status: 200, schema: objectResponseSchema })
@@ -200,6 +205,7 @@ export class PropertyMatchingController {
 
   @Post('rules/:uuid/activate')
   @HttpCode(200)
+  @UseGuards(AuthorizationGuard)
   @RequirePermissions('property-matching.rules.manage')
   @ApiOperation({ summary: 'Activate a matching rule version' })
   @ApiResponse({ status: 200, schema: objectResponseSchema })
