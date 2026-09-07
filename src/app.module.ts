@@ -34,6 +34,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module.js';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      ignoreEnvFile: process.env.NODE_ENV === 'test',
       load: configuration,
       validate: (env: Record<string, unknown>): Record<string, unknown> => {
         const result = configurationValidationSchema.validate(env, {
