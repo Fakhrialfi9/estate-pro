@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../../prisma/generated/prisma/client.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service.js';
 import {
@@ -23,6 +23,7 @@ type StateRow = {
 export class SystemObservabilityMetricsService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(SYSTEM_METRICS_PORT)
     private readonly http: SystemMetricsPort,
   ) {}
 
@@ -436,12 +437,17 @@ function rangeOf(from?: Date, to?: Date) {
 
 function number(value: bigint | number | string | null | undefined): number {
   if (typeof value === 'bigint') return Number(value);
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') return Number(value);
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
   return 0;
 }
 
 function redact(value: string | null): string | null {
-  if (!value) return value;
-  return value.length > 200 ? `${value.slice(0, 200)}…` : value;
+  if (value === null) return null;
+  return value
+    .replace(/(token|password|secret|authorization)=\S+/gi, '$1=[REDACTED]')
+    .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]');
 }
