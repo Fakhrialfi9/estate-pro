@@ -3,6 +3,13 @@ import { registerAs } from '@nestjs/config';
 export default registerAs('system', () => ({
   webhookEncryptionKey: process.env.SYSTEM_WEBHOOK_ENCRYPTION_KEY,
   allowLocalWebhookHttp: process.env.SYSTEM_WEBHOOK_ALLOW_LOCAL_HTTP ?? 'false',
+  ssrf: {
+    allowedHosts: (process.env.SECURITY_SSRF_ALLOWED_HOSTS ?? '')
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean),
+    allowLocalhostHttp: process.env.SECURITY_SSRF_ALLOW_LOCALHOST_HTTP ?? 'false',
+  },
   export: {
     maxRows: Number(process.env.SYSTEM_EXPORT_MAX_ROWS ?? 10000),
     maxConcurrent: Number(process.env.SYSTEM_EXPORT_MAX_CONCURRENT ?? 2),
