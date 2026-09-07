@@ -24,7 +24,8 @@ const job = {
   filters: { limit: 10, columns: ['uuid', 'summary'] },
   estimatedRows: 2,
   expiresAt: new Date(Date.now() + 60_000),
-  downloadTokenHash: 'hash',
+  downloadTokenHash:
+    '3c469e9d6c5875d37a43f353d4f88e61fcf812c66eee3457465a40b0da4153e0',
   artifactPath: 'exports/job-1.csv',
   rows: 2,
   processedRows: 2,
@@ -192,11 +193,17 @@ describe('SystemExportService coverage', () => {
     });
 
     d.jobs.findByUuid.mockResolvedValueOnce({ ...job, state: 'RUNNING' });
+    d.jobs.update.mockResolvedValueOnce({
+      ...job,
+      state: 'RUNNING',
+      cancelRequested: true,
+    });
     const runningCancellation = await service.cancel('actor-1', 'job-1');
     expect(runningCancellation.state).toBe('RUNNING');
     expect(d.jobs.update).toHaveBeenCalledWith('job-1', {
       cancelRequested: true,
     });
+    expect(runningCancellation).toMatchObject({ cancelRequested: true });
 
     d.jobs.listExpired.mockResolvedValueOnce([
       { ...job, artifactPath: 'a' },
@@ -210,12 +217,6 @@ describe('SystemExportService coverage', () => {
   });
 
   it('validates download state and token expiration', async () => {
-    d.jobs.findByUuid.mockResolvedValueOnce({
-      ...job,
-      state: 'SUCCEEDED',
-      downloadTokenHash:
-        '3c469e9d6c5875d37a43f353d4f88e61fcf812c66eee3457465a40b0da4153e0',
-    });
     const result = await service.download('actor-1', 'job-1', 'token');
     expect(result.filename).toBe('job-1.csv');
     expect(result.stream).toBe('stream');
@@ -228,8 +229,6 @@ describe('SystemExportService coverage', () => {
     d.jobs.findByUuid.mockResolvedValueOnce({
       ...job,
       state: 'SUCCEEDED',
-      downloadTokenHash:
-        '3c469e9d6c5875d37a43f353d4f88e61fcf812c66eee3457465a40b0da4153e0',
       expiresAt: new Date(Date.now() - 1),
     });
     await expect(
