@@ -74,6 +74,7 @@ import { WebhookSecretService } from './infrastructure/webhook/webhook-secret.se
 import { WebhookSignerService } from './infrastructure/webhook/webhook-signer.service.js';
 import { EnvironmentIntegrationSecretResolverService } from './infrastructure/integration/environment-integration-secret-resolver.service.js';
 import { GenericHttpIntegrationProvider } from './infrastructure/integration/generic-http-integration.provider.js';
+import { SystemWebhookRetryWorker } from './infrastructure/webhook/system-webhook-retry.worker.js';
 import { SYSTEM_ACTIVITY_REPOSITORY } from './domain/repositories/system-activity.repository.js';
 import { SYSTEM_ARTIFACT_STORAGE } from './domain/repositories/system-artifact.storage.js';
 import { SYSTEM_EXPORT_REPOSITORY } from './domain/repositories/system-export.repository.js';
@@ -150,6 +151,7 @@ import {
     SystemXlsxExporterAdapter,
     SystemWebhookService,
     SystemWebhookRateLimitService,
+    SystemWebhookRetryWorker,
     SystemIntegrationService,
     SystemOperationsService,
     SystemObservabilityService,
