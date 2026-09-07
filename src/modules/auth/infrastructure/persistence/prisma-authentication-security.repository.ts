@@ -8,15 +8,9 @@ import type {
   SuccessfulLoginContext,
 } from '../../domain/repositories/authentication-security.repository.js';
 
-type SecurityRecord = {
-  userId: bigint;
-  user: { uuid: string };
-  failedLoginAttempts: number;
-  lockedUntil: Date | null;
-  lastLoginAt: Date | null;
-  lastLoginIp: string | null;
-  updatedAt: Date;
-};
+type SecurityRecord = Prisma.AuthenticationUserSecurityGetPayload<{
+  include: { user: { select: { uuid: true } } };
+}>;
 
 type LockedSecurityRecord = {
   id: bigint;
@@ -28,41 +22,27 @@ type LockedSecurityRecord = {
   updated_at: Date;
 };
 
-type Delegate = {
-  findFirst(args: unknown): Promise<SecurityRecord | null>;
-  create(args: unknown): Promise<SecurityRecord>;
-  updateMany(args: unknown): Promise<{ count: number }>;
-};
-
-type PrismaShape = { authenticationUserSecurity: Delegate };
-
 @Injectable()
 export class PrismaAuthenticationSecurityRepository
   implements AuthenticationSecurityRepository
 {
-  private readonly security: Delegate;
-
-  constructor(private readonly prisma: PrismaService) {
-    this.security = (
-      prisma as unknown as PrismaShape
-    ).authenticationUserSecurity;
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   async getState(userUuid: string): Promise<AuthenticationSecurityState> {
-    const existing = await this.security.findFirst({
+    const existing = await this.prisma.authenticationUserSecurity.findFirst({
       where: { user: { uuid: userUuid } },
       include: { user: { select: { uuid: true } } },
     });
     if (existing) return this.toState(existing);
 
     try {
-      const created = await this.security.create({
+      const created = await this.prisma.authenticationUserSecurity.create({
         data: { user: { connect: { uuid: userUuid } } },
         include: { user: { select: { uuid: true } } },
       });
       return this.toState(created);
     } catch {
-      const raced = await this.security.findFirst({
+      const raced = await this.prisma.authenticationUserSecurity.findFirst({
         where: { user: { uuid: userUuid } },
         include: { user: { select: { uuid: true } } },
       });
@@ -78,8 +58,6 @@ export class PrismaAuthenticationSecurityRepository
     now: Date,
     policy: AuthenticationLockoutPolicy,
   ): Promise<AuthenticationSecurityState> {
-    // Ensure the unique security row exists before attempting the row lock.
-    // The initialization path already handles concurrent creates safely.
     await this.getState(userUuid);
 
     return this.prisma.$transaction(async (tx) => {
@@ -123,7 +101,7 @@ export class PrismaAuthenticationSecurityRepository
     now: Date,
     context: SuccessfulLoginContext,
   ): Promise<void> {
-    await this.security.updateMany({
+    await this.prisma.authenticationUserSecurity.updateMany({
       where: {
         user: { uuid: userUuid },
         OR: [{ lockedUntil: null }, { lockedUntil: { lte: now } }],
