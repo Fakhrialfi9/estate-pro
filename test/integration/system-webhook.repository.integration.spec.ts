@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { Prisma } from '../../prisma/generated/prisma/client.js';
+import type { Prisma } from '../../prisma/generated/prisma/client.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AppModule } from '../../src/app.module.js';
