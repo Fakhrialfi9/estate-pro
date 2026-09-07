@@ -58,4 +58,5 @@ export const SYSTEM_PERMISSIONS = [
   { name: 'Read Job Metrics', code: 'system.jobs.metrics.read', module: 'system', domain: 'jobs', action: 'metrics:read' },
   { name: 'Read Integration Health', code: 'system.integration.health.read', module: 'system', domain: 'integration', action: 'health:read' },
   { name: 'Read External Dependency Health', code: 'system.external.health.read', module: 'system', domain: 'operations', action: 'health:read' },
+  { name: 'Read System Observability', code: 'system.observability.read', module: 'system', domain: 'observability', action: 'read' },
 ] as const;
