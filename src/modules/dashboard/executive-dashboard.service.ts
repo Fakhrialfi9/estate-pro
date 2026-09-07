@@ -3,7 +3,7 @@ import type { AccessTokenClaims } from '../../common/security/access-token-verif
 import {
   SYSTEM_OPERATIONS_PORT,
   type SystemOperationsPort,
-} from '../system/domain/operations/system-operations.port.js';
+} from '../system/system.module.js';
 import { AnalyticsService } from '../analytics/analytics.module.js';
 import type { ExecutiveDashboardQueryDto } from './executive-dashboard.query.dto.js';
 import type {
