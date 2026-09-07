@@ -1,26 +1,31 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import type { PrismaService } from '../../infrastructure/database/prisma/prisma.service.js';
+import { Prisma } from '../../../prisma/generated/prisma/client.js';
+import type { PrismaService } from '../../../infrastructure/database/prisma/prisma.service.js';
 import type {
   MatchingRuleRecord,
   MatchingRuleWeights,
 } from '../domain/matching-rule.js';
 import type { MatchingRuleRepository } from '../domain/repositories/matching-rule.repository.js';
 
+type MatchingRuleRow = Prisma.MatchingRuleGetPayload<true>;
+
 const toNumber = (value: unknown): number => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const toRecord = (row: any): MatchingRuleRecord => ({
+const toRecord = (row: MatchingRuleRow): MatchingRuleRecord => ({
   uuid: row.uuid,
   name: row.name,
   version: row.version,
   weights:
     row.weights && typeof row.weights === 'object' && !Array.isArray(row.weights)
-      ? row.weights as MatchingRuleWeights
+      ? (row.weights as MatchingRuleWeights)
       : {},
   hardCriteria: Array.isArray(row.hardCriteria)
-    ? row.hardCriteria.filter((value: unknown): value is string => typeof value === 'string')
+    ? row.hardCriteria.filter(
+        (value): value is string => typeof value === 'string',
+      )
     : [],
   minimumScore: toNumber(row.minimumScore),
   isActive: row.isActive === true,
@@ -57,10 +62,7 @@ export class PrismaMatchingRuleRepository implements MatchingRuleRepository {
       }),
       this.prisma.matchingRule.count(),
     ]);
-    return {
-      items: rows.map(toRecord),
-      total,
-    };
+    return { items: rows.map(toRecord), total };
   }
 
   async create(input: {
@@ -95,7 +97,7 @@ export class PrismaMatchingRuleRepository implements MatchingRuleRepository {
       });
       return toRecord(row);
     } catch (error: unknown) {
-      if ((error as { code?: string })?.code === 'P2002') {
+      if ((error as { code?: string }).code === 'P2002') {
         throw new ConflictException('Matching rule version already exists');
       }
       throw error;
@@ -117,22 +119,15 @@ export class PrismaMatchingRuleRepository implements MatchingRuleRepository {
     if (current.version !== expectedVersion)
       throw new ConflictException('Matching rule version is stale');
 
-    const nextVersion = current.version + 1;
-    try {
-      return await this.create({
-        name: input.name ?? current.name,
-        version: nextVersion,
-        weights: input.weights ?? current.weights,
-        hardCriteria: input.hardCriteria ?? current.hardCriteria,
-        minimumScore: input.minimumScore ?? current.minimumScore,
-        createdBy: current.createdBy,
-        activate: current.isActive,
-      });
-    } catch (error: unknown) {
-      if (error instanceof ConflictException)
-        throw new ConflictException('Unable to create next matching rule version');
-      throw error;
-    }
+    return this.create({
+      name: input.name ?? current.name,
+      version: current.version + 1,
+      weights: input.weights ?? current.weights,
+      hardCriteria: input.hardCriteria ?? current.hardCriteria,
+      minimumScore: input.minimumScore ?? current.minimumScore,
+      createdBy: current.createdBy,
+      activate: current.isActive,
+    });
   }
 
   async activate(uuid: string): Promise<MatchingRuleRecord> {
