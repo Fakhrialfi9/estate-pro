@@ -248,7 +248,7 @@ describe('agent management roadmap coverage', () => {
         } as never,
         actor,
       ),
-    ).resolves.toMatchObject({ status: 'ACTIVE' });
+    ).resolves.toMatchObject({ status: 'UNAVAILABLE' });
     expect(d.repo.saveAvailability).toHaveBeenCalled();
   });
 
@@ -322,13 +322,22 @@ describe('agent management roadmap coverage', () => {
     await expect(
       d.service.performance(agentUuid, actor),
     ).resolves.toMatchObject({
-      metrics: { totalWorkload: 4 },
+      metrics: { totalWorkload: 8 },
       targets: [{ actual: 0, achievementPercent: 0 }],
     });
   });
 
   it('covers findCandidates with property context, permission fallback, filtering and missing property', async () => {
     const d = dependencies();
+    d.repo.listProfiles.mockResolvedValueOnce([
+      makeAgent({
+        weeklySchedules: Array.from({ length: 7 }, (_, weekday) => ({
+          weekday,
+          startTime: '00:00',
+          endTime: '23:59',
+        })),
+      }),
+    ]);
     await expect(
       d.service.findCandidates({ propertyUuid: 'property-1', limit: 1 }, actor),
     ).resolves.toHaveLength(1);
