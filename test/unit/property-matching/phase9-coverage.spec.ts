@@ -173,7 +173,7 @@ describe('property matching phase 9', () => {
         hardCriteria: [],
       },
     );
-    expect(results).toHaveLength(1);
+    expect(results).toHaveLength(2);
     expect(results[0]?.score).toBeGreaterThanOrEqual(35);
     expect(results[0]?.explanation.matched).toContain('behavior');
 
@@ -351,9 +351,13 @@ describe('property matching phase 9', () => {
     );
 
     await service.getPreference('USER', uuid, actor);
+    findPreferenceResult = null;
     await service.createPreference('USER', uuid, preference, actor);
-    await service.updatePreference('USER', uuid, preference, 1, actor);
+    findPreferenceResult = { ...preference, status: 'ACTIVE' };
+    await service.updatePreference('USER', uuid, 1, preference, actor);
+    findPreferenceResult = { ...preference, status: 'ARCHIVED' };
     await service.restorePreference('USER', uuid, 1, actor);
+    findPreferenceResult = { ...preference, status: 'ACTIVE' };
     await service.archivePreference('USER', uuid, 1, actor);
     await service.match('USER', uuid, {}, actor);
     await service.generate('USER', uuid, 'GENERATED', {}, actor);
