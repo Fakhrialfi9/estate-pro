@@ -174,6 +174,10 @@ describe('users credentials and profile roadmap coverage', () => {
         confirmation: 'ValidPassword123',
       }),
     ).rejects.toBeInstanceOf(ConcurrentPasswordChangeError);
+    credentials.findByUserUuid.mockResolvedValueOnce({
+      passwordHash: 'old-hash',
+    });
+    hasher.verify.mockResolvedValueOnce(true);
     await expect(
       service.changePassword({
         userUuid: uuid,
@@ -354,7 +358,7 @@ describe('users credentials and profile roadmap coverage', () => {
     config.getOrThrow = vi.fn().mockReturnValue(0);
     credentials.findByUserUuid.mockResolvedValueOnce({ passwordHash: 'hash' });
     await expect(service.requestByEmail('jane@example.com')).rejects.toThrow(
-      'Invalid password reset TTL',
+      'Invalid password reset TTL configuration',
     );
     config.getOrThrow = vi.fn().mockReturnValue(30);
     await expect(service.reset('token', 'bad', 'bad')).rejects.toThrow();
@@ -384,7 +388,7 @@ describe('users credentials and profile roadmap coverage', () => {
 
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(new Response('', { status: 204 }));
+      .mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetchMock);
     config.get = vi.fn().mockReturnValue('https://example.com/reset');
     await expect(service.deliver(payload)).resolves.toBeUndefined();
