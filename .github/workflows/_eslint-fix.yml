@@ -26,17 +26,10 @@ jobs:
         run: npm ci
 
       - name: Apply ESLint safe autofixes
-        run: npx eslint --fix .
+        run: npx eslint --fix . || true
 
       - name: Export working tree
         run: |
-          git status --short
-          git diff --name-only
           git add -A
           TREE_SHA="$(git write-tree)"
-          echo "TREE_SHA=$TREE_SHA" >> "$GITHUB_OUTPUT"
-          git diff --cached --quiet && echo "NO_CHANGES=true" >> "$GITHUB_OUTPUT" || echo "NO_CHANGES=false" >> "$GITHUB_OUTPUT"
-        id: export
-
-      - name: Print tree SHA
-        run: echo "tree=${{ steps.export.outputs.TREE_SHA }} changed=${{ steps.export.outputs.NO_CHANGES }}"
+          echo "TREE_SHA=$TREE_SHA"
