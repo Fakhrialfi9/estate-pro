@@ -392,7 +392,7 @@ describe('ContentService complete coverage', () => {
       }),
       ctx,
     );
-    await expect(
+    expect(() =>
       service.createMedia(
         { ...file, mimetype: 'text/plain' },
         {},
@@ -400,8 +400,8 @@ describe('ContentService complete coverage', () => {
         'k',
         null,
       ),
-    ).rejects.toThrow(ContentValidationError);
-    await expect(
+    ).toThrow(ContentValidationError);
+    expect(() =>
       service.createMedia(
         { ...file, size: 10 * 1024 * 1024 + 1 },
         {},
@@ -409,7 +409,7 @@ describe('ContentService complete coverage', () => {
         'k',
         null,
       ),
-    ).rejects.toThrow(ContentValidationError);
+    ).toThrow(ContentValidationError);
     await service.removeMedia('media-1', ctx);
   });
 
