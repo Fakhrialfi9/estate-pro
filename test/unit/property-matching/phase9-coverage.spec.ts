@@ -295,7 +295,11 @@ describe('property matching phase 9', () => {
         .mockResolvedValue(new Map([[uuid2, signal]])),
       saveRecommendation: vi
         .fn<MatchingRepository['saveRecommendation']>()
-        .mockResolvedValue({ uuid: 'recommendation-1', generatedAt: new Date(), itemCount: 0 }),
+        .mockResolvedValue({
+          uuid: 'recommendation-1',
+          generatedAt: new Date(),
+          itemCount: 0,
+        }),
       getLatestRecommendation: vi
         .fn<MatchingRepository['getLatestRecommendation']>()
         .mockResolvedValue({ uuid: 'recommendation-1' } as never),

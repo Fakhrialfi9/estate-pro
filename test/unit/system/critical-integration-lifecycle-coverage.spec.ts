@@ -152,9 +152,9 @@ describe('integration callback lifecycle', () => {
     provider.verifySignature = vi
       .fn<NonNullable<IntegrationProviderPort['verifySignature']>>()
       .mockRejectedValueOnce(new Error('invalid'));
-    await expect(
-      service.enqueue(uuid, input, provider),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.enqueue(uuid, input, provider)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
     provider.verifySignature = vi
       .fn<NonNullable<IntegrationProviderPort['verifySignature']>>()
       .mockResolvedValue(true);
