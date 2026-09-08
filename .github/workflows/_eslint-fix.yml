@@ -20,12 +20,8 @@ jobs:
             const repo = context.repo.repo;
             const branch = 'main';
 
-            const replacements = {
+            const replacementLists = {
               'test/unit/property-matching/phase9-coverage.spec.ts': [
-                [
-                  "    const service = new PropertyMatchingService(\n      repository,",
-                  "    const audit = {\n      record: vi\n        .fn<SecurityAuditRepository['record']>()\n        .mockResolvedValue(undefined),\n    } satisfies SecurityAuditRepository;\n    const service = new PropertyMatchingService(\n      repository,",
-                ],
                 ...[
                   'findPreference',
                   'createPreference',
@@ -44,65 +40,139 @@ jobs:
                   `${name}: vi.fn()`,
                   `${name}: vi.fn<MatchingRepository['${name}']>()`,
                 ]),
-                ['resolve: vi.fn()', "resolve: vi.fn<AuthorizationService['resolve']>()"],
+                [
+                  'resolve: vi.fn()',
+                  "resolve: vi.fn<AuthorizationService['resolve']>()",
+                ],
                 [
                   'assertPermissions: vi.fn(),',
                   "assertPermissions: vi.fn<AuthorizationService['assertPermissions']>(),",
                 ],
-                ['active: vi\n        .fn()', "active: vi\n        .fn<MatchingRuleService['active']>()"],
+                [
+                  'active: vi\n        .fn()',
+                  "active: vi\n        .fn<MatchingRuleService['active']>()",
+                ],
               ],
               'test/unit/property/phase10-coverage.spec.ts': [
-                ["Money.from('100', 'IDR').amount", "new Money('100', 'IDR').amount"],
+                [
+                  "Money.from('100', 'IDR').amount",
+                  "new Money('100', 'IDR').amount",
+                ],
                 ["Money.from('-1', 'IDR')", "new Money('-1', 'IDR')"],
-                ["expect(() => validateCertificateInput({}).toBeUndefined()).not.toThrow();", "expect(() => validateCertificateInput({})).not.toThrow();"],
-                ["expect(() => validateCertificateDates({}).toBeUndefined()).not.toThrow();", "expect(() => validateCertificateDates({})).not.toThrow();"],
-                ["expect(() => validateFinancialInvariants({}).toBeUndefined()).not.toThrow();", "expect(() => validateFinancialInvariants({})).not.toThrow();"],
-                ["expect(() => validateLegalInvariants({}).toBeUndefined()).not.toThrow();", "expect(() => validateLegalInvariants({})).not.toThrow();"],
-                ["expect(() => validateMedia({}).toBeUndefined()).not.toThrow();", "expect(() => validateMedia({})).not.toThrow();"],
-                ["expect(() => validateUtilityInvariants({}).toBeUndefined()).not.toThrow();", "expect(() => validateUtilityInvariants({})).not.toThrow();"],
+                [
+                  'expect(() => validateCertificateInput({}).toBeUndefined()).not.toThrow();',
+                  'expect(() => validateCertificateInput({})).not.toThrow();',
+                ],
+                [
+                  'expect(() => validateCertificateDates({}).toBeUndefined()).not.toThrow();',
+                  'expect(() => validateCertificateDates({})).not.toThrow();',
+                ],
+                [
+                  'expect(() => validateFinancialInvariants({}).toBeUndefined()).not.toThrow();',
+                  'expect(() => validateFinancialInvariants({})).not.toThrow();',
+                ],
+                [
+                  'expect(() => validateLegalInvariants({}).toBeUndefined()).not.toThrow();',
+                  'expect(() => validateLegalInvariants({})).not.toThrow();',
+                ],
+                [
+                  'expect(() => validateMedia({}).toBeUndefined()).not.toThrow();',
+                  'expect(() => validateMedia({})).not.toThrow();',
+                ],
+                [
+                  'expect(() => validateUtilityInvariants({}).toBeUndefined()).not.toThrow();',
+                  'expect(() => validateUtilityInvariants({})).not.toThrow();',
+                ],
               ],
               'test/unit/roadmap-coverage-core.spec.ts': [
                 ["import { Reflector } from '@nestjs/core';\n", ''],
+              ],
+              'test/unit/property/property-capabilities-phase10-coverage.spec.ts': [
+                [
+                  '    expect(await service.getAmenity(uuid)).toEqual(amenity);\n',
+                  '',
+                ],
               ],
               'test/unit/system/critical-integration-lifecycle-coverage.spec.ts': [
                 [
                   "const makeProvider = (): IntegrationProviderPort => ({\n  key: 'crm',\n  version: '1.0',\n  capabilities: ['SYNC'],\n  testConnection: vi.fn().mockResolvedValue({ ok: true }),\n  disconnect: vi.fn().mockResolvedValue(undefined),\n  verifySignature: vi.fn().mockResolvedValue(true),\n  normalizeInbound: vi.fn().mockReturnValue({",
                   "const makeProvider = (): IntegrationProviderPort => {\n  const verifySignature = vi\n    .fn<NonNullable<IntegrationProviderPort['verifySignature']>>()\n    .mockResolvedValue(true);\n  const health = vi\n    .fn<NonNullable<IntegrationProviderPort['health']>>()\n    .mockResolvedValue({ ok: true, latencyMs: 10 });\n  return {\n    key: 'crm',\n    version: '1.0',\n    capabilities: ['SYNC'],\n    testConnection: vi.fn().mockResolvedValue({ ok: true }),\n    disconnect: vi.fn().mockResolvedValue(undefined),\n    verifySignature,\n    normalizeInbound: vi.fn().mockReturnValue({",
                 ],
-                ["  }),\n  health: vi.fn().mockResolvedValue({ ok: true, latencyMs: 10 }),\n});", "  }),\n    health,\n  };\n};"],
-                ["service.execute(uuid, async () => 'ok',", "service.execute(uuid, () => Promise.resolve('ok'),"],
-                ["service.execute(uuid, async () => 'ok'),", "service.execute(uuid, () => Promise.resolve('ok')),"],
-                ["service.execute(uuid, async () => 'no'))", "service.execute(uuid, () => Promise.resolve('no'))"],
-              ],
-              'test/unit/system/critical-roadmap-coverage.spec.ts': [
-                ["import type { SystemRoadmapRepository } from '../../../src/modules/system/domain/repositories/system-roadmap.repository.js';\n", ''],
                 [
-                  "    const notifications = {\n      createNotification: vi.fn().mockResolvedValue(undefined),\n    } as unknown as AutomationNotificationPort;",
-                  "    const createNotification = vi\n      .fn<AutomationNotificationPort['createNotification']>()\n      .mockResolvedValue(undefined);\n    const notifications = { createNotification } satisfies AutomationNotificationPort;",
+                  "  }),\n  health: vi.fn().mockResolvedValue({ ok: true, latencyMs: 10 }),\n});",
+                  "  }),\n    health,\n  };\n};",
                 ],
-                ["    expect(notifications.createNotification).toHaveBeenCalledWith(", "    expect(createNotification).toHaveBeenCalledWith("],
                 [
-                  "    const audit = {\n      record: vi.fn().mockResolvedValue(undefined),\n    } as unknown as SecurityAuditRepository;",
-                  "    const record = vi\n      .fn<SecurityAuditRepository['record']>()\n      .mockResolvedValue(undefined);\n    const audit = { record } satisfies SecurityAuditRepository;",
+                  "service.execute(uuid, async () => 'ok',",
+                  "service.execute(uuid, () => Promise.resolve('ok'),",
                 ],
-                ["    expect(audit.record).toHaveBeenCalledTimes(1);", "    expect(record).toHaveBeenCalledTimes(1);"],
                 [
-                  "    const prisma = {\n      $queryRaw: vi\n        .fn()",
-                  "    const queryRaw = vi\n      .fn<PrismaService['$queryRaw']>()",
+                  "service.execute(uuid, async () => 'ok'),",
+                  "service.execute(uuid, () => Promise.resolve('ok')) ,".replace(')) ,', ')),')
+                ],
+                [
+                  "service.execute(uuid, async () => 'no'))",
+                  "service.execute(uuid, () => Promise.resolve('no'))",
                 ],
               ],
             };
 
-            // The production source remains untouched; these are narrowly scoped test fixes.
-            for (const [path, fileReplacements] of Object.entries(replacements)) {
+            const exactReplacements = {
+              'test/unit/property-matching/phase9-coverage.spec.ts': [
+                [
+                  "    const service = new PropertyMatchingService(\n      repository,",
+                  "    const audit = {\n      record: vi\n        .fn<SecurityAuditRepository['record']>()\n        .mockResolvedValue(undefined),\n    } satisfies SecurityAuditRepository;\n    const service = new PropertyMatchingService(\n      repository,",
+                ],
+              ],
+              'test/unit/system/critical-roadmap-coverage.spec.ts': [
+                [
+                  "import type { SystemRoadmapRepository } from '../../../src/modules/system/domain/repositories/system-roadmap.repository.js';\n",
+                  '',
+                ],
+                [
+                  "    const notifications = {\n      createNotification: vi.fn().mockResolvedValue(undefined),\n    } as unknown as AutomationNotificationPort;",
+                  "    const createNotification = vi\n      .fn<AutomationNotificationPort['createNotification']>()\n      .mockResolvedValue(undefined);\n    const notifications = { createNotification } satisfies AutomationNotificationPort;",
+                ],
+                [
+                  '    expect(notifications.createNotification).toHaveBeenCalledWith(',
+                  '    expect(createNotification).toHaveBeenCalledWith(',
+                ],
+                [
+                  "    const audit = {\n      record: vi.fn().mockResolvedValue(undefined),\n    } as unknown as SecurityAuditRepository;",
+                  "    const record = vi\n      .fn<SecurityAuditRepository['record']>()\n      .mockResolvedValue(undefined);\n    const audit = { record } satisfies SecurityAuditRepository;",
+                ],
+                [
+                  '    expect(audit.record).toHaveBeenCalledTimes(1);',
+                  '    expect(record).toHaveBeenCalledTimes(1);',
+                ],
+              ],
+            };
+
+            const apply = (content, replacements, path) => {
+              let result = content;
+              for (const [before, after] of replacements ?? []) {
+                if (!result.includes(before)) throw new Error(`Replacement anchor not found in ${path}: ${before.slice(0, 100)}`);
+                result = result.split(before).join(after);
+              }
+              return result;
+            };
+
+            for (const path of Object.keys(replacementLists)) {
               const response = await github.rest.repos.getContent({ owner, repo, path, ref: branch });
               if (Array.isArray(response.data) || !('content' in response.data)) throw new Error(`Unexpected response for ${path}`);
               let content = Buffer.from(response.data.content, 'base64').toString('utf8');
-              for (const [before, after] of fileReplacements) {
-                const index = content.indexOf(before);
-                if (index === -1) throw new Error(`Replacement anchor not found in ${path}: ${before.slice(0, 80)}`);
-                content = content.slice(0, index) + after + content.slice(index + before.length);
+              content = apply(content, replacementLists[path], path);
+              content = apply(content, exactReplacements[path], path);
+
+              if (path === 'test/unit/system/critical-roadmap-coverage.spec.ts') {
+                const prismaPattern = /    const prisma = \{[\s\S]*?    \} as unknown as PrismaService;/;
+                if (!prismaPattern.test(content)) throw new Error('Prisma test double block not found');
+                content = content.replace(prismaPattern, `    const queryRaw = vi\n      .fn<PrismaService['$queryRaw']>()\n      .mockResolvedValueOnce([\n        {\n          bucket: '2026-01-01',\n          state: 'SUCCEEDED',\n          count: 2,\n          retries: 1,\n          failures: 0,\n          averageLatencyMs: 10,\n        },\n        {\n          bucket: '2026-01-01',\n          state: null,\n          count: 1n,\n          retries: '2',\n          failures: '1',\n          averageLatencyMs: '20',\n        },\n      ])\n      .mockResolvedValueOnce([])\n      .mockResolvedValueOnce([]);\n    const operationFindMany = vi\n      .fn<PrismaService['systemIntegrationOperation']['findMany']>()\n      .mockResolvedValue([\n        { uuid, state: 'FAILED', attempt: 1, maxAttempts: 3, createdAt: new Date() },\n        { uuid: 'maxed', state: 'FAILED', attempt: 3, maxAttempts: 3, createdAt: new Date() },\n      ]);\n    const operationUpdate = vi\n      .fn<PrismaService['systemIntegrationOperation']['update']>()\n      .mockResolvedValue(undefined);\n    const operationDeleteMany = vi\n      .fn<PrismaService['systemIntegrationOperation']['deleteMany']>()\n      .mockResolvedValue({ count: 1 });\n    const prisma = {\n      $queryRaw: queryRaw,\n      systemIntegrationOperation: {\n        findMany: operationFindMany,\n        update: operationUpdate,\n        deleteMany: operationDeleteMany,\n      },\n    } as unknown as PrismaService;`);
+                content = content.replaceAll('prisma.$queryRaw.mockResolvedValueOnce', 'queryRaw.mockResolvedValueOnce');
+                content = content.replaceAll('prisma.systemIntegrationOperation.update', 'operationUpdate');
+                content = content.replaceAll('prisma.systemIntegrationOperation.findMany', 'operationFindMany');
               }
+
               await github.rest.repos.createOrUpdateFileContents({
                 owner,
                 repo,
