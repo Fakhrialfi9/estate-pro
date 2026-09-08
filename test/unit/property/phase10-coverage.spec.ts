@@ -485,16 +485,16 @@ describe('property phase 10 coverage', () => {
   });
 
   it('covers property extras and listing errors', () => {
-    expect(Money.from('100', 'IDR').amount).toBe('100');
-    expect(() => Money.from('-1', 'IDR')).toThrow();
+    expect(new Money('100', 'IDR').amount).toBe('100');
+    expect(() => new Money('-1', 'IDR')).toThrow();
     expect(hashSensitive('secret')).not.toBe('secret');
     expect(maskSensitive('abcdef')).not.toBe('abcdef');
     expect(maskSensitive(null)).toBeNull();
-    expect(() => validateCertificateInput({}).toBeUndefined()).not.toThrow();
-    expect(() => validateCertificateDates({}).toBeUndefined()).not.toThrow();
-    expect(() => validateFinancialInvariants({}).toBeUndefined()).not.toThrow();
-    expect(() => validateLegalInvariants({}).toBeUndefined()).not.toThrow();
-    expect(() => validateMedia({}).toBeUndefined()).not.toThrow();
+    expect(() => validateCertificateInput({})).not.toThrow();
+    expect(() => validateCertificateDates({})).not.toThrow();
+    expect(() => validateFinancialInvariants({})).not.toThrow();
+    expect(() => validateLegalInvariants({})).not.toThrow();
+    expect(() => validateMedia({})).not.toThrow();
     expect(() =>
       validateSeoInvariants('villa-bali', { canonicalUrl: 'x' }),
     ).toThrow('canonicalUrl must end');
@@ -503,6 +503,6 @@ describe('property phase 10 coverage', () => {
         canonicalUrl: 'javascript:alert(1)',
       }),
     ).toThrow();
-    expect(() => validateUtilityInvariants({}).toBeUndefined()).not.toThrow();
+    expect(() => validateUtilityInvariants({})).not.toThrow();
   });
 });
