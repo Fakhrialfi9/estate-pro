@@ -6,10 +6,11 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format-export:
+    if: ${{ github.event.head_commit.message != 'chore: format roadmap tests' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,9 +23,13 @@ jobs:
       - run: npm install --global npm@11.18.0
       - run: npm ci
       - run: npm run format
-      - run: git diff --binary > /tmp/estate-pro-format.diff
-      - uses: actions/upload-artifact@v4
-        with:
-          name: estate-pro-formatted-files
-          path: /tmp/estate-pro-format.diff
-          if-no-files-found: error
+      - name: Commit formatted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src test
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: format roadmap tests"
+          git push origin HEAD:main
