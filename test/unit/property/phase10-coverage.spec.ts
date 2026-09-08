@@ -491,7 +491,14 @@ describe('property phase 10 coverage', () => {
     expect(() => validateCertificateDates()).not.toThrow();
     expect(() => validateFinancialInvariants({})).not.toThrow();
     expect(() => validateLegalInvariants({})).not.toThrow();
-    expect(() => validateMedia({})).toThrow();
+    expect(() =>
+      validateMedia({
+        type: 'IMAGE',
+        url: 'https://cdn.example.com/image.jpg',
+        mimeType: 'image/jpeg',
+        fileSizeBytes: 524288001,
+      }),
+    ).toThrow('fileSizeBytes is outside the supported range');
     expect(() =>
       validateSeoInvariants('villa-bali', { canonicalUrl: 'x' }),
     ).toThrow('canonicalUrl must end');
