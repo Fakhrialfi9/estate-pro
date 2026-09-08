@@ -1,0 +1,30 @@
+name: Temporary Formatting Export
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  format-export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - run: npm install --global npm@11.18.0
+      - run: npm ci
+      - run: npm run format
+      - run: git diff --binary > /tmp/estate-pro-format.diff
+      - uses: actions/upload-artifact@v4
+        with:
+          name: estate-pro-formatted-files
+          path: /tmp/estate-pro-format.diff
+          if-no-files-found: error
