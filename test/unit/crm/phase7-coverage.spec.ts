@@ -7,6 +7,7 @@ import { CrmCommunicationHealthService } from '../../../src/modules/crm/applicat
 import {
   CommunicationProviderError,
   ProviderNotConfiguredError,
+  type CommunicationProvider,
 } from '../../../src/modules/crm/infrastructure/providers/communication-provider.js';
 import type {
   CommunicationRecord,
@@ -14,6 +15,11 @@ import type {
 } from '../../../src/modules/crm/domain/repositories/communication.repository.js';
 import type { CrmService } from '../../../src/modules/crm/application/crm.service.js';
 import type { AutomationActor } from '../../../src/common/contracts/automation-actor.js';
+import type {
+  AutomationActivityInput,
+  AutomationCommunicationInput,
+} from '../../../src/common/contracts/automation-crm.port.js';
+import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
 
 const actor: AutomationActor = {
   actorUuid: '11111111-1111-4111-8111-111111111111',
@@ -43,37 +49,66 @@ const communication = (
   ...overrides,
 });
 
+type Providers = Map<'EMAIL' | 'WHATSAPP' | 'SMS', CommunicationProvider>;
+
+const setProviders = (
+  service: CrmCommunicationDeliveryService,
+  providers: Providers,
+): void => {
+  const state = service as unknown as { providers: Providers };
+  state.providers.clear();
+  for (const [channel, provider] of providers) {
+    state.providers.set(channel, provider);
+  }
+};
+
 describe('CRM phase 7 coverage', () => {
   beforeEach(() => vi.restoreAllMocks());
 
   it('covers automation adapter mappings and delegation', async () => {
+    const getLead = vi.fn<CrmService['getLead']>().mockResolvedValue({
+      contactUuid: 'contact-1',
+      status: { code: 'NEW' },
+      source: { code: 'WEB' },
+      type: { code: 'BUYER' },
+      ownerUserUuid: 'owner-1',
+      score: 42,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+    });
+    const activityGet = vi
+      .fn<CrmService['activityGet']>()
+      .mockResolvedValue({ uuid: 'activity-1', done: true });
+    const assign = vi
+      .fn<CrmService['assign']>()
+      .mockResolvedValue({ uuid: 'lead-1' });
+    const recalcScore = vi
+      .fn<CrmService['recalcScore']>()
+      .mockResolvedValue({ uuid: 'lead-1', score: 50 });
+    const activityCreate = vi
+      .fn<CrmService['activityCreate']>()
+      .mockResolvedValue({ uuid: 'activity-2' });
+    const communicationCreate = vi
+      .fn<CrmService['communicationCreate']>()
+      .mockResolvedValue({ uuid: 'communication-1' });
+    const changeStatus = vi
+      .fn<CrmService['changeStatus']>()
+      .mockResolvedValue({ uuid: 'lead-1', status: 'QUALIFIED' });
     const crm = {
-      getLead: vi.fn().mockResolvedValue({
-        contactUuid: 'contact-1',
-        status: { code: 'NEW' },
-        source: { code: 'WEB' },
-        type: { code: 'BUYER' },
-        ownerUserUuid: 'owner-1',
-        score: 42,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-      }),
-      activityGet: vi
-        .fn()
-        .mockResolvedValue({ uuid: 'activity-1', done: true }),
-      assign: vi.fn().mockResolvedValue({ uuid: 'lead-1' }),
-      recalcScore: vi.fn().mockResolvedValue({ uuid: 'lead-1', score: 50 }),
-      activityCreate: vi.fn().mockResolvedValue({ uuid: 'activity-2' }),
-      communicationCreate: vi
-        .fn()
-        .mockResolvedValue({ uuid: 'communication-1' }),
-      changeStatus: vi
-        .fn()
-        .mockResolvedValue({ uuid: 'lead-1', status: 'QUALIFIED' }),
+      getLead,
+      activityGet,
+      assign,
+      recalcScore,
+      activityCreate,
+      communicationCreate,
+      changeStatus,
     } as unknown as CrmService;
+    const deliver = vi
+      .fn<CrmCommunicationDeliveryService['deliver']>()
+      .mockResolvedValue({ uuid: 'communication-1' });
     const delivery = {
-      deliver: vi.fn().mockResolvedValue({ uuid: 'communication-1' }),
-    };
+      deliver,
+    } as unknown as CrmCommunicationDeliveryService;
     const adapter = new CrmAutomationAdapter(crm, delivery);
 
     await expect(adapter.getLead('lead-1')).resolves.toMatchObject({
@@ -88,45 +123,62 @@ describe('CRM phase 7 coverage', () => {
     await expect(adapter.getActivity('activity-1')).resolves.toMatchObject({
       uuid: 'activity-1',
     });
-    crm.getLead.mockResolvedValueOnce({
+    getLead.mockResolvedValueOnce({
       contact: { preferences: { time: 'morning' } },
     });
     await expect(adapter.getLeadPreferences('lead-1')).resolves.toEqual({
       time: 'morning',
     });
-    crm.getLead.mockResolvedValueOnce({});
+    getLead.mockResolvedValueOnce({});
     await expect(adapter.getLeadPreferences('lead-1')).resolves.toEqual({});
+
     await adapter.assignLead('lead-1', 'user-1', actor);
     await adapter.refreshLeadScore('lead-1', actor);
-    await adapter.createActivity({} as never, actor);
-    await adapter.enqueueCommunication({} as never, actor);
+    const activityInput: AutomationActivityInput = {
+      type: 'CALL',
+      subject: 'Follow up',
+    };
+    await adapter.createActivity(activityInput, actor);
+    const communicationInput: AutomationCommunicationInput = {
+      channel: 'EMAIL',
+      body: 'Hello',
+    };
+    await adapter.enqueueCommunication(communicationInput, actor);
     await adapter.deliverCommunication('communication-1', actor);
     await adapter.changeLeadStatus('lead-1', 'status-1', actor);
-    expect(crm.assign).toHaveBeenCalledWith(
+
+    expect(assign).toHaveBeenCalledWith(
       'lead-1',
       'user-1',
       expect.objectContaining({ actorUuid: actor.actorUuid }),
     );
-    expect(delivery.deliver).toHaveBeenCalledWith(
+    expect(deliver).toHaveBeenCalledWith(
       'communication-1',
       actor.actorUuid,
     );
   });
 
   it('covers communication delivery success, idempotent path and failure modes', async () => {
+    const findByUuid = vi
+      .fn<CommunicationRepository['findByUuid']>()
+      .mockResolvedValue(communication());
+    const transitionCommunication = vi
+      .fn<CommunicationRepository['transitionCommunication']>()
+      .mockImplementation(async (_uuid, status, input) =>
+        communication({
+          status,
+          providerMessageId: input?.providerMessageId ?? null,
+          providerError: input?.providerError ?? null,
+        }),
+      );
     const repository: CommunicationRepository = {
-      findByUuid: vi.fn().mockResolvedValue(communication()),
-      transitionCommunication: vi
-        .fn()
-        .mockImplementation(async (_uuid, status, input) =>
-          communication({
-            status,
-            providerMessageId: input?.providerMessageId ?? null,
-            providerError: input?.providerError ?? null,
-          }),
-        ),
+      findByUuid,
+      transitionCommunication,
     };
-    const audit = { record: vi.fn().mockResolvedValue(undefined) };
+    const record = vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(
+      undefined,
+    );
+    const audit: SecurityAuditRepository = { record };
     const config = new ConfigService({
       EMAIL_PROVIDER_URL: 'https://provider.example.com/send',
       EMAIL_PROVIDER_TOKEN: 'token',
@@ -137,124 +189,125 @@ describe('CRM phase 7 coverage', () => {
       config,
     );
 
-    const provider = {
-      channel: 'EMAIL' as const,
-      send: vi.fn().mockResolvedValue({ providerMessageId: 'pm-1' }),
+    const providerSend = vi
+      .fn<CommunicationProvider['send']>()
+      .mockResolvedValue({ providerMessageId: 'pm-1' });
+    const provider: CommunicationProvider = {
+      channel: 'EMAIL',
+      send: providerSend,
     };
-    vi.spyOn(
-      (service as unknown as { providers: Map<string, unknown> }).providers,
-      'get',
-    ).mockReturnValue(provider);
+    setProviders(service, new Map([['EMAIL', provider]]));
     await expect(
       service.deliver(communication().uuid, actor.actorUuid),
     ).resolves.toMatchObject({ status: 'SENT', providerMessageId: 'pm-1' });
-    expect(provider.send).toHaveBeenCalledWith(
+    expect(providerSend).toHaveBeenCalledWith(
       expect.objectContaining({
         idempotencyKey: `crm-communication:${communication().uuid}`,
       }),
     );
 
-    repository.findByUuid = vi
-      .fn()
-      .mockResolvedValue(communication({ status: 'SENT' }));
+    findByUuid.mockResolvedValue(communication({ status: 'SENT' }));
     await expect(service.deliver(communication().uuid)).resolves.toMatchObject({
       status: 'SENT',
     });
 
-    repository.findByUuid = vi.fn().mockResolvedValue(null);
+    findByUuid.mockResolvedValue(null);
     await expect(service.deliver(communication().uuid)).rejects.toBeInstanceOf(
       NotFoundException,
     );
 
-    repository.findByUuid = vi
-      .fn()
-      .mockResolvedValue(communication({ channel: 'FAX' }));
+    findByUuid.mockResolvedValue(communication({ channel: 'FAX' }));
     await expect(service.deliver(communication().uuid)).rejects.toThrow(
       'Unsupported communication channel',
     );
 
-    repository.findByUuid = vi.fn().mockResolvedValue(communication());
-    vi.spyOn(
-      (service as unknown as { providers: Map<string, unknown> }).providers,
-      'get',
-    ).mockReturnValue(undefined);
+    findByUuid.mockResolvedValue(communication());
+    setProviders(service, new Map());
     await expect(
       service.deliver(communication().uuid, actor.actorUuid),
     ).rejects.toBeInstanceOf(ProviderNotConfiguredError);
-    expect(repository.transitionCommunication).toHaveBeenCalledWith(
+    expect(transitionCommunication).toHaveBeenCalledWith(
       communication().uuid,
       'FAILED',
       expect.any(Object),
     );
 
+    const retryFindByUuid = vi
+      .fn<CommunicationRepository['findByUuid']>()
+      .mockResolvedValue(communication());
+    const retryTransition = vi
+      .fn<CommunicationRepository['transitionCommunication']>()
+      .mockImplementation(async (_uuid, status, input) =>
+        communication({
+          status,
+          providerError: input?.providerError ?? null,
+        }),
+      );
     const retryRepository: CommunicationRepository = {
-      findByUuid: vi.fn().mockResolvedValue(communication()),
-      transitionCommunication: vi
-        .fn()
-        .mockImplementation(async (_uuid, status, input) =>
-          communication({
-            status,
-            providerError: input?.providerError ?? null,
-          }),
-        ),
+      findByUuid: retryFindByUuid,
+      transitionCommunication: retryTransition,
     };
-    const retryAudit = { record: vi.fn().mockResolvedValue(undefined) };
+    const retryRecord = vi
+      .fn<SecurityAuditRepository['record']>()
+      .mockResolvedValue(undefined);
     const retryService = new CrmCommunicationDeliveryService(
       retryRepository,
-      retryAudit,
+      { record: retryRecord },
       config,
     );
-    const retryProvider = {
-      channel: 'EMAIL' as const,
-      send: vi
-        .fn()
-        .mockRejectedValue(new CommunicationProviderError('retry', true, 503)),
-    };
-    vi.spyOn(
-      (retryService as unknown as { providers: Map<string, unknown> })
-        .providers,
-      'get',
-    ).mockReturnValue(retryProvider);
+    const retrySend = vi
+      .fn<CommunicationProvider['send']>()
+      .mockRejectedValue(new CommunicationProviderError('retry', true, 503));
+    setProviders(
+      retryService,
+      new Map([[
+        'EMAIL',
+        { channel: 'EMAIL', send: retrySend },
+      ]]),
+    );
     await expect(
       retryService.deliver(communication().uuid, actor.actorUuid),
     ).rejects.toBeInstanceOf(CommunicationProviderError);
-    expect(retryRepository.transitionCommunication).toHaveBeenCalledWith(
+    expect(retryTransition).toHaveBeenCalledWith(
       communication().uuid,
       'QUEUED',
       expect.objectContaining({ providerError: 'retry' }),
     );
 
+    const permanentFindByUuid = vi
+      .fn<CommunicationRepository['findByUuid']>()
+      .mockResolvedValue(communication());
+    const permanentTransition = vi
+      .fn<CommunicationRepository['transitionCommunication']>()
+      .mockImplementation(async (_uuid, status, input) =>
+        communication({
+          status,
+          providerError: input?.providerError ?? null,
+        }),
+      );
     const permanentRepository: CommunicationRepository = {
-      findByUuid: vi.fn().mockResolvedValue(communication()),
-      transitionCommunication: vi
-        .fn()
-        .mockImplementation(async (_uuid, status, input) =>
-          communication({
-            status,
-            providerError: input?.providerError ?? null,
-          }),
-        ),
+      findByUuid: permanentFindByUuid,
+      transitionCommunication: permanentTransition,
     };
     const permanentService = new CrmCommunicationDeliveryService(
       permanentRepository,
       audit,
       config,
     );
-    const permanentProvider = {
-      channel: 'EMAIL' as const,
-      send: vi
-        .fn()
-        .mockRejectedValue(new CommunicationProviderError('bad', false, 400)),
-    };
-    vi.spyOn(
-      (permanentService as unknown as { providers: Map<string, unknown> })
-        .providers,
-      'get',
-    ).mockReturnValue(permanentProvider);
+    const permanentSend = vi
+      .fn<CommunicationProvider['send']>()
+      .mockRejectedValue(new CommunicationProviderError('bad', false, 400));
+    setProviders(
+      permanentService,
+      new Map([[
+        'EMAIL',
+        { channel: 'EMAIL', send: permanentSend },
+      ]]),
+    );
     await expect(
       permanentService.deliver(communication().uuid),
     ).rejects.toBeInstanceOf(CommunicationProviderError);
-    expect(permanentRepository.transitionCommunication).toHaveBeenCalledWith(
+    expect(permanentTransition).toHaveBeenCalledWith(
       communication().uuid,
       'FAILED',
       expect.objectContaining({ providerError: 'bad' }),
