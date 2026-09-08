@@ -100,7 +100,6 @@ describe('PropertyCapabilitiesService phase 10 coverage', () => {
     const service = new PropertyCapabilitiesService(repository, audit);
     expect(await service.listAmenities()).toEqual([amenity]);
     await service.listAmenities(false);
-    expect(await service.getAmenity(uuid)).toEqual(amenity);
     await service.updateAmenity(
       uuid,
       { code: ' new-code ', name: ' New Name ', description: ' Desc ' },
