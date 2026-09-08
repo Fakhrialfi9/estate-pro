@@ -38,18 +38,11 @@ import {
   SystemRoleProtectedException,
   UnauthorizedRoleOperationException,
 } from '../../src/modules/roles/domain/errors/role.errors.js';
-import {
-  RolePermissionEntity,
-} from '../../src/modules/roles/domain/entities/role-permission.entity.js';
-import {
-  RoleEntity,
-} from '../../src/modules/roles/domain/entities/role.entity.js';
-import {
-  UserRoleEntity,
-} from '../../src/modules/roles/domain/entities/user-role.entity.js';
-import {
-  RolePermissionAlreadyExistsException,
-} from '../../src/modules/roles/domain/errors/role-permission.errors.js';
+import { RolePermissionEntity } from '../../src/modules/roles/domain/entities/role-permission.entity.js';
+import { RoleEntity } from '../../src/modules/roles/domain/entities/role.entity.js';
+import { UserRoleEntity } from '../../src/modules/roles/domain/entities/user-role.entity.js';
+
+aimport { RolePermissionAlreadyExistsException } from '../../src/modules/roles/domain/errors/role-permission.errors.js';
 
 const uuid = '123e4567-e89b-12d3-a456-426614174000';
 const now = new Date('2026-01-01T00:00:00.000Z');
@@ -57,9 +50,17 @@ const now = new Date('2026-01-01T00:00:00.000Z');
 describe('roadmap error coverage', () => {
   it('covers analytics error constructors and status contracts', () => {
     expect(new AnalyticsInvalidQueryException().getStatus()).toBe(400);
-    expect(new AnalyticsInvalidQueryException('custom').getResponse()).toMatchObject({ code: 'ANALYTICS_INVALID_QUERY', message: 'custom' });
+    expect(
+      new AnalyticsInvalidQueryException('custom').getResponse(),
+    ).toMatchObject({
+      code: 'ANALYTICS_INVALID_QUERY',
+      message: 'custom',
+    });
     expect(new AnalyticsScopeException().getStatus()).toBe(403);
-    expect(new AnalyticsScopeException('custom').getResponse()).toMatchObject({ code: 'ANALYTICS_FORBIDDEN_SCOPE', message: 'custom' });
+    expect(new AnalyticsScopeException('custom').getResponse()).toMatchObject({
+      code: 'ANALYTICS_FORBIDDEN_SCOPE',
+      message: 'custom',
+    });
     expect(new AnalyticsQueryTimeoutException().getStatus()).toBe(504);
     expect(new AnalyticsUnavailableException().getStatus()).toBe(503);
   });
@@ -120,8 +121,16 @@ describe('roadmap error coverage', () => {
   });
 
   it('covers role and role-permission entity state paths', () => {
-    const rolePermission = RolePermissionEntity.create({ roleUuid: uuid, permissionUuid: uuid, createdAt: now, updatedAt: now });
-    expect(rolePermission.toSnapshot()).toMatchObject({ roleUuid: uuid, permissionUuid: uuid });
+    const rolePermission = RolePermissionEntity.create({
+      roleUuid: uuid,
+      permissionUuid: uuid,
+      createdAt: now,
+      updatedAt: now,
+    });
+    expect(rolePermission.toSnapshot()).toMatchObject({
+      roleUuid: uuid,
+      permissionUuid: uuid,
+    });
 
     const role = RoleEntity.create({
       uuid,
@@ -136,7 +145,11 @@ describe('roadmap error coverage', () => {
     });
     expect(role.isActive).toBe(true);
     expect(role.toSnapshot()).toMatchObject({ code: 'admin' });
-    const inactive = RoleEntity.create({ ...role.toSnapshot(), isActive: false, deletedAt: now });
+    const inactive = RoleEntity.create({
+      ...role.toSnapshot(),
+      isActive: false,
+      deletedAt: now,
+    });
     expect(inactive.isActive).toBe(false);
 
     const userRole = UserRoleEntity.create({
