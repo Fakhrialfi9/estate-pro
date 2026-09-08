@@ -25,6 +25,7 @@ import type { RoleRepository } from '../../../src/modules/roles/domain/repositor
 import type { RolePermissionRepository } from '../../../src/modules/roles/domain/repositories/role-permission.repository.js';
 import type { UserRoleRepository } from '../../../src/modules/roles/domain/repositories/user-role.repository.js';
 import type { UserRoleTargetRepository } from '../../../src/modules/roles/domain/repositories/user-role-target.repository.js';
+import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
 
 const userUuid = '11111111-1111-4111-8111-111111111111';
 const roleUuid = '22222222-2222-4222-8222-222222222222';
@@ -84,7 +85,9 @@ describe('phase 8 permissions and roles', () => {
   beforeEach(() => vi.restoreAllMocks());
 
   it('covers permission and role access guard authentication and permission matrices', async () => {
-    const authorization = { getAuthorizationSnapshot: vi.fn() };
+    const authorization = {
+      getAuthorizationSnapshot: vi.fn(),
+    };
     await expect(
       new PermissionReadAccessGuard(authorization).canActivate(httpContext({})),
     ).rejects.toBeInstanceOf(UnauthorizedException);
@@ -174,13 +177,15 @@ describe('phase 8 permissions and roles', () => {
       update: vi.fn().mockResolvedValue(permission()),
       delete: vi.fn().mockResolvedValue(undefined),
       getDependencyCount: vi.fn().mockResolvedValue({ roleAssignments: 0 }),
-    } as unknown as PermissionRepository;
-    const audit = { record: vi.fn().mockResolvedValue(undefined) };
+    } satisfies PermissionRepository;
+    const audit = {
+      record: vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(undefined),
+    } satisfies SecurityAuditRepository;
     const policy = {
       canManage: vi.fn(),
       canManageProtected: vi.fn(),
       canRead: vi.fn(),
-    } as unknown as PermissionAuthorizationPolicy;
+    } satisfies PermissionAuthorizationPolicy;
     const service = new PermissionService(repository, audit, policy);
     const actor = { userUuid, permissions: ['permissions.manage'] };
     await expect(
@@ -259,7 +264,7 @@ describe('phase 8 permissions and roles', () => {
       assign: vi.fn().mockResolvedValue(undefined),
       remove: vi.fn().mockResolvedValue(undefined),
       listByRole: vi.fn().mockResolvedValue([]),
-    } as unknown as RolePermissionRepository;
+    } satisfies RolePermissionRepository;
     const roles = {
       findByUuid: vi.fn().mockResolvedValue(role()),
       findByName: vi.fn().mockResolvedValue(null),
@@ -270,19 +275,21 @@ describe('phase 8 permissions and roles', () => {
       getDependencyCount: vi
         .fn()
         .mockResolvedValue({ userAssignments: 0, permissionAssignments: 0 }),
-    } as unknown as RoleRepository;
+    } satisfies RoleRepository;
     const permissions = {
       findByUuid: vi.fn().mockResolvedValue(permission()),
-    } as unknown as PermissionRepository;
-    const audit = { record: vi.fn().mockResolvedValue(undefined) };
+    } satisfies PermissionRepository;
+    const audit = {
+      record: vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(undefined),
+    } satisfies SecurityAuditRepository;
     const rolePolicy = {
       canRead: vi.fn(),
       canManage: vi.fn(),
       canModifyProtected: vi.fn(),
-    } as unknown as RoleAuthorizationPolicy;
+    } satisfies RoleAuthorizationPolicy;
     const permissionPolicy = {
       canManageProtected: vi.fn(),
-    } as unknown as PermissionAuthorizationPolicy;
+    } satisfies PermissionAuthorizationPolicy;
     const actor = { userUuid, permissions: ['roles.update'] };
     const rpService = new RolePermissionService(
       assignments,
@@ -371,24 +378,28 @@ describe('phase 8 permissions and roles', () => {
   it('covers user role assignment, removal, list, and entity invariants', async () => {
     const users = {
       findByUuid: vi.fn().mockResolvedValue({ uuid: userUuid }),
-    } as unknown as UserRoleTargetRepository;
+    } satisfies UserRoleTargetRepository;
     const roles = {
       findByUuid: vi.fn().mockResolvedValue(role()),
-    } as unknown as RoleRepository;
+    } satisfies RoleRepository;
     const userRoles = {
       findByUserAndRole: vi.fn().mockResolvedValue(null),
       assign: vi.fn().mockResolvedValue(userRole()),
       remove: vi.fn().mockResolvedValue(undefined),
-      listByUser: vi.fn().mockResolvedValue({
-        items: [{ roleUuid, roleName: 'Staff', roleCode: 'staff' }],
-        total: 1,
-      }),
-    } as unknown as UserRoleRepository;
-    const audit = { record: vi.fn().mockResolvedValue(undefined) };
+      listByUser: vi
+        .fn()
+        .mockResolvedValue({
+          items: [{ roleUuid, roleName: 'Staff', roleCode: 'staff' }],
+          total: 1,
+        }),
+    } satisfies UserRoleRepository;
+    const audit = {
+      record: vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(undefined),
+    } satisfies SecurityAuditRepository;
     const policy = {
       canManage: vi.fn(),
       canRead: vi.fn(),
-    } as unknown as RoleAuthorizationPolicy;
+    } satisfies RoleAuthorizationPolicy;
     const service = new UserRoleService(users, roles, userRoles, audit, policy);
     const actor = { userUuid, permissions: ['roles.update'] };
     await expect(
