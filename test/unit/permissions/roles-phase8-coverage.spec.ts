@@ -321,11 +321,11 @@ describe('phase 8 permissions and roles', () => {
     ).rejects.toThrow('Role not found');
     permissions.findByUuid.mockResolvedValue(permission());
     roles.findByUuid.mockResolvedValue(role());
-    assignments.exists.mockResolvedValue(true);
+    assignments.exists.mockResolvedValueOnce(true);
     await expect(
       rpService.remove(actor, roleUuid, permissionUuid, context),
     ).resolves.toBeUndefined();
-    assignments.exists.mockResolvedValue(false);
+    assignments.exists.mockResolvedValueOnce(false);
     await expect(
       rpService.remove(actor, roleUuid, permissionUuid, context),
     ).rejects.toThrow('assignment');
@@ -423,7 +423,7 @@ describe('phase 8 permissions and roles', () => {
     ).rejects.toThrow('assignment not found');
     await expect(
       service.list(actor, userUuid, { page: 1, limit: 10 }),
-    ).resolves.toMatchObject({ total: 1 });
+    ).resolves.toMatchObject({ meta: { total: 1 } });
     await expect(
       service.list(actor, 'bad', { page: 1, limit: 10 }),
     ).rejects.toThrow('identifier');
