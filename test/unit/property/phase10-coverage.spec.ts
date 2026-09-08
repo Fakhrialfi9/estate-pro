@@ -153,9 +153,7 @@ describe('property phase 10 coverage', () => {
     await expect(service.getSpecifications(uuid)).rejects.toBeInstanceOf(
       BadRequestException,
     );
-    repository.getSpecifications.mockRejectedValueOnce(
-      new Error('unexpected'),
-    );
+    repository.getSpecifications.mockRejectedValueOnce(new Error('unexpected'));
     await expect(service.getSpecifications(uuid)).rejects.toThrow('unexpected');
   });
 
@@ -488,11 +486,11 @@ describe('property phase 10 coverage', () => {
   it('covers property extras and listing errors', () => {
     expect(hashSensitive('secret')).not.toBe('secret');
     expect(maskSensitive('abcdef')).not.toBe('abcdef');
-    expect(() => validateCertificateInput({} as never)).toThrow();
+    expect(() => validateCertificateInput({})).toThrow();
     expect(() => validateCertificateDates()).not.toThrow();
     expect(() => validateFinancialInvariants({})).not.toThrow();
     expect(() => validateLegalInvariants({})).not.toThrow();
-    expect(() => validateMedia({} as never)).toThrow();
+    expect(() => validateMedia({})).toThrow();
     expect(() =>
       validateSeoInvariants('villa-bali', { canonicalUrl: 'x' }),
     ).toThrow('canonicalUrl must end');

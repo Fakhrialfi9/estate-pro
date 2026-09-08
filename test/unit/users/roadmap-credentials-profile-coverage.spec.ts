@@ -356,7 +356,9 @@ describe('users credentials and profile roadmap coverage', () => {
       accepted: true,
     });
     config.getOrThrow = vi.fn().mockReturnValue(0);
-    users.findByEmail.mockResolvedValueOnce(UserEntity.create({ ...userSnapshot }));
+    users.findByEmail.mockResolvedValueOnce(
+      UserEntity.create({ ...userSnapshot }),
+    );
     credentials.findByUserUuid.mockResolvedValueOnce({ passwordHash: 'hash' });
     await expect(service.requestByEmail('jane@example.com')).rejects.toThrow(
       'Invalid password reset TTL configuration',
