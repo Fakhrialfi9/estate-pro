@@ -7,7 +7,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication, configureSwagger } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
+import { AutomationNotificationScheduler } from '../../src/modules/automation/infrastructure/scheduler/automation-notification.scheduler.js';
 import { AutomationScheduler } from '../../src/modules/automation/infrastructure/scheduler/automation.scheduler.js';
+import { SystemExportScheduler } from '../../src/modules/system/infrastructure/export/system-export.scheduler.js';
 import { validateOpenApiDocument } from '../../scripts/validate-openapi.mjs';
 
 describe('OpenAPI contract (e2e)', () => {
@@ -23,6 +25,10 @@ describe('OpenAPI contract (e2e)', () => {
         $disconnect: () => Promise.resolve(),
       })
       .overrideProvider(AutomationScheduler)
+      .useValue({})
+      .overrideProvider(AutomationNotificationScheduler)
+      .useValue({})
+      .overrideProvider(SystemExportScheduler)
       .useValue({})
       .compile();
 
