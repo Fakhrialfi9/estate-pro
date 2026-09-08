@@ -70,88 +70,91 @@ export class PrismaRefreshTokenRepository
     },
     now: Date,
   ): Promise<RefreshRotationResult> {
-    return this.prisma.$transaction(async (tx) => {
-      const [locked] = await tx.$queryRaw<Array<{ id: bigint }>>(Prisma.sql`
-        SELECT id
-        FROM authentication_refresh_tokens
-        WHERE token_hash = ${tokenHash}
-        FOR UPDATE
-      `);
-      if (!locked) return { kind: 'INVALID' };
+    return this.prisma.$transaction(
+      async (tx) => {
+        const [locked] = await tx.$queryRaw<Array<{ id: bigint }>>(Prisma.sql`
+          SELECT id
+          FROM authentication_refresh_tokens
+          WHERE token_hash = ${tokenHash}
+          FOR UPDATE
+        `);
+        if (!locked) return { kind: 'INVALID' };
 
-      const current = await tx.authenticationRefreshToken.findUnique({
-        where: { id: locked.id },
-        include: { family: { include: { session: true, user: true } } },
-      });
-      if (!current) return { kind: 'INVALID' };
+        const current = await tx.authenticationRefreshToken.findUnique({
+          where: { id: locked.id },
+          include: { family: { include: { session: true, user: true } } },
+        });
+        if (!current) return { kind: 'INVALID' };
 
-      if (current.consumedAt !== null || current.revokedAt !== null) {
-        if (current.family.revokedAt === null) {
-          await this.revokeFamilyAndSession(
-            tx,
-            current.familyId,
-            current.family.sessionId,
-            now,
-          );
-          return {
-            kind: 'REUSE_DETECTED',
+        if (current.consumedAt !== null || current.revokedAt !== null) {
+          if (current.family.revokedAt === null) {
+            await this.revokeFamilyAndSession(
+              tx,
+              current.familyId,
+              current.family.sessionId,
+              now,
+            );
+            return {
+              kind: 'REUSE_DETECTED',
+              familyId: current.familyId,
+              userUuid: current.family.user.uuid,
+              sessionId: current.family.sessionId.toString(),
+            };
+          }
+          return { kind: 'REVOKED', snapshot: this.snapshot(current) };
+        }
+        if (current.expiresAt.getTime() <= now.getTime()) {
+          return { kind: 'EXPIRED', snapshot: this.snapshot(current) };
+        }
+        if (
+          current.family.revokedAt !== null ||
+          current.family.session.revokedAt !== null ||
+          current.family.session.expiresAt.getTime() <= now.getTime() ||
+          current.family.user.deletedAt !== null ||
+          !current.family.user.isActive ||
+          current.family.user.status !== 'active'
+        ) {
+          return { kind: 'REVOKED', snapshot: this.snapshot(current) };
+        }
+
+        const replacement = createReplacement({
+          familyId: current.familyId,
+          sessionId: current.family.sessionId.toString(),
+        });
+
+        await tx.authenticationRefreshToken.update({
+          where: { id: current.id },
+          data: {
+            consumedAt: now,
+            revokedAt: now,
+            revokeReason: 'ROTATED',
+          },
+        });
+
+        await tx.authenticationRefreshToken.create({
+          data: {
+            family: { connect: { id: current.familyId } },
+            tokenHash: replacement.tokenHash,
+            issuedAt: now,
+            expiresAt: replacement.expiresAt,
+            createdAt: now,
+          },
+        });
+
+        return {
+          kind: 'ROTATED',
+          value: {
+            oldTokenId: current.id.toString(),
             familyId: current.familyId,
             userUuid: current.family.user.uuid,
             sessionId: current.family.sessionId.toString(),
-          };
-        }
-        return { kind: 'REVOKED', snapshot: this.snapshot(current) };
-      }
-      if (current.expiresAt.getTime() <= now.getTime()) {
-        return { kind: 'EXPIRED', snapshot: this.snapshot(current) };
-      }
-      if (
-        current.family.revokedAt !== null ||
-        current.family.session.revokedAt !== null ||
-        current.family.session.expiresAt.getTime() <= now.getTime() ||
-        current.family.user.deletedAt !== null ||
-        !current.family.user.isActive ||
-        current.family.user.status !== 'active'
-      ) {
-        return { kind: 'REVOKED', snapshot: this.snapshot(current) };
-      }
-
-      const replacement = createReplacement({
-        familyId: current.familyId,
-        sessionId: current.family.sessionId.toString(),
-      });
-
-      await tx.authenticationRefreshToken.update({
-        where: { id: current.id },
-        data: {
-          consumedAt: now,
-          revokedAt: now,
-          revokeReason: 'ROTATED',
-        },
-      });
-
-      await tx.authenticationRefreshToken.create({
-        data: {
-          family: { connect: { id: current.familyId } },
-          tokenHash: replacement.tokenHash,
-          issuedAt: now,
-          expiresAt: replacement.expiresAt,
-          createdAt: now,
-        },
-      });
-
-      return {
-        kind: 'ROTATED',
-        value: {
-          oldTokenId: current.id.toString(),
-          familyId: current.familyId,
-          userUuid: current.family.user.uuid,
-          sessionId: current.family.sessionId.toString(),
-          newToken: replacement.token,
-          newTokenExpiresAt: replacement.expiresAt,
-        },
-      };
-    });
+            newToken: replacement.token,
+            newTokenExpiresAt: replacement.expiresAt,
+          },
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
   }
 
   async revokeForFamily(
@@ -172,7 +175,7 @@ export class PrismaRefreshTokenRepository
     });
   }
 
-  async revokeFamily(
+  async revokeForFamily(
     familyId: string,
     reason: RefreshTokenRevokeReason,
     now: Date,
