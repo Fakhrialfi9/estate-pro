@@ -306,9 +306,11 @@ describe('property phase 10 coverage', () => {
     await expect(lifecycle.publish(uuid, 2, actor)).rejects.toBeInstanceOf(
       BadRequestException,
     );
-    lifecycleRepo.verify = vi.fn().mockRejectedValue(
-      namedMasterError('MasterNotFoundError', 'Resource not found'),
-    );
+    lifecycleRepo.verify = vi
+      .fn()
+      .mockRejectedValue(
+        namedMasterError('MasterNotFoundError', 'Resource not found'),
+      );
     await expect(lifecycle.verify(uuid, 1, actor)).rejects.toBeInstanceOf(
       NotFoundException,
     );
