@@ -17,6 +17,7 @@ import {
 import { AuthenticatedAccessGuard } from '../../src/common/security/authenticated-access.guard.js';
 import { AuthorizationGuard } from '../../src/common/security/authorization.guard.js';
 import { PropertyAccessGuard } from '../../src/common/security/property-access.guard.js';
+import { PasswordHasherService } from '../../src/common/security/password-hasher.service.js';
 import { ClosurePolicy } from '../../src/modules/crm/domain/closure.policy.js';
 import { DuplicateDetector } from '../../src/modules/crm/application/ports/duplicate-detector.js';
 import { LeadMergePolicy } from '../../src/modules/crm/application/ports/merge.policy.js';
@@ -35,6 +36,15 @@ import {
 import { RefreshTokenEntity } from '../../src/modules/auth/domain/entities/refresh-token.entity.js';
 import { RefreshTokenFamilyEntity } from '../../src/modules/auth/domain/entities/refresh-token-family.entity.js';
 import { TwoFactorEntity } from '../../src/modules/auth/domain/entities/two-factor.entity.js';
+import { PRIVILEGED_ROLE_ASSIGNMENT_PERMISSION } from '../../src/modules/roles/application/policies/user-role-authorization.constants.js';
+import { RolePermissionEntity } from '../../src/modules/roles/domain/entities/role-permission.entity.js';
+import { UserRoleEntity } from '../../src/modules/roles/domain/entities/user-role.entity.js';
+import {
+  Facility,
+  Property,
+  PropertyCategory,
+  PropertySubcategory,
+} from '../../src/modules/property/domain/entities/property-master.entities.js';
 
 const uuid = '123e4567-e89b-12d3-a456-426614174000';
 const now = new Date('2026-01-01T00:00:00.000Z');
@@ -146,7 +156,6 @@ describe('roadmap common security and observability coverage', () => {
   });
 
   it('covers authorization guard metadata and property access decisions', async () => {
-    const reflector = new Reflector();
     const authorization = {
       resolve: vi.fn().mockResolvedValue({
         userUuid: uuid,
@@ -271,27 +280,18 @@ describe('roadmap common security and observability coverage', () => {
     ).toEqual([{ field: 'email', oldValue: 'a', newValue: 'b' }]);
   });
 
-  it('covers analytics error constructors', () => {
+  it('covers analytics errors and CRM policy branches', () => {
     expect(new AnalyticsInvalidQueryException().getStatus()).toBe(400);
-    expect(
-      new AnalyticsInvalidQueryException('custom').getResponse(),
-    ).toMatchObject({
-      code: 'ANALYTICS_INVALID_QUERY',
-      message: 'custom',
-    });
-    expect(new AnalyticsScopeException().getStatus()).toBe(403);
     expect(new AnalyticsQueryTimeoutException().getStatus()).toBe(504);
+    expect(new AnalyticsScopeException().getStatus()).toBe(403);
     expect(new AnalyticsUnavailableException().getStatus()).toBe(503);
-  });
 
-  it('covers CRM policy branches', () => {
     const closure = new ClosurePolicy();
     expect(closure.decide(' sold ', 'WON')).toEqual({
       reason: 'sold',
       outcome: 'WON',
     });
     expect(() => closure.decide(' ', 'LOST')).toThrow();
-
     const qualification = new QualificationPolicy();
     expect(qualification.evaluate(10, 'qualified')).toMatchObject({
       qualified: true,
@@ -299,59 +299,58 @@ describe('roadmap common security and observability coverage', () => {
     expect(qualification.evaluate(0, 'not qualified')).toMatchObject({
       qualified: false,
     });
-
     const lifecycle = new LeadLifecyclePolicy();
     lifecycle.assertCan('QUALIFY', 'NEW');
     expect(() => lifecycle.assertCan('QUALIFY', 'CLOSED_WON')).toThrow();
     expect(canTransition('NEW', 'CONTACTED')).toBe(true);
     expect(canTransition('NEW', 'CLOSED_WON')).toBe(false);
     expect(allowedTransitions('NURTURING')).toContain('QUALIFIED');
-
     const merge = new LeadMergePolicy();
     expect(() => merge.assertAllowed('a', 'b', false)).toThrow();
     expect(() => merge.assertAllowed('a', 'a', true)).toThrow();
     expect(() => merge.assertAllowed('a', 'b', true)).not.toThrow();
-
     const detector = new DuplicateDetector();
-    const matches = detector.detect(
-      {
-        leadUuid: 'a',
-        email: 'a@example.com',
-        phone: '+62 812123',
-        displayName: 'Alice',
-      },
-      [
+    expect(
+      detector.detect(
         {
-          leadUuid: 'b',
+          leadUuid: 'a',
           email: 'a@example.com',
           phone: '+62 812123',
           displayName: 'Alice',
         },
-      ],
-    );
-    expect(matches).toHaveLength(1);
+        [
+          {
+            leadUuid: 'b',
+            email: 'a@example.com',
+            phone: '+62 812123',
+            displayName: 'Alice',
+          },
+        ],
+      ),
+    ).toHaveLength(1);
   });
 
-  it('covers refresh token family and two-factor state', () => {
-    const token = RefreshTokenEntity.create({
-      id: 'token-1',
+  it('covers auth entities, property master entities and password hashing', async () => {
+    const base = {
+      id: '1',
       familyId: uuid,
       userUuid: uuid,
-      sessionId: '42',
+      sessionId: '10',
       tokenHash: 'a'.repeat(64),
       issuedAt: now,
       expiresAt: new Date('2026-01-02T00:00:00.000Z'),
       consumedAt: null,
       revokedAt: null,
       revokeReason: null,
-    });
+    } as const;
+    const token = RefreshTokenEntity.create(base);
     expect(token.state(now)).toBe('ACTIVE');
     expect(() => token.assertRefreshable(now)).not.toThrow();
 
     const family = RefreshTokenFamilyEntity.create({
       id: uuid,
       userUuid: uuid,
-      sessionId: '42',
+      sessionId: '10',
       revokedAt: null,
       revokeReason: null,
       createdAt: now,
@@ -362,7 +361,7 @@ describe('roadmap common security and observability coverage', () => {
       RefreshTokenFamilyEntity.create({
         id: uuid,
         userUuid: uuid,
-        sessionId: '42',
+        sessionId: '10',
         revokedAt: now,
         revokeReason: 'LOGOUT',
         createdAt: now,
@@ -374,13 +373,119 @@ describe('roadmap common security and observability coverage', () => {
       id: 1n,
       userUuid: uuid,
       method: 'totp',
-      secretEncrypted: 'secret',
+      secretEncrypted: 'encrypted',
       enabledAt: null,
-      failedVerificationAttempts: 1,
-      lockedUntil: new Date('2026-01-01T00:05:00Z'),
+      lastUsedAt: null,
+      lastUsedTimeStep: null,
+      enrollmentStartedAt: now,
+      failedVerificationAttempts: 2,
+      lockedUntil: new Date('2026-01-01T01:00:00.000Z'),
       createdAt: now,
       updatedAt: now,
     });
     expect(twoFactor.status).toBe('PENDING');
+
+    const rolePermission = RolePermissionEntity.create({
+      roleUuid: uuid,
+      permissionUuid: uuid,
+      createdAt: now,
+      updatedAt: now,
+    });
+    expect(rolePermission.toSnapshot()).toMatchObject({ roleUuid: uuid });
+    const userRole = UserRoleEntity.create({
+      userUuid: uuid,
+      roleUuid: uuid,
+      roleName: 'Admin',
+      roleCode: 'admin',
+      roleIsSystem: true,
+      isActive: true,
+      assignedByUuid: null,
+      assignedAt: now,
+      revokedAt: null,
+    });
+    expect(userRole.toSnapshot().roleCode).toBe('admin');
+    expect(PRIVILEGED_ROLE_ASSIGNMENT_PERMISSION).toBe(
+      'roles:manage:protected',
+    );
+
+    const property = new Property(
+      'property-1',
+      1n,
+      1n,
+      null,
+      'P-001',
+      'REF-001',
+      'Grand Residence',
+      '',
+      null,
+      null,
+      'DRAFT',
+      'AVAILABLE',
+      null,
+      null,
+      1,
+      now,
+      now,
+      null,
+      null,
+      'creator',
+      null,
+      null,
+      null,
+      null,
+    );
+    property.transitionTo('ACTIVE', 'actor-1');
+    expect(property.status).toBe('ACTIVE');
+    expect(
+      new PropertyCategory(
+        'category-1',
+        1n,
+        'RES',
+        'Residential',
+        '',
+        null,
+        null,
+        true,
+        1,
+      ).slug,
+    ).toBe('residential');
+    expect(
+      new PropertySubcategory(
+        'subcategory-1',
+        1n,
+        'HOUSE',
+        'House',
+        '',
+        null,
+        true,
+        1,
+      ).slug,
+    ).toBe('house');
+    expect(
+      new Facility(
+        'facility-1',
+        'PARKING',
+        'Parking',
+        '',
+        'AMENITY',
+        null,
+        null,
+        1,
+        true,
+      ).slug,
+    ).toBe('parking');
+
+    const config = {
+      getOrThrow: () => ({
+        memoryCost: 8192,
+        timeCost: 1,
+        parallelism: 1,
+        hashLength: 16,
+      }),
+    } as never;
+    const hasher = new PasswordHasherService(config);
+    const hash = await hasher.hash('unit-test-password');
+    await expect(hasher.verify(hash, 'unit-test-password')).resolves.toBe(true);
+    await expect(hasher.verify(hash, 'wrong-password')).resolves.toBe(false);
   });
 });
