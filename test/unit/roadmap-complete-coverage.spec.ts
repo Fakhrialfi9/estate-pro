@@ -140,13 +140,11 @@ describe('roadmap complete coverage', () => {
 
     const reflector = { getAllAndOverride: vi.fn() };
     const authorization = {
-      resolve: vi
-        .fn()
-        .mockResolvedValue({
-          userUuid: uuid,
-          permissionCodes: ['properties.read'],
-          roleCodes: ['agent'],
-        }),
+      resolve: vi.fn().mockResolvedValue({
+        userUuid: uuid,
+        permissionCodes: ['properties.read'],
+        roleCodes: ['agent'],
+      }),
       assertPermissions: vi.fn(),
       assertRoles: vi.fn(),
     };
@@ -811,15 +809,13 @@ describe('roadmap complete coverage', () => {
         .fn()
         .mockResolvedValue({ uuid, status: 'DRAFT', ownerUserUuid: uuid }),
       updateWorkflow: vi.fn().mockResolvedValue({ uuid, status: 'ACTIVE' }),
-      getWorkflow: vi
-        .fn()
-        .mockResolvedValue({
-          uuid,
-          status: 'DRAFT',
-          ownerUserUuid: uuid,
-          versions: [],
-          activeVersionUuid: null,
-        }),
+      getWorkflow: vi.fn().mockResolvedValue({
+        uuid,
+        status: 'DRAFT',
+        ownerUserUuid: uuid,
+        versions: [],
+        activeVersionUuid: null,
+      }),
       createVersion: vi.fn().mockResolvedValue({ uuid: 'version-1' }),
       getVersion: vi.fn().mockResolvedValue(null),
       listActiveVersions: vi.fn().mockResolvedValue([]),
@@ -827,13 +823,11 @@ describe('roadmap complete coverage', () => {
       claimDueExecution: vi.fn().mockResolvedValue(null),
       listActions: vi.fn().mockResolvedValue([]),
       updateAction: vi.fn().mockResolvedValue(undefined),
-      getExecution: vi
-        .fn()
-        .mockResolvedValue({
-          uuid: 'execution-1',
-          workflowUuid: uuid,
-          state: 'FAILED',
-        }),
+      getExecution: vi.fn().mockResolvedValue({
+        uuid: 'execution-1',
+        workflowUuid: uuid,
+        state: 'FAILED',
+      }),
       updateExecution: vi
         .fn()
         .mockResolvedValue({ uuid: 'execution-1', state: 'WAITING' }),

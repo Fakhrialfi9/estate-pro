@@ -379,12 +379,10 @@ describe('phase 8 permissions and roles', () => {
       findByUserAndRole: vi.fn().mockResolvedValue(null),
       assign: vi.fn().mockResolvedValue(userRole()),
       remove: vi.fn().mockResolvedValue(undefined),
-      listByUser: vi
-        .fn()
-        .mockResolvedValue({
-          items: [{ roleUuid, roleName: 'Staff', roleCode: 'staff' }],
-          total: 1,
-        }),
+      listByUser: vi.fn().mockResolvedValue({
+        items: [{ roleUuid, roleName: 'Staff', roleCode: 'staff' }],
+        total: 1,
+      }),
     } as unknown as UserRoleRepository;
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
     const policy = {

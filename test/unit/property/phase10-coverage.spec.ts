@@ -189,23 +189,19 @@ describe('property phase 10 coverage', () => {
       createProperty: vi
         .fn()
         .mockResolvedValue({ uuid, title: 'House', status: 'DRAFT' }),
-      getProperty: vi
-        .fn()
-        .mockResolvedValue({
-          uuid,
-          status: 'DRAFT',
-          availableFrom: null,
-          availableTo: null,
-        }),
+      getProperty: vi.fn().mockResolvedValue({
+        uuid,
+        status: 'DRAFT',
+        availableFrom: null,
+        availableTo: null,
+      }),
       listProperties: vi.fn().mockResolvedValue([]),
-      updateProperty: vi
-        .fn()
-        .mockResolvedValue({
-          uuid,
-          status: 'DRAFT',
-          title: 'Updated',
-          version: 2,
-        }),
+      updateProperty: vi.fn().mockResolvedValue({
+        uuid,
+        status: 'DRAFT',
+        title: 'Updated',
+        version: 2,
+      }),
       deleteProperty: vi.fn().mockResolvedValue(undefined),
       restoreProperty: vi.fn().mockResolvedValue({ uuid }),
       duplicateProperty: vi.fn().mockResolvedValue({ uuid: uuid2 }),

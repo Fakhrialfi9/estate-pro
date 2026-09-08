@@ -39,14 +39,12 @@ describe('PropertyCapabilitiesService phase 10 coverage', () => {
     updateAmenity: vi.fn().mockResolvedValue(amenity),
     deleteAmenity: vi.fn().mockResolvedValue(undefined),
     listPropertyAmenities: vi.fn().mockResolvedValue([]),
-    assignAmenity: vi
-      .fn()
-      .mockResolvedValue({
-        amenity,
-        available: true,
-        value: null,
-        notes: null,
-      }),
+    assignAmenity: vi.fn().mockResolvedValue({
+      amenity,
+      available: true,
+      value: null,
+      notes: null,
+    }),
     unassignAmenity: vi.fn().mockResolvedValue(undefined),
     listDocuments: vi.fn().mockResolvedValue([document]),
     getDocument: vi.fn().mockResolvedValue(document),

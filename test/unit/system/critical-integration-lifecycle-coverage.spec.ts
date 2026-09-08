@@ -38,28 +38,24 @@ describe('integration callback lifecycle', () => {
   it('accepts verified callbacks and handles replay/error branches', async () => {
     const provider = makeProvider();
     const integrations = {
-      get: vi
-        .fn()
-        .mockResolvedValue({
-          id: 1n,
-          uuid,
-          state: 'ACTIVE',
-          secretRef: 'vault://secret',
-        }),
+      get: vi.fn().mockResolvedValue({
+        id: 1n,
+        uuid,
+        state: 'ACTIVE',
+        secretRef: 'vault://secret',
+      }),
     };
     const roadmap = {
       idempotency: {
-        reserve: vi
-          .fn()
-          .mockResolvedValue({
-            created: true,
-            record: {
-              uuid: 'id-1',
-              status: 'PROCESSING',
-              attempt: 0,
-              payloadHash: 'x',
-            },
-          }),
+        reserve: vi.fn().mockResolvedValue({
+          created: true,
+          record: {
+            uuid: 'id-1',
+            status: 'PROCESSING',
+            attempt: 0,
+            payloadHash: 'x',
+          },
+        }),
         update: vi.fn().mockResolvedValue(undefined),
       },
       event: {
@@ -212,16 +208,14 @@ describe('integration reliability', () => {
     const provider = makeProvider();
     const integrations = {
       providerFor: vi.fn().mockResolvedValue(provider),
-      runtimeFor: vi
-        .fn()
-        .mockResolvedValue({
-          integrationId: 1n,
-          circuitState: 'CLOSED',
-          nextRetryAt: null,
-          openedAt: null,
-          successCount: 0,
-          failureCount: 0,
-        }),
+      runtimeFor: vi.fn().mockResolvedValue({
+        integrationId: 1n,
+        circuitState: 'CLOSED',
+        nextRetryAt: null,
+        openedAt: null,
+        successCount: 0,
+        failureCount: 0,
+      }),
       providerConfiguration: vi
         .fn()
         .mockResolvedValue({ metadata: {}, secretRef: null }),
@@ -296,33 +290,29 @@ describe('integration sync', () => {
     const integrations = {
       providerFor: vi.fn().mockResolvedValue({
         ...provider,
-        push: vi
-          .fn()
-          .mockResolvedValue({
-            ok: true,
-            operationKey: 'sync.push',
-            data: {},
-            errorCode: null,
-            errorMessage: null,
-            providerRequestId: null,
-            receivedAt: new Date(),
-          }),
+        push: vi.fn().mockResolvedValue({
+          ok: true,
+          operationKey: 'sync.push',
+          data: {},
+          errorCode: null,
+          errorMessage: null,
+          providerRequestId: null,
+          receivedAt: new Date(),
+        }),
         pull: vi
           .fn()
           .mockResolvedValue({ records: [{ remote: 1 }], nextCursor: 'c2' }),
       }),
-      runtimeFor: vi
-        .fn()
-        .mockResolvedValue({
-          integrationId: 1n,
-          circuitState: 'CLOSED',
-          nextRetryAt: null,
-          successCount: 0,
-          failureCount: 0,
-          requestMapping: {},
-          responseMapping: {},
-          syncCursor: null,
-        }),
+      runtimeFor: vi.fn().mockResolvedValue({
+        integrationId: 1n,
+        circuitState: 'CLOSED',
+        nextRetryAt: null,
+        successCount: 0,
+        failureCount: 0,
+        requestMapping: {},
+        responseMapping: {},
+        syncCursor: null,
+      }),
       providerConfiguration: vi
         .fn()
         .mockResolvedValue({ metadata: {}, secretRef: null }),
@@ -348,22 +338,18 @@ describe('integration sync', () => {
     const roadmap = {
       operation: {
         getByIdempotency: vi.fn().mockResolvedValue(null),
-        create: vi
-          .fn()
-          .mockResolvedValue({
-            uuid: 'operation-1',
-            attempt: 1,
-            maxAttempts: 5,
-            state: 'RUNNING',
-          }),
-        update: vi
-          .fn()
-          .mockResolvedValue({
-            uuid: 'operation-1',
-            attempt: 1,
-            maxAttempts: 5,
-            state: 'RUNNING',
-          }),
+        create: vi.fn().mockResolvedValue({
+          uuid: 'operation-1',
+          attempt: 1,
+          maxAttempts: 5,
+          state: 'RUNNING',
+        }),
+        update: vi.fn().mockResolvedValue({
+          uuid: 'operation-1',
+          attempt: 1,
+          maxAttempts: 5,
+          state: 'RUNNING',
+        }),
         list: vi.fn().mockResolvedValue([]),
       },
       runtime: { update: vi.fn().mockResolvedValue(undefined) },
@@ -433,17 +419,15 @@ describe('integration sync', () => {
       pull: vi
         .fn()
         .mockResolvedValue({ records: [{ remote: 1 }], nextCursor: 'next' }),
-      push: vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          operationKey: 'sync.push',
-          data: {},
-          errorCode: null,
-          errorMessage: null,
-          providerRequestId: null,
-          receivedAt: new Date(),
-        }),
+      push: vi.fn().mockResolvedValue({
+        ok: true,
+        operationKey: 'sync.push',
+        data: {},
+        errorCode: null,
+        errorMessage: null,
+        providerRequestId: null,
+        receivedAt: new Date(),
+      }),
     });
     await expect(
       service.pull('actor', uuid, { resourceType: 'lead' }),
