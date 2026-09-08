@@ -25,8 +25,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply ESLint safe autofixes
+      - name: Apply ESLint autofixes without changing rules
         run: npx eslint --fix . || true
+
+      - name: Apply Prettier formatting
+        run: npx prettier --write "src/**/*.ts" "src/modules/users/credentials" "test/**/*.ts" --no-error-on-unmatched-pattern
 
       - name: Export working tree
         run: |
