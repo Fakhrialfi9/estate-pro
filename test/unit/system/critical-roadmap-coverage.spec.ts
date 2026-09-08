@@ -19,7 +19,6 @@ import { SystemWebhookRateLimitService } from '../../../src/modules/system/appli
 import type { PrismaService } from '../../../src/infrastructure/database/prisma/prisma.service.js';
 import type { SystemIntegrationReliabilityService } from '../../../src/modules/system/application/services/system-integration-reliability.service.js';
 import type { SystemIntegrationService } from '../../../src/modules/system/application/services/system-integration.service.js';
-import type { SystemRoadmapRepository } from '../../../src/modules/system/domain/repositories/system-roadmap.repository.js';
 import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
 import type {
   AutomationNotificationPort,
@@ -208,9 +207,10 @@ describe('critical system roadmap coverage', () => {
   });
 
   it('covers credential refresh, redaction and secure failure paths', async () => {
-    const audit = {
-      record: vi.fn().mockResolvedValue(undefined),
-    } as unknown as SecurityAuditRepository;
+    const record = vi
+      .fn<SecurityAuditRepository['record']>()
+      .mockResolvedValue(undefined);
+    const audit = { record } satisfies SecurityAuditRepository;
     const credential = {
       uuid,
       status: 'ACTIVE',
@@ -250,7 +250,7 @@ describe('critical system roadmap coverage', () => {
       uuid: 'rotated',
     });
     expect(roadmap.credential.rotate).toHaveBeenCalledTimes(1);
-    expect(audit.record).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledTimes(1);
 
     roadmap.credential.get.mockResolvedValueOnce(null);
     await expect(service.get(uuid)).rejects.toThrow(
@@ -294,7 +294,7 @@ describe('critical system roadmap coverage', () => {
   });
 
   it('covers integration logs, limits, filtering and latency calculation', async () => {
-    const queryRaw = vi.fn().mockResolvedValue([
+    const queryRaw = vi.fn<PrismaService['$queryRaw']>().mockResolvedValue([
       {
         uuid,
         integrationUuid: 'integration-1',
@@ -432,12 +432,12 @@ describe('critical system roadmap coverage', () => {
         list: vi.fn().mockResolvedValue([alert]),
       },
     };
+    const createNotification = vi
+      .fn<AutomationNotificationPort['createNotification']>()
+      .mockResolvedValue(undefined);
     const notifications = {
-      createNotification: vi.fn().mockResolvedValue(undefined),
-    } as unknown as AutomationNotificationPort;
-    const audit = {
-      record: vi.fn().mockResolvedValue(undefined),
-    } as unknown as SecurityAuditRepository;
+      createNotification,
+    } satisfies AutomationNotificationPort;
     const service = new SystemOperationalAlertService(
       roadmap as never,
       notifications,
@@ -447,13 +447,13 @@ describe('critical system roadmap coverage', () => {
     await expect(
       service.evaluate({ signals: { queue: 20, cpu: 10 } }),
     ).resolves.toEqual([alert]);
-    expect(notifications.createNotification).toHaveBeenCalledWith(
+    expect(createNotification).toHaveBeenCalledWith(
       expect.objectContaining({ userUuid: uuid, priority: 'URGENT' }),
     );
     await expect(service.acknowledge(uuid, 'alert-1')).resolves.toMatchObject({
       status: 'ACKNOWLEDGED',
     });
-    expect(audit.record).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledTimes(2);
 
     roadmap.alert.list.mockResolvedValueOnce([]);
     await expect(service.acknowledge(uuid, 'missing')).rejects.toThrow(
@@ -462,48 +462,58 @@ describe('critical system roadmap coverage', () => {
   });
 
   it('covers production hardening metrics, health, retry, cleanup and safe defaults', async () => {
+    const queryRaw = vi
+      .fn<PrismaService['$queryRaw']>()
+      .mockResolvedValueOnce([
+        {
+          bucket: '2026-01-01',
+          state: 'SUCCEEDED',
+          count: 2,
+          retries: 1,
+          failures: 0,
+          averageLatencyMs: 10,
+        },
+        {
+          bucket: '2026-01-01',
+          state: null,
+          count: 1n,
+          retries: '2',
+          failures: '1',
+          averageLatencyMs: '20',
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    const operationFindMany = vi
+      .fn<PrismaService['systemIntegrationOperation']['findMany']>()
+      .mockResolvedValue([
+        {
+          uuid,
+          state: 'FAILED',
+          attempt: 1,
+          maxAttempts: 3,
+          createdAt: new Date(),
+        },
+        {
+          uuid: 'maxed',
+          state: 'FAILED',
+          attempt: 3,
+          maxAttempts: 3,
+          createdAt: new Date(),
+        },
+      ]);
+    const operationUpdate = vi
+      .fn<PrismaService['systemIntegrationOperation']['update']>()
+      .mockResolvedValue(undefined);
+    const operationDeleteMany = vi
+      .fn<PrismaService['systemIntegrationOperation']['deleteMany']>()
+      .mockResolvedValue({ count: 1 });
     const prisma = {
-      $queryRaw: vi
-        .fn()
-        .mockResolvedValueOnce([
-          {
-            bucket: '2026-01-01',
-            state: 'SUCCEEDED',
-            count: 2,
-            retries: 1,
-            failures: 0,
-            averageLatencyMs: 10,
-          },
-          {
-            bucket: '2026-01-01',
-            state: null,
-            count: 1n,
-            retries: '2',
-            failures: '1',
-            averageLatencyMs: '20',
-          },
-        ])
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]),
+      $queryRaw: queryRaw,
       systemIntegrationOperation: {
-        findMany: vi.fn().mockResolvedValue([
-          {
-            uuid,
-            state: 'FAILED',
-            attempt: 1,
-            maxAttempts: 3,
-            createdAt: new Date(),
-          },
-          {
-            uuid: 'maxed',
-            state: 'FAILED',
-            attempt: 3,
-            maxAttempts: 3,
-            createdAt: new Date(),
-          },
-        ]),
-        update: vi.fn().mockResolvedValue(undefined),
-        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findMany: operationFindMany,
+        update: operationUpdate,
+        deleteMany: operationDeleteMany,
       },
     } as unknown as PrismaService;
     const integrations = {
@@ -520,9 +530,6 @@ describe('critical system roadmap coverage', () => {
         .mockResolvedValueOnce({ status: 'UP' })
         .mockResolvedValueOnce({ status: 'DOWN' }),
     } as unknown as SystemIntegrationReliabilityService;
-    const audit = {
-      record: vi.fn().mockResolvedValue(undefined),
-    } as unknown as SecurityAuditRepository;
     const service = new SystemProductionHardeningService(
       prisma,
       integrations,
@@ -544,7 +551,7 @@ describe('critical system roadmap coverage', () => {
     ).resolves.toMatchObject({
       granularity: 'hour',
     });
-    prisma.$queryRaw.mockResolvedValueOnce([]);
+    queryRaw.mockResolvedValueOnce([]);
     await expect(service.jobMetrics()).resolves.toMatchObject({
       total: 0,
       errorRate: 0,
@@ -553,7 +560,7 @@ describe('critical system roadmap coverage', () => {
     await expect(service.integrationHealth()).resolves.toMatchObject({
       status: 'DOWN',
     });
-    prisma.$queryRaw.mockResolvedValueOnce([{ ok: 1 }]);
+    queryRaw.mockResolvedValueOnce([{ ok: 1 }]);
     await expect(service.externalDependencyHealth()).resolves.toMatchObject({
       status: 'DOWN',
     });
@@ -568,18 +575,18 @@ describe('critical system roadmap coverage', () => {
       count: 1,
       skippedMaxAttempts: 1,
     });
-    expect(prisma.systemIntegrationOperation.update).toHaveBeenCalledTimes(1);
+    expect(operationUpdate).toHaveBeenCalledTimes(1);
 
     expect(service.operationalCommands()).toMatchObject({
       safeDefaults: { dryRun: true, maxBatch: 25 },
     });
-    prisma.systemIntegrationOperation.findMany.mockResolvedValueOnce([
+    operationFindMany.mockResolvedValueOnce([
       { uuid, createdAt: new Date('2025-01-01'), state: 'FAILED' },
     ]);
     await expect(
       service.orphanCleanup({ dryRun: true, olderThanHours: 24 }, uuid),
     ).resolves.toMatchObject({ dryRun: true });
-    prisma.systemIntegrationOperation.findMany.mockResolvedValueOnce([
+    operationFindMany.mockResolvedValueOnce([
       { uuid, createdAt: new Date('2025-01-01'), state: 'FAILED' },
     ]);
     await expect(
