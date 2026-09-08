@@ -148,14 +148,17 @@ describe('integration callback lifecycle', () => {
     await expect(
       service.enqueue(uuid, input, { ...provider, verifySignature: undefined }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
-    const verify = provider.verifySignature;
-    if (verify) {
-      vi.mocked(verify).mockRejectedValueOnce(new Error('invalid'));
-      await expect(
-        service.enqueue(uuid, input, provider),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
-      vi.mocked(verify).mockResolvedValue(true);
-    }
+
+    provider.verifySignature = vi
+      .fn<NonNullable<IntegrationProviderPort['verifySignature']>>()
+      .mockRejectedValueOnce(new Error('invalid'));
+    await expect(
+      service.enqueue(uuid, input, provider),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    provider.verifySignature = vi
+      .fn<NonNullable<IntegrationProviderPort['verifySignature']>>()
+      .mockResolvedValue(true);
+
     await expect(
       service.enqueue(uuid, input, {
         ...provider,
@@ -235,13 +238,13 @@ describe('integration reliability', () => {
     expect(service.retryAfterMs({ retryAfterMs: 'x' })).toBeNull();
     expect(service.delayMs(0, DEFAULT_INTEGRATION_RETRY_POLICY, 0)).toBe(200);
     await expect(
-      service.execute(uuid, async () => 'ok', {
+      service.execute(uuid, () => Promise.resolve('ok'), {
         ...DEFAULT_INTEGRATION_RETRY_POLICY,
         maxAttempts: 0,
       }),
     ).rejects.toThrow('maxAttempts');
     await expect(
-      service.execute(uuid, async () => 'ok'),
+      service.execute(uuid, () => Promise.resolve('ok')),
     ).resolves.toMatchObject({ value: 'ok', retry: { attempt: 1 } });
 
     integrations.runtimeFor.mockResolvedValueOnce({
@@ -252,28 +255,35 @@ describe('integration reliability', () => {
       successCount: 0,
       failureCount: 0,
     });
-    await expect(service.execute(uuid, async () => 'no')).rejects.toThrow(
-      'circuit breaker is open',
-    );
+    await expect(
+      service.execute(uuid, () => Promise.resolve('no')),
+    ).rejects.toThrow('circuit breaker is open');
 
-    const health = provider.health;
-    if (health) {
-      await expect(service.providerHealth(uuid)).resolves.toMatchObject({
-        status: 'UP',
-      });
-      vi.mocked(health).mockResolvedValueOnce({ ok: true, latencyMs: 1_500 });
-      await expect(service.providerHealth(uuid)).resolves.toMatchObject({
-        status: 'DEGRADED',
-      });
-      vi.mocked(health).mockResolvedValueOnce({ ok: false, latencyMs: 10 });
-      await expect(service.providerHealth(uuid)).resolves.toMatchObject({
-        status: 'DOWN',
-      });
-      vi.mocked(health).mockRejectedValueOnce(new Error('timeout'));
-      await expect(service.providerHealth(uuid)).resolves.toMatchObject({
-        status: 'UNKNOWN',
-      });
-    }
+    provider.health = vi
+      .fn<NonNullable<IntegrationProviderPort['health']>>()
+      .mockResolvedValue({ ok: true, latencyMs: 10 });
+    await expect(service.providerHealth(uuid)).resolves.toMatchObject({
+      status: 'UP',
+    });
+    provider.health = vi
+      .fn<NonNullable<IntegrationProviderPort['health']>>()
+      .mockResolvedValue({ ok: true, latencyMs: 1_500 });
+    await expect(service.providerHealth(uuid)).resolves.toMatchObject({
+      status: 'DEGRADED',
+    });
+    provider.health = vi
+      .fn<NonNullable<IntegrationProviderPort['health']>>()
+      .mockResolvedValue({ ok: false, latencyMs: 10 });
+    await expect(service.providerHealth(uuid)).resolves.toMatchObject({
+      status: 'DOWN',
+    });
+    provider.health = vi
+      .fn<NonNullable<IntegrationProviderPort['health']>>()
+      .mockRejectedValueOnce(new Error('timeout'));
+    await expect(service.providerHealth(uuid)).resolves.toMatchObject({
+      status: 'UNKNOWN',
+    });
+
     integrations.providerFor.mockResolvedValue({
       ...provider,
       health: undefined,
