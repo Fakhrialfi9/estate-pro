@@ -51,12 +51,10 @@ jobs:
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_seed_test.* TO 'test'@'127.0.0.1';"
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_rehearsal.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
 
-      - name: Install dependencies
-        run: npm ci
-
+      # Temporary repository-local formatting pass for roadmap coverage tests.
       - name: Apply repository formatter for roadmap validation
-        if: ${{ github.event.head_commit.message != 'chore: format roadmap tests' && github.event.head_commit.message != 'chore: restore validation workflow permissions' }}
         run: |
+          npm ci --ignore-scripts
           npm run format
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
