@@ -56,11 +56,16 @@ export function normalizeSlug(value: string): string {
 export function sanitizeHtml(value: string): string {
   let output = value.replace(/<!--[\s\S]*?-->/g, '');
   output = output.replace(
+    /<\s*(script|style|iframe|object|embed|template|noscript|svg)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,
+    '',
+  );
+  output = output.replace(
     /<\/?([a-zA-Z0-9-]+)(?:\s[^>]*)?>/g,
     (full, tag: string) => {
       const lower = tag.toLowerCase();
       if (!ALLOWED_TAGS.has(lower)) return '';
-      if (lower !== 'a') return `<${full.startsWith('</') ? '/' : ''}${lower}>`;
+      if (full.startsWith('</')) return `</${lower}>`;
+      if (lower !== 'a') return `<${lower}>`;
       const href = full.match(/href\s*=\s*["']([^"']*)["']/i)?.[1]?.trim();
       if (
         !href ||
