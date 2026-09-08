@@ -32,10 +32,11 @@ jobs:
         run: |
           python3 <<'PY'
           from pathlib import Path
+          import re
 
           replacements = {
               'test/unit/property-matching/phase9-coverage.spec.ts': [
-                  ("    const service = new PropertyMatchingService(\n      repository,\n      new MatchingEngine(),\n      rules as MatchingRuleService,", "    const audit = {\n      record: vi\n        .fn<SecurityAuditRepository['record']>()\n        .mockResolvedValue(undefined),\n    } satisfies SecurityAuditRepository;\n    const service = new PropertyMatchingService(\n      repository,\n      new MatchingEngine(),\n      rules as MatchingRuleService,"),
+                  ("    const service = new PropertyMatchingService(\n      repository,\n      new MatchingEngine(),\n      rules as MatchingRuleService,\n      authorization as AuthorizationService,\n      audit,\n    );", "    const audit = {\n      record: vi\n        .fn<SecurityAuditRepository['record']>()\n        .mockResolvedValue(undefined),\n    } satisfies SecurityAuditRepository;\n    const service = new PropertyMatchingService(\n      repository,\n      new MatchingEngine(),\n      rules as MatchingRuleService,\n      authorization as AuthorizationService,\n      audit,\n    );"),
                   ('findPreference: vi.fn()', "findPreference: vi.fn<MatchingRepository['findPreference']>()"),
                   ('createPreference: vi\n        .fn()', "createPreference: vi\n        .fn<MatchingRepository['createPreference']>()"),
                   ('restorePreference: vi\n        .fn()', "restorePreference: vi\n        .fn<MatchingRepository['restorePreference']>()"),
@@ -88,9 +89,17 @@ jobs:
               path = Path(filename)
               content = path.read_text()
               for before, after in pairs:
-                  if before not in content:
-                      continue
-                  content = content.replace(before, after)
+                  if before in content:
+                      content = content.replace(before, after)
+              if filename == 'test/unit/system/critical-roadmap-coverage.spec.ts':
+                  pattern = r"    const prisma = \{\n      \$queryRaw: vi[\s\S]*?    \} as unknown as PrismaService;"
+                  replacement = """    const queryRaw = vi\n      .fn<PrismaService['$queryRaw']>()\n      .mockResolvedValueOnce([\n        {\n          bucket: '2026-01-01',\n          state: 'SUCCEEDED',\n          count: 2,\n          retries: 1,\n          failures: 0,\n          averageLatencyMs: 10,\n        },\n        {\n          bucket: '2026-01-01',\n          state: null,\n          count: 1n,\n          retries: '2',\n          failures: '1',\n          averageLatencyMs: '20',\n        },\n      ])\n      .mockResolvedValueOnce([])\n      .mockResolvedValueOnce([]);\n    const operationFindMany = vi\n      .fn<PrismaService['systemIntegrationOperation']['findMany']>()\n      .mockResolvedValue([\n        { uuid, state: 'FAILED', attempt: 1, maxAttempts: 3, createdAt: new Date() },\n        { uuid: 'maxed', state: 'FAILED', attempt: 3, maxAttempts: 3, createdAt: new Date() },\n      ]);\n    const operationUpdate = vi\n      .fn<PrismaService['systemIntegrationOperation']['update']>()\n      .mockResolvedValue(undefined);\n    const operationDeleteMany = vi\n      .fn<PrismaService['systemIntegrationOperation']['deleteMany']>()\n      .mockResolvedValue({ count: 1 });\n    const prisma = {\n      $queryRaw: queryRaw,\n      systemIntegrationOperation: {\n        findMany: operationFindMany,\n        update: operationUpdate,\n        deleteMany: operationDeleteMany,\n      },\n    } as unknown as PrismaService;"""
+                  if not re.search(pattern, content):
+                      raise RuntimeError('Prisma test double block not found')
+                  content = re.sub(pattern, replacement, content, count=1)
+                  content = content.replace('prisma.$queryRaw', 'queryRaw')
+                  content = content.replace('prisma.systemIntegrationOperation.update', 'operationUpdate')
+                  content = content.replace('prisma.systemIntegrationOperation.findMany', 'operationFindMany')
               path.write_text(content)
           PY
 
@@ -102,6 +111,7 @@ jobs:
             test/unit/system/critical-integration-lifecycle-coverage.spec.ts \
             test/unit/system/critical-roadmap-coverage.spec.ts
 
+          git diff --exit-code -- .github/workflows/_eslint-fix.yml >/dev/null || true
           if git diff --quiet; then
             echo 'No changes produced by repair script.'
             exit 1
