@@ -74,8 +74,6 @@ describe('integration callback lifecycle', () => {
       signature: 'sig',
       body: '{"id":1}',
     };
-    const payloadHash =
-      '037c9214eef74cc3887f3a4f085b4e17d76280dafd273b0ee160c09c4ba1cfd4';
 
     await expect(service.enqueue(uuid, input, provider)).resolves.toMatchObject(
       { status: 'ACCEPTED' },
@@ -87,7 +85,8 @@ describe('integration callback lifecycle', () => {
         uuid: 'id-1',
         status: 'PROCESSED',
         attempt: 1,
-        payloadHash,
+        payloadHash:
+          '037c9214eef74cc3887f3a4f085b4e17d76280dafd273b0ee160c09c4ba1cfd4',
       },
     });
     await expect(service.enqueue(uuid, input, provider)).resolves.toMatchObject(
@@ -100,7 +99,8 @@ describe('integration callback lifecycle', () => {
         uuid: 'id-1',
         status: 'PROCESSING',
         attempt: 1,
-        payloadHash,
+        payloadHash:
+          '037c9214eef74cc3887f3a4f085b4e17d76280dafd273b0ee160c09c4ba1cfd4',
       },
     });
     await expect(service.enqueue(uuid, input, provider)).resolves.toMatchObject(
@@ -128,55 +128,350 @@ describe('integration callback lifecycle', () => {
       id: 1n,
       uuid,
       state: 'DISABLED',
-      secretRef: 'vault://secret',
+      secretRef: null,
     });
     await expect(service.enqueue(uuid, input, provider)).rejects.toBeInstanceOf(
-      ConflictException,
+      UnauthorizedException,
     );
-  });
+    integrations.get.mockResolvedValue({
+      id: 1n,
+      uuid,
+      state: 'ACTIVE',
+      secretRef: 'vault://secret',
+    });
 
+    await expect(
+      service.enqueue(
+        uuid,
+        { ...input, timestamp: new Date(Date.now() - 600_001).toISOString() },
+        provider,
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      service.enqueue(uuid, input, { ...provider, verifySignature: undefined }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    provider.verifySignature = vi
+      .fn<NonNullable<IntegrationProviderPort['verifySignature']>>()
+      .mockRejectedValueOnce(new Error('invalid'));
+    await expect(service.enqueue(uuid, input, provider)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    provider.verifySignature = vi
+      .fn<NonNullable<IntegrationProviderPort['verifySignature']>>()
+      .mockResolvedValue(true);
+
+    await expect(
+      service.enqueue(uuid, input, {
+        ...provider,
+        normalizeInbound: undefined,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.enqueue(uuid, { ...input, body: '{invalid' }, provider),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    roadmap.event.getByKey.mockResolvedValueOnce({
+      uuid: 'existing',
+      status: 'PROCESSED',
+      processedAt: new Date(),
+    });
+    roadmap.idempotency.reserve.mockResolvedValueOnce({
+      created: true,
+      record: {
+        uuid: 'id-2',
+        status: 'PROCESSING',
+        attempt: 0,
+        payloadHash: 'x',
+      },
+    });
+    await expect(service.enqueue(uuid, input, provider)).resolves.toMatchObject(
+      { status: 'DUPLICATE', eventUuid: 'existing' },
+    );
+
+    roadmap.event.getByKey.mockResolvedValueOnce(null);
+    roadmap.event.create.mockRejectedValueOnce(new Error('queue failed'));
+    roadmap.idempotency.reserve.mockResolvedValueOnce({
+      created: true,
+      record: {
+        uuid: 'id-3',
+        status: 'PROCESSING',
+        attempt: 0,
+        payloadHash: 'x',
+      },
+    });
+    await expect(service.enqueue(uuid, input, provider)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+
+    await expect(service.processQueuedEvent(1n, 'missing')).resolves.toBeNull();
+  });
+});
+
+describe('integration reliability', () => {
   it('covers retry classification, backoff, circuit and health outcomes', async () => {
-    const repo = {
-      listPending: vi.fn().mockResolvedValue([]),
-      markRetry: vi.fn().mockResolvedValue(undefined),
-      markFailed: vi.fn().mockResolvedValue(undefined),
+    const provider = makeProvider();
+    const integrations = {
+      providerFor: vi.fn().mockResolvedValue(provider),
+      runtimeFor: vi.fn().mockResolvedValue({
+        integrationId: 1n,
+        circuitState: 'CLOSED',
+        nextRetryAt: null,
+        openedAt: null,
+        successCount: 0,
+        failureCount: 0,
+      }),
+      providerConfiguration: vi
+        .fn()
+        .mockResolvedValue({ metadata: {}, secretRef: null }),
     };
-    const service = new SystemIntegrationReliabilityService(repo as never);
-    expect(service.retryDelay(1)).toBe(DEFAULT_INTEGRATION_RETRY_POLICY.baseDelayMs);
-    expect(service.retryDelay(100)).toBe(
-      DEFAULT_INTEGRATION_RETRY_POLICY.maxDelayMs,
+    const roadmap = {
+      runtime: { update: vi.fn().mockResolvedValue(undefined) },
+    };
+    const service = new SystemIntegrationReliabilityService(
+      integrations as never,
+      roadmap as never,
     );
-    expect(service.shouldRetry({ code: 'TIMEOUT' }, 1)).toBe(true);
-    expect(service.shouldRetry({ code: 'AUTH' }, 1)).toBe(false);
-    await service.health();
-  });
 
+    expect(service.isRetryable('text')).toBe(true);
+    expect(service.isRetryable(new Error('401 unauthorized'))).toBe(false);
+    expect(service.isRetryable(new Error('timeout'))).toBe(true);
+    expect(service.retryAfterMs({ retryAfterMs: 99_999 })).toBe(60_000);
+    expect(service.retryAfterMs({ retryAfterMs: 'x' })).toBeNull();
+    expect(service.delayMs(0, DEFAULT_INTEGRATION_RETRY_POLICY, 0)).toBe(200);
+    await expect(
+      service.execute(uuid, () => Promise.resolve('ok'), {
+        ...DEFAULT_INTEGRATION_RETRY_POLICY,
+        maxAttempts: 0,
+      }),
+    ).rejects.toThrow('maxAttempts');
+    await expect(
+      service.execute(uuid, () => Promise.resolve('ok')),
+    ).resolves.toMatchObject({ value: 'ok', retry: { attempt: 1 } });
+
+    integrations.runtimeFor.mockResolvedValueOnce({
+      integrationId: 1n,
+      circuitState: 'OPEN',
+      nextRetryAt: new Date(Date.now() + 60_000),
+      openedAt: null,
+      successCount: 0,
+      failureCount: 0,
+    });
+    await expect(
+      service.execute(uuid, () => Promise.resolve('no')),
+    ).rejects.toThrow('circuit breaker is open');
+
+    provider.health = vi
+      .fn<NonNullable<IntegrationProviderPort['health']>>()
+      .mockResolvedValue({ ok: true, latencyMs: 10 });
+    await expect(service.providerHealth(uuid)).resolves.toMatchObject({
+      status: 'UP',
+    });
+    provider.health = vi
+      .fn<NonNullable<IntegrationProviderPort['health']>>()
+      .mockResolvedValue({ ok: true, latencyMs: 1_500 });
+    await expect(service.providerHealth(uuid)).resolves.toMatchObject({
+      status: 'DEGRADED',
+    });
+    provider.health = vi
+      .fn<NonNullable<IntegrationProviderPort['health']>>()
+      .mockResolvedValue({ ok: false, latencyMs: 10 });
+    await expect(service.providerHealth(uuid)).resolves.toMatchObject({
+      status: 'DOWN',
+    });
+    provider.health = vi
+      .fn<NonNullable<IntegrationProviderPort['health']>>()
+      .mockRejectedValueOnce(new Error('timeout'));
+    await expect(service.providerHealth(uuid)).resolves.toMatchObject({
+      status: 'UNKNOWN',
+    });
+
+    integrations.providerFor.mockResolvedValue({
+      ...provider,
+      health: undefined,
+    });
+    await expect(service.providerHealth(uuid)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+});
+
+describe('integration sync', () => {
   it('covers module lifecycle, push/pull/bidirectional and retry lookup', async () => {
     const provider = makeProvider();
     const integrations = {
-      listActive: vi.fn().mockResolvedValue([]),
-      get: vi.fn().mockResolvedValue({
-        id: 1n,
-        uuid,
-        state: 'ACTIVE',
-        secretRef: 'vault://secret',
+      providerFor: vi.fn().mockResolvedValue({
+        ...provider,
+        push: vi.fn().mockResolvedValue({
+          ok: true,
+          operationKey: 'sync.push',
+          data: {},
+          errorCode: null,
+          errorMessage: null,
+          providerRequestId: null,
+          receivedAt: new Date(),
+        }),
+        pull: vi
+          .fn()
+          .mockResolvedValue({ records: [{ remote: 1 }], nextCursor: 'c2' }),
       }),
+      runtimeFor: vi.fn().mockResolvedValue({
+        integrationId: 1n,
+        circuitState: 'CLOSED',
+        nextRetryAt: null,
+        successCount: 0,
+        failureCount: 0,
+        requestMapping: {},
+        responseMapping: {},
+        syncCursor: null,
+      }),
+      providerConfiguration: vi
+        .fn()
+        .mockResolvedValue({ metadata: {}, secretRef: null }),
+      list: vi.fn().mockResolvedValue({ items: [{ uuid }] }),
+      get: vi.fn().mockResolvedValue({ id: 1n, uuid, state: 'ACTIVE' }),
     };
-    const repo = {
-      listDue: vi.fn().mockResolvedValue([]),
-      listActive: vi.fn().mockResolvedValue([]),
-      recordSync: vi.fn().mockResolvedValue(undefined),
+    const reliability = {
+      execute: vi
+        .fn()
+        .mockImplementation(
+          async (_uuid: string, operation: () => Promise<unknown>) => ({
+            value: await operation(),
+            retry: { attempt: 1 },
+          }),
+        ),
+      isRetryable: vi.fn().mockReturnValue(true),
+      delayMs: vi.fn().mockReturnValue(10),
     };
-    const sync = new SystemIntegrationSyncService(
+    const mapping = {
+      validate: vi.fn(),
+      map: vi.fn((value: Record<string, unknown>) => value),
+    };
+    const roadmap = {
+      operation: {
+        getByIdempotency: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({
+          uuid: 'operation-1',
+          attempt: 1,
+          maxAttempts: 5,
+          state: 'RUNNING',
+        }),
+        update: vi.fn().mockResolvedValue({
+          uuid: 'operation-1',
+          attempt: 1,
+          maxAttempts: 5,
+          state: 'RUNNING',
+        }),
+        list: vi.fn().mockResolvedValue([]),
+      },
+      runtime: { update: vi.fn().mockResolvedValue(undefined) },
+    };
+    const retryRepository = { claimDue: vi.fn().mockResolvedValue([]) };
+    const audit = { record: vi.fn().mockResolvedValue(undefined) };
+    const service = new SystemIntegrationSyncService(
       integrations as never,
-      repo as never,
-      provider,
+      reliability as never,
+      mapping as never,
+      roadmap as never,
+      retryRepository,
+      audit,
     );
-    await sync.onModuleInit();
-    await sync.push(uuid);
-    await sync.pull(uuid);
-    await sync.bidirectional(uuid);
-    await sync.retry('missing');
-    await sync.onModuleDestroy();
+
+    service.onModuleInit();
+    service.onModuleDestroy();
+    await expect(
+      service.push('actor', uuid, {
+        resourceType: 'lead',
+        payload: { name: 'Jane' },
+        idempotencyKey: 'key',
+      }),
+    ).resolves.toMatchObject({ direction: 'PUSH' });
+    roadmap.operation.getByIdempotency.mockResolvedValueOnce({
+      uuid: 'done',
+      state: 'SUCCEEDED',
+      responsePayload: { ok: true },
+      attempt: 1,
+      maxAttempts: 5,
+    });
+    await expect(
+      service.push('actor', uuid, {
+        resourceType: 'lead',
+        payload: {},
+        idempotencyKey: 'done',
+      }),
+    ).resolves.toMatchObject({ idempotentReplay: true });
+    roadmap.operation.getByIdempotency.mockResolvedValueOnce({
+      uuid: 'running',
+      state: 'RUNNING',
+      attempt: 1,
+      maxAttempts: 5,
+    });
+    await expect(
+      service.push('actor', uuid, {
+        resourceType: 'lead',
+        payload: {},
+        idempotencyKey: 'running',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    integrations.providerFor.mockResolvedValueOnce({
+      ...provider,
+      push: undefined,
+    });
+    await expect(
+      service.push('actor', uuid, {
+        resourceType: 'lead',
+        payload: {},
+        idempotencyKey: 'missing',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    roadmap.operation.getByIdempotency.mockResolvedValue(null);
+    integrations.providerFor.mockResolvedValue({
+      ...provider,
+      pull: vi
+        .fn()
+        .mockResolvedValue({ records: [{ remote: 1 }], nextCursor: 'next' }),
+      push: vi.fn().mockResolvedValue({
+        ok: true,
+        operationKey: 'sync.push',
+        data: {},
+        errorCode: null,
+        errorMessage: null,
+        providerRequestId: null,
+        receivedAt: new Date(),
+      }),
+    });
+    await expect(
+      service.pull('actor', uuid, { resourceType: 'lead' }),
+    ).resolves.toMatchObject({ direction: 'PULL', recordsRead: 1 });
+    integrations.providerFor.mockResolvedValueOnce({
+      ...provider,
+      pull: undefined,
+    });
+    await expect(
+      service.pull('actor', uuid, { resourceType: 'lead' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.bidirectional('actor', uuid, { resourceType: 'lead' }),
+    ).resolves.toMatchObject({ direction: 'BIDIRECTIONAL' });
+    await expect(
+      service.operationIdempotency(uuid, 'key'),
+    ).resolves.toHaveLength(64);
+    roadmap.operation.list.mockResolvedValueOnce([
+      { uuid: 'op-1', state: 'FAILED', attempt: 1, maxAttempts: 2 },
+    ]);
+    await expect(
+      service.retryOperation('actor', 'op-1'),
+    ).resolves.toMatchObject({ uuid: 'operation-1' });
+    roadmap.operation.list.mockResolvedValueOnce([
+      { uuid: 'op-2', state: 'SUCCEEDED', attempt: 1, maxAttempts: 2 },
+    ]);
+    await expect(
+      service.retryOperation('actor', 'op-2'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    roadmap.operation.list.mockResolvedValueOnce([]);
+    await expect(
+      service.retryOperation('actor', 'missing'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
