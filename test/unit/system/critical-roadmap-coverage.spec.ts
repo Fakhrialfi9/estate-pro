@@ -34,6 +34,11 @@ const asConfig = (values: Record<string, unknown>): ConfigService =>
     get: vi.fn((key: string, fallback?: unknown) => values[key] ?? fallback),
   }) as unknown as ConfigService;
 
+const auditRecord = vi
+  .fn<SecurityAuditRepository['record']>()
+  .mockResolvedValue(undefined);
+const audit = { record: auditRecord } satisfies SecurityAuditRepository;
+
 describe('critical system roadmap coverage', () => {
   it('covers read-only security matrix', async () => {
     const state = { maintenanceMode: false, readOnlyMode: false };
@@ -210,7 +215,7 @@ describe('critical system roadmap coverage', () => {
     const record = vi
       .fn<SecurityAuditRepository['record']>()
       .mockResolvedValue(undefined);
-    const audit = { record } satisfies SecurityAuditRepository;
+    const credentialAudit = { record } satisfies SecurityAuditRepository;
     const credential = {
       uuid,
       status: 'ACTIVE',
@@ -236,7 +241,7 @@ describe('critical system roadmap coverage', () => {
     };
     const service = new SystemIntegrationCredentialService(
       roadmap as never,
-      audit,
+      credentialAudit,
     );
 
     await expect(service.get(uuid)).resolves.toMatchObject({
@@ -453,7 +458,7 @@ describe('critical system roadmap coverage', () => {
     await expect(service.acknowledge(uuid, 'alert-1')).resolves.toMatchObject({
       status: 'ACKNOWLEDGED',
     });
-    expect(record).toHaveBeenCalledTimes(2);
+    expect(auditRecord).toHaveBeenCalledTimes(1);
 
     roadmap.alert.list.mockResolvedValueOnce([]);
     await expect(service.acknowledge(uuid, 'missing')).rejects.toThrow(
