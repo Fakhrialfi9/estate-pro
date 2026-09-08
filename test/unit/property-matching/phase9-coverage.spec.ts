@@ -356,7 +356,7 @@ describe('property matching phase 9', () => {
     await service.restorePreference('USER', uuid, actor);
     await service.archivePreference('USER', uuid, actor);
     await service.match('USER', uuid, actor);
-    await service.generate('USER', uuid, actor);
+    await service.generate('USER', uuid, 'GENERATED', {}, actor);
     await service.refresh('USER', uuid, actor);
     await service.history('USER', uuid, { page: 1, limit: 10 }, actor);
     await service.feedback(uuid3, 'INTERESTED', actor);
