@@ -76,7 +76,9 @@ const detailRepository = () =>
   }) satisfies PropertyDetailsRepository;
 
 const audit = {
-  record: vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(undefined),
+  record: vi
+    .fn<SecurityAuditRepository['record']>()
+    .mockResolvedValue(undefined),
 } satisfies SecurityAuditRepository;
 
 describe('property phase 10 coverage', () => {
@@ -168,49 +170,48 @@ describe('property phase 10 coverage', () => {
   });
 
   it('covers property master lifecycle and all mapping branches', async () => {
-    const repository =
-      ({
-        createCategory: vi.fn().mockResolvedValue({ uuid }),
-        updateCategory: vi.fn().mockResolvedValue({ uuid }),
-        getCategory: vi.fn().mockResolvedValue({ uuid }),
-        listCategories: vi.fn().mockResolvedValue([]),
-        deleteCategory: vi.fn().mockResolvedValue(undefined),
-        createSubcategory: vi.fn().mockResolvedValue({ uuid }),
-        updateSubcategory: vi.fn().mockResolvedValue({ uuid }),
-        getSubcategory: vi.fn().mockResolvedValue({ uuid }),
-        listSubcategories: vi.fn().mockResolvedValue([]),
-        deleteSubcategory: vi.fn().mockResolvedValue(undefined),
-        createLocation: vi.fn().mockResolvedValue({ uuid }),
-        updateLocation: vi.fn().mockResolvedValue({ uuid }),
-        getLocation: vi.fn().mockResolvedValue({ uuid }),
-        listLocations: vi.fn().mockResolvedValue([]),
-        deleteLocation: vi.fn().mockResolvedValue(undefined),
-        children: vi.fn().mockResolvedValue([]),
-        createFacility: vi.fn().mockResolvedValue({ uuid }),
-        updateFacility: vi.fn().mockResolvedValue({ uuid }),
-        getFacility: vi.fn().mockResolvedValue({ uuid }),
-        listFacilities: vi.fn().mockResolvedValue([]),
-        deleteFacility: vi.fn().mockResolvedValue(undefined),
-        createProperty: vi
-          .fn()
-          .mockResolvedValue({ uuid, title: 'House', status: 'DRAFT' }),
-        getProperty: vi.fn().mockResolvedValue({
-          uuid,
-          status: 'DRAFT',
-          availableFrom: null,
-          availableTo: null,
-        }),
-        listProperties: vi.fn().mockResolvedValue([]),
-        updateProperty: vi.fn().mockResolvedValue({
-          uuid,
-          status: 'DRAFT',
-          title: 'Updated',
-          version: 2,
-        }),
-        deleteProperty: vi.fn().mockResolvedValue(undefined),
-        restoreProperty: vi.fn().mockResolvedValue({ uuid }),
-        duplicateProperty: vi.fn().mockResolvedValue({ uuid: uuid2 }),
-      }) satisfies PropertyMasterRepository;
+    const repository = {
+      createCategory: vi.fn().mockResolvedValue({ uuid }),
+      updateCategory: vi.fn().mockResolvedValue({ uuid }),
+      getCategory: vi.fn().mockResolvedValue({ uuid }),
+      listCategories: vi.fn().mockResolvedValue([]),
+      deleteCategory: vi.fn().mockResolvedValue(undefined),
+      createSubcategory: vi.fn().mockResolvedValue({ uuid }),
+      updateSubcategory: vi.fn().mockResolvedValue({ uuid }),
+      getSubcategory: vi.fn().mockResolvedValue({ uuid }),
+      listSubcategories: vi.fn().mockResolvedValue([]),
+      deleteSubcategory: vi.fn().mockResolvedValue(undefined),
+      createLocation: vi.fn().mockResolvedValue({ uuid }),
+      updateLocation: vi.fn().mockResolvedValue({ uuid }),
+      getLocation: vi.fn().mockResolvedValue({ uuid }),
+      listLocations: vi.fn().mockResolvedValue([]),
+      deleteLocation: vi.fn().mockResolvedValue(undefined),
+      children: vi.fn().mockResolvedValue([]),
+      createFacility: vi.fn().mockResolvedValue({ uuid }),
+      updateFacility: vi.fn().mockResolvedValue({ uuid }),
+      getFacility: vi.fn().mockResolvedValue({ uuid }),
+      listFacilities: vi.fn().mockResolvedValue([]),
+      deleteFacility: vi.fn().mockResolvedValue(undefined),
+      createProperty: vi
+        .fn()
+        .mockResolvedValue({ uuid, title: 'House', status: 'DRAFT' }),
+      getProperty: vi.fn().mockResolvedValue({
+        uuid,
+        status: 'DRAFT',
+        availableFrom: null,
+        availableTo: null,
+      }),
+      listProperties: vi.fn().mockResolvedValue([]),
+      updateProperty: vi.fn().mockResolvedValue({
+        uuid,
+        status: 'DRAFT',
+        title: 'Updated',
+        version: 2,
+      }),
+      deleteProperty: vi.fn().mockResolvedValue(undefined),
+      restoreProperty: vi.fn().mockResolvedValue({ uuid }),
+      duplicateProperty: vi.fn().mockResolvedValue({ uuid: uuid2 }),
+    } satisfies PropertyMasterRepository;
     const service = new PropertyMasterService(repository, audit);
 
     await service.createCategory(
@@ -420,15 +421,18 @@ describe('property phase 10 coverage', () => {
   });
 
   it('covers listing lifecycle, errors and expiry worker behavior', async () => {
-    const repository =
-      ({
-        create: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT' }),
-        getByUuid: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT', version: 1 }),
-        update: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT', version: 2 }),
-        transition: vi.fn().mockResolvedValue({ uuid, status: 'PUBLISHED', version: 2 }),
-        list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
-        expire: vi.fn().mockResolvedValue(1),
-      }) satisfies ListingRepository;
+    const repository = {
+      create: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT' }),
+      getByUuid: vi
+        .fn()
+        .mockResolvedValue({ uuid, status: 'DRAFT', version: 1 }),
+      update: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT', version: 2 }),
+      transition: vi
+        .fn()
+        .mockResolvedValue({ uuid, status: 'PUBLISHED', version: 2 }),
+      list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+      expire: vi.fn().mockResolvedValue(1),
+    } satisfies ListingRepository;
     const listing = new ListingService(repository, audit);
     const input = {
       propertyUuid: uuid,
@@ -471,7 +475,9 @@ describe('property phase 10 coverage', () => {
     await expect(listing.get(uuid)).rejects.toBeInstanceOf(ConflictException);
     repository.getByUuid.mockRejectedValueOnce(new ListingStateError());
     await expect(listing.get(uuid)).rejects.toBeInstanceOf(BadRequestException);
-    repository.getByUuid.mockRejectedValueOnce(new ListingValidationError('bad'));
+    repository.getByUuid.mockRejectedValueOnce(
+      new ListingValidationError('bad'),
+    );
     await expect(listing.get(uuid)).rejects.toBeInstanceOf(BadRequestException);
 
     const worker = new ListingExpiryWorker(repository);
@@ -489,9 +495,9 @@ describe('property phase 10 coverage', () => {
     expect(() => validateFinancialInvariants({}).toBeUndefined()).not.toThrow();
     expect(() => validateLegalInvariants({}).toBeUndefined()).not.toThrow();
     expect(() => validateMedia({}).toBeUndefined()).not.toThrow();
-    expect(() => validateSeoInvariants('villa-bali', { canonicalUrl: 'x' })).toThrow(
-      'canonicalUrl must end',
-    );
+    expect(() =>
+      validateSeoInvariants('villa-bali', { canonicalUrl: 'x' }),
+    ).toThrow('canonicalUrl must end');
     expect(() =>
       validateSeoInvariants('villa-bali', {
         canonicalUrl: 'javascript:alert(1)',

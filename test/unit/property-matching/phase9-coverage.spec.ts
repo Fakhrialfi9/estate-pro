@@ -97,7 +97,9 @@ describe('property matching phase 9', () => {
       activate: vi.fn().mockResolvedValue({ uuid, version: 2, isActive: true }),
     };
     const audit = {
-      record: vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(undefined),
+      record: vi
+        .fn<SecurityAuditRepository['record']>()
+        .mockResolvedValue(undefined),
     } satisfies SecurityAuditRepository;
     const service = new MatchingRuleService(repository, audit);
     expect((await service.active()).uuid).toBe('default');
@@ -267,24 +269,44 @@ describe('property matching phase 9', () => {
   it('covers PropertyMatchingService preference lifecycle, match/generate/history/feedback and access fallbacks', async () => {
     const repository = {
       findPreference: vi.fn().mockResolvedValue(preference),
-      createPreference: vi.fn().mockResolvedValue({ uuid: uuid3, ...preference }),
-      restorePreference: vi.fn().mockResolvedValue({ uuid: uuid3, ...preference }),
-      updatePreference: vi.fn().mockResolvedValue({ uuid: uuid3, ...preference, version: 2 }),
-      archivePreference: vi.fn().mockResolvedValue({ uuid: uuid3, status: 'ARCHIVED' }),
+      createPreference: vi
+        .fn()
+        .mockResolvedValue({ uuid: uuid3, ...preference }),
+      restorePreference: vi
+        .fn()
+        .mockResolvedValue({ uuid: uuid3, ...preference }),
+      updatePreference: vi
+        .fn()
+        .mockResolvedValue({ uuid: uuid3, ...preference, version: 2 }),
+      archivePreference: vi
+        .fn()
+        .mockResolvedValue({ uuid: uuid3, status: 'ARCHIVED' }),
       listCandidates: vi.fn().mockResolvedValue([candidate()]),
       getSignals: vi.fn().mockResolvedValue(new Map([[uuid2, signal]])),
-      saveRecommendation: vi.fn().mockResolvedValue({ uuid: 'recommendation-1', items: [] }),
-      getLatestRecommendation: vi.fn().mockResolvedValue({ uuid: 'recommendation-1' }),
-      listRecommendationHistory: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+      saveRecommendation: vi
+        .fn()
+        .mockResolvedValue({ uuid: 'recommendation-1', items: [] }),
+      getLatestRecommendation: vi
+        .fn()
+        .mockResolvedValue({ uuid: 'recommendation-1' }),
+      listRecommendationHistory: vi
+        .fn()
+        .mockResolvedValue({ items: [], total: 0 }),
       recordFeedback: vi.fn().mockResolvedValue({ uuid: 'feedback-1' }),
       listSavedListings: vi.fn().mockResolvedValue([]),
-      getPreferenceSubjectScope: vi.fn().mockResolvedValue({ ownerUserUuid: uuid2 }),
+      getPreferenceSubjectScope: vi
+        .fn()
+        .mockResolvedValue({ ownerUserUuid: uuid2 }),
     } satisfies MatchingRepository;
     const rules = {
-      active: vi.fn().mockResolvedValue({ ...DEFAULT_MATCHING_RULE, version: 1 }),
+      active: vi
+        .fn()
+        .mockResolvedValue({ ...DEFAULT_MATCHING_RULE, version: 1 }),
     } satisfies Pick<MatchingRuleService, 'active'>;
     const authorization = {
-      resolve: vi.fn().mockResolvedValue({ permissions: ['crm.contacts.read'] }),
+      resolve: vi
+        .fn()
+        .mockResolvedValue({ permissions: ['crm.contacts.read'] }),
       assertPermissions: vi.fn(),
     } satisfies Pick<AuthorizationService, 'resolve' | 'assertPermissions'>;
     const service = new PropertyMatchingService(
@@ -308,20 +330,24 @@ describe('property matching phase 9', () => {
     await service.saved('USER', uuid, actor);
 
     repository.findPreference.mockResolvedValue(null);
-    await expect(service.getPreference('USER', uuid, actor)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.getPreference('USER', uuid, actor),
+    ).rejects.toBeInstanceOf(NotFoundException);
     repository.findPreference.mockResolvedValue(preference);
-    repository.getPreferenceSubjectScope.mockResolvedValue({ ownerUserUuid: uuid3 });
-    await expect(service.getPreference('USER', uuid, actor)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
-    repository.getPreferenceSubjectScope.mockResolvedValue({ ownerUserUuid: uuid2 });
+    repository.getPreferenceSubjectScope.mockResolvedValue({
+      ownerUserUuid: uuid3,
+    });
+    await expect(
+      service.getPreference('USER', uuid, actor),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    repository.getPreferenceSubjectScope.mockResolvedValue({
+      ownerUserUuid: uuid2,
+    });
     authorization.assertPermissions.mockImplementation(() => {
       throw new ForbiddenException();
     });
-    await expect(service.getPreference('USER', uuid, actor)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(
+      service.getPreference('USER', uuid, actor),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

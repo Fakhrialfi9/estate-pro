@@ -35,33 +35,67 @@ const document = {
 describe('PropertyCapabilitiesService phase 10 coverage', () => {
   const makeRepo = () =>
     ({
-      listAmenities: vi.fn<PropertyCapabilitiesRepository['listAmenities']>().mockResolvedValue([amenity]),
-      getAmenity: vi.fn<PropertyCapabilitiesRepository['getAmenity']>().mockResolvedValue(amenity),
-      createAmenity: vi.fn<PropertyCapabilitiesRepository['createAmenity']>().mockResolvedValue(amenity),
-      updateAmenity: vi.fn<PropertyCapabilitiesRepository['updateAmenity']>().mockResolvedValue(amenity),
-      deleteAmenity: vi.fn<PropertyCapabilitiesRepository['deleteAmenity']>().mockResolvedValue(undefined),
-      listPropertyAmenities: vi.fn<PropertyCapabilitiesRepository['listPropertyAmenities']>().mockResolvedValue([]),
-      assignAmenity: vi.fn<PropertyCapabilitiesRepository['assignAmenity']>().mockResolvedValue({
-        amenity,
-        available: true,
-        value: null,
-        notes: null,
-      }),
-      unassignAmenity: vi.fn<PropertyCapabilitiesRepository['unassignAmenity']>().mockResolvedValue(undefined),
-      listDocuments: vi.fn<PropertyCapabilitiesRepository['listDocuments']>().mockResolvedValue([document]),
-      getDocument: vi.fn<PropertyCapabilitiesRepository['getDocument']>().mockResolvedValue(document),
-      createDocument: vi.fn<PropertyCapabilitiesRepository['createDocument']>().mockResolvedValue(document),
-      createDocumentVersion: vi.fn<PropertyCapabilitiesRepository['createDocumentVersion']>().mockResolvedValue({ currentVersion: 2 }),
-      updateDocument: vi.fn<PropertyCapabilitiesRepository['updateDocument']>().mockResolvedValue(document),
-      deleteDocument: vi.fn<PropertyCapabilitiesRepository['deleteDocument']>().mockResolvedValue(undefined),
-      recordHistory: vi.fn<PropertyCapabilitiesRepository['recordHistory']>().mockResolvedValue({ uuid: 'history-1' }),
-      listHistory: vi.fn<PropertyCapabilitiesRepository['listHistory']>().mockResolvedValue([]),
+      listAmenities: vi
+        .fn<PropertyCapabilitiesRepository['listAmenities']>()
+        .mockResolvedValue([amenity]),
+      getAmenity: vi
+        .fn<PropertyCapabilitiesRepository['getAmenity']>()
+        .mockResolvedValue(amenity),
+      createAmenity: vi
+        .fn<PropertyCapabilitiesRepository['createAmenity']>()
+        .mockResolvedValue(amenity),
+      updateAmenity: vi
+        .fn<PropertyCapabilitiesRepository['updateAmenity']>()
+        .mockResolvedValue(amenity),
+      deleteAmenity: vi
+        .fn<PropertyCapabilitiesRepository['deleteAmenity']>()
+        .mockResolvedValue(undefined),
+      listPropertyAmenities: vi
+        .fn<PropertyCapabilitiesRepository['listPropertyAmenities']>()
+        .mockResolvedValue([]),
+      assignAmenity: vi
+        .fn<PropertyCapabilitiesRepository['assignAmenity']>()
+        .mockResolvedValue({
+          amenity,
+          available: true,
+          value: null,
+          notes: null,
+        }),
+      unassignAmenity: vi
+        .fn<PropertyCapabilitiesRepository['unassignAmenity']>()
+        .mockResolvedValue(undefined),
+      listDocuments: vi
+        .fn<PropertyCapabilitiesRepository['listDocuments']>()
+        .mockResolvedValue([document]),
+      getDocument: vi
+        .fn<PropertyCapabilitiesRepository['getDocument']>()
+        .mockResolvedValue(document),
+      createDocument: vi
+        .fn<PropertyCapabilitiesRepository['createDocument']>()
+        .mockResolvedValue(document),
+      createDocumentVersion: vi
+        .fn<PropertyCapabilitiesRepository['createDocumentVersion']>()
+        .mockResolvedValue({ currentVersion: 2 }),
+      updateDocument: vi
+        .fn<PropertyCapabilitiesRepository['updateDocument']>()
+        .mockResolvedValue(document),
+      deleteDocument: vi
+        .fn<PropertyCapabilitiesRepository['deleteDocument']>()
+        .mockResolvedValue(undefined),
+      recordHistory: vi
+        .fn<PropertyCapabilitiesRepository['recordHistory']>()
+        .mockResolvedValue({ uuid: 'history-1' }),
+      listHistory: vi
+        .fn<PropertyCapabilitiesRepository['listHistory']>()
+        .mockResolvedValue([]),
     }) satisfies PropertyCapabilitiesRepository;
 
   it('covers amenity and assignment operations and validation', async () => {
     const repository = makeRepo();
     const audit = {
-      record: vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(undefined),
+      record: vi
+        .fn<SecurityAuditRepository['record']>()
+        .mockResolvedValue(undefined),
     } satisfies SecurityAuditRepository;
     const service = new PropertyCapabilitiesService(repository, audit);
     expect(await service.listAmenities()).toEqual([amenity]);
@@ -109,7 +143,9 @@ describe('PropertyCapabilitiesService phase 10 coverage', () => {
   it('covers document lifecycle, history pagination and error mapping', async () => {
     const repository = makeRepo();
     const audit = {
-      record: vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(undefined),
+      record: vi
+        .fn<SecurityAuditRepository['record']>()
+        .mockResolvedValue(undefined),
     } satisfies SecurityAuditRepository;
     const service = new PropertyCapabilitiesService(repository, audit);
     await service.listDocuments(uuid, true);

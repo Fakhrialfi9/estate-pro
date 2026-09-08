@@ -179,7 +179,9 @@ describe('phase 8 permissions and roles', () => {
       getDependencyCount: vi.fn().mockResolvedValue({ roleAssignments: 0 }),
     } satisfies PermissionRepository;
     const audit = {
-      record: vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(undefined),
+      record: vi
+        .fn<SecurityAuditRepository['record']>()
+        .mockResolvedValue(undefined),
     } satisfies SecurityAuditRepository;
     const policy = {
       canManage: vi.fn(),
@@ -280,7 +282,9 @@ describe('phase 8 permissions and roles', () => {
       findByUuid: vi.fn().mockResolvedValue(permission()),
     } satisfies PermissionRepository;
     const audit = {
-      record: vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(undefined),
+      record: vi
+        .fn<SecurityAuditRepository['record']>()
+        .mockResolvedValue(undefined),
     } satisfies SecurityAuditRepository;
     const rolePolicy = {
       canRead: vi.fn(),
@@ -386,15 +390,15 @@ describe('phase 8 permissions and roles', () => {
       findByUserAndRole: vi.fn().mockResolvedValue(null),
       assign: vi.fn().mockResolvedValue(userRole()),
       remove: vi.fn().mockResolvedValue(undefined),
-      listByUser: vi
-        .fn()
-        .mockResolvedValue({
-          items: [{ roleUuid, roleName: 'Staff', roleCode: 'staff' }],
-          total: 1,
-        }),
+      listByUser: vi.fn().mockResolvedValue({
+        items: [{ roleUuid, roleName: 'Staff', roleCode: 'staff' }],
+        total: 1,
+      }),
     } satisfies UserRoleRepository;
     const audit = {
-      record: vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(undefined),
+      record: vi
+        .fn<SecurityAuditRepository['record']>()
+        .mockResolvedValue(undefined),
     } satisfies SecurityAuditRepository;
     const policy = {
       canManage: vi.fn(),
