@@ -54,6 +54,7 @@ describe('property matching phase 9', () => {
     const audit: SecurityAuditRepository = { record: vi.fn().mockResolvedValue(undefined) };
     const service = new MatchingRuleService(repository, audit);
     expect((await service.active()).uuid).toBe('default');
+    repository.get.mockResolvedValueOnce(null);
     await expect(service.get('missing')).rejects.toBeInstanceOf(NotFoundException);
     await service.list(1, 10);
     await service.create({ name: ' Rule ', createdBy: uuid });
@@ -62,7 +63,7 @@ describe('property matching phase 9', () => {
     await expect(service.create({ name: '!!!', createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.create({ name: 'ok', version: 0, createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.create({ name: 'ok', weights: { transactionType: -1 }, createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
-    await expect(service.create({ name: 'ok', weights: { transactionType: 1001 }, createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.create({ name: 'ok', weights: { transactionType: 101 }, createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.create({ name: 'ok', hardCriteria: ['invalid'], createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.create({ name: 'ok', minimumScore: 101, createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
     repository.get.mockResolvedValueOnce(null);
