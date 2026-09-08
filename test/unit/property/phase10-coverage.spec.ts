@@ -391,19 +391,23 @@ describe('property phase 10 coverage', () => {
       listTypes.execute({ page: 1, limit: 10, sortBy: 'name' }),
     ).resolves.toMatchObject({ total: 0 });
 
+    const deletablePropertyType = PropertyTypeEntity.create(typeSnapshot);
+    const deletedPropertyType = PropertyTypeEntity.create({
+      ...typeSnapshot,
+      deletedAt: now,
+      isActive: false,
+    });
     const deleteRepo = {
-      findById: vi.fn().mockResolvedValue(propertyType),
+      findById: vi.fn().mockResolvedValue(deletablePropertyType),
       softDelete: vi.fn().mockResolvedValue(undefined),
     };
     const deleteType = new DeletePropertyTypeUseCase(deleteRepo, audit);
-    propertyType.restore?.();
     await deleteType.execute(uuid, actor);
     deleteRepo.findById.mockResolvedValueOnce(null);
     await expect(deleteType.execute(uuid, actor)).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    deleteRepo.findById.mockResolvedValue(propertyType);
-    propertyType.softDelete(now);
+    deleteRepo.findById.mockResolvedValue(deletedPropertyType);
     await expect(deleteType.execute(uuid, actor)).rejects.toBeInstanceOf(
       NotFoundException,
     );
