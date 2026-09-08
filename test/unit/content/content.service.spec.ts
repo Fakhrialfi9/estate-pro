@@ -107,9 +107,9 @@ describe('ContentService', () => {
         slug: 'hello-world',
         status: 'DRAFT',
         featured: true,
-        wordCount: 3,
+        wordCount: 2,
         readingTimeMin: 1,
-        content: 'x<p>one two</p>',
+        content: '<p>one two</p>',
       }),
       ctx,
     );
