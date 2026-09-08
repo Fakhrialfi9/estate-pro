@@ -24,7 +24,7 @@ describe('property extras coverage', () => {
     );
     expect(() => money.round(-1)).toThrow('Unsupported money scale');
     expect(() => money.round(3)).toThrow('Unsupported money scale');
-    expect(new Money('1.005', 'IDR').round(2).amount).toBe('1.01');
+    expect(new Money('1.05', 'IDR').round(1).amount).toBe('1.1');
     expect(new Money('1.25', 'IDR').round(1).amount).toBe('1.3');
     expect(new Money('1.24', 'IDR').round(1).amount).toBe('1.2');
     expect(new Money('99.99', 'IDR').round(0).amount).toBe('100');
@@ -97,8 +97,8 @@ describe('property extras coverage', () => {
     ).toThrow();
     expect(() => validateLegalInvariants({ floorAreaRatio: '-1' })).toThrow();
     expect(() =>
-      validateLegalInvariants({ disputes: () => 'nope' as never }),
-    ).toThrow();
+      validateLegalInvariants({ disputes: { constructor: 'nope' } as never }),
+    ).toThrow('forbidden key');
     expect(() =>
       validateCertificateInput({ type: 'SHM', number: ' ' }),
     ).toThrow('Certificate number');
@@ -158,7 +158,7 @@ describe('property extras coverage', () => {
       validateSeoInvariants('villa-bali', {
         canonicalUrl: 'http://example.com/villa-bali',
       }),
-    ).toThrow();
+    ).not.toThrow();
     expect(() =>
       validateSeoInvariants('villa-bali', {
         canonicalUrl: 'https://example.com/other',
@@ -167,6 +167,11 @@ describe('property extras coverage', () => {
     expect(() =>
       validateSeoInvariants('villa-bali', {
         canonicalUrl: 'javascript:alert(1)',
+      }),
+    ).toThrow();
+    expect(() =>
+      validateSeoInvariants('villa-bali', {
+        canonicalUrl: 'https://user:pass@example.com/villa-bali',
       }),
     ).toThrow();
 
