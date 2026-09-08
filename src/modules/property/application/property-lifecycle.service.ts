@@ -111,9 +111,15 @@ export class PropertyLifecycleService {
       error instanceof BadRequestException
     )
       return error;
-    if (error instanceof MasterNotFoundError)
+    if (
+      error instanceof MasterNotFoundError ||
+      (error instanceof Error && error.name === 'MasterNotFoundError')
+    )
       return new NotFoundException(error.message);
-    if (error instanceof MasterConcurrencyError)
+    if (
+      error instanceof MasterConcurrencyError ||
+      (error instanceof Error && error.name === 'MasterConcurrencyError')
+    )
       return new ConflictException(error.message);
     return error instanceof Error
       ? error
