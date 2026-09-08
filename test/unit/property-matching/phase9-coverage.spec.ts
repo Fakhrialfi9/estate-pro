@@ -276,10 +276,10 @@ describe('property matching phase 9', () => {
     let denyPermissions = false;
     const findPreference = vi
       .fn<MatchingRepository['findPreference']>()
-      .mockImplementation(async () => findPreferenceResult);
+      .mockImplementation(() => Promise.resolve(findPreferenceResult));
     const getPreferenceSubjectScope = vi
       .fn<MatchingRepository['getPreferenceSubjectScope']>()
-      .mockImplementation(async () => preferenceScope);
+      .mockImplementation(() => Promise.resolve(preferenceScope));
     const repository = {
       findPreference,
       createPreference: vi
@@ -353,14 +353,24 @@ describe('property matching phase 9', () => {
     await service.getPreference('USER', uuid, actor);
     await service.createPreference('USER', uuid, preference, actor);
     await service.updatePreference('USER', uuid, preference, 1, actor);
-    await service.restorePreference('USER', uuid, actor);
-    await service.archivePreference('USER', uuid, actor);
-    await service.match('USER', uuid, actor);
+    await service.restorePreference('USER', uuid, 1, actor);
+    await service.archivePreference('USER', uuid, 1, actor);
+    await service.match('USER', uuid, {}, actor);
     await service.generate('USER', uuid, 'GENERATED', {}, actor);
-    await service.refresh('USER', uuid, actor);
-    await service.history('USER', uuid, { page: 1, limit: 10 }, actor);
-    await service.feedback(uuid3, 'INTERESTED', actor);
-    await service.saved('USER', uuid, actor);
+    await service.generate('USER', uuid, 'REFRESHED', {}, actor);
+    await service.getHistory('USER', uuid, 1, 10, actor);
+    await service.submitFeedback(
+      {
+        recommendationItemUuid: uuid3,
+        subjectType: 'USER',
+        subjectUuid: uuid,
+        propertyUuid: uuid,
+        listingUuid: uuid2,
+        feedback: 'INTERESTED',
+      },
+      actor,
+    );
+    await service.savedProperties(actor);
 
     findPreferenceResult = null;
     await expect(
