@@ -399,9 +399,7 @@ describe('property phase 10 coverage', () => {
   it('covers listing lifecycle, errors and expiry worker behavior', async () => {
     const repository = {
       create: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT' }),
-      findOne: vi
-        .fn()
-        .mockResolvedValue({ uuid, status: 'DRAFT', version: 1 }),
+      findOne: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT', version: 1 }),
       update: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT', version: 2 }),
       transition: vi
         .fn()
@@ -458,9 +456,7 @@ describe('property phase 10 coverage', () => {
     await expect(listing.get(uuid)).rejects.toBeInstanceOf(ConflictException);
     repository.findOne.mockRejectedValueOnce(new ListingStateError());
     await expect(listing.get(uuid)).rejects.toBeInstanceOf(ConflictException);
-    repository.findOne.mockRejectedValueOnce(
-      new ListingValidationError('bad'),
-    );
+    repository.findOne.mockRejectedValueOnce(new ListingValidationError('bad'));
     await expect(listing.get(uuid)).rejects.toBeInstanceOf(BadRequestException);
 
     const worker = new ListingExpiryWorker(repository, audit);

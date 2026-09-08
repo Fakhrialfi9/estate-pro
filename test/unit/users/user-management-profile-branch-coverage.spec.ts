@@ -75,7 +75,9 @@ describe('user management and profile branch coverage', () => {
     );
 
     await expect(service.getByUuid(uuid)).resolves.toBe(existing);
-    await expect(service.getByEmail('JANE@EXAMPLE.COM')).resolves.toBe(existing);
+    await expect(service.getByEmail('JANE@EXAMPLE.COM')).resolves.toBe(
+      existing,
+    );
     await expect(service.getByUsername('jane')).resolves.toBe(existing);
     await expect(service.list({ page: 1, limit: 20 })).resolves.toMatchObject({
       total: 1,
@@ -125,7 +127,9 @@ describe('user management and profile branch coverage', () => {
     users.findByUuid.mockResolvedValueOnce(
       makeUser({ username: null, email: null, phone: ' ' }),
     );
-    await expect(service.update(uuid, { username: ' ' })).resolves.toBe(updated);
+    await expect(service.update(uuid, { username: ' ' })).resolves.toBe(
+      updated,
+    );
 
     users.findByUuid.mockResolvedValueOnce(existing);
     await expect(

@@ -97,7 +97,7 @@ describe('property extras coverage', () => {
     ).toThrow();
     expect(() => validateLegalInvariants({ floorAreaRatio: '-1' })).toThrow();
     expect(() =>
-      validateLegalInvariants({ disputes: { constructor: 'nope' } as never }),
+      validateLegalInvariants({ disputes: { constructor: 'nope' } }),
     ).toThrow('forbidden key');
     expect(() =>
       validateCertificateInput({ type: 'SHM', number: ' ' }),
