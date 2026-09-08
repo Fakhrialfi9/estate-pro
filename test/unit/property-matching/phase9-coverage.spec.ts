@@ -6,7 +6,6 @@ import { MatchingEngine } from '../../../src/modules/property-matching/domain/ma
 import { PropertyPreference } from '../../../src/modules/property-matching/domain/property-preference.js';
 import type { MatchCandidate, BehavioralSignal, PropertyPreferenceState } from '../../../src/modules/property-matching/domain/matching.types.js';
 import { DEFAULT_MATCHING_RULE } from '../../../src/modules/property-matching/domain/matching-rule.js';
-import type { AccessTokenClaims } from '../../../src/common/security/access-token-verifier.port.js';
 import type { MatchingRepository } from '../../../src/modules/property-matching/application/matching.ports.js';
 import type { AuthorizationService } from '../../../src/common/security/authorization.service.js';
 import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
@@ -42,12 +41,6 @@ const candidate = (overrides: Partial<MatchCandidate> = {}): MatchCandidate => (
 });
 const signal: BehavioralSignal = { saved: true, viewedAt: new Date(), inquiryCount: 1, viewCount: 2 };
 
-const makeClaims = (permissions: string[]): AccessTokenClaims => ({
-  sub: uuid,
-  roles: [],
-  permissions,
-} as AccessTokenClaims);
-
 describe('property matching phase 9', () => {
   it('covers MatchingRuleService defaults, validation, audit and stale versions', async () => {
     const repository = {
@@ -58,7 +51,7 @@ describe('property matching phase 9', () => {
       update: vi.fn().mockResolvedValue({ uuid, version: 2, isActive: false }),
       activate: vi.fn().mockResolvedValue({ uuid, version: 2, isActive: true }),
     };
-    const audit: SecurityAuditRepository = { record: vi.fn().mockResolvedValue(undefined) } as SecurityAuditRepository;
+    const audit: SecurityAuditRepository = { record: vi.fn().mockResolvedValue(undefined) };
     const service = new MatchingRuleService(repository, audit);
     expect((await service.active()).uuid).toBe('default');
     await expect(service.get('missing')).rejects.toBeInstanceOf(NotFoundException);
@@ -70,7 +63,7 @@ describe('property matching phase 9', () => {
     await expect(service.create({ name: 'ok', version: 0, createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.create({ name: 'ok', weights: { transactionType: -1 }, createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.create({ name: 'ok', weights: { transactionType: 1001 }, createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
-    await expect(service.create({ name: 'ok', hardCriteria: ['invalid'] as never, createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.create({ name: 'ok', hardCriteria: ['invalid'], createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.create({ name: 'ok', minimumScore: 101, createdBy: uuid })).rejects.toBeInstanceOf(BadRequestException);
     repository.get.mockResolvedValueOnce(null);
     await expect(service.update(uuid, 1, {}, uuid2)).rejects.toBeInstanceOf(NotFoundException);
@@ -123,13 +116,13 @@ describe('property matching phase 9', () => {
       recordFeedback: vi.fn().mockResolvedValue({ uuid: 'feedback-1' }),
       listSavedListings: vi.fn().mockResolvedValue([]),
       getPreferenceSubjectScope: vi.fn().mockResolvedValue({ ownerUserUuid: uuid2 }),
-    } as unknown as MatchingRepository;
+    };
     const rules = { active: vi.fn().mockResolvedValue({ ...DEFAULT_MATCHING_RULE, version: 1 }) } as unknown as MatchingRuleService;
     const authorization = {
       resolve: vi.fn().mockResolvedValue({ permissions: ['crm.contacts.read'] }),
       assertPermissions: vi.fn(),
     } as unknown as AuthorizationService;
-    const audit: SecurityAuditRepository = { record: vi.fn().mockResolvedValue(undefined) } as SecurityAuditRepository;
+    const audit: SecurityAuditRepository = { record: vi.fn().mockResolvedValue(undefined) };
     const service = new PropertyMatchingService(repository, new MatchingEngine(), rules, authorization, audit);
 
     await service.getPreference('USER', uuid, actor);
@@ -152,8 +145,10 @@ describe('property matching phase 9', () => {
     repository.findPreference = vi.fn().mockResolvedValue(null);
     await expect(service.getPreference('CONTACT', uuid2, actor)).rejects.toBeInstanceOf(NotFoundException);
     await expect(service.match('CONTACT', uuid2, {}, actor)).rejects.toBeInstanceOf(NotFoundException);
+    repository.getLatestRecommendation = vi.fn().mockResolvedValue(null);
     await expect(service.getLatest('USER', uuid, actor)).rejects.toBeInstanceOf(NotFoundException);
-    authorization.assertPermissions = vi.fn().mockImplementationOnce(() => { throw new Error('denied'); }).mockImplementationOnce(() => undefined);
+    const assertPermissions = vi.fn().mockImplementationOnce(() => { throw new Error('denied'); }).mockImplementationOnce(() => undefined);
+    authorization.assertPermissions = assertPermissions;
     repository.getPreferenceSubjectScope = vi.fn().mockResolvedValue({ ownerUserUuid: uuid3 });
     repository.findPreference = vi.fn().mockResolvedValue(preference);
     await service.getPreference('CONTACT', uuid3, actor);
