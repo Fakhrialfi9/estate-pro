@@ -132,17 +132,16 @@ describe('roadmap error coverage', () => {
 
     const role = RoleEntity.create({
       uuid,
-      code: 'admin',
-      name: 'Admin',
-      description: 'Admin role',
+      code: 'manager',
+      name: 'Manager',
+      description: 'Manager role',
       isSystem: false,
       isActive: true,
       createdAt: now,
       updatedAt: now,
-      deletedAt: null,
     });
     expect(role.isActive).toBe(true);
-    expect(role.toSnapshot()).toMatchObject({ code: 'admin' });
+    expect(role.toSnapshot()).toMatchObject({ code: 'manager' });
     const inactive = RoleEntity.create({
       ...role.toSnapshot(),
       isActive: false,
@@ -153,8 +152,8 @@ describe('roadmap error coverage', () => {
     const userRole = UserRoleEntity.create({
       userUuid: uuid,
       roleUuid: uuid,
-      roleName: 'Admin',
-      roleCode: 'admin',
+      roleName: 'Manager',
+      roleCode: 'manager',
       roleIsSystem: false,
       isActive: true,
       assignedByUuid: uuid,
@@ -162,6 +161,6 @@ describe('roadmap error coverage', () => {
       revokedAt: null,
     });
     expect(userRole.isActive).toBe(true);
-    expect(userRole.toSnapshot()).toMatchObject({ roleCode: 'admin' });
+    expect(userRole.toSnapshot()).toMatchObject({ roleCode: 'manager' });
   });
 });
