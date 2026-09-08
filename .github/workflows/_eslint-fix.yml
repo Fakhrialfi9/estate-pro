@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   fix:
@@ -28,16 +28,14 @@ jobs:
       - name: Apply Prettier formatting to affected files
         run: npx prettier --write test/unit/permissions/roles-phase8-coverage.spec.ts test/unit/property-matching/phase9-coverage.spec.ts test/unit/property/phase10-coverage.spec.ts test/unit/property/property-capabilities-phase10-coverage.spec.ts
 
-      - name: Package formatted files
+      - name: Commit formatted files
         run: |
-          mkdir -p artifact/test/unit/permissions artifact/test/unit/property-matching artifact/test/unit/property
-          cp test/unit/permissions/roles-phase8-coverage.spec.ts artifact/test/unit/permissions/
-          cp test/unit/property-matching/phase9-coverage.spec.ts artifact/test/unit/property-matching/
-          cp test/unit/property/phase10-coverage.spec.ts artifact/test/unit/property/
-          cp test/unit/property/property-capabilities-phase10-coverage.spec.ts artifact/test/unit/property/
-
-      - name: Upload formatted files
-        uses: actions/upload-artifact@v4
-        with:
-          name: formatted-affected-tests
-          path: artifact/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test/unit/permissions/roles-phase8-coverage.spec.ts test/unit/property-matching/phase9-coverage.spec.ts test/unit/property/phase10-coverage.spec.ts test/unit/property/property-capabilities-phase10-coverage.spec.ts
+          if git diff --cached --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git commit -m "style: format affected coverage tests"
+          git push origin main
