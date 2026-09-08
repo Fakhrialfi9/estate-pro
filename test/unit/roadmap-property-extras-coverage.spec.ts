@@ -186,7 +186,7 @@ describe('property extras coverage', () => {
     expect(() =>
       validateMedia({
         type: 'IMAGE',
-        url: 'http://cdn.example.com/a.jpg',
+        url: 'http://127.0.0.1/a.jpg',
         mimeType: 'image/jpeg',
       }),
     ).toThrow();
