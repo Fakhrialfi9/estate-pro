@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  DATABASE_URL: mysql://dev:dev123@127.0.0.1:3306/estate_pro_test?allowPublicKeyRetrieval=true
+  DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test?allowPublicKeyRetrieval=true
   DATABASE_POOL_CONNECTION_LIMIT: 2
   DATABASE_CONNECT_TIMEOUT_MS: 5000
   DATABASE_ACQUIRE_TIMEOUT_MS: 10000
@@ -148,29 +148,18 @@ jobs:
             estate-pro:ci
           trap 'docker logs estate-pro-ci || true; docker rm -f estate-pro-ci >/dev/null 2>&1 || true' EXIT
           for i in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:3002/api/v1/health/live >/dev/null; then exit 0; fi
+            if curl --fail --silent http://127.0.0.1:3002/api/v1/health/live >/dev/null; then
+              exit 0
+            fi
             sleep 2
           done
-          docker logs estate-pro-ci
           exit 1
 
       - name: Recovery rehearsal
-        run: |
-          sudo mysqldump --single-transaction --routines --events estate_pro_test > /tmp/estate_pro.sql
-          sudo mysql -e "DROP DATABASE IF EXISTS estate_pro_recovery; CREATE DATABASE estate_pro_recovery;"
-          sudo mysql estate_pro_recovery < /tmp/estate_pro.sql
-          test "$(sudo mysql -N -B -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='estate_pro_recovery';")" -gt 0
+        run: bash scripts/recovery-rehearsal.sh
 
       - name: Migration rehearsal
-        env:
-          DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_rehearsal?allowPublicKeyRetrieval=true
-        run: |
-          sudo mysql -e "DROP DATABASE IF EXISTS estate_pro_rehearsal; CREATE DATABASE estate_pro_rehearsal;"
-          sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_rehearsal.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
-          npm run prisma:deploy
-          npm run prisma:status
+        run: bash scripts/migration-rehearsal.sh
 
       - name: Repository immutability
-        run: |
-          git diff --check
-          test -z "$(git status --porcelain)"
+        run: bash scripts/check-repository-immutability.sh
