@@ -35,6 +35,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
+          BASE_TREE: ${{ github.sha }}
         run: |
           node <<'NODE'
           const fs = require('node:fs');
@@ -82,4 +83,4 @@ jobs:
             }),
           );
           NODE
-          BASE_TREE="$(git rev-parse HEAD^{tree})" gh api --method POST "repos/$REPOSITORY/git/trees" --input /tmp/formatted-tree.json --jq '.sha'
+          gh api --method POST "repos/$REPOSITORY/git/trees" --input /tmp/formatted-tree.json --jq '.sha'
