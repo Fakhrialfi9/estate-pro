@@ -1,0 +1,42 @@
+name: ESLint Fix Export
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply ESLint safe autofixes
+        run: npx eslint --fix .
+
+      - name: Export working tree
+        run: |
+          git status --short
+          git diff --name-only
+          git add -A
+          TREE_SHA="$(git write-tree)"
+          echo "TREE_SHA=$TREE_SHA" >> "$GITHUB_OUTPUT"
+          git diff --cached --quiet && echo "NO_CHANGES=true" >> "$GITHUB_OUTPUT" || echo "NO_CHANGES=false" >> "$GITHUB_OUTPUT"
+        id: export
+
+      - name: Print tree SHA
+        run: echo "tree=${{ steps.export.outputs.TREE_SHA }} changed=${{ steps.export.outputs.NO_CHANGES }}"
