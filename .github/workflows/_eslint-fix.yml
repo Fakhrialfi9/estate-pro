@@ -25,14 +25,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply ESLint autofixes without changing rules
-        run: npx eslint --fix . || true
+      - name: Apply Prettier formatting to affected files
+        run: npx prettier --write test/unit/permissions/roles-phase8-coverage.spec.ts test/unit/property-matching/phase9-coverage.spec.ts test/unit/property/phase10-coverage.spec.ts test/unit/property/property-capabilities-phase10-coverage.spec.ts
 
-      - name: Apply Prettier formatting
-        run: npx prettier --write "src/**/*.ts" "src/modules/users/credentials" "test/**/*.ts" --no-error-on-unmatched-pattern
-
-      - name: Export working tree
+      - name: Package formatted files
         run: |
-          git add -A
-          TREE_SHA="$(git write-tree)"
-          echo "TREE_SHA=$TREE_SHA"
+          mkdir -p artifact/test/unit/permissions artifact/test/unit/property-matching artifact/test/unit/property
+          cp test/unit/permissions/roles-phase8-coverage.spec.ts artifact/test/unit/permissions/
+          cp test/unit/property-matching/phase9-coverage.spec.ts artifact/test/unit/property-matching/
+          cp test/unit/property/phase10-coverage.spec.ts artifact/test/unit/property/
+          cp test/unit/property/property-capabilities-phase10-coverage.spec.ts artifact/test/unit/property/
+
+      - name: Upload formatted files
+        uses: actions/upload-artifact@v4
+        with:
+          name: formatted-affected-tests
+          path: artifact/
