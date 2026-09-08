@@ -31,14 +31,55 @@ jobs:
       - name: Format repository TypeScript
         run: npx prettier --write "src/**/*.ts" "src/modules/users/credentials" "test/**/*.ts" --no-error-on-unmatched-pattern
 
-      - name: Commit formatted files
+      - name: Upload formatted Git tree
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          if git diff --quiet; then
-            echo "Formatting already clean."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src test
-          git commit -m "chore: format TypeScript sources and tests"
-          git push origin HEAD:main
+          node <<'NODE'
+          const fs = require('node:fs');
+          const paths = [
+            'test/unit/content/content.service-coverage.spec.ts',
+            'test/unit/content/content.use-cases-coverage.spec.ts',
+            'test/unit/crm/phase7-coverage.spec.ts',
+            'test/unit/permissions/roles-phase8-coverage.spec.ts',
+            'test/unit/property-matching/phase9-coverage.spec.ts',
+            'test/unit/property/phase10-coverage.spec.ts',
+            'test/unit/property/property-capabilities-phase10-coverage.spec.ts',
+            'test/unit/roadmap-agent-management-coverage.spec.ts',
+            'test/unit/roadmap-automation-notification-coverage.spec.ts',
+            'test/unit/roadmap-complete-coverage.spec.ts',
+            'test/unit/roadmap-coverage-core.spec.ts',
+            'test/unit/roadmap-final-gap-coverage.spec.ts',
+            'test/unit/roadmap-permissions-coverage.spec.ts',
+            'test/unit/roadmap-phase6-10-domain-coverage.spec.ts',
+            'test/unit/roadmap-property-extras-coverage.spec.ts',
+            'test/unit/sales-seo-roadmap-coverage.spec.ts',
+            'test/unit/seo/property-structured-data.spec.ts',
+            'test/unit/system/critical-integration-lifecycle-coverage.spec.ts',
+            'test/unit/system/critical-roadmap-coverage.spec.ts',
+            'test/unit/system/system-observability.service.coverage.spec.ts',
+            'test/unit/users/roadmap-credentials-profile-coverage.spec.ts',
+            'test/unit/users/user-management-profile-branch-coverage.spec.ts',
+          ];
+          const entries = paths.map((path) => ({
+            path,
+            mode: '100644',
+            type: 'blob',
+            content: fs.readFileSync(path, 'utf8'),
+          }));
+          entries.push({
+            path: '.github/workflows/_prettier-export.yml',
+            mode: '100644',
+            type: 'blob',
+            sha: null,
+          });
+          fs.writeFileSync(
+            '/tmp/formatted-tree.json',
+            JSON.stringify({
+              base_tree: process.env.BASE_TREE,
+              tree: entries,
+            }),
+          );
+          NODE
+          BASE_TREE="$(git rev-parse HEAD^{tree})" gh api --method POST "repos/$REPOSITORY/git/trees" --input /tmp/formatted-tree.json --jq '.sha'
