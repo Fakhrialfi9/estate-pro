@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import {
   resolveTestDatabaseUrl,
   synchronizeDatabaseEnvironment,
@@ -6,6 +7,8 @@ import {
 const setDefault = (key: string, value: string): void => {
   if (process.env[key] === undefined) process.env[key] = value;
 };
+
+const testSecret = (): string => randomBytes(32).toString('hex');
 
 export function configureTestEnvironment(): void {
   setDefault('NODE_ENV', 'test');
@@ -26,6 +29,8 @@ export function configureTestEnvironment(): void {
     'test-only-two-factor-encryption-key-at-least-32-chars',
   );
   setDefault('SECURITY_CORS_ORIGINS', 'http://localhost:3000');
+  setDefault('SEED_ADMIN_PASSWORD', testSecret());
+  setDefault('SEED_DEVELOPMENT_USER_PASSWORD', testSecret());
   process.env.AUTH_LOGIN_RATE_LIMIT = '100';
   process.env.AUTH_LOGIN_RATE_LIMIT_TTL_MS = '60000';
   process.env.AUTH_REFRESH_RATE_LIMIT = '10';
