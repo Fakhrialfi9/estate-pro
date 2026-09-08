@@ -152,10 +152,7 @@ describe('CRM phase 7 coverage', () => {
       'user-1',
       expect.objectContaining({ actorUuid: actor.actorUuid }),
     );
-    expect(deliver).toHaveBeenCalledWith(
-      'communication-1',
-      actor.actorUuid,
-    );
+    expect(deliver).toHaveBeenCalledWith('communication-1', actor.actorUuid);
   });
 
   it('covers communication delivery success, idempotent path and failure modes', async () => {
@@ -175,9 +172,9 @@ describe('CRM phase 7 coverage', () => {
       findByUuid,
       transitionCommunication,
     };
-    const record = vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(
-      undefined,
-    );
+    const record = vi
+      .fn<SecurityAuditRepository['record']>()
+      .mockResolvedValue(undefined);
     const audit: SecurityAuditRepository = { record };
     const config = new ConfigService({
       EMAIL_PROVIDER_URL: 'https://provider.example.com/send',
@@ -260,10 +257,7 @@ describe('CRM phase 7 coverage', () => {
       .mockRejectedValue(new CommunicationProviderError('retry', true, 503));
     setProviders(
       retryService,
-      new Map([[
-        'EMAIL',
-        { channel: 'EMAIL', send: retrySend },
-      ]]),
+      new Map([['EMAIL', { channel: 'EMAIL', send: retrySend }]]),
     );
     await expect(
       retryService.deliver(communication().uuid, actor.actorUuid),
@@ -299,10 +293,7 @@ describe('CRM phase 7 coverage', () => {
       .mockRejectedValue(new CommunicationProviderError('bad', false, 400));
     setProviders(
       permanentService,
-      new Map([[
-        'EMAIL',
-        { channel: 'EMAIL', send: permanentSend },
-      ]]),
+      new Map([['EMAIL', { channel: 'EMAIL', send: permanentSend }]]),
     );
     await expect(
       permanentService.deliver(communication().uuid),

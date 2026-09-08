@@ -69,7 +69,7 @@ describe('user management and profile branch coverage', () => {
     };
     const service = new UserManagementService(
       users as never,
-      sessions as never,
+      sessions,
       audit,
       credentials as never,
     );
@@ -146,11 +146,7 @@ describe('user management and profile branch coverage', () => {
       create: vi.fn().mockResolvedValue(profile),
       updateByUserUuid: vi.fn().mockResolvedValue(profile),
     };
-    const service = new UserProfileService(
-      profiles as never,
-      users as never,
-      ownership as never,
-    );
+    const service = new UserProfileService(profiles, users, ownership);
 
     await expect(
       service.create(principal, uuid, {

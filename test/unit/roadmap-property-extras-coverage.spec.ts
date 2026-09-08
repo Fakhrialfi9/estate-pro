@@ -166,7 +166,7 @@ describe('property extras coverage', () => {
     ).toThrow('canonicalUrl must end');
     expect(() =>
       validateSeoInvariants('villa-bali', {
-        canonicalUrl: 'javascript:alert(1)' as never,
+        canonicalUrl: 'javascript:alert(1)',
       }),
     ).toThrow();
 

@@ -12,8 +12,8 @@ import { PermissionService } from '../../../src/modules/permissions/application/
 import { RoleService } from '../../../src/modules/roles/application/services/role.service.js';
 import { RolePermissionService } from '../../../src/modules/roles/application/services/role-permission.service.js';
 import { UserRoleService } from '../../../src/modules/roles/application/services/user-role.service.js';
-import { PermissionAuthorizationPolicy } from '../../../src/modules/permissions/application/policies/permission-authorization.policy.js';
-import { RoleAuthorizationPolicy } from '../../../src/modules/roles/application/policies/role-authorization.policy.js';
+import type { PermissionAuthorizationPolicy } from '../../../src/modules/permissions/application/policies/permission-authorization.policy.js';
+import type { RoleAuthorizationPolicy } from '../../../src/modules/roles/application/policies/role-authorization.policy.js';
 import { PermissionEntity } from '../../../src/modules/permissions/domain/entities/permission.entity.js';
 import { RoleEntity } from '../../../src/modules/roles/domain/entities/role.entity.js';
 import { UserRoleEntity } from '../../../src/modules/roles/domain/entities/user-role.entity.js';

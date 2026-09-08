@@ -113,10 +113,7 @@ describe('roadmap common security and observability coverage', () => {
       verifyAccessToken: vi.fn().mockResolvedValue(actorClaims),
     };
     const sessions = { isActive: vi.fn().mockResolvedValue(true) };
-    const guard = new AuthenticatedAccessGuard(
-      verifier as never,
-      sessions as never,
-    );
+    const guard = new AuthenticatedAccessGuard(verifier, sessions);
 
     await expect(
       guard.canActivate(contextOf({ headers: {}, params: {} })),
@@ -212,7 +209,7 @@ describe('roadmap common security and observability coverage', () => {
       canAccessListing: vi.fn().mockResolvedValue(true),
       canAccessProperty: vi.fn().mockResolvedValue(true),
     };
-    const guard = new PropertyAccessGuard(query as never);
+    const guard = new PropertyAccessGuard(query);
 
     await expect(
       guard.canActivate(

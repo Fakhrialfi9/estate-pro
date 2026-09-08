@@ -33,10 +33,7 @@ describe('roadmap final gap coverage', () => {
     const sessions = {
       isActive: vi.fn().mockResolvedValue(true),
     };
-    const guard = new AuthenticatedAccessGuard(
-      verifier as never,
-      sessions as never,
-    );
+    const guard = new AuthenticatedAccessGuard(verifier, sessions);
 
     await expect(
       guard.canActivate(contextOf({ headers: {} })),

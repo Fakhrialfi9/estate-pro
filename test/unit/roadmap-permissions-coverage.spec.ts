@@ -109,11 +109,7 @@ describe('permission entity and service coverage', () => {
       canManage: vi.fn(),
       canManageProtected: vi.fn(),
     };
-    const service = new PermissionService(
-      repository as never,
-      audit as never,
-      policy as never,
-    );
+    const service = new PermissionService(repository, audit, policy as never);
     const actor = {
       userUuid: uuid,
       permissions: ['permissions:manage'],

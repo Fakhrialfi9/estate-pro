@@ -101,7 +101,7 @@ describe('users credentials and profile roadmap coverage', () => {
     };
     const service = new CredentialService(
       credentials as never,
-      sessions as never,
+      sessions,
       hasher as never,
     );
 
@@ -277,11 +277,7 @@ describe('users credentials and profile roadmap coverage', () => {
         .fn()
         .mockResolvedValue(UserEntity.create({ ...userSnapshot })),
     };
-    const guard = new ProfileAuthenticationGuard(
-      jwt as never,
-      sessions as never,
-      users as never,
-    );
+    const guard = new ProfileAuthenticationGuard(jwt, sessions, users);
     const request: {
       headers: { authorization: string };
       user?: unknown;
@@ -329,7 +325,7 @@ describe('users credentials and profile roadmap coverage', () => {
     const service = new PasswordResetService(
       users as never,
       credentials as never,
-      sessions as never,
+      sessions,
       config,
       hasher as never,
       delivery,

@@ -121,10 +121,7 @@ describe('roadmap complete coverage', () => {
         .mockResolvedValue({ sub: uuid, sid: '1', iat: 1, exp: 2 }),
     };
     const sessions = { isActive: vi.fn().mockResolvedValue(true) };
-    const authenticated = new AuthenticatedAccessGuard(
-      verifier as never,
-      sessions as never,
-    );
+    const authenticated = new AuthenticatedAccessGuard(verifier, sessions);
 
     await expect(
       authenticated.canActivate(
@@ -191,7 +188,7 @@ describe('roadmap complete coverage', () => {
       canAccessListing: vi.fn().mockResolvedValue(true),
       canAccessProperty: vi.fn().mockResolvedValue(true),
     };
-    const guard = new PropertyAccessGuard(query as never);
+    const guard = new PropertyAccessGuard(query);
 
     await expect(
       guard.canActivate(httpContext({ user: {}, params: {}, path: '/health' })),
@@ -338,7 +335,7 @@ describe('roadmap complete coverage', () => {
       }),
     };
     const logger = { setContext: vi.fn(), error: vi.fn() };
-    const service = new AuditLogService(repository as never, logger as never);
+    const service = new AuditLogService(repository, logger as never);
 
     await service.record({
       action: 'USER_UPDATED',
@@ -355,7 +352,7 @@ describe('roadmap complete coverage', () => {
         limit: 20,
         resourceType: undefined,
         actorUuid: undefined,
-      } as never),
+      }),
     ).resolves.toMatchObject({ total: 1 });
 
     repository.record.mockRejectedValueOnce(new Error('audit unavailable'));
@@ -495,11 +492,7 @@ describe('roadmap complete coverage', () => {
       revokeForSession: vi.fn().mockResolvedValue(1),
       revokeAllForUser: vi.fn().mockResolvedValue(2),
     };
-    const service = new SessionService(
-      repo as never,
-      audit as never,
-      refresh as never,
-    );
+    const service = new SessionService(repo as never, audit, refresh);
 
     await expect(
       service.create(uuid, {
@@ -599,12 +592,12 @@ describe('roadmap complete coverage', () => {
     });
     const service = new TwoFactorService(
       repository as never,
-      recovery as never,
-      enrollment as never,
-      challenges as never,
+      recovery,
+      enrollment,
+      challenges,
       users as never,
       credentials as never,
-      audit as never,
+      audit,
       crypto as never,
       totp as never,
       jwt as never,
@@ -852,8 +845,8 @@ describe('roadmap complete coverage', () => {
       repo as never,
       {} as never,
       {} as never,
-      users as never,
-      audit as never,
+      users,
+      audit,
       validator as never,
       [],
     );

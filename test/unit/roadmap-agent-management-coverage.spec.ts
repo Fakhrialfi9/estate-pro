@@ -166,13 +166,13 @@ const dependencies = () => {
   const service = new AgentManagementService(
     repo as never,
     authorization as never,
-    users as never,
-    audit as never,
+    users,
+    audit,
     propertyAssignments as never,
-    propertyContext as never,
-    propertyRegions as never,
-    crmWorkload as never,
-    salesWorkload as never,
+    propertyContext,
+    propertyRegions,
+    crmWorkload,
+    salesWorkload,
   );
   return {
     service,
@@ -203,7 +203,7 @@ describe('agent management roadmap coverage', () => {
       roleCodes: [],
     });
     await expect(
-      d.service.create({ userUuid, displayName: 'Alice' } as never, actor),
+      d.service.create({ userUuid, displayName: 'Alice' }, actor),
     ).rejects.toBeInstanceOf(ForbiddenException);
 
     d.repo.findSpecialization.mockResolvedValueOnce({
@@ -217,7 +217,7 @@ describe('agent management roadmap coverage', () => {
       d.service.addSpecialization(agentUuid, 'spec-1', false, actor),
     ).rejects.toBeInstanceOf(NotFoundException);
 
-    await d.service.update(agentUuid, { bio: 'new bio' } as never, actor);
+    await d.service.update(agentUuid, { bio: 'new bio' }, actor);
     expect(d.repo.updateProfile).toHaveBeenCalled();
   });
 

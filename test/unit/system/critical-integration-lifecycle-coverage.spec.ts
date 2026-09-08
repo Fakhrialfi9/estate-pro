@@ -361,8 +361,8 @@ describe('integration sync', () => {
       reliability as never,
       mapping as never,
       roadmap as never,
-      retryRepository as never,
-      audit as never,
+      retryRepository,
+      audit,
     );
 
     service.onModuleInit();

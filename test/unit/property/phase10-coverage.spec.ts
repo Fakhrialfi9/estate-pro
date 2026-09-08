@@ -95,8 +95,8 @@ describe('property phase 10 coverage', () => {
     await service.deleteRoom(uuid, uuid2, actor);
     await service.reorderRooms(uuid, [uuid2], actor);
     await service.listPropertyFacilities(uuid);
-    await service.attachFacility(uuid, { facilityUuid: uuid2 } as never, actor);
-    await service.updateFacility(uuid, uuid2, { notes: 'n' } as never, actor);
+    await service.attachFacility(uuid, { facilityUuid: uuid2 }, actor);
+    await service.updateFacility(uuid, uuid2, { notes: 'n' }, actor);
     await service.detachFacility(uuid, uuid2, actor);
     await service.bulkAttachFacilities(uuid, [uuid2], actor);
     await expect(
@@ -457,7 +457,7 @@ describe('property phase 10 coverage', () => {
     await service.transition(
       uuid,
       1,
-      'PUBLISHED' as never,
+      'PUBLISHED',
       { actorUuid: uuid },
       'reason',
     );
@@ -470,7 +470,7 @@ describe('property phase 10 coverage', () => {
       actorUuid: uuid,
     });
     await service.detail(uuid, uuid);
-    await service.search({ page: 1, limit: 10 } as never);
+    await service.search({ page: 1, limit: 10 });
 
     repository.getPropertyDetail = vi
       .fn()
