@@ -267,12 +267,19 @@ describe('property matching phase 9', () => {
   });
 
   it('covers PropertyMatchingService preference lifecycle, match/generate/history/feedback and access fallbacks', async () => {
+    let findPreferenceResult: Awaited<
+      ReturnType<MatchingRepository['findPreference']>
+    > = preference;
+    let preferenceScope: Awaited<
+      ReturnType<MatchingRepository['getPreferenceSubjectScope']>
+    > = { ownerUserUuid: uuid2 };
+    let denyPermissions = false;
     const findPreference = vi
       .fn<MatchingRepository['findPreference']>()
-      .mockResolvedValue(preference);
+      .mockImplementation(async () => findPreferenceResult);
     const getPreferenceSubjectScope = vi
       .fn<MatchingRepository['getPreferenceSubjectScope']>()
-      .mockResolvedValue({ ownerUserUuid: uuid2 });
+      .mockImplementation(async () => preferenceScope);
     const repository = {
       findPreference,
       createPreference: vi
@@ -321,7 +328,9 @@ describe('property matching phase 9', () => {
     } satisfies Pick<MatchingRuleService, 'active'>;
     const assertPermissions = vi
       .fn<AuthorizationService['assertPermissions']>()
-      .mockImplementation(() => undefined);
+      .mockImplementation(() => {
+        if (denyPermissions) throw new ForbiddenException();
+      });
     const authorization = {
       resolve: vi
         .fn<AuthorizationService['resolve']>()
@@ -347,29 +356,23 @@ describe('property matching phase 9', () => {
     await service.restorePreference('USER', uuid, actor);
     await service.archivePreference('USER', uuid, actor);
     await service.match('USER', uuid, actor);
-    await service.generate('USER', uuid, actor);
+    await service.generate('USER', uuid, 'GENERATED', {}, actor);
     await service.refresh('USER', uuid, actor);
     await service.history('USER', uuid, { page: 1, limit: 10 }, actor);
     await service.feedback(uuid3, 'INTERESTED', actor);
     await service.saved('USER', uuid, actor);
 
-    findPreference.mockResolvedValue(null);
+    findPreferenceResult = null;
     await expect(
       service.getPreference('USER', uuid, actor),
     ).rejects.toBeInstanceOf(NotFoundException);
-    findPreference.mockResolvedValue(preference);
-    getPreferenceSubjectScope.mockResolvedValue({
-      ownerUserUuid: uuid3,
-    });
+    findPreferenceResult = preference;
+    preferenceScope = { ownerUserUuid: uuid3 };
     await expect(
       service.getPreference('USER', uuid, actor),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    getPreferenceSubjectScope.mockResolvedValue({
-      ownerUserUuid: uuid2,
-    });
-    assertPermissions.mockImplementation(() => {
-      throw new ForbiddenException();
-    });
+    preferenceScope = { ownerUserUuid: uuid2 };
+    denyPermissions = true;
     await expect(
       service.getPreference('USER', uuid, actor),
     ).rejects.toBeInstanceOf(ForbiddenException);
