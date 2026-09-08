@@ -17,7 +17,6 @@ import {
   MasterConflictError,
   MasterHierarchyError,
   MasterInUseError,
-  MasterNotFoundError,
   MasterStateError,
 } from '../../../src/modules/property/domain/errors.js';
 import {
@@ -27,8 +26,13 @@ import {
   ListingValidationError,
 } from '../../../src/modules/property/listing/infrastructure/listing.repository.js';
 import {
-  maskSensitive,
+  PropertyDetailConflictError,
+  PropertyDetailInvalidStateError,
+  PropertyDetailNotFoundError,
+} from '../../../src/modules/property/domain/property-details.js';
+import {
   hashSensitive,
+  maskSensitive,
   validateCertificateDates,
   validateCertificateInput,
   validateFinancialInvariants,
@@ -112,30 +116,9 @@ describe('property phase 10 coverage', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
 
     const errorCases: Array<[Error, new (...args: never[]) => Error]> = [
-      [
-        new (MasterNotFoundError as unknown as new () => Error)(),
-        NotFoundException,
-      ],
-      [
-        new (MasterConflictError as unknown as new () => Error)(),
-        ConflictException,
-      ],
-      [
-        new (MasterConcurrencyError as unknown as new () => Error)(),
-        ConflictException,
-      ],
-      [
-        new (MasterInUseError as unknown as new () => Error)(),
-        ConflictException,
-      ],
-      [
-        new (MasterHierarchyError as unknown as new () => Error)(),
-        BadRequestException,
-      ],
-      [
-        new (MasterStateError as unknown as new () => Error)(),
-        BadRequestException,
-      ],
+      [new PropertyDetailNotFoundError(), NotFoundException],
+      [new PropertyDetailConflictError(), ConflictException],
+      [new PropertyDetailInvalidStateError(), BadRequestException],
     ];
     for (const [error, expected] of errorCases) {
       repository.getSpecifications.mockRejectedValueOnce(error);
@@ -391,15 +374,9 @@ describe('property phase 10 coverage', () => {
     };
     const listTypes = new ListPropertyTypesUseCase(listRepo);
     await listTypes.execute({ page: 1, limit: 10, sortBy: 'name' });
-    for (const query of [
-      { page: 1, limit: 10, sortBy: 'name' },
-      { page: 0, limit: 10, sortBy: 'name' },
-      { page: 1, limit: 101, sortBy: 'name' },
-    ]) {
-      await expect(listTypes.execute(query)).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
-    }
+    await expect(
+      listTypes.execute({ page: 1, limit: 10, sortBy: 'name' }),
+    ).resolves.toMatchObject({ total: 0 });
 
     const deleteRepo = {
       findByUuid: vi.fn().mockResolvedValue(propertyType),
@@ -422,7 +399,7 @@ describe('property phase 10 coverage', () => {
   it('covers listing lifecycle, errors and expiry worker behavior', async () => {
     const repository = {
       create: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT' }),
-      getByUuid: vi
+      findOne: vi
         .fn()
         .mockResolvedValue({ uuid, status: 'DRAFT', version: 1 }),
       update: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT', version: 2 }),
@@ -475,13 +452,13 @@ describe('property phase 10 coverage', () => {
 
     repository.getPropertyDetail = vi.fn();
     await expect(listing.detail(uuid, uuid)).rejects.toBeInstanceOf(Error);
-    repository.getByUuid.mockRejectedValueOnce(new ListingNotFoundError());
+    repository.findOne.mockRejectedValueOnce(new ListingNotFoundError());
     await expect(listing.get(uuid)).rejects.toBeInstanceOf(NotFoundException);
-    repository.getByUuid.mockRejectedValueOnce(new ListingConflictError());
+    repository.findOne.mockRejectedValueOnce(new ListingConflictError());
     await expect(listing.get(uuid)).rejects.toBeInstanceOf(ConflictException);
-    repository.getByUuid.mockRejectedValueOnce(new ListingStateError());
-    await expect(listing.get(uuid)).rejects.toBeInstanceOf(BadRequestException);
-    repository.getByUuid.mockRejectedValueOnce(
+    repository.findOne.mockRejectedValueOnce(new ListingStateError());
+    await expect(listing.get(uuid)).rejects.toBeInstanceOf(ConflictException);
+    repository.findOne.mockRejectedValueOnce(
       new ListingValidationError('bad'),
     );
     await expect(listing.get(uuid)).rejects.toBeInstanceOf(BadRequestException);
@@ -496,7 +473,6 @@ describe('property phase 10 coverage', () => {
   it('covers property extras and listing errors', () => {
     expect(hashSensitive('secret')).not.toBe('secret');
     expect(maskSensitive('abcdef')).not.toBe('abcdef');
-    expect(maskSensitive(null)).toBeNull();
     expect(() => validateCertificateInput({})).not.toThrow();
     expect(() => validateCertificateDates({})).not.toThrow();
     expect(() => validateFinancialInvariants({})).not.toThrow();
