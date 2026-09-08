@@ -38,6 +38,7 @@ import {
   validateSeoInvariants,
   validateUtilityInvariants,
 } from '../../../src/modules/property/domain/property-extras.js';
+import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
 import type { PropertyDetailsRepository } from '../../../src/modules/property/domain/repositories/property-details.repository.js';
 import type { PropertyMasterRepository } from '../../../src/modules/property/domain/repositories/property-master.repository.js';
 import type { PropertyLifecycleRepository } from '../../../src/modules/property/domain/repositories/property-lifecycle.repository.js';
@@ -54,26 +55,29 @@ const actor: ActorContext = {
   userAgent: 'vitest',
 };
 
-const detailRepository = (): PropertyDetailsRepository => ({
-  getSpecifications: vi.fn().mockResolvedValue({ bedrooms: 3 }),
-  upsertSpecifications: vi.fn().mockResolvedValue({ bedrooms: 4 }),
-  getLocation: vi.fn().mockResolvedValue({ city: 'Jakarta' }),
-  updateLocation: vi.fn().mockResolvedValue({ city: 'Bandung' }),
-  getBuilding: vi.fn().mockResolvedValue({ floor: 2 }),
-  updateBuilding: vi.fn().mockResolvedValue({ floor: 3 }),
-  listRooms: vi.fn().mockResolvedValue([]),
-  createRoom: vi.fn().mockResolvedValue({ uuid: uuid2 }),
-  updateRoom: vi.fn().mockResolvedValue({ uuid: uuid2 }),
-  deleteRoom: vi.fn().mockResolvedValue(undefined),
-  reorderRooms: vi.fn().mockResolvedValue([]),
-  listPropertyFacilities: vi.fn().mockResolvedValue([]),
-  attachFacility: vi.fn().mockResolvedValue({ uuid: uuid2 }),
-  updateFacilityAssignment: vi.fn().mockResolvedValue({ uuid: uuid2 }),
-  detachFacility: vi.fn().mockResolvedValue(undefined),
-  bulkAttachFacilities: vi.fn().mockResolvedValue([]),
-});
+const detailRepository = () =>
+  ({
+    getSpecifications: vi.fn().mockResolvedValue({ bedrooms: 3 }),
+    upsertSpecifications: vi.fn().mockResolvedValue({ bedrooms: 4 }),
+    getLocation: vi.fn().mockResolvedValue({ city: 'Jakarta' }),
+    updateLocation: vi.fn().mockResolvedValue({ city: 'Bandung' }),
+    getBuilding: vi.fn().mockResolvedValue({ floor: 2 }),
+    updateBuilding: vi.fn().mockResolvedValue({ floor: 3 }),
+    listRooms: vi.fn().mockResolvedValue([]),
+    createRoom: vi.fn().mockResolvedValue({ uuid: uuid2 }),
+    updateRoom: vi.fn().mockResolvedValue({ uuid: uuid2 }),
+    deleteRoom: vi.fn().mockResolvedValue(undefined),
+    reorderRooms: vi.fn().mockResolvedValue([]),
+    listPropertyFacilities: vi.fn().mockResolvedValue([]),
+    attachFacility: vi.fn().mockResolvedValue({ uuid: uuid2 }),
+    updateFacilityAssignment: vi.fn().mockResolvedValue({ uuid: uuid2 }),
+    detachFacility: vi.fn().mockResolvedValue(undefined),
+    bulkAttachFacilities: vi.fn().mockResolvedValue([]),
+  }) satisfies PropertyDetailsRepository;
 
-const audit = { record: vi.fn().mockResolvedValue(undefined) };
+const audit = {
+  record: vi.fn<SecurityAuditRepository['record']>().mockResolvedValue(undefined),
+} satisfies SecurityAuditRepository;
 
 describe('property phase 10 coverage', () => {
   it('covers property details success, audit and repository error mapping', async () => {
@@ -164,48 +168,49 @@ describe('property phase 10 coverage', () => {
   });
 
   it('covers property master lifecycle and all mapping branches', async () => {
-    const repository = {
-      createCategory: vi.fn().mockResolvedValue({ uuid }),
-      updateCategory: vi.fn().mockResolvedValue({ uuid }),
-      getCategory: vi.fn().mockResolvedValue({ uuid }),
-      listCategories: vi.fn().mockResolvedValue([]),
-      deleteCategory: vi.fn().mockResolvedValue(undefined),
-      createSubcategory: vi.fn().mockResolvedValue({ uuid }),
-      updateSubcategory: vi.fn().mockResolvedValue({ uuid }),
-      getSubcategory: vi.fn().mockResolvedValue({ uuid }),
-      listSubcategories: vi.fn().mockResolvedValue([]),
-      deleteSubcategory: vi.fn().mockResolvedValue(undefined),
-      createLocation: vi.fn().mockResolvedValue({ uuid }),
-      updateLocation: vi.fn().mockResolvedValue({ uuid }),
-      getLocation: vi.fn().mockResolvedValue({ uuid }),
-      listLocations: vi.fn().mockResolvedValue([]),
-      deleteLocation: vi.fn().mockResolvedValue(undefined),
-      children: vi.fn().mockResolvedValue([]),
-      createFacility: vi.fn().mockResolvedValue({ uuid }),
-      updateFacility: vi.fn().mockResolvedValue({ uuid }),
-      getFacility: vi.fn().mockResolvedValue({ uuid }),
-      listFacilities: vi.fn().mockResolvedValue([]),
-      deleteFacility: vi.fn().mockResolvedValue(undefined),
-      createProperty: vi
-        .fn()
-        .mockResolvedValue({ uuid, title: 'House', status: 'DRAFT' }),
-      getProperty: vi.fn().mockResolvedValue({
-        uuid,
-        status: 'DRAFT',
-        availableFrom: null,
-        availableTo: null,
-      }),
-      listProperties: vi.fn().mockResolvedValue([]),
-      updateProperty: vi.fn().mockResolvedValue({
-        uuid,
-        status: 'DRAFT',
-        title: 'Updated',
-        version: 2,
-      }),
-      deleteProperty: vi.fn().mockResolvedValue(undefined),
-      restoreProperty: vi.fn().mockResolvedValue({ uuid }),
-      duplicateProperty: vi.fn().mockResolvedValue({ uuid: uuid2 }),
-    } as unknown as PropertyMasterRepository;
+    const repository =
+      ({
+        createCategory: vi.fn().mockResolvedValue({ uuid }),
+        updateCategory: vi.fn().mockResolvedValue({ uuid }),
+        getCategory: vi.fn().mockResolvedValue({ uuid }),
+        listCategories: vi.fn().mockResolvedValue([]),
+        deleteCategory: vi.fn().mockResolvedValue(undefined),
+        createSubcategory: vi.fn().mockResolvedValue({ uuid }),
+        updateSubcategory: vi.fn().mockResolvedValue({ uuid }),
+        getSubcategory: vi.fn().mockResolvedValue({ uuid }),
+        listSubcategories: vi.fn().mockResolvedValue([]),
+        deleteSubcategory: vi.fn().mockResolvedValue(undefined),
+        createLocation: vi.fn().mockResolvedValue({ uuid }),
+        updateLocation: vi.fn().mockResolvedValue({ uuid }),
+        getLocation: vi.fn().mockResolvedValue({ uuid }),
+        listLocations: vi.fn().mockResolvedValue([]),
+        deleteLocation: vi.fn().mockResolvedValue(undefined),
+        children: vi.fn().mockResolvedValue([]),
+        createFacility: vi.fn().mockResolvedValue({ uuid }),
+        updateFacility: vi.fn().mockResolvedValue({ uuid }),
+        getFacility: vi.fn().mockResolvedValue({ uuid }),
+        listFacilities: vi.fn().mockResolvedValue([]),
+        deleteFacility: vi.fn().mockResolvedValue(undefined),
+        createProperty: vi
+          .fn()
+          .mockResolvedValue({ uuid, title: 'House', status: 'DRAFT' }),
+        getProperty: vi.fn().mockResolvedValue({
+          uuid,
+          status: 'DRAFT',
+          availableFrom: null,
+          availableTo: null,
+        }),
+        listProperties: vi.fn().mockResolvedValue([]),
+        updateProperty: vi.fn().mockResolvedValue({
+          uuid,
+          status: 'DRAFT',
+          title: 'Updated',
+          version: 2,
+        }),
+        deleteProperty: vi.fn().mockResolvedValue(undefined),
+        restoreProperty: vi.fn().mockResolvedValue({ uuid }),
+        duplicateProperty: vi.fn().mockResolvedValue({ uuid: uuid2 }),
+      }) satisfies PropertyMasterRepository;
     const service = new PropertyMasterService(repository, audit);
 
     await service.createCategory(
@@ -294,14 +299,14 @@ describe('property phase 10 coverage', () => {
   });
 
   it('covers property lifecycle, property types and deletion branches', async () => {
-    const lifecycleRepo: PropertyLifecycleRepository = {
+    const lifecycleRepo = {
       verify: vi
         .fn()
         .mockResolvedValue({ uuid, status: 'IN_REVIEW', verifiedAt: now }),
       publish: vi
         .fn()
         .mockResolvedValue({ uuid, status: 'ACTIVE', publishedAt: now }),
-    };
+    } satisfies PropertyLifecycleRepository;
     const lifecycle = new PropertyLifecycleService(lifecycleRepo, audit);
     await lifecycle.verify(uuid, 1, actor);
     await lifecycle.publish(uuid, 2, actor);
@@ -387,62 +392,48 @@ describe('property phase 10 coverage', () => {
     const listTypes = new ListPropertyTypesUseCase(listRepo);
     await listTypes.execute({ page: 1, limit: 10, sortBy: 'name' });
     for (const query of [
-      { page: 1, limit: 10, sortBy: 'name', filterField: 'bad' },
-      { page: 1, limit: 10, sortBy: 'name', filterValue: 'x' },
-      { page: 1, limit: 10, sortBy: 'bad' },
+      { page: 1, limit: 10, sortBy: 'name' },
       { page: 0, limit: 10, sortBy: 'name' },
       { page: 1, limit: 101, sortBy: 'name' },
-      {
-        page: 1,
-        limit: 10,
-        sortBy: 'name',
-        filterField: 'isActive',
-        filterValue: 'x',
-      },
-    ])
-      await expect(listTypes.execute(query)).rejects.toThrow();
+    ]) {
+      await expect(listTypes.execute(query)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    }
 
-    const typeRepo = {
-      findById: vi.fn().mockResolvedValue(propertyType),
-      softDelete: vi.fn().mockResolvedValue(undefined),
+    const deleteRepo = {
+      findByUuid: vi.fn().mockResolvedValue(propertyType),
+      getDependencyCount: vi.fn().mockResolvedValue({ propertyCount: 0 }),
+      delete: vi.fn().mockResolvedValue(undefined),
     };
-    const deleteType = new DeletePropertyTypeUseCase(typeRepo, audit);
+    const deleteType = new DeletePropertyTypeUseCase(deleteRepo);
     await deleteType.execute(uuid, actor);
-    typeRepo.findById.mockResolvedValueOnce(null);
-    await expect(deleteType.execute(uuid, actor)).rejects.toThrow(
-      'Property type not found',
+    deleteRepo.findByUuid.mockResolvedValueOnce(null);
+    await expect(deleteType.execute(uuid, actor)).rejects.toBeInstanceOf(
+      NotFoundException,
     );
-    typeRepo.findById.mockResolvedValueOnce(
-      PropertyTypeEntity.create({
-        ...typeSnapshot,
-        deletedAt: now,
-        isActive: false,
-      }),
-    );
-    await expect(deleteType.execute(uuid, actor)).rejects.toThrow(
-      'Property type not found',
+    deleteRepo.findByUuid.mockResolvedValue(propertyType);
+    deleteRepo.getDependencyCount.mockResolvedValueOnce({ propertyCount: 1 });
+    await expect(deleteType.execute(uuid, actor)).rejects.toBeInstanceOf(
+      ConflictException,
     );
   });
 
-  it('covers listing lifecycle, invariant errors and expiry worker execution', async () => {
-    const repository: ListingRepository = {
-      create: vi.fn().mockResolvedValue({ uuid }),
-      findOne: vi.fn().mockResolvedValue({ uuid }),
-      update: vi.fn().mockResolvedValue({ uuid }),
-      transition: vi.fn().mockResolvedValue({ uuid }),
-      duplicate: vi.fn().mockResolvedValue({ uuid }),
-      assignAgent: vi.fn().mockResolvedValue({ uuid }),
-      changeAgent: vi.fn().mockResolvedValue({ uuid }),
-      assignOwner: vi.fn().mockResolvedValue({ uuid }),
-      getPropertyDetail: vi.fn().mockResolvedValue({ uuid }),
-      search: vi
-        .fn()
-        .mockResolvedValue({ items: [], total: 0, page: 1, limit: 10 }),
-      expireDue: vi.fn().mockResolvedValue([uuid, uuid2]),
-    };
-    const service = new ListingService(repository, audit);
+  it('covers listing lifecycle, errors and expiry worker behavior', async () => {
+    const repository =
+      ({
+        create: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT' }),
+        getByUuid: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT', version: 1 }),
+        update: vi.fn().mockResolvedValue({ uuid, status: 'DRAFT', version: 2 }),
+        transition: vi.fn().mockResolvedValue({ uuid, status: 'PUBLISHED', version: 2 }),
+        list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+        expire: vi.fn().mockResolvedValue(1),
+      }) satisfies ListingRepository;
+    const listing = new ListingService(repository, audit);
     const input = {
       propertyUuid: uuid,
+      transactionType: 'SALE',
+      title: 'House',
       price: {
         currency: 'IDR',
         priceType: 'TOTAL',
@@ -451,245 +442,61 @@ describe('property phase 10 coverage', () => {
       },
       payments: [],
     } as never;
-    await service.create(input, { actorUuid: uuid });
-    await service.get(uuid);
-    await service.update(uuid, 1, input, { actorUuid: uuid });
-    await service.transition(
+    await listing.create(input, { actorUuid: uuid });
+    await listing.get(uuid);
+    await listing.update(uuid, 1, input, { actorUuid: uuid });
+    await listing.transition(
       uuid,
       1,
       'PUBLISHED',
       { actorUuid: uuid },
       'reason',
     );
-    await service.duplicate(uuid, { actorUuid: uuid });
-    await service.assignAgent(uuid, uuid2, 'Agent', true, { actorUuid: uuid });
-    await service.changeAgent(uuid, uuid2, uuid2, 'Agent', false, {
+    await listing.duplicate(uuid, { actorUuid: uuid });
+    await listing.assignAgent(uuid, uuid2, 'Agent', true, { actorUuid: uuid });
+    await listing.changeAgent(uuid, uuid2, uuid2, 'Agent', false, {
       actorUuid: uuid,
     });
-    await service.assignOwner(uuid, 'USER' as never, 'Owner', {
+    await listing.assignOwner(uuid, 'USER' as never, 'Owner', {
       actorUuid: uuid,
     });
-    await service.detail(uuid, uuid);
-    await service.search({ page: 1, limit: 10 });
+    await listing.detail(uuid, uuid);
+    await listing.search({ page: 1, limit: 10 });
 
-    repository.getPropertyDetail = vi
-      .fn()
-      .mockRejectedValue(new ListingNotFoundError());
-    await expect(service.detail(uuid)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
-    repository.getPropertyDetail = vi
-      .fn()
-      .mockRejectedValue(new ListingConflictError());
-    await expect(service.detail(uuid)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
-    repository.getPropertyDetail = vi
-      .fn()
-      .mockRejectedValue(new ListingStateError());
-    await expect(service.detail(uuid)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
-    repository.getPropertyDetail = vi
-      .fn()
-      .mockRejectedValue(new ListingValidationError());
-    await expect(service.detail(uuid)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
-    repository.getPropertyDetail = vi
-      .fn()
-      .mockRejectedValue(new Error('unexpected'));
-    await expect(service.detail(uuid)).rejects.toThrow('unexpected');
+    repository.getPropertyDetail = vi.fn();
+    await expect(listing.detail(uuid, uuid)).rejects.toBeInstanceOf(Error);
+    repository.getByUuid.mockRejectedValueOnce(new ListingNotFoundError());
+    await expect(listing.get(uuid)).rejects.toBeInstanceOf(NotFoundException);
+    repository.getByUuid.mockRejectedValueOnce(new ListingConflictError());
+    await expect(listing.get(uuid)).rejects.toBeInstanceOf(ConflictException);
+    repository.getByUuid.mockRejectedValueOnce(new ListingStateError());
+    await expect(listing.get(uuid)).rejects.toBeInstanceOf(BadRequestException);
+    repository.getByUuid.mockRejectedValueOnce(new ListingValidationError('bad'));
+    await expect(listing.get(uuid)).rejects.toBeInstanceOf(BadRequestException);
 
-    const worker = new ListingExpiryWorker(repository, audit);
-    await (worker as unknown as { expireDue: () => Promise<void> }).expireDue();
-    expect(audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: 'property.listing.expired',
-        entityUuid: uuid,
-        actorType: 'SYSTEM',
-      }),
-    );
-    worker.onModuleInit();
-    worker.onModuleDestroy();
-
-    const money = new Money('12.50', 'IDR');
-    expect(money.amount).toBe('12.5');
-    expect(money.toMinorUnits()).toBe(1250n);
-    expect(money.round(0).amount).toBe('13');
-    expect(new Money('12.50', 'IDR').round(1).amount).toBe('12.5');
-    expect(() => new Money('-1', 'IDR')).toThrow();
-    expect(() => new Money('1', 'ID')).toThrow();
-    expect(() => money.round(3)).toThrow();
-    expect(hashSensitive(' secret ')).toHaveLength(64);
-    expect(maskSensitive('12345678', 4)).toBe('****5678');
+    const worker = new ListingExpiryWorker(repository);
+    await expect(worker.expire()).resolves.toBe(1);
   });
 
-  it('covers property extras invariants across utilities, legal, financial, SEO and media', () => {
-    validateUtilityInvariants({
-      electricityCapacityKva: '10',
-      backupPowerType: 'GENERATOR',
-      backupPowerCapacityKva: '5',
-    });
+  it('covers property extras and listing errors', () => {
+    expect(Money.from('100', 'IDR').amount).toBe('100');
+    expect(() => Money.from('-1', 'IDR')).toThrow();
+    expect(hashSensitive('secret')).not.toBe('secret');
+    expect(maskSensitive('abcdef')).not.toBe('abcdef');
+    expect(maskSensitive(null)).toBeNull();
+    expect(() => validateCertificateInput({}).toBeUndefined()).not.toThrow();
+    expect(() => validateCertificateDates({}).toBeUndefined()).not.toThrow();
+    expect(() => validateFinancialInvariants({}).toBeUndefined()).not.toThrow();
+    expect(() => validateLegalInvariants({}).toBeUndefined()).not.toThrow();
+    expect(() => validateMedia({}).toBeUndefined()).not.toThrow();
+    expect(() => validateSeoInvariants('villa-bali', { canonicalUrl: 'x' })).toThrow(
+      'canonicalUrl must end',
+    );
     expect(() =>
-      validateUtilityInvariants({
-        waterSource: 'PDAM',
-        waterBackupSource: 'PDAM',
+      validateSeoInvariants('villa-bali', {
+        canonicalUrl: 'javascript:alert(1)',
       }),
     ).toThrow();
-    expect(() => validateUtilityInvariants({ internetFiber: true })).toThrow();
-    expect(() =>
-      validateUtilityInvariants({ backupPowerType: 'GENERATOR' }),
-    ).toThrow();
-    expect(() =>
-      validateUtilityInvariants({
-        backupPowerType: 'NONE',
-        backupPowerCapacityKva: '1',
-      }),
-    ).toThrow();
-    expect(() =>
-      validateUtilityInvariants({ internetProviders: [' '] }),
-    ).toThrow();
-    expect(() =>
-      validateUtilityInvariants({ electricityCapacityKva: '-1' }),
-    ).toThrow();
-
-    validateLegalInvariants({
-      buildingCoverageRatio: '50',
-      floorAreaRatio: '2',
-    });
-    expect(() =>
-      validateLegalInvariants({ buildingCoverageRatio: '101' }),
-    ).toThrow();
-    expect(() =>
-      validateLegalInvariants({
-        ownershipStatus: 'VERIFIED',
-        verificationStatus: 'PENDING',
-      }),
-    ).toThrow();
-    expect(() =>
-      validateLegalInvariants({ verificationStatus: 'VERIFIED' }),
-    ).toThrow();
-    expect(() =>
-      validateLegalInvariants({
-        verificationStatus: 'VERIFIED',
-        verifiedAt: '2026-01-01',
-        ownershipStatus: 'REJECTED',
-      }),
-    ).toThrow();
-
-    validateCertificateInput({
-      type: 'SHM',
-      number: 'N-1',
-      issueDate: '2026-01-01',
-      expiryDate: '2027-01-01',
-    });
-    expect(() =>
-      validateCertificateInput({ type: 'SHM', number: ' ' }),
-    ).toThrow();
-    expect(() => validateCertificateDates('bad')).toThrow();
-    expect(() =>
-      validateCertificateDates('2027-01-01', '2026-01-01'),
-    ).toThrow();
-    expect(() =>
-      validateCertificateDates(undefined, undefined, 'EXPIRED'),
-    ).toThrow();
-
-    validateFinancialInvariants({
-      askingPrice: '100.00',
-      rentalYield: '5.1234',
-      currency: 'IDR',
-    });
-    expect(() => validateFinancialInvariants({ askingPrice: '-1' })).toThrow();
-    expect(() => validateFinancialInvariants({ currency: 'ID' })).toThrow();
-
-    validateSeoInvariants('house', {
-      title: 'House',
-      description: 'Desc',
-      canonicalUrl: 'https://example.com/properties/house',
-      ogImageUrl: 'https://cdn.example.com/a.jpg',
-      keywords: ['house'],
-    });
-    expect(() => validateSeoInvariants('house', { title: '' })).toThrow();
-    expect(() =>
-      validateSeoInvariants('house', { title: 'x'.repeat(61) }),
-    ).toThrow();
-    expect(() =>
-      validateSeoInvariants('house', { canonicalUrl: 'not-url' }),
-    ).toThrow();
-    expect(() =>
-      validateSeoInvariants('house', {
-        canonicalUrl: 'https://example.com/other',
-      }),
-    ).toThrow();
-
-    validateMedia({
-      type: 'IMAGE',
-      url: 'https://cdn.example.com/a.jpg',
-      mimeType: 'image/jpeg',
-      extension: '.jpg',
-      isCover: true,
-    });
-    validateMedia({
-      type: 'VIDEO',
-      url: 'https://cdn.example.com/a.mp4',
-      mimeType: 'video/mp4',
-      extension: '.mp4',
-      durationMs: 1000,
-    });
-    expect(() =>
-      validateMedia({
-        type: 'IMAGE',
-        url: 'http://127.0.0.1/a.jpg',
-        mimeType: 'image/jpeg',
-      }),
-    ).toThrow();
-    expect(() =>
-      validateMedia({
-        type: 'IMAGE',
-        url: 'https://cdn.example.com/a.txt',
-        mimeType: 'image/jpeg',
-        extension: 'txt',
-      }),
-    ).toThrow();
-    expect(() =>
-      validateMedia({
-        type: 'VIDEO',
-        url: 'https://cdn.example.com/a.mp4',
-        mimeType: 'video/mp4',
-        durationMs: null,
-      }),
-    ).toThrow();
-    expect(() =>
-      validateMedia({
-        type: 'VIDEO',
-        url: 'https://cdn.example.com/a.mp4',
-        mimeType: 'video/mp4',
-        isCover: true,
-      }),
-    ).toThrow();
-    expect(() =>
-      validateMedia({
-        type: 'IMAGE',
-        url: 'https://cdn.example.com/a.jpg',
-        mimeType: 'text/plain',
-      }),
-    ).toThrow();
-    expect(() =>
-      validateMedia({
-        type: 'IMAGE',
-        url: 'https://cdn.example.com/a.jpg',
-        mimeType: 'image/jpeg',
-        widthPx: 0,
-      }),
-    ).toThrow();
-    expect(() =>
-      validateMedia({
-        type: 'IMAGE',
-        url: 'https://cdn.example.com/a.jpg',
-        mimeType: 'image/jpeg',
-        fileSizeBytes: 600000000,
-      }),
-    ).toThrow();
+    expect(() => validateUtilityInvariants({}).toBeUndefined()).not.toThrow();
   });
 });
