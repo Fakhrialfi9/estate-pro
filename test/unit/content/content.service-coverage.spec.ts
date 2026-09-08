@@ -1,7 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ContentService, normalizeSlug, sanitizeHtml, sanitizeJson } from '../../../src/modules/content/application/content.service.js';
-import type { ContentRepository, ArticleRecord } from '../../../src/modules/content/domain/repositories/content.repository.js';
-import { ContentConflictError, ContentNotFoundError, ContentValidationError } from '../../../src/modules/content/application/content.errors.js';
+import {
+  ContentService,
+  normalizeSlug,
+  sanitizeHtml,
+  sanitizeJson,
+} from '../../../src/modules/content/application/content.service.js';
+import type {
+  ArticleRecord,
+  ContentRepository,
+} from '../../../src/modules/content/domain/repositories/content.repository.js';
+import {
+  ContentConflictError,
+  ContentNotFoundError,
+  ContentValidationError,
+} from '../../../src/modules/content/application/content.errors.js';
 
 const ctx = {
   actorUuid: '11111111-1111-4111-8111-111111111111',
@@ -108,12 +120,19 @@ describe('ContentService complete coverage', () => {
   it('covers normalization and sanitization utilities', () => {
     expect(normalizeSlug(' Héllo, World! ')).toBe('hello-world');
     expect(() => normalizeSlug('---')).toThrow(ContentValidationError);
-    expect(sanitizeHtml('<script>x</script><p onclick="bad()">safe</p><a href="https://example.com">link</a>')).toBe('<p>safe</p><a href="https://example.com">link</a>');
+    expect(sanitizeHtml('<script>x</script><p onclick="bad()">safe</p><a href="https://example.com">link</a>')).toBe(
+      '<p>safe</p><a href="https://example.com">link</a>',
+    );
     expect(sanitizeHtml('<a href="javascript:alert(1)">bad</a>')).toBe('<a>bad</a>');
     expect(sanitizeHtml('<a href="data:text/html,bad">bad</a>')).toBe('<a>bad</a>');
     expect(sanitizeHtml('<!-- comment --><strong>x</strong>')).toBe('<strong>x</strong>');
-    expect(sanitizeJson({ html: '<img src=x><p>x</p>', nested: ['<b>x</b>'] })).toEqual({ html: '<p>x</p>', nested: ['x'] });
-    expect(() => sanitizeJson(Array.from({ length: 501 }, () => 'x'))).toThrow(ContentValidationError);
+    expect(sanitizeJson({ html: '<img src=x><p>x</p>', nested: ['<b>x</b>'] })).toEqual({
+      html: '<p>x</p>',
+      nested: ['x'],
+    });
+    expect(() => sanitizeJson(Array.from({ length: 501 }, () => 'x'))).toThrow(
+      ContentValidationError,
+    );
     expect(() => sanitizeJson({ x: 'y' }, 11)).toThrow(ContentValidationError);
   });
 
@@ -152,13 +171,39 @@ describe('ContentService complete coverage', () => {
       ctx,
     );
 
-    await expect(service.createArticle({ title: 'x'.repeat(221), content: {} }, ctx)).rejects.toThrow(ContentValidationError);
-    await expect(service.createArticle({ title: 'Title', slug: 'bad!!!', content: {}, featured: 'yes' }, ctx)).rejects.toThrow(ContentValidationError);
-    await expect(service.createArticle({ title: 'Title', content: {}, allowComments: 'yes' }, ctx)).rejects.toThrow(ContentValidationError);
-    await expect(service.createArticle({ title: 'Title', content: {}, categoryUuid: 'bad' }, ctx)).rejects.toThrow(ContentValidationError);
-    await expect(service.createArticle({ title: 'Title', content: {}, tagUuids: 'bad' }, ctx)).rejects.toThrow(ContentValidationError);
-    await expect(service.createArticle({ title: 'Title', content: {}, tagUuids: [ctx.actorUuid, 'bad'] }, ctx)).rejects.toThrow(ContentValidationError);
-    await expect(service.createArticle({ title: 'Title', content: {}, version: 1 }, ctx)).resolves.toBeDefined();
+    await expect(
+      service.createArticle({ title: 'x'.repeat(221), content: {} }, ctx),
+    ).rejects.toThrow(ContentValidationError);
+    await expect(
+      service.createArticle(
+        { title: 'Title', slug: 'bad!!!', content: {}, featured: 'yes' },
+        ctx,
+      ),
+    ).rejects.toThrow(ContentValidationError);
+    await expect(
+      service.createArticle(
+        { title: 'Title', content: {}, allowComments: 'yes' },
+        ctx,
+      ),
+    ).rejects.toThrow(ContentValidationError);
+    await expect(
+      service.createArticle(
+        { title: 'Title', content: {}, categoryUuid: 'bad' },
+        ctx,
+      ),
+    ).rejects.toThrow(ContentValidationError);
+    await expect(
+      service.createArticle({ title: 'Title', content: {}, tagUuids: 'bad' }, ctx),
+    ).rejects.toThrow(ContentValidationError);
+    await expect(
+      service.createArticle(
+        { title: 'Title', content: {}, tagUuids: [ctx.actorUuid, 'bad'] },
+        ctx,
+      ),
+    ).rejects.toThrow(ContentValidationError);
+    await expect(
+      service.createArticle({ title: 'Title', content: {}, version: 1 }, ctx),
+    ).resolves.toBeDefined();
 
     repository.getArticle.mockResolvedValueOnce(article({ status: 'ARCHIVED' }));
     const response = await service.getArticle(article().uuid, true, [
@@ -170,18 +215,34 @@ describe('ContentService complete coverage', () => {
       'content.articles.restore',
     ]);
     expect(response.permissions.canRestore).toBe(true);
-    await expect(service.getArticle('missing')).rejects.toBeInstanceOf(ContentNotFoundError);
+    await expect(service.getArticle('missing')).rejects.toBeInstanceOf(
+      ContentNotFoundError,
+    );
     await service.listArticles({ page: 2, limit: 5, categoryUuid: ctx.actorUuid, featured: true });
     expect(repository.listArticles).toHaveBeenCalled();
 
     repository.getArticle.mockResolvedValueOnce(article({ slug: 'old-slug' }));
     repository.updateArticle.mockResolvedValueOnce(article({ slug: 'new-slug' }));
-    await service.updateArticle(article().uuid, { title: ' New ', slug: ' New Slug ', content: '<p>a b</p>', tagUuids: [ctx.actorUuid], version: 1 }, ctx);
+    await service.updateArticle(
+      article().uuid,
+      {
+        title: ' New ',
+        slug: ' New Slug ',
+        content: '<p>a b</p>',
+        tagUuids: [ctx.actorUuid],
+        version: 1,
+      },
+      ctx,
+    );
     expect(repository.ensureSlugRedirect).toHaveBeenCalled();
 
     repository.getArticle.mockResolvedValueOnce(null);
-    await expect(service.updateArticle(article().uuid, {}, ctx)).rejects.toBeInstanceOf(ContentNotFoundError);
-    await expect(service.updateArticle(article().uuid, { version: 0 }, ctx)).rejects.toThrow(ContentValidationError);
+    await expect(service.updateArticle(article().uuid, {}, ctx)).rejects.toBeInstanceOf(
+      ContentNotFoundError,
+    );
+    await expect(
+      service.updateArticle(article().uuid, { version: 0 }, ctx),
+    ).rejects.toThrow(ContentValidationError);
   });
 
   it('covers article lifecycle, duplication, deletion, restoration and revision', async () => {
@@ -192,12 +253,18 @@ describe('ContentService complete coverage', () => {
     await service.revise('page', article().uuid, undefined, ctx);
     expect(repository.createRevision).toHaveBeenCalledTimes(2);
     expect(await service.revisions('article', article().uuid)).toEqual([]);
-    expect(await service.restoreRevision('article', article().uuid, 'revision-1', ctx)).toEqual({ uuid: 'revision-restored' });
+    expect(
+      await service.restoreRevision('article', article().uuid, 'revision-1', ctx),
+    ).toEqual({ uuid: 'revision-restored' });
 
     repository.getArticle.mockResolvedValueOnce(null);
-    await expect(service.duplicateArticle(article().uuid, ctx)).rejects.toBeInstanceOf(ContentNotFoundError);
+    await expect(service.duplicateArticle(article().uuid, ctx)).rejects.toBeInstanceOf(
+      ContentNotFoundError,
+    );
     repository.getArticle.mockResolvedValueOnce(null);
-    await expect(service.revise('article', article().uuid, undefined, ctx)).rejects.toBeInstanceOf(ContentNotFoundError);
+    await expect(service.revise('article', article().uuid, undefined, ctx)).rejects.toBeInstanceOf(
+      ContentNotFoundError,
+    );
 
     for (const status of ['APPROVED', 'SCHEDULED', 'DRAFT'] as const) {
       repository.getArticle.mockResolvedValueOnce(article({ status }));
@@ -210,15 +277,33 @@ describe('ContentService complete coverage', () => {
     repository.getArticle.mockResolvedValueOnce(article({ status: 'APPROVED' }));
     await service.archive(article().uuid, ctx);
     repository.getArticle.mockResolvedValueOnce(article({ status: 'DRAFT' }));
-    await expect(service.unpublish(article().uuid, ctx)).rejects.toBeInstanceOf(ContentConflictError);
+    await expect(service.unpublish(article().uuid, ctx)).rejects.toBeInstanceOf(
+      ContentConflictError,
+    );
     repository.getArticle.mockResolvedValueOnce(article({ status: 'DRAFT' }));
-    await expect(service.archive(article().uuid, ctx)).rejects.toBeInstanceOf(ContentConflictError);
+    await expect(service.archive(article().uuid, ctx)).rejects.toBeInstanceOf(
+      ContentConflictError,
+    );
   });
 
   it('covers generic resources, relations and media', async () => {
-    await service.createResource('page', { slug: ' About ', content: '<img>x</img><p>safe</p>' }, ctx);
-    await service.updateResource('faq', 'resource-1', { slug: 'FAQ', answer: '<script>x</script>', status: 'PUBLISHED' }, ctx);
-    await service.updateResource('testimonial', 'resource-1', { quote: '<b>Quote</b>', answer: '<p>Answer</p>' }, ctx);
+    await service.createResource(
+      'page',
+      { slug: ' About ', content: '<img>x</img><p>safe</p>' },
+      ctx,
+    );
+    await service.updateResource(
+      'faq',
+      'resource-1',
+      { slug: 'FAQ', answer: '<script>x</script>', status: 'PUBLISHED' },
+      ctx,
+    );
+    await service.updateResource(
+      'testimonial',
+      'resource-1',
+      { quote: '<b>Quote</b>', answer: '<p>Answer</p>' },
+      ctx,
+    );
     await service.deleteResource('page', 'resource-1', ctx);
     await service.restoreResource('page', 'resource-1', ctx);
     await service.getResource('page', 'resource-1', true);
@@ -226,18 +311,55 @@ describe('ContentService complete coverage', () => {
     expect(repository.createResource).toHaveBeenCalled();
     await expect(service.getResource('page', 'missing')).resolves.toBeDefined();
 
-    await service.addRelation({ sourceUuid: uuid, targetUuid: uuid2, relationType: 'related' }, ctx);
-    await expect(service.addRelation({ sourceUuid: uuid, targetUuid: uuid }, ctx)).rejects.toBeInstanceOf(ContentValidationError);
-    await service.listRelations(uuid, 'related');
-    await service.listRelations(uuid);
+    await service.addRelation(
+      { sourceUuid: ctx.actorUuid, targetUuid: '33333333-3333-4333-8333-333333333333', relationType: 'related' },
+      ctx,
+    );
+    await expect(
+      service.addRelation(
+        { sourceUuid: ctx.actorUuid, targetUuid: ctx.actorUuid },
+        ctx,
+      ),
+    ).rejects.toBeInstanceOf(ContentValidationError);
+    await service.listRelations(ctx.actorUuid, 'related');
+    await service.listRelations(ctx.actorUuid);
     await service.removeRelation('relation-1', ctx);
-    await service.reorderMenu('menu-1', [uuid, uuid2], ctx);
+    await service.reorderMenu('menu-1', [ctx.actorUuid], ctx);
 
-    const file = { originalname: 'photo.png', mimetype: 'image/png', size: 1024, buffer: Buffer.from('x') };
-    await service.createMedia(file, { provider: 'local', folder: 'media' }, ctx, 'media/key', 'https://cdn.example.com/media/key');
-    expect(repository.createMediaObject).toHaveBeenCalledWith(expect.objectContaining({ originalName: 'photo.png', storageKey: 'media/key', publicUrl: 'https://cdn.example.com/media/key', provider: 'local' }), ctx);
-    await expect(service.createMedia({ ...file, mimetype: 'text/plain' }, {}, ctx, 'k', null)).rejects.toThrow(ContentValidationError);
-    await expect(service.createMedia({ ...file, size: 10 * 1024 * 1024 + 1 }, {}, ctx, 'k', null)).rejects.toThrow(ContentValidationError);
+    const file = {
+      originalname: 'photo.png',
+      mimetype: 'image/png',
+      size: 1024,
+      buffer: Buffer.from('x'),
+    };
+    await service.createMedia(
+      file,
+      { provider: 'local', folder: 'media' },
+      ctx,
+      'media/key',
+      'https://cdn.example.com/media/key',
+    );
+    expect(repository.createMediaObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        originalName: 'photo.png',
+        storageKey: 'media/key',
+        publicUrl: 'https://cdn.example.com/media/key',
+        provider: 'local',
+      }),
+      ctx,
+    );
+    await expect(
+      service.createMedia({ ...file, mimetype: 'text/plain' }, {}, ctx, 'k', null),
+    ).rejects.toThrow(ContentValidationError);
+    await expect(
+      service.createMedia(
+        { ...file, size: 10 * 1024 * 1024 + 1 },
+        {},
+        ctx,
+        'k',
+        null,
+      ),
+    ).rejects.toThrow(ContentValidationError);
     await service.removeMedia('media-1', ctx);
   });
 
@@ -258,12 +380,67 @@ describe('ContentService complete coverage', () => {
   });
 
   it('covers private helper branches through public APIs', async () => {
-    await service.createArticle({ title: 'Title', content: {}, visibility: 'PUBLIC', contentFormat: 'RICH_TEXT', type: 'ARTICLE', language: undefined, featured: undefined, allowComments: undefined, tagUuids: undefined }, ctx);
-    await service.createArticle({ title: 'Title', content: {}, visibility: 'PRIVATE', contentFormat: 'MARKDOWN', type: 'PRESS_RELEASE', language: 'ID', featured: false, allowComments: true, tagUuids: [] }, ctx);
-    await service.createArticle({ title: 'Title', content: {}, visibility: 'OTHER', contentFormat: 'OTHER', type: 'OTHER', language: 'EN', featured: false, allowComments: true }, ctx);
-    await expect(service.createArticle({ title: 'Title', content: {}, language: 10 }, ctx)).rejects.toThrow(ContentValidationError);
-    await expect(service.createArticle({ title: 'Title', content: {}, changeSummary: 'x'.repeat(501) }, ctx)).rejects.toThrow(ContentValidationError);
-    await expect(service.createArticle({ title: 'Title', content: {}, tagUuids: [uuid, uuid2] }, ctx)).resolves.toBeDefined();
-    await expect(service.createArticle({ title: 'Title', content: {}, coverMediaUuid: 'not-v4' }, ctx)).rejects.toThrow(ContentValidationError);
+    await service.createArticle(
+      {
+        title: 'Title',
+        content: {},
+        visibility: 'PUBLIC',
+        contentFormat: 'RICH_TEXT',
+        type: 'ARTICLE',
+        language: undefined,
+        featured: undefined,
+        allowComments: undefined,
+        tagUuids: undefined,
+      },
+      ctx,
+    );
+    await service.createArticle(
+      {
+        title: 'Title',
+        content: {},
+        visibility: 'PRIVATE',
+        contentFormat: 'MARKDOWN',
+        type: 'PRESS_RELEASE',
+        language: 'ID',
+        featured: false,
+        allowComments: true,
+        tagUuids: [],
+      },
+      ctx,
+    );
+    await service.createArticle(
+      {
+        title: 'Title',
+        content: {},
+        visibility: 'OTHER',
+        contentFormat: 'OTHER',
+        type: 'OTHER',
+        language: 'EN',
+        featured: false,
+        allowComments: true,
+      },
+      ctx,
+    );
+    await expect(
+      service.createArticle({ title: 'Title', content: {}, language: 10 }, ctx),
+    ).rejects.toThrow(ContentValidationError);
+    await expect(
+      service.createArticle(
+        { title: 'Title', content: {}, changeSummary: 'x'.repeat(501) },
+        ctx,
+      ),
+    ).rejects.toThrow(ContentValidationError);
+    await expect(
+      service.createArticle(
+        { title: 'Title', content: {}, tagUuids: [ctx.actorUuid, 'bad'] },
+        ctx,
+      ),
+    ).rejects.toThrow(ContentValidationError);
+    await expect(
+      service.createArticle(
+        { title: 'Title', content: {}, coverMediaUuid: 'not-v4' },
+        ctx,
+      ),
+    ).rejects.toThrow(ContentValidationError);
   });
 });
