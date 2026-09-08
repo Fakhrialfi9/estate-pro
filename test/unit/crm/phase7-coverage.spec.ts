@@ -161,21 +161,23 @@ describe('CRM phase 7 coverage', () => {
       .mockResolvedValue(communication());
     const transitionCommunication = vi
       .fn<CommunicationRepository['transitionCommunication']>()
-      .mockImplementation(async (_uuid, status, input) =>
-        communication({
-          status,
-          providerMessageId: input?.providerMessageId ?? null,
-          providerError: input?.providerError ?? null,
-        }),
+      .mockImplementation((_uuid, status, input) =>
+        Promise.resolve(
+          communication({
+            status,
+            providerMessageId: input?.providerMessageId ?? null,
+            providerError: input?.providerError ?? null,
+          }),
+        ),
       );
-    const repository: CommunicationRepository = {
+    const repository = {
       findByUuid,
       transitionCommunication,
-    };
+    } satisfies CommunicationRepository;
     const record = vi
       .fn<SecurityAuditRepository['record']>()
       .mockResolvedValue(undefined);
-    const audit: SecurityAuditRepository = { record };
+    const audit = { record } satisfies SecurityAuditRepository;
     const config = new ConfigService({
       EMAIL_PROVIDER_URL: 'https://provider.example.com/send',
       EMAIL_PROVIDER_TOKEN: 'token',
@@ -234,16 +236,18 @@ describe('CRM phase 7 coverage', () => {
       .mockResolvedValue(communication());
     const retryTransition = vi
       .fn<CommunicationRepository['transitionCommunication']>()
-      .mockImplementation(async (_uuid, status, input) =>
-        communication({
-          status,
-          providerError: input?.providerError ?? null,
-        }),
+      .mockImplementation((_uuid, status, input) =>
+        Promise.resolve(
+          communication({
+            status,
+            providerError: input?.providerError ?? null,
+          }),
+        ),
       );
-    const retryRepository: CommunicationRepository = {
+    const retryRepository = {
       findByUuid: retryFindByUuid,
       transitionCommunication: retryTransition,
-    };
+    } satisfies CommunicationRepository;
     const retryRecord = vi
       .fn<SecurityAuditRepository['record']>()
       .mockResolvedValue(undefined);
@@ -273,16 +277,18 @@ describe('CRM phase 7 coverage', () => {
       .mockResolvedValue(communication());
     const permanentTransition = vi
       .fn<CommunicationRepository['transitionCommunication']>()
-      .mockImplementation(async (_uuid, status, input) =>
-        communication({
-          status,
-          providerError: input?.providerError ?? null,
-        }),
+      .mockImplementation((_uuid, status, input) =>
+        Promise.resolve(
+          communication({
+            status,
+            providerError: input?.providerError ?? null,
+          }),
+        ),
       );
-    const permanentRepository: CommunicationRepository = {
+    const permanentRepository = {
       findByUuid: permanentFindByUuid,
       transitionCommunication: permanentTransition,
-    };
+    } satisfies CommunicationRepository;
     const permanentService = new CrmCommunicationDeliveryService(
       permanentRepository,
       audit,
