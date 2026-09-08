@@ -880,7 +880,11 @@ describe('roadmap complete coverage', () => {
     await expect(
       service.createSlaPolicy(
         uuid,
-        { durationMinutes: 60, targetEntityType: 'LEAD' },
+        {
+          durationMinutes: 60,
+          targetEntityType: 'LEAD',
+          startEventType: 'CREATED',
+        },
         uuid,
       ),
     ).resolves.toBeDefined();
