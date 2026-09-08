@@ -1,7 +1,8 @@
 name: Temporary Formatter Export
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -24,6 +25,11 @@ jobs:
       - name: Package changed formatted files
         run: |
           git diff --name-only -- src test > formatted-files.txt
+          if [ ! -s formatted-files.txt ]; then
+            printf '%s\n' 'No formatted files changed' > formatted-files.txt
+            : > formatted-files.tar.gz
+            exit 0
+          fi
           tar -czf formatted-files.tar.gz -T formatted-files.txt
       - name: Upload formatted files
         uses: actions/upload-artifact@v4
