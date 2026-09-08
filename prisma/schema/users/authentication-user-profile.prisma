@@ -9,7 +9,7 @@ model AuthenticationUserProfile {
   locale             String             @default("id") @db.VarChar(10)
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
-  user               AuthenticationUser @relation(fields: [userId], references: [id])
+  user               AuthenticationUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("authentication_user_profiles")
 }
