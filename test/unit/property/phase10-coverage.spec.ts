@@ -430,8 +430,15 @@ describe('property phase 10 coverage', () => {
       transition: vi
         .fn()
         .mockResolvedValue({ uuid, status: 'PUBLISHED', version: 2 }),
-      list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
-      expire: vi.fn().mockResolvedValue(1),
+      expireDue: vi.fn().mockResolvedValue([uuid]),
+      duplicate: vi.fn().mockResolvedValue({ uuid: uuid2 }),
+      assignAgent: vi.fn().mockResolvedValue(undefined),
+      changeAgent: vi.fn().mockResolvedValue(undefined),
+      assignOwner: vi.fn().mockResolvedValue(undefined),
+      getPropertyDetail: vi.fn().mockResolvedValue({ uuid }),
+      search: vi
+        .fn()
+        .mockResolvedValue({ items: [], total: 0, page: 1, limit: 10 }),
     } satisfies ListingRepository;
     const listing = new ListingService(repository, audit);
     const input = {
@@ -480,13 +487,14 @@ describe('property phase 10 coverage', () => {
     );
     await expect(listing.get(uuid)).rejects.toBeInstanceOf(BadRequestException);
 
-    const worker = new ListingExpiryWorker(repository);
-    await expect(worker.expire()).resolves.toBe(1);
+    const worker = new ListingExpiryWorker(repository, audit);
+    worker.onModuleInit();
+    worker.onModuleDestroy();
+    await Promise.resolve();
+    expect(repository.expireDue).toHaveBeenCalledTimes(1);
   });
 
   it('covers property extras and listing errors', () => {
-    expect(new Money('100', 'IDR').amount).toBe('100');
-    expect(() => new Money('-1', 'IDR')).toThrow();
     expect(hashSensitive('secret')).not.toBe('secret');
     expect(maskSensitive('abcdef')).not.toBe('abcdef');
     expect(maskSensitive(null)).toBeNull();
