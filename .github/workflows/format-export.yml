@@ -1,0 +1,35 @@
+name: Temporary Formatter Export
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Format repository
+        run: npm run format
+      - name: Package changed formatted files
+        run: |
+          git diff --name-only -- src test > formatted-files.txt
+          tar -czf formatted-files.tar.gz -T formatted-files.txt
+      - name: Upload formatted files
+        uses: actions/upload-artifact@v4
+        with:
+          name: formatted-roadmap-files
+          path: |
+            formatted-files.txt
+            formatted-files.tar.gz
+          if-no-files-found: error
