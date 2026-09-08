@@ -142,9 +142,7 @@ export class PrismaAuthenticationSecurityRepository
     }
 
     const failedLoginAttempts =
-      current.updated_at < windowStart
-        ? 1
-        : currentFailedLoginAttempts + 1;
+      current.updated_at < windowStart ? 1 : currentFailedLoginAttempts + 1;
 
     const lockedUntil =
       failedLoginAttempts >= policy.threshold
