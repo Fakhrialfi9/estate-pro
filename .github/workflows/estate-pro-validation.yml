@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   DATABASE_URL: mysql://test:test-password@127.0.0.1:3306/estate_pro_test?allowPublicKeyRetrieval=true
@@ -50,20 +50,6 @@ jobs:
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_test.* TO 'test'@'127.0.0.1';"
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_seed_test.* TO 'test'@'127.0.0.1';"
           sudo mysql -e "GRANT ALL PRIVILEGES ON estate_pro_rehearsal.* TO 'test'@'127.0.0.1'; FLUSH PRIVILEGES;"
-
-      # Temporary repository-local formatting pass for roadmap coverage tests.
-      - name: Apply repository formatter for roadmap validation
-        run: |
-          npm ci --ignore-scripts
-          npm run format
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src test
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m "chore: format roadmap tests"
-          git push origin HEAD:main
 
       - name: Production dependency security gate
         run: npm run check:production-dependencies
