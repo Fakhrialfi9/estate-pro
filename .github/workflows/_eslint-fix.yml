@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   fix:
@@ -28,14 +28,7 @@ jobs:
       - name: Apply Prettier formatting to affected files
         run: npx prettier --write test/unit/permissions/roles-phase8-coverage.spec.ts test/unit/property-matching/phase9-coverage.spec.ts test/unit/property/phase10-coverage.spec.ts test/unit/property/property-capabilities-phase10-coverage.spec.ts
 
-      - name: Commit formatted files
+      - name: Export working tree
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add test/unit/permissions/roles-phase8-coverage.spec.ts test/unit/property-matching/phase9-coverage.spec.ts test/unit/property/phase10-coverage.spec.ts test/unit/property/property-capabilities-phase10-coverage.spec.ts
-          if git diff --cached --quiet; then
-            echo "No formatting changes required."
-            exit 0
-          fi
-          git commit -m "style: format affected coverage tests"
-          git push origin main
+          echo "TREE_SHA=$(git write-tree)"
