@@ -38,6 +38,9 @@ jobs:
       - name: Pin npm
         run: npm install --global npm@11.18.0
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Install MariaDB
         run: |
           sudo apt-get update
