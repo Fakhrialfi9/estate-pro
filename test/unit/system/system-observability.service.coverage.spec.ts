@@ -15,13 +15,13 @@ const queryRows = [
   },
 ];
 
+const queryRaw = vi.fn<PrismaService['$queryRaw']>();
 const prisma = {
-  $queryRaw: vi.fn(),
+  $queryRaw: queryRaw,
 } as unknown as PrismaService;
 
 describe('SystemObservabilityService coverage', () => {
   it('covers import/export summary and bucket aggregation', async () => {
-    const queryRaw = prisma.$queryRaw as ReturnType<typeof vi.fn>;
     queryRaw
       .mockResolvedValueOnce([
         { count: 2n, rows: 10n, failedRows: 1n, succeeded: 1n, failed: 1n },
@@ -52,7 +52,6 @@ describe('SystemObservabilityService coverage', () => {
   });
 
   it('covers delivery filtering, latency aggregation and empty branches', async () => {
-    const queryRaw = prisma.$queryRaw as ReturnType<typeof vi.fn>;
     queryRaw.mockResolvedValueOnce([
       {
         bucket: '2026-01-01',
@@ -89,7 +88,6 @@ describe('SystemObservabilityService coverage', () => {
   });
 
   it('rejects invalid and excessive ranges before querying', async () => {
-    const queryRaw = prisma.$queryRaw as ReturnType<typeof vi.fn>;
     queryRaw.mockClear();
     const service = new SystemObservabilityService(prisma);
     await expect(
