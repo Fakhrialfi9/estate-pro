@@ -153,7 +153,9 @@ describe('property phase 10 coverage', () => {
     await expect(service.getSpecifications(uuid)).rejects.toBeInstanceOf(
       BadRequestException,
     );
-    repository.getSpecifications.mockRejectedValueOnce(new Error('unexpected'));
+    repository.getSpecifications.mockRejectedValueOnce(
+      new Error('unexpected'),
+    );
     await expect(service.getSpecifications(uuid)).rejects.toThrow('unexpected');
   });
 
@@ -390,20 +392,20 @@ describe('property phase 10 coverage', () => {
     ).resolves.toMatchObject({ total: 0 });
 
     const deleteRepo = {
-      findByUuid: vi.fn().mockResolvedValue(propertyType),
-      getDependencyCount: vi.fn().mockResolvedValue({ propertyCount: 0 }),
-      delete: vi.fn().mockResolvedValue(undefined),
+      findById: vi.fn().mockResolvedValue(propertyType),
+      softDelete: vi.fn().mockResolvedValue(undefined),
     };
-    const deleteType = new DeletePropertyTypeUseCase(deleteRepo);
+    const deleteType = new DeletePropertyTypeUseCase(deleteRepo, audit);
+    propertyType.restore?.();
     await deleteType.execute(uuid, actor);
-    deleteRepo.findByUuid.mockResolvedValueOnce(null);
+    deleteRepo.findById.mockResolvedValueOnce(null);
     await expect(deleteType.execute(uuid, actor)).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    deleteRepo.findByUuid.mockResolvedValue(propertyType);
-    deleteRepo.getDependencyCount.mockResolvedValueOnce({ propertyCount: 1 });
+    deleteRepo.findById.mockResolvedValue(propertyType);
+    propertyType.softDelete(now);
     await expect(deleteType.execute(uuid, actor)).rejects.toBeInstanceOf(
-      ConflictException,
+      NotFoundException,
     );
   });
 
@@ -459,7 +461,9 @@ describe('property phase 10 coverage', () => {
     await listing.detail(uuid, uuid);
     await listing.search({ page: 1, limit: 10 });
 
-    repository.getPropertyDetail = vi.fn();
+    repository.getPropertyDetail.mockRejectedValueOnce(
+      new Error('detail failed'),
+    );
     await expect(listing.detail(uuid, uuid)).rejects.toBeInstanceOf(Error);
     repository.findOne.mockRejectedValueOnce(new ListingNotFoundError());
     await expect(listing.get(uuid)).rejects.toBeInstanceOf(NotFoundException);
@@ -480,11 +484,11 @@ describe('property phase 10 coverage', () => {
   it('covers property extras and listing errors', () => {
     expect(hashSensitive('secret')).not.toBe('secret');
     expect(maskSensitive('abcdef')).not.toBe('abcdef');
-    expect(() => validateCertificateInput({})).not.toThrow();
-    expect(() => validateCertificateDates({})).not.toThrow();
+    expect(() => validateCertificateInput({} as never)).toThrow();
+    expect(() => validateCertificateDates()).not.toThrow();
     expect(() => validateFinancialInvariants({})).not.toThrow();
     expect(() => validateLegalInvariants({})).not.toThrow();
-    expect(() => validateMedia({})).not.toThrow();
+    expect(() => validateMedia({} as never)).toThrow();
     expect(() =>
       validateSeoInvariants('villa-bali', { canonicalUrl: 'x' }),
     ).toThrow('canonicalUrl must end');
