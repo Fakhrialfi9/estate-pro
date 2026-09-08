@@ -536,7 +536,7 @@ describe('critical system roadmap coverage', () => {
       providerHealth: vi
         .fn()
         .mockResolvedValueOnce({ status: 'UP' })
-        .mockResolvedValueOnce({ status: 'DOWN' }),
+        .mockResolvedValue({ status: 'DOWN' }),
     } as unknown as SystemIntegrationReliabilityService;
     const service = new SystemProductionHardeningService(
       prisma,
