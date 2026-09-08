@@ -321,11 +321,12 @@ describe('phase 8 permissions and roles', () => {
     ).rejects.toThrow('Role not found');
     permissions.findByUuid.mockResolvedValue(permission());
     roles.findByUuid.mockResolvedValue(role());
-    assignments.exists.mockResolvedValueOnce(true);
+    assignments.exists.mockReset();
+    assignments.exists.mockResolvedValue(true);
     await expect(
       rpService.remove(actor, roleUuid, permissionUuid, context),
     ).resolves.toBeUndefined();
-    assignments.exists.mockResolvedValueOnce(false);
+    assignments.exists.mockResolvedValue(false);
     await expect(
       rpService.remove(actor, roleUuid, permissionUuid, context),
     ).rejects.toThrow('assignment');
@@ -430,7 +431,7 @@ describe('phase 8 permissions and roles', () => {
     users.findByUuid.mockResolvedValueOnce(null);
     await expect(
       service.assign(actor, userUuid, roleUuid, context),
-    ).rejects.toThrow('Target user');
+    ).rejects.toThrow('User not found');
     expect(() =>
       UserRoleEntity.create({
         ...userRole(false).toSnapshot(),
