@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   fix:
@@ -25,10 +25,42 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply Prettier formatting to affected files
+      - name: Apply Prettier formatting
         run: npx prettier --write test/unit/permissions/roles-phase8-coverage.spec.ts test/unit/property-matching/phase9-coverage.spec.ts test/unit/property/phase10-coverage.spec.ts test/unit/property/property-capabilities-phase10-coverage.spec.ts
 
-      - name: Export working tree
+      - name: Create formatted Git tree
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git add test/unit/permissions/roles-phase8-coverage.spec.ts test/unit/property-matching/phase9-coverage.spec.ts test/unit/property/phase10-coverage.spec.ts test/unit/property/property-capabilities-phase10-coverage.spec.ts
-          echo "TREE_SHA=$(git write-tree)"
+          python3 - <<'PY'
+          import json
+          import subprocess
+          paths = [
+              'test/unit/permissions/roles-phase8-coverage.spec.ts',
+              'test/unit/property-matching/phase9-coverage.spec.ts',
+              'test/unit/property/phase10-coverage.spec.ts',
+              'test/unit/property/property-capabilities-phase10-coverage.spec.ts',
+          ]
+          blobs = []
+          for path in paths:
+              with open(path, 'r', encoding='utf-8') as fh:
+                  content = fh.read()
+              blob = subprocess.check_output([
+                  'gh', 'api', 'repos/Fakhrialfi9/estate-pro/git/blobs',
+                  '-f', f'content={content}', '-f', 'encoding=utf-8',
+              ], text=True)
+              blobs.append((path, json.loads(blob)['sha']))
+          base = subprocess.check_output([
+              'gh', 'api', 'repos/Fakhrialfi9/estate-pro/git/ref/heads/main',
+              '--jq', '.object.sha',
+          ], text=True).strip()
+          tree = {'tree': [{'path': p, 'mode': '100644', 'type': 'blob', 'sha': s} for p, s in blobs]}
+          tree['base_tree'] = json.loads(subprocess.check_output([
+              'gh', 'api', f'repos/Fakhrialfi9/commits/{base}',
+          ], text=True))['commit']['tree']['sha']
+          result = subprocess.check_output([
+              'gh', 'api', 'repos/Fakhrialfi9/estate-pro/git/trees',
+              '--input=-',
+          ], input=json.dumps(tree), text=True)
+          print('TREE_SHA=' + json.loads(result)['sha'])
+          PY
