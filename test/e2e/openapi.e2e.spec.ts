@@ -10,6 +10,9 @@ import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.s
 import { AutomationNotificationScheduler } from '../../src/modules/automation/infrastructure/scheduler/automation-notification.scheduler.js';
 import { AutomationScheduler } from '../../src/modules/automation/infrastructure/scheduler/automation.scheduler.js';
 import { SystemExportScheduler } from '../../src/modules/system/infrastructure/export/system-export.scheduler.js';
+import { SystemRetentionScheduler } from '../../src/modules/system/infrastructure/system-retention.scheduler.js';
+import { SystemWebhookRetryWorker } from '../../src/modules/system/infrastructure/webhook/system-webhook-retry.worker.js';
+import { SystemIntegrationCallbackWorker } from '../../src/modules/system/infrastructure/integration/system-integration-callback.worker.js';
 import { validateOpenApiDocument } from '../../scripts/validate-openapi.mjs';
 
 describe('OpenAPI contract (e2e)', () => {
@@ -29,6 +32,12 @@ describe('OpenAPI contract (e2e)', () => {
       .overrideProvider(AutomationNotificationScheduler)
       .useValue({})
       .overrideProvider(SystemExportScheduler)
+      .useValue({})
+      .overrideProvider(SystemRetentionScheduler)
+      .useValue({})
+      .overrideProvider(SystemWebhookRetryWorker)
+      .useValue({})
+      .overrideProvider(SystemIntegrationCallbackWorker)
       .useValue({})
       .compile();
 
