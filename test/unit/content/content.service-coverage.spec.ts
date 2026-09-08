@@ -236,6 +236,7 @@ describe('ContentService complete coverage', () => {
       'content.articles.restore',
     ]);
     expect(response.permissions.canRestore).toBe(true);
+    repository.getArticle.mockResolvedValueOnce(null);
     await expect(service.getArticle('missing')).rejects.toBeInstanceOf(
       ContentNotFoundError,
     );
