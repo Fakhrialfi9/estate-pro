@@ -7,7 +7,8 @@ import { SystemRetentionService } from '../application/services/system-retention
 export class SystemRetentionScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SystemRetentionScheduler.name);
   private timer: NodeJS.Timeout | undefined;
-  private running = false;
+  private inFlight: Promise<void> | undefined;
+  private stopping = false;
 
   constructor(
     private readonly retention: SystemRetentionService,
@@ -27,18 +28,28 @@ export class SystemRetentionScheduler implements OnModuleInit, OnModuleDestroy {
     void this.tick();
   }
 
-  onModuleDestroy(): void {
+  async onModuleDestroy(): Promise<void> {
+    this.stopping = true;
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
+    await this.inFlight;
   }
 
   isHealthy(): boolean {
-    return this.timer !== undefined;
+    return !this.stopping && this.timer !== undefined;
   }
 
-  private async tick(): Promise<void> {
-    if (this.running) return;
-    this.running = true;
+  private tick(): Promise<void> {
+    if (this.stopping || this.inFlight) return Promise.resolve();
+
+    const run = this.runIteration();
+    this.inFlight = run.finally(() => {
+      this.inFlight = undefined;
+    });
+    return this.inFlight;
+  }
+
+  private async runIteration(): Promise<void> {
     try {
       await this.retention.run({
         activityRetentionDays: this.config.get<number>(
@@ -56,8 +67,6 @@ export class SystemRetentionScheduler implements OnModuleInit, OnModuleDestroy {
         'System retention scheduler iteration failed',
         error instanceof Error ? error.stack : undefined,
       );
-    } finally {
-      this.running = false;
     }
   }
 }
