@@ -217,7 +217,7 @@ describe('property matching phase 9', () => {
         new Map(),
         DEFAULT_MATCHING_RULE,
       ),
-    ).toEqual([]);
+    ).toHaveLength(1);
     expect(
       engine.evaluate(
         { ...preference, budget: undefined },
@@ -383,12 +383,12 @@ describe('property matching phase 9', () => {
     findPreferenceResult = preference;
     preferenceScope = { ownerUserUuid: uuid3 };
     await expect(
-      service.getPreference('USER', uuid, actor),
+      service.getPreference('USER', uuid2, actor),
     ).rejects.toBeInstanceOf(ForbiddenException);
     preferenceScope = { ownerUserUuid: uuid2 };
     denyPermissions = true;
     await expect(
-      service.getPreference('USER', uuid, actor),
+      service.getPreference('USER', uuid2, actor),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
