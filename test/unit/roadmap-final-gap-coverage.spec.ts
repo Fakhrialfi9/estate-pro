@@ -42,9 +42,7 @@ describe('roadmap final gap coverage', () => {
       guard.canActivate(contextOf({ headers: {} })),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     await expect(
-      guard.canActivate(
-        contextOf({ headers: { authorization: 'Bearer ' } }),
-      ),
+      guard.canActivate(contextOf({ headers: { authorization: 'Bearer ' } })),
     ).rejects.toBeInstanceOf(UnauthorizedException);
 
     const request = {

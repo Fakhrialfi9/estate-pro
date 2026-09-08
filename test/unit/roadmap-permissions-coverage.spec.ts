@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ExecutionContext } from '@nestjs/common';
-import {
-  ForbiddenException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
 import { PermissionService } from '../../src/modules/permissions/application/services/permission.service.js';
 import {
@@ -263,9 +260,9 @@ describe('permission access guard coverage', () => {
     await expect(
       read.canActivate(ctx({ user: { sub: uuid } })),
     ).rejects.toBeInstanceOf(UnauthorizedException);
-    await expect(
-      read.canActivate(ctx({ user: { sub: uuid } })),
-    ).resolves.toBe(true);
+    await expect(read.canActivate(ctx({ user: { sub: uuid } }))).resolves.toBe(
+      true,
+    );
     repository.getAuthorizationSnapshot.mockResolvedValueOnce({
       userUuid: uuid,
       permissionCodes: [],
@@ -277,9 +274,9 @@ describe('permission access guard coverage', () => {
       userUuid: uuid,
       permissionCodes: ['permissions.manage'],
     });
-    await expect(
-      read.canActivate(ctx({ user: { sub: uuid } })),
-    ).resolves.toBe(true);
+    await expect(read.canActivate(ctx({ user: { sub: uuid } }))).resolves.toBe(
+      true,
+    );
     repository.getAuthorizationSnapshot.mockResolvedValueOnce({
       userUuid: uuid,
       permissionCodes: ['other'],

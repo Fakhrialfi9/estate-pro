@@ -232,9 +232,7 @@ describe('agent management roadmap coverage', () => {
         {
           status: 'ACTIVE',
           schedule: [],
-          exceptions: [
-            { startsAt: end, endsAt: start, status: 'UNAVAILABLE' },
-          ],
+          exceptions: [{ startsAt: end, endsAt: start, status: 'UNAVAILABLE' }],
         } as never,
         actor,
       ),
@@ -246,9 +244,7 @@ describe('agent management roadmap coverage', () => {
         {
           status: 'ACTIVE',
           schedule: [],
-          exceptions: [
-            { startsAt: start, endsAt: end, status: 'UNAVAILABLE' },
-          ],
+          exceptions: [{ startsAt: start, endsAt: end, status: 'UNAVAILABLE' }],
         } as never,
         actor,
       ),
@@ -301,7 +297,9 @@ describe('agent management roadmap coverage', () => {
         actor,
       ),
     ).resolves.toMatchObject({ uuid: 'target-1' });
-    await expect(d.service.listTargets(agentUuid, actor)).resolves.toHaveLength(1);
+    await expect(d.service.listTargets(agentUuid, actor)).resolves.toHaveLength(
+      1,
+    );
     await expect(
       d.service.updateTarget('target-1', { targetValue: '20' } as never, actor),
     ).resolves.toMatchObject({ targetValue: '20' });
@@ -317,9 +315,13 @@ describe('agent management roadmap coverage', () => {
     await expect(
       d.service.updateTarget('target-1', { targetValue: '30' } as never, actor),
     ).rejects.toBeInstanceOf(ConflictException);
-    await expect(d.service.closeTarget('target-1', actor)).resolves.toBeUndefined();
+    await expect(
+      d.service.closeTarget('target-1', actor),
+    ).resolves.toBeUndefined();
 
-    await expect(d.service.performance(agentUuid, actor)).resolves.toMatchObject({
+    await expect(
+      d.service.performance(agentUuid, actor),
+    ).resolves.toMatchObject({
       metrics: { totalWorkload: 4 },
       targets: [{ actual: 0, achievementPercent: 0 }],
     });

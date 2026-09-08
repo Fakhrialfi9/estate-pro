@@ -8,7 +8,10 @@ import {
   ContactEntity,
   type ContactProps,
 } from '../../src/modules/crm/domain/entities/contact.entity.js';
-import { LeadEntity, type LeadProps } from '../../src/modules/crm/domain/entities/lead.entity.js';
+import {
+  LeadEntity,
+  type LeadProps,
+} from '../../src/modules/crm/domain/entities/lead.entity.js';
 import { ClosurePolicy } from '../../src/modules/crm/domain/closure.policy.js';
 import { LeadLifecyclePolicy } from '../../src/modules/crm/domain/lead-lifecycle.policy.js';
 import { QualificationPolicy } from '../../src/modules/crm/domain/qualification.policy.js';
@@ -33,9 +36,7 @@ import {
   normalizeRoleName,
 } from '../../src/modules/roles/domain/entities/role.entity.js';
 import { RolePermissionEntity } from '../../src/modules/roles/domain/entities/role-permission.entity.js';
-import {
-  PropertyPreference,
-} from '../../src/modules/property-matching/domain/property-preference.js';
+import { PropertyPreference } from '../../src/modules/property-matching/domain/property-preference.js';
 
 const uuid = '11111111-1111-4111-8111-111111111111';
 const uuid2 = '22222222-2222-4222-8222-222222222222';
@@ -100,21 +101,42 @@ describe('phase 6-10 domain coverage', () => {
       expect(current.status).toBe(to);
     }
 
-    expect(() => entity.transition('PUBLISHED')).toThrow('Invalid article transition');
-    entity.update({ title: '  New title  ', slug: 'new-title', content: 'new', visibility: 'PRIVATE' });
+    expect(() => entity.transition('PUBLISHED')).toThrow(
+      'Invalid article transition',
+    );
+    entity.update({
+      title: '  New title  ',
+      slug: 'new-title',
+      content: 'new',
+      visibility: 'PRIVATE',
+    });
     expect(entity.title).toBe('New title');
     expect(entity.slug).toBe('new-title');
     expect(entity.content).toBe('new');
     expect(entity.visibility).toBe('PRIVATE');
-    expect(() => entity.update({ title: '   ' })).toThrow('Article title is required');
-    expect(() => new ArticleEntity(uuid, '', 'title', {})).toThrow('Article title is required');
-    expect(() => new ArticleEntity(uuid, 'Title', '', {})).toThrow('Article slug is required');
-    expect(() => new ArticleEntity(uuid, 'Title', 'slug', {}, 'UNKNOWN' as never)).toThrow(
-      'Invalid content status',
+    expect(() => entity.update({ title: '   ' })).toThrow(
+      'Article title is required',
     );
-    expect(() => new ArticleEntity(uuid, 'Title', 'slug', {}, 'DRAFT', 'INVALID' as never)).toThrow(
-      'Invalid visibility',
+    expect(() => new ArticleEntity(uuid, '', 'title', {})).toThrow(
+      'Article title is required',
     );
+    expect(() => new ArticleEntity(uuid, 'Title', '', {})).toThrow(
+      'Article slug is required',
+    );
+    expect(
+      () => new ArticleEntity(uuid, 'Title', 'slug', {}, 'UNKNOWN' as never),
+    ).toThrow('Invalid content status');
+    expect(
+      () =>
+        new ArticleEntity(
+          uuid,
+          'Title',
+          'slug',
+          {},
+          'DRAFT',
+          'INVALID' as never,
+        ),
+    ).toThrow('Invalid visibility');
     expect(() => new RevisionEntity('article', uuid, 0, {}, now)).toThrow(
       'Revision version must be positive',
     );
@@ -122,10 +144,17 @@ describe('phase 6-10 domain coverage', () => {
   });
 
   it('covers CRM policies and entities including boundary failures', () => {
-    expect(new ClosurePolicy().decide('  reason  ', 'WON')).toEqual({ reason: 'reason', outcome: 'WON' });
+    expect(new ClosurePolicy().decide('  reason  ', 'WON')).toEqual({
+      reason: 'reason',
+      outcome: 'WON',
+    });
     expect(() => new ClosurePolicy().decide('   ', 'WON')).toThrow();
-    expect(new QualificationPolicy().evaluate(0, 'reason').qualified).toBe(false);
-    expect(new QualificationPolicy().evaluate(1, 'reason').qualified).toBe(true);
+    expect(new QualificationPolicy().evaluate(0, 'reason').qualified).toBe(
+      false,
+    );
+    expect(new QualificationPolicy().evaluate(1, 'reason').qualified).toBe(
+      true,
+    );
     expect(() => new QualificationPolicy().evaluate(1, '   ')).toThrow();
 
     const lifecycle = new LeadLifecyclePolicy();
@@ -147,17 +176,31 @@ describe('phase 6-10 domain coverage', () => {
     const contact = ContactEntity.create(contactProps());
     expect(contact.uuid).toBe(uuid);
     expect(contact.archive(now).status).toBe('ARCHIVED');
-    expect(contact.update({ firstName: 'Bob' }, now).toProps().firstName).toBe('Bob');
-    expect(() => ContactEntity.create(contactProps({ uuid: 'bad' }))).toThrow('Invalid contact UUID');
-    expect(() => ContactEntity.create(contactProps({ firstName: ' ' }))).toThrow();
-    expect(() => ContactEntity.create(contactProps({ displayName: ' ' }))).toThrow();
-    expect(() => ContactEntity.create(contactProps({ status: 'ARCHIVED', archivedAt: null }))).toThrow();
-    expect(() => contact.archive(now).update({ firstName: 'Blocked' }, now)).toThrow(
-      'Archived contact cannot be mutated',
+    expect(contact.update({ firstName: 'Bob' }, now).toProps().firstName).toBe(
+      'Bob',
     );
+    expect(() => ContactEntity.create(contactProps({ uuid: 'bad' }))).toThrow(
+      'Invalid contact UUID',
+    );
+    expect(() =>
+      ContactEntity.create(contactProps({ firstName: ' ' })),
+    ).toThrow();
+    expect(() =>
+      ContactEntity.create(contactProps({ displayName: ' ' })),
+    ).toThrow();
+    expect(() =>
+      ContactEntity.create(
+        contactProps({ status: 'ARCHIVED', archivedAt: null }),
+      ),
+    ).toThrow();
+    expect(() =>
+      contact.archive(now).update({ firstName: 'Blocked' }, now),
+    ).toThrow('Archived contact cannot be mutated');
 
     const lead = LeadEntity.create(leadProps());
-    expect(lead.transitionTo('CONTACTED', canTransition, now).status).toBe('CONTACTED');
+    expect(lead.transitionTo('CONTACTED', canTransition, now).status).toBe(
+      'CONTACTED',
+    );
     expect(lead.transitionTo('NEW', canTransition)).toBe(lead);
     expect(() => lead.transitionTo('CLOSED_WON', canTransition)).toThrow();
     expect(lead.assign(uuid2, now).ownerUserUuid).toBe(uuid2);
@@ -166,28 +209,52 @@ describe('phase 6-10 domain coverage', () => {
     expect(lead.withScore(0, now).scoreVersion).toBe(2);
     expect(() => lead.withScore(-1)).toThrow();
     expect(lead.archive(now).status).toBe('ARCHIVED');
-    expect(() => lead.archive(now).transitionTo('CONTACTED', canTransition)).toThrow();
+    expect(() =>
+      lead.archive(now).transitionTo('CONTACTED', canTransition),
+    ).toThrow();
     expect(() => lead.archive(now).assign(uuid2)).toThrow();
     expect(() => LeadEntity.create(leadProps({ score: -1 }))).toThrow();
     expect(() => LeadEntity.create(leadProps({ scoreVersion: 0 }))).toThrow();
 
     const detector = new DuplicateDetector();
     const matches = detector.detect(
-      { leadUuid: uuid, email: 'Alice@Example.COM', phone: '+62 812', displayName: 'Alice Smith' },
+      {
+        leadUuid: uuid,
+        email: 'Alice@Example.COM',
+        phone: '+62 812',
+        displayName: 'Alice Smith',
+      },
       [
-        { leadUuid: uuid2, email: 'alice@example.com', phone: '+62812', displayName: 'alice smith' },
-        { leadUuid: '33333333-3333-4333-8333-333333333333', email: 'other@example.com', phone: null, displayName: 'Other' },
+        {
+          leadUuid: uuid2,
+          email: 'alice@example.com',
+          phone: '+62812',
+          displayName: 'alice smith',
+        },
+        {
+          leadUuid: '33333333-3333-4333-8333-333333333333',
+          email: 'other@example.com',
+          phone: null,
+          displayName: 'Other',
+        },
       ],
     );
     expect(matches[0].signals).toEqual(['EMAIL', 'PHONE', 'NAME']);
     expect(matches[0].confidence).toBe(110);
-    expect(detector.detect({ leadUuid: uuid }, [{ leadUuid: uuid2 }])).toEqual([]);
+    expect(detector.detect({ leadUuid: uuid }, [{ leadUuid: uuid2 }])).toEqual(
+      [],
+    );
 
     const merge = new LeadMergePolicy();
     merge.assertAllowed(uuid, uuid2, true);
     expect(() => merge.assertAllowed(uuid, uuid2, false)).toThrow();
     expect(() => merge.assertAllowed(uuid, uuid, true)).toThrow();
-    expect(merge.merge({ uuid, a: null, b: 'target', c: '' }, { uuid: uuid2, a: 'value', b: 'keep', c: 'target' })).toEqual({
+    expect(
+      merge.merge(
+        { uuid, a: null, b: 'target', c: '' },
+        { uuid: uuid2, a: 'value', b: 'keep', c: 'target' },
+      ),
+    ).toEqual({
       uuid: uuid2,
       a: 'value',
       b: 'keep',
@@ -199,8 +266,12 @@ describe('phase 6-10 domain coverage', () => {
     expect(normalizePermissionSegment('  Sales  ')).toBe('sales');
     expect(normalizePermissionName('  Display   Name ')).toBe('Display Name');
     expect(buildPermissionCode('sales', 'leads', 'read')).toBe('leads.read');
-    expect(buildPermissionCode('permissions', 'manage', 'protected')).toBe('permissions.manage.protected');
-    expect(isProtectedPermissionCode('permissions.manage.protected')).toBe(true);
+    expect(buildPermissionCode('permissions', 'manage', 'protected')).toBe(
+      'permissions.manage.protected',
+    );
+    expect(isProtectedPermissionCode('permissions.manage.protected')).toBe(
+      true,
+    );
     expect(isProtectedPermissionCode('leads.read')).toBe(false);
 
     const permission = PermissionEntity.create({
@@ -217,13 +288,39 @@ describe('phase 6-10 domain coverage', () => {
     expect(permission.isSystem).toBe(false);
     permission.update({ name: ' Updated Name ' });
     expect(permission.name).toBe('Updated Name');
-    expect(() => PermissionEntity.create({ ...permission.toSnapshot(), uuid: 'bad' })).toThrow();
-    expect(() => PermissionEntity.create({ ...permission.toSnapshot(), name: '' })).toThrow();
-    expect(() => PermissionEntity.create({ ...permission.toSnapshot(), module: 'BAD MODULE' })).toThrow();
-    expect(() => PermissionEntity.create({ ...permission.toSnapshot(), domain: 'BAD DOMAIN' })).toThrow();
-    expect(() => PermissionEntity.create({ ...permission.toSnapshot(), action: 'BAD ACTION' })).toThrow();
-    expect(() => PermissionEntity.create({ ...permission.toSnapshot(), code: 'bad' })).toThrow();
-    expect(() => PermissionEntity.create({ ...permission.toSnapshot(), code: 'leads.write' })).toThrow();
+    expect(() =>
+      PermissionEntity.create({ ...permission.toSnapshot(), uuid: 'bad' }),
+    ).toThrow();
+    expect(() =>
+      PermissionEntity.create({ ...permission.toSnapshot(), name: '' }),
+    ).toThrow();
+    expect(() =>
+      PermissionEntity.create({
+        ...permission.toSnapshot(),
+        module: 'BAD MODULE',
+      }),
+    ).toThrow();
+    expect(() =>
+      PermissionEntity.create({
+        ...permission.toSnapshot(),
+        domain: 'BAD DOMAIN',
+      }),
+    ).toThrow();
+    expect(() =>
+      PermissionEntity.create({
+        ...permission.toSnapshot(),
+        action: 'BAD ACTION',
+      }),
+    ).toThrow();
+    expect(() =>
+      PermissionEntity.create({ ...permission.toSnapshot(), code: 'bad' }),
+    ).toThrow();
+    expect(() =>
+      PermissionEntity.create({
+        ...permission.toSnapshot(),
+        code: 'leads.write',
+      }),
+    ).toThrow();
 
     const permissionErrorsToInstantiate = [
       permissionErrors.PermissionNotFoundException,
@@ -239,7 +336,9 @@ describe('phase 6-10 domain coverage', () => {
     for (const ErrorType of permissionErrorsToInstantiate) {
       expect(new ErrorType()).toBeInstanceOf(Error);
     }
-    expect(new permissionErrors.InvalidPermissionException('CUSTOM', 'message')).toBeInstanceOf(Error);
+    expect(
+      new permissionErrors.InvalidPermissionException('CUSTOM', 'message'),
+    ).toBeInstanceOf(Error);
 
     expect(normalizeRoleName('  Role   Name ')).toBe('Role Name');
     expect(normalizeRoleCode('  SALES ')).toBe('sales');
@@ -259,11 +358,31 @@ describe('phase 6-10 domain coverage', () => {
     expect(role.name).toBe('Manager');
     expect(role.description).toBeNull();
     expect(role.isActive).toBe(false);
-    expect(() => RoleEntity.create({ ...role.toSnapshot(), uuid: 'bad' })).toThrow();
-    expect(() => RoleEntity.create({ ...role.toSnapshot(), name: '' })).toThrow();
-    expect(() => RoleEntity.create({ ...role.toSnapshot(), code: 'Bad Code' })).toThrow();
-    expect(() => RoleEntity.create({ ...role.toSnapshot(), code: 'admin', isSystem: false, isActive: true })).toThrow();
-    expect(() => RoleEntity.create({ ...role.toSnapshot(), code: 'admin', isSystem: true, isActive: false })).toThrow();
+    expect(() =>
+      RoleEntity.create({ ...role.toSnapshot(), uuid: 'bad' }),
+    ).toThrow();
+    expect(() =>
+      RoleEntity.create({ ...role.toSnapshot(), name: '' }),
+    ).toThrow();
+    expect(() =>
+      RoleEntity.create({ ...role.toSnapshot(), code: 'Bad Code' }),
+    ).toThrow();
+    expect(() =>
+      RoleEntity.create({
+        ...role.toSnapshot(),
+        code: 'admin',
+        isSystem: false,
+        isActive: true,
+      }),
+    ).toThrow();
+    expect(() =>
+      RoleEntity.create({
+        ...role.toSnapshot(),
+        code: 'admin',
+        isSystem: true,
+        isActive: false,
+      }),
+    ).toThrow();
 
     const assignment = RolePermissionEntity.create({
       roleUuid: uuid,
@@ -271,9 +390,22 @@ describe('phase 6-10 domain coverage', () => {
       createdAt: now,
       updatedAt: now,
     });
-    expect(assignment.toSnapshot()).toMatchObject({ roleUuid: uuid, permissionUuid: uuid2 });
-    expect(() => RolePermissionEntity.create({ ...assignment.toSnapshot(), roleUuid: 'bad' })).toThrow();
-    expect(() => RolePermissionEntity.create({ ...assignment.toSnapshot(), permissionUuid: 'bad' })).toThrow();
+    expect(assignment.toSnapshot()).toMatchObject({
+      roleUuid: uuid,
+      permissionUuid: uuid2,
+    });
+    expect(() =>
+      RolePermissionEntity.create({
+        ...assignment.toSnapshot(),
+        roleUuid: 'bad',
+      }),
+    ).toThrow();
+    expect(() =>
+      RolePermissionEntity.create({
+        ...assignment.toSnapshot(),
+        permissionUuid: 'bad',
+      }),
+    ).toThrow();
   });
 
   it('covers property preference validation branches', () => {
@@ -288,26 +420,122 @@ describe('phase 6-10 domain coverage', () => {
     expect(preference.withVersion(3).value.version).toBe(3);
     expect(() => preference.withVersion(2)).toThrow();
     expect(() => PropertyPreference.create({ ...base, version: 0 })).toThrow();
-    expect(() => PropertyPreference.create({ transactionTypes: [], propertyTypeUuids: [], propertyCategoryUuids: [], hardCriteria: [] })).toThrow();
-    expect(() => PropertyPreference.create({ ...base, propertyTypeUuids: ['bad'] })).toThrow();
-    expect(() => PropertyPreference.create({ ...base, hardCriteria: ['unknown'] as never })).toThrow();
-    expect(() => PropertyPreference.create({ ...base, transactionTypes: [], hardCriteria: ['transactionType'] })).toThrow();
-    expect(() => PropertyPreference.create({ ...base, propertyTypeUuids: [], hardCriteria: ['propertyType'] })).toThrow();
-    expect(() => PropertyPreference.create({ ...base, propertyCategoryUuids: [], hardCriteria: ['propertyCategory'] })).toThrow();
-    expect(() => PropertyPreference.create({ ...base, location: undefined, hardCriteria: ['location'] })).toThrow();
-    expect(() => PropertyPreference.create({ ...base, budget: undefined, hardCriteria: ['budget'] })).toThrow();
-    expect(() => PropertyPreference.assertBudget({ currency: 'ID', frequency: 'TOTAL', min: '1', max: '2' })).toThrow();
-    expect(() => PropertyPreference.assertBudget({ currency: 'IDR', frequency: 'BAD' as never, min: '1', max: '2' })).toThrow();
-    expect(() => PropertyPreference.assertBudget({ currency: 'IDR', frequency: 'TOTAL', min: '2', max: '1' })).toThrow();
-    expect(() => PropertyPreference.assertBudget({ currency: 'IDR', frequency: 'TOTAL', min: '-1', max: '2' })).toThrow();
-    expect(() => PropertyPreference.assertBudget({ currency: 'IDR', frequency: 'TOTAL', min: '1', max: '2', tolerancePercent: 101 })).toThrow();
+    expect(() =>
+      PropertyPreference.create({
+        transactionTypes: [],
+        propertyTypeUuids: [],
+        propertyCategoryUuids: [],
+        hardCriteria: [],
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.create({ ...base, propertyTypeUuids: ['bad'] }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.create({
+        ...base,
+        hardCriteria: ['unknown'] as never,
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.create({
+        ...base,
+        transactionTypes: [],
+        hardCriteria: ['transactionType'],
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.create({
+        ...base,
+        propertyTypeUuids: [],
+        hardCriteria: ['propertyType'],
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.create({
+        ...base,
+        propertyCategoryUuids: [],
+        hardCriteria: ['propertyCategory'],
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.create({
+        ...base,
+        location: undefined,
+        hardCriteria: ['location'],
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.create({
+        ...base,
+        budget: undefined,
+        hardCriteria: ['budget'],
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.assertBudget({
+        currency: 'ID',
+        frequency: 'TOTAL',
+        min: '1',
+        max: '2',
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.assertBudget({
+        currency: 'IDR',
+        frequency: 'BAD' as never,
+        min: '1',
+        max: '2',
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.assertBudget({
+        currency: 'IDR',
+        frequency: 'TOTAL',
+        min: '2',
+        max: '1',
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.assertBudget({
+        currency: 'IDR',
+        frequency: 'TOTAL',
+        min: '-1',
+        max: '2',
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.assertBudget({
+        currency: 'IDR',
+        frequency: 'TOTAL',
+        min: '1',
+        max: '2',
+        tolerancePercent: 101,
+      }),
+    ).toThrow();
     expect(() => PropertyPreference.assertLocation({ latitude: 1 })).toThrow();
     expect(() => PropertyPreference.assertLocation({ radiusKm: 1 })).toThrow();
-    expect(() => PropertyPreference.assertLocation({ latitude: 91, longitude: 1 })).toThrow();
-    expect(() => PropertyPreference.assertLocation({ latitude: 1, longitude: 181 })).toThrow();
-    expect(() => PropertyPreference.assertLocation({ radiusKm: 501, latitude: 1, longitude: 1 })).toThrow();
-    expect(() => PropertyPreference.assertSpecification({ bedrooms: { min: 2.5 } })).toThrow();
-    expect(() => PropertyPreference.assertSpecification({ bathrooms: { min: '2', max: '1' } })).toThrow();
+    expect(() =>
+      PropertyPreference.assertLocation({ latitude: 91, longitude: 1 }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.assertLocation({ latitude: 1, longitude: 181 }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.assertLocation({
+        radiusKm: 501,
+        latitude: 1,
+        longitude: 1,
+      }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.assertSpecification({ bedrooms: { min: 2.5 } }),
+    ).toThrow();
+    expect(() =>
+      PropertyPreference.assertSpecification({
+        bathrooms: { min: '2', max: '1' },
+      }),
+    ).toThrow();
     expect(PropertyPreference.assertBudget(undefined)).toBeUndefined();
     expect(PropertyPreference.assertLocation(undefined)).toBeUndefined();
     expect(PropertyPreference.assertSpecification(undefined)).toBeUndefined();

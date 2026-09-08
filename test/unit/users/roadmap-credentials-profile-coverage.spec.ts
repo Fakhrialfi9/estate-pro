@@ -127,7 +127,9 @@ describe('users credentials and profile roadmap coverage', () => {
         confirmation: 'ValidPassword123',
       }),
     ).resolves.toBeUndefined();
-    credentials.findByUserUuid.mockResolvedValueOnce({ passwordHash: 'existing' });
+    credentials.findByUserUuid.mockResolvedValueOnce({
+      passwordHash: 'existing',
+    });
     await expect(
       service.create({
         userUuid: uuid,
@@ -145,7 +147,9 @@ describe('users credentials and profile roadmap coverage', () => {
         confirmation: 'ValidPassword123',
       }),
     ).rejects.toBeInstanceOf(CredentialNotFoundError);
-    credentials.findByUserUuid.mockResolvedValueOnce({ passwordHash: 'old-hash' });
+    credentials.findByUserUuid.mockResolvedValueOnce({
+      passwordHash: 'old-hash',
+    });
     hasher.verify.mockResolvedValueOnce(false);
     await expect(
       service.changePassword({
@@ -155,7 +159,9 @@ describe('users credentials and profile roadmap coverage', () => {
         confirmation: 'ValidPassword123',
       }),
     ).rejects.toBeInstanceOf(CurrentPasswordVerificationError);
-    credentials.findByUserUuid.mockResolvedValueOnce({ passwordHash: 'old-hash' });
+    credentials.findByUserUuid.mockResolvedValueOnce({
+      passwordHash: 'old-hash',
+    });
     hasher.verify.mockResolvedValueOnce(true);
     credentials.updatePassword.mockRejectedValueOnce(
       new ConcurrentPasswordChangeError(),
@@ -183,7 +189,9 @@ describe('users credentials and profile roadmap coverage', () => {
       expect.objectContaining({ requestId: 'req' }),
     );
     expect(
-      CredentialService.digestResetToken(CredentialService.generateResetToken()),
+      CredentialService.digestResetToken(
+        CredentialService.generateResetToken(),
+      ),
     ).toHaveLength(64);
   });
 
@@ -205,9 +213,9 @@ describe('users credentials and profile roadmap coverage', () => {
         phone: null,
       }),
     ).toThrow('at least one identity');
-    expect(() =>
-      UserEntity.create({ ...userSnapshot, status: '' }),
-    ).toThrow('Invalid user status');
+    expect(() => UserEntity.create({ ...userSnapshot, status: '' })).toThrow(
+      'Invalid user status',
+    );
 
     const adapter = new UserPublicAdapter({
       getByUuid: vi.fn().mockResolvedValue(entity),
@@ -265,7 +273,9 @@ describe('users credentials and profile roadmap coverage', () => {
     };
     const sessions = { isActive: vi.fn().mockResolvedValue(true) };
     const users = {
-      getByUuid: vi.fn().mockResolvedValue(UserEntity.create({ ...userSnapshot })),
+      getByUuid: vi
+        .fn()
+        .mockResolvedValue(UserEntity.create({ ...userSnapshot })),
     };
     const guard = new ProfileAuthenticationGuard(
       jwt as never,
@@ -284,15 +294,18 @@ describe('users credentials and profile roadmap coverage', () => {
     const missingHeader = {
       switchToHttp: () => ({ getRequest: () => ({ headers: {} }) }),
     } as unknown as ExecutionContext;
-    await expect(
-      guard.canActivate(missingHeader),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(guard.canActivate(missingHeader)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
     jwt.verifyAccessToken.mockRejectedValueOnce(new Error('invalid token'));
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
     sessions.isActive.mockResolvedValueOnce(false);
-    jwt.verifyAccessToken.mockResolvedValueOnce({ sub: uuid, sid: 'session-2' });
+    jwt.verifyAccessToken.mockResolvedValueOnce({
+      sub: uuid,
+      sid: 'session-2',
+    });
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
@@ -308,7 +321,9 @@ describe('users credentials and profile roadmap coverage', () => {
     const sessions = {
       revokeAllForSecurityEvent: vi.fn().mockResolvedValue(undefined),
     };
-    const config = { getOrThrow: vi.fn().mockReturnValue(30) } as unknown as ConfigService;
+    const config = {
+      getOrThrow: vi.fn().mockReturnValue(30),
+    } as unknown as ConfigService;
     const hasher = { hash: vi.fn().mockResolvedValue('hash') };
     const delivery = { deliver: vi.fn().mockResolvedValue(undefined) };
     const service = new PasswordResetService(
@@ -320,27 +335,31 @@ describe('users credentials and profile roadmap coverage', () => {
       delivery,
     );
 
-    await expect(service.requestByEmail('')).resolves.toEqual({ accepted: true });
+    await expect(service.requestByEmail('')).resolves.toEqual({
+      accepted: true,
+    });
     users.findByEmail.mockResolvedValueOnce(
       UserEntity.create({ ...userSnapshot, isActive: false }),
     );
-    await expect(
-      service.requestByEmail('jane@example.com'),
-    ).resolves.toEqual({ accepted: true });
-    users.findByEmail.mockResolvedValueOnce(UserEntity.create({ ...userSnapshot }));
+    await expect(service.requestByEmail('jane@example.com')).resolves.toEqual({
+      accepted: true,
+    });
+    users.findByEmail.mockResolvedValueOnce(
+      UserEntity.create({ ...userSnapshot }),
+    );
     credentials.findByUserUuid.mockResolvedValueOnce(null);
-    await expect(
-      service.requestByEmail('jane@example.com'),
-    ).resolves.toEqual({ accepted: true });
+    await expect(service.requestByEmail('jane@example.com')).resolves.toEqual({
+      accepted: true,
+    });
     credentials.findByUserUuid.mockResolvedValueOnce({ passwordHash: 'hash' });
-    await expect(
-      service.requestByEmail('jane@example.com'),
-    ).resolves.toEqual({ accepted: true });
+    await expect(service.requestByEmail('jane@example.com')).resolves.toEqual({
+      accepted: true,
+    });
     config.getOrThrow = vi.fn().mockReturnValue(0);
     credentials.findByUserUuid.mockResolvedValueOnce({ passwordHash: 'hash' });
-    await expect(
-      service.requestByEmail('jane@example.com'),
-    ).rejects.toThrow('Invalid password reset TTL');
+    await expect(service.requestByEmail('jane@example.com')).rejects.toThrow(
+      'Invalid password reset TTL',
+    );
     config.getOrThrow = vi.fn().mockReturnValue(30);
     await expect(service.reset('token', 'bad', 'bad')).rejects.toThrow();
     await expect(
@@ -356,7 +375,9 @@ describe('users credentials and profile roadmap coverage', () => {
   });
 
   it('covers configured reset delivery disabled, success and failure', async () => {
-    const config = { get: vi.fn().mockReturnValue(undefined) } as unknown as ConfigService;
+    const config = {
+      get: vi.fn().mockReturnValue(undefined),
+    } as unknown as ConfigService;
     const service = new ConfiguredPasswordResetDeliveryService(config);
     const payload = {
       userUuid: uuid,

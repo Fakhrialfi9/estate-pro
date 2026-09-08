@@ -52,7 +52,9 @@ describe('automation notification and communication coverage', () => {
       errorMessage: 'temporary provider failure',
     });
 
-    crm.deliverCommunication.mockRejectedValueOnce(new Error('permanent failure'));
+    crm.deliverCommunication.mockRejectedValueOnce(
+      new Error('permanent failure'),
+    );
     await expect(
       action.execute({ communicationUuid: 'communication-3' }, {}, userUuid),
     ).resolves.toMatchObject({
@@ -82,7 +84,9 @@ describe('automation notification and communication coverage', () => {
       upsertPolicy: vi.fn().mockResolvedValue({
         notificationUuid: 'notification-1',
       }),
-      getPolicy: vi.fn().mockResolvedValue({ notificationUuid: 'notification-1' }),
+      getPolicy: vi
+        .fn()
+        .mockResolvedValue({ notificationUuid: 'notification-1' }),
       createDelivery: vi.fn().mockResolvedValue({
         notificationUuid: 'notification-1',
       }),
@@ -201,7 +205,9 @@ describe('automation notification and communication coverage', () => {
     await expect(service.getPolicy('missing')).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    expect(() => service.createDelivery('', 'EMAIL')).toThrow(BadRequestException);
+    expect(() => service.createDelivery('', 'EMAIL')).toThrow(
+      BadRequestException,
+    );
     expect(() =>
       service.createDelivery('notification-1', 'INVALID' as never),
     ).toThrow(BadRequestException);

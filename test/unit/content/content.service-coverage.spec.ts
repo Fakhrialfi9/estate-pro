@@ -90,12 +90,18 @@ describe('ContentService complete coverage', () => {
     vi.clearAllMocks();
     repository.getArticle.mockResolvedValue(article());
     repository.updateArticle.mockResolvedValue(article());
-    repository.transitionArticle.mockResolvedValue(article({ status: 'PUBLISHED' }));
+    repository.transitionArticle.mockResolvedValue(
+      article({ status: 'PUBLISHED' }),
+    );
     repository.restoreArticle.mockResolvedValue(article());
     repository.createArticle.mockResolvedValue(article());
     repository.createResource.mockResolvedValue({ uuid: 'resource-1' });
     repository.updateResource.mockResolvedValue({ uuid: 'resource-1' });
-    repository.getResource.mockResolvedValue({ uuid: 'resource-1', version: 2, content: 'x' });
+    repository.getResource.mockResolvedValue({
+      uuid: 'resource-1',
+      version: 2,
+      content: 'x',
+    });
     repository.listResource.mockResolvedValue([]);
     repository.listArticles.mockResolvedValue([]);
     repository.listRevisions.mockResolvedValue([]);
@@ -120,13 +126,23 @@ describe('ContentService complete coverage', () => {
   it('covers normalization and sanitization utilities', () => {
     expect(normalizeSlug(' Héllo, World! ')).toBe('hello-world');
     expect(() => normalizeSlug('---')).toThrow(ContentValidationError);
-    expect(sanitizeHtml('<script>x</script><p onclick="bad()">safe</p><a href="https://example.com">link</a>')).toBe(
-      '<p>safe</p><a href="https://example.com">link</a>',
+    expect(
+      sanitizeHtml(
+        '<script>x</script><p onclick="bad()">safe</p><a href="https://example.com">link</a>',
+      ),
+    ).toBe('<p>safe</p><a href="https://example.com">link</a>');
+    expect(sanitizeHtml('<a href="javascript:alert(1)">bad</a>')).toBe(
+      '<a>bad</a>',
     );
-    expect(sanitizeHtml('<a href="javascript:alert(1)">bad</a>')).toBe('<a>bad</a>');
-    expect(sanitizeHtml('<a href="data:text/html,bad">bad</a>')).toBe('<a>bad</a>');
-    expect(sanitizeHtml('<!-- comment --><strong>x</strong>')).toBe('<strong>x</strong>');
-    expect(sanitizeJson({ html: '<img src=x><p>x</p>', nested: ['<b>x</b>'] })).toEqual({
+    expect(sanitizeHtml('<a href="data:text/html,bad">bad</a>')).toBe(
+      '<a>bad</a>',
+    );
+    expect(sanitizeHtml('<!-- comment --><strong>x</strong>')).toBe(
+      '<strong>x</strong>',
+    );
+    expect(
+      sanitizeJson({ html: '<img src=x><p>x</p>', nested: ['<b>x</b>'] }),
+    ).toEqual({
       html: '<p>x</p>',
       nested: ['x'],
     });
@@ -193,7 +209,10 @@ describe('ContentService complete coverage', () => {
       ),
     ).rejects.toThrow(ContentValidationError);
     await expect(
-      service.createArticle({ title: 'Title', content: {}, tagUuids: 'bad' }, ctx),
+      service.createArticle(
+        { title: 'Title', content: {}, tagUuids: 'bad' },
+        ctx,
+      ),
     ).rejects.toThrow(ContentValidationError);
     await expect(
       service.createArticle(
@@ -205,7 +224,9 @@ describe('ContentService complete coverage', () => {
       service.createArticle({ title: 'Title', content: {}, version: 1 }, ctx),
     ).resolves.toBeDefined();
 
-    repository.getArticle.mockResolvedValueOnce(article({ status: 'ARCHIVED' }));
+    repository.getArticle.mockResolvedValueOnce(
+      article({ status: 'ARCHIVED' }),
+    );
     const response = await service.getArticle(article().uuid, true, [
       'content.articles.read',
       'content.articles.update',
@@ -218,11 +239,18 @@ describe('ContentService complete coverage', () => {
     await expect(service.getArticle('missing')).rejects.toBeInstanceOf(
       ContentNotFoundError,
     );
-    await service.listArticles({ page: 2, limit: 5, categoryUuid: ctx.actorUuid, featured: true });
+    await service.listArticles({
+      page: 2,
+      limit: 5,
+      categoryUuid: ctx.actorUuid,
+      featured: true,
+    });
     expect(repository.listArticles).toHaveBeenCalled();
 
     repository.getArticle.mockResolvedValueOnce(article({ slug: 'old-slug' }));
-    repository.updateArticle.mockResolvedValueOnce(article({ slug: 'new-slug' }));
+    repository.updateArticle.mockResolvedValueOnce(
+      article({ slug: 'new-slug' }),
+    );
     await service.updateArticle(
       article().uuid,
       {
@@ -237,9 +265,9 @@ describe('ContentService complete coverage', () => {
     expect(repository.ensureSlugRedirect).toHaveBeenCalled();
 
     repository.getArticle.mockResolvedValueOnce(null);
-    await expect(service.updateArticle(article().uuid, {}, ctx)).rejects.toBeInstanceOf(
-      ContentNotFoundError,
-    );
+    await expect(
+      service.updateArticle(article().uuid, {}, ctx),
+    ).rejects.toBeInstanceOf(ContentNotFoundError);
     await expect(
       service.updateArticle(article().uuid, { version: 0 }, ctx),
     ).rejects.toThrow(ContentValidationError);
@@ -254,27 +282,38 @@ describe('ContentService complete coverage', () => {
     expect(repository.createRevision).toHaveBeenCalledTimes(2);
     expect(await service.revisions('article', article().uuid)).toEqual([]);
     expect(
-      await service.restoreRevision('article', article().uuid, 'revision-1', ctx),
+      await service.restoreRevision(
+        'article',
+        article().uuid,
+        'revision-1',
+        ctx,
+      ),
     ).toEqual({ uuid: 'revision-restored' });
 
     repository.getArticle.mockResolvedValueOnce(null);
-    await expect(service.duplicateArticle(article().uuid, ctx)).rejects.toBeInstanceOf(
-      ContentNotFoundError,
-    );
+    await expect(
+      service.duplicateArticle(article().uuid, ctx),
+    ).rejects.toBeInstanceOf(ContentNotFoundError);
     repository.getArticle.mockResolvedValueOnce(null);
-    await expect(service.revise('article', article().uuid, undefined, ctx)).rejects.toBeInstanceOf(
-      ContentNotFoundError,
-    );
+    await expect(
+      service.revise('article', article().uuid, undefined, ctx),
+    ).rejects.toBeInstanceOf(ContentNotFoundError);
 
     for (const status of ['APPROVED', 'SCHEDULED', 'DRAFT'] as const) {
       repository.getArticle.mockResolvedValueOnce(article({ status }));
       await service.publish(article().uuid, ctx);
     }
-    repository.getArticle.mockResolvedValueOnce(article({ status: 'PUBLISHED' }));
+    repository.getArticle.mockResolvedValueOnce(
+      article({ status: 'PUBLISHED' }),
+    );
     await service.unpublish(article().uuid, ctx);
-    repository.getArticle.mockResolvedValueOnce(article({ status: 'PUBLISHED' }));
+    repository.getArticle.mockResolvedValueOnce(
+      article({ status: 'PUBLISHED' }),
+    );
     await service.archive(article().uuid, ctx);
-    repository.getArticle.mockResolvedValueOnce(article({ status: 'APPROVED' }));
+    repository.getArticle.mockResolvedValueOnce(
+      article({ status: 'APPROVED' }),
+    );
     await service.archive(article().uuid, ctx);
     repository.getArticle.mockResolvedValueOnce(article({ status: 'DRAFT' }));
     await expect(service.unpublish(article().uuid, ctx)).rejects.toBeInstanceOf(
@@ -312,7 +351,11 @@ describe('ContentService complete coverage', () => {
     await expect(service.getResource('page', 'missing')).resolves.toBeDefined();
 
     await service.addRelation(
-      { sourceUuid: ctx.actorUuid, targetUuid: '33333333-3333-4333-8333-333333333333', relationType: 'related' },
+      {
+        sourceUuid: ctx.actorUuid,
+        targetUuid: '33333333-3333-4333-8333-333333333333',
+        relationType: 'related',
+      },
       ctx,
     );
     await expect(
@@ -349,7 +392,13 @@ describe('ContentService complete coverage', () => {
       ctx,
     );
     await expect(
-      service.createMedia({ ...file, mimetype: 'text/plain' }, {}, ctx, 'k', null),
+      service.createMedia(
+        { ...file, mimetype: 'text/plain' },
+        {},
+        ctx,
+        'k',
+        null,
+      ),
     ).rejects.toThrow(ContentValidationError);
     await expect(
       service.createMedia(
@@ -366,8 +415,16 @@ describe('ContentService complete coverage', () => {
   it('covers engagement, comments, views and public lookups', async () => {
     await service.toggle('like', article().uuid, ctx.actorUuid, ctx);
     await service.interaction('bookmark', article().uuid, ctx.actorUuid, ctx);
-    await service.comment(article().uuid, { content: '<script>x</script><p>ok</p>' }, ctx);
-    await service.commentCreate(article().uuid, { content: { text: '<img src=x>ok' } }, ctx);
+    await service.comment(
+      article().uuid,
+      { content: '<script>x</script><p>ok</p>' },
+      ctx,
+    );
+    await service.commentCreate(
+      article().uuid,
+      { content: { text: '<img src=x>ok' } },
+      ctx,
+    );
     await service.moderate('comment-1', 'APPROVED', 'reason', ctx);
     await service.commentModerate('comment-1', 'REJECTED', undefined, ctx);
     await service.view(article().uuid, '127.0.0.1');
@@ -376,7 +433,11 @@ describe('ContentService complete coverage', () => {
     await service.public('page', 'About Us', 'en');
     expect(repository.toggleInteraction).toHaveBeenCalledTimes(2);
     expect(repository.trackView).toHaveBeenCalledTimes(2);
-    expect(repository.getPublic).toHaveBeenCalledWith('article', 'hello-world', 'id');
+    expect(repository.getPublic).toHaveBeenCalledWith(
+      'article',
+      'hello-world',
+      'id',
+    );
   });
 
   it('covers private helper branches through public APIs', async () => {

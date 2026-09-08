@@ -112,9 +112,9 @@ describe('property extras coverage', () => {
     expect(() => validateCertificateDates('2026-02-01', 'bad')).toThrow(
       'Invalid expiryDate',
     );
-    expect(() =>
-      validateCertificateDates('2026-02-02', '2026-02-01'),
-    ).toThrow('issueDate must be before');
+    expect(() => validateCertificateDates('2026-02-02', '2026-02-01')).toThrow(
+      'issueDate must be before',
+    );
     expect(() =>
       validateCertificateDates(undefined, undefined, 'EXPIRED'),
     ).toThrow('EXPIRED certificate requires expiryDate');
@@ -136,9 +136,9 @@ describe('property extras coverage', () => {
     expect(() =>
       validateFinancialInvariants({ rentalYield: '12345' }),
     ).toThrow();
-    expect(() =>
-      validateFinancialInvariants({ currency: 'idr' }),
-    ).toThrow('currency must be a 3-letter');
+    expect(() => validateFinancialInvariants({ currency: 'idr' })).toThrow(
+      'currency must be a 3-letter',
+    );
     expect(() =>
       validateSeoInvariants('villa-bali', {
         title: 'Villa Bali',

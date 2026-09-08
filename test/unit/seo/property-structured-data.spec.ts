@@ -129,6 +129,9 @@ describe('PropertyStructuredData', () => {
     );
     expect(data.image).toHaveLength(20);
     expect(data.offers?.availability).toBe('https://schema.org/OutOfStock');
-    expect(data.seller).toEqual({ '@type': 'RealEstateAgent', name: 'Jane Agent' });
+    expect(data.seller).toEqual({
+      '@type': 'RealEstateAgent',
+      name: 'Jane Agent',
+    });
   });
 });

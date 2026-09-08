@@ -52,8 +52,12 @@ const repository = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  Object.values(service).forEach((mock) => mock.mockResolvedValue({ ok: true }));
-  Object.values(repository).forEach((mock) => mock.mockResolvedValue({ ok: true }));
+  Object.values(service).forEach((mock) =>
+    mock.mockResolvedValue({ ok: true }),
+  );
+  Object.values(repository).forEach((mock) =>
+    mock.mockResolvedValue({ ok: true }),
+  );
 });
 
 describe('content use cases coverage', () => {
@@ -100,7 +104,12 @@ describe('content use cases coverage', () => {
   it('delegates media and engagement use cases', async () => {
     const media = new MediaUseCase(service);
     await media.create(
-      { originalname: 'a.png', mimetype: 'image/png', size: 1, buffer: Buffer.from('x') },
+      {
+        originalname: 'a.png',
+        mimetype: 'image/png',
+        size: 1,
+        buffer: Buffer.from('x'),
+      },
       {},
       ctx,
       'key',

@@ -201,9 +201,9 @@ describe('roadmap common security and observability coverage', () => {
       authorization as never,
       propertyAccess as never,
     );
-    await expect(
-      permissionGuard.canActivate(contextOf(request)),
-    ).resolves.toBe(true);
+    await expect(permissionGuard.canActivate(contextOf(request))).resolves.toBe(
+      true,
+    );
     expect(request.user?.permissions).toContain('properties.manage');
   });
 
@@ -259,9 +259,7 @@ describe('roadmap common security and observability coverage', () => {
 
   it('covers audit redaction branches', () => {
     expect(normalizeAuditResourceType()).toBeNull();
-    expect(normalizeAuditResourceType('Authentication')).toBe(
-      'authentication',
-    );
+    expect(normalizeAuditResourceType('Authentication')).toBe('authentication');
     expect(normalizeAuditResourceType(' weird value ')).toBe('weird_value');
     expect(sanitizeAuditReason()).toBeNull();
     expect(sanitizeAuditReason(' ')).toBeNull();

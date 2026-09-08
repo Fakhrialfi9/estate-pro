@@ -9,7 +9,9 @@ const uuid = '11111111-1111-4111-8111-111111111111';
 const anotherUuid = '22222222-2222-4222-8222-222222222222';
 const password = 'Strong-Test-Password-123!';
 
-const makeUser = (overrides: Partial<ReturnType<UserEntity['toSnapshot']>> = {}) =>
+const makeUser = (
+  overrides: Partial<ReturnType<UserEntity['toSnapshot']>> = {},
+) =>
   UserEntity.create({
     uuid,
     username: 'jane',
@@ -41,37 +43,63 @@ const makeProfile = () =>
 describe('user management and profile branch coverage', () => {
   it('covers user lookup, update lifecycle, auditing and deletion', async () => {
     const existing = makeUser();
-    const updated = makeUser({ email: 'new@example.com', status: 'inactive', isActive: false });
+    const updated = makeUser({
+      email: 'new@example.com',
+      status: 'inactive',
+      isActive: false,
+    });
     const users = {
       findByUuid: vi.fn().mockResolvedValue(existing),
       findByEmail: vi.fn().mockResolvedValue(existing),
       findByUsername: vi.fn().mockResolvedValue(existing),
       findDuplicateIdentity: vi.fn().mockResolvedValue(null),
-      list: vi.fn().mockResolvedValue({ items: [existing], total: 1, page: 1, limit: 20 }),
+      list: vi
+        .fn()
+        .mockResolvedValue({ items: [existing], total: 1, page: 1, limit: 20 }),
       createWithCredential: vi.fn().mockResolvedValue(existing),
       update: vi.fn().mockResolvedValue(updated),
       softDelete: vi.fn().mockResolvedValue(undefined),
     };
-    const sessions = { revokeAllForSecurityEvent: vi.fn().mockResolvedValue(undefined) };
+    const sessions = {
+      revokeAllForSecurityEvent: vi.fn().mockResolvedValue(undefined),
+    };
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
-    const credentials = { preparePasswordHash: vi.fn().mockResolvedValue('hash') };
-    const service = new UserManagementService(users as never, sessions as never, audit, credentials as never);
+    const credentials = {
+      preparePasswordHash: vi.fn().mockResolvedValue('hash'),
+    };
+    const service = new UserManagementService(
+      users as never,
+      sessions as never,
+      audit,
+      credentials as never,
+    );
 
     await expect(service.getByUuid(uuid)).resolves.toBe(existing);
-    await expect(service.getByEmail('JANE@EXAMPLE.COM')).resolves.toBe(existing);
+    await expect(service.getByEmail('JANE@EXAMPLE.COM')).resolves.toBe(
+      existing,
+    );
     await expect(service.getByUsername('jane')).resolves.toBe(existing);
-    await expect(service.list({ page: 1, limit: 20 })).resolves.toMatchObject({ total: 1 });
+    await expect(service.list({ page: 1, limit: 20 })).resolves.toMatchObject({
+      total: 1,
+    });
 
     await expect(
       service.create(
         { username: '  ', phone: ' 0812 ', email: ' JANE@EXAMPLE.COM ' },
         { password, confirmation: password },
-        { actorUuid: anotherUuid, ipAddress: '127.0.0.1', userAgent: 'test', requestId: 'req' },
+        {
+          actorUuid: anotherUuid,
+          ipAddress: '127.0.0.1',
+          userAgent: 'test',
+          requestId: 'req',
+        },
       ),
     ).resolves.toBe(existing);
     expect(users.createWithCredential).toHaveBeenCalled();
 
-    await expect(service.update(uuid, { email: 'new@example.com' })).resolves.toBe(updated);
+    await expect(
+      service.update(uuid, { email: 'new@example.com' }),
+    ).resolves.toBe(updated);
     await expect(
       service.update(uuid, { status: 'inactive' }, { actorUuid: anotherUuid }),
     ).resolves.toBe(updated);
@@ -92,13 +120,19 @@ describe('user management and profile branch coverage', () => {
 
     users.findByUuid.mockResolvedValueOnce(makeUser({ username: 'only' }));
     users.findDuplicateIdentity.mockResolvedValueOnce(makeUser());
-    await expect(service.update(uuid, { email: 'duplicate@example.com' })).rejects.toThrow();
+    await expect(
+      service.update(uuid, { email: 'duplicate@example.com' }),
+    ).rejects.toThrow();
 
-    users.findByUuid.mockResolvedValueOnce(makeUser({ username: null, email: null, phone: ' ' }));
+    users.findByUuid.mockResolvedValueOnce(
+      makeUser({ username: null, email: null, phone: ' ' }),
+    );
     await expect(service.update(uuid, { username: ' ' })).rejects.toThrow();
 
     users.findByUuid.mockResolvedValueOnce(existing);
-    await expect(service.remove(uuid, { requestId: 'delete-1' })).resolves.toBeUndefined();
+    await expect(
+      service.remove(uuid, { requestId: 'delete-1' }),
+    ).resolves.toBeUndefined();
     expect(users.softDelete).toHaveBeenCalledWith(uuid);
   });
 
@@ -147,7 +181,9 @@ describe('user management and profile branch coverage', () => {
     profiles.findByUserUuid.mockResolvedValueOnce(null);
     await expect(service.get(principal, uuid)).rejects.toThrow();
     profiles.findByUserUuid.mockResolvedValueOnce(profile);
-    await expect(service.update(principal, uuid, { firstName: null, timezone: ' UTC ' })).resolves.toBe(profile);
+    await expect(
+      service.update(principal, uuid, { firstName: null, timezone: ' UTC ' }),
+    ).resolves.toBe(profile);
 
     const invalidInputs = [
       { firstName: 'x'.repeat(101) },

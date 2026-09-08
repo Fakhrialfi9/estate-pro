@@ -1,4 +1,7 @@
-import { ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { ConfigService } from '@nestjs/config';
 import type { Reflector } from '@nestjs/core';
@@ -18,7 +21,10 @@ import type { SystemIntegrationReliabilityService } from '../../../src/modules/s
 import type { SystemIntegrationService } from '../../../src/modules/system/application/services/system-integration.service.js';
 import type { SystemRoadmapRepository } from '../../../src/modules/system/domain/repositories/system-roadmap.repository.js';
 import type { SecurityAuditRepository } from '../../../src/common/audit/security-audit.port.js';
-import type { AutomationNotificationPort, AutomationSystemPort } from '../../../src/common/contracts/automation-system.port.js';
+import type {
+  AutomationNotificationPort,
+  AutomationSystemPort,
+} from '../../../src/common/contracts/automation-system.port.js';
 import type { IntegrationProviderPort } from '../../../src/modules/system/domain/integration/integration.contracts.js';
 import type { SystemWebhookRateLimitRepository } from '../../../src/modules/system/domain/webhook/webhook-rate-limit.repository.js';
 
@@ -27,7 +33,7 @@ const uuid = '11111111-1111-4111-8111-111111111111';
 const asConfig = (values: Record<string, unknown>): ConfigService =>
   ({
     get: vi.fn((key: string, fallback?: unknown) => values[key] ?? fallback),
-  } as unknown as ConfigService);
+  }) as unknown as ConfigService;
 
 describe('critical system roadmap coverage', () => {
   it('covers read-only security matrix', async () => {
@@ -45,39 +51,63 @@ describe('critical system roadmap coverage', () => {
         getClass: () => ({}),
       }) as never;
 
-    await expect(guard.canActivate(context({ method: 'GET' }))).resolves.toBe(true);
-    await expect(guard.canActivate(context({ method: 'POST' }))).resolves.toBe(true);
+    await expect(guard.canActivate(context({ method: 'GET' }))).resolves.toBe(
+      true,
+    );
+    await expect(guard.canActivate(context({ method: 'POST' }))).resolves.toBe(
+      true,
+    );
     await expect(
-      guard.canActivate(context({ method: 'POST', path: '/api/v1/auth/login' })),
+      guard.canActivate(
+        context({ method: 'POST', path: '/api/v1/auth/login' }),
+      ),
     ).resolves.toBe(true);
     await expect(
-      guard.canActivate(context({ method: 'POST', route: { path: '/api/v1/health/live' } })),
+      guard.canActivate(
+        context({ method: 'POST', route: { path: '/api/v1/health/live' } }),
+      ),
     ).resolves.toBe(true);
 
     reflector.getAllAndOverride = vi.fn().mockReturnValue(true);
-    await expect(guard.canActivate(context({ method: 'DELETE' }))).resolves.toBe(true);
+    await expect(
+      guard.canActivate(context({ method: 'DELETE' })),
+    ).resolves.toBe(true);
 
     reflector.getAllAndOverride = vi.fn().mockReturnValue(false);
     state.readOnlyMode = true;
-    await expect(guard.canActivate(context({ method: 'PATCH', path: '/api/v1/property' }))).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
+    await expect(
+      guard.canActivate(context({ method: 'PATCH', path: '/api/v1/property' })),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
     state.readOnlyMode = false;
     state.maintenanceMode = true;
-    await expect(guard.canActivate(context({ method: 'PUT', originalUrl: '/api/v1/property' }))).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
+    await expect(
+      guard.canActivate(
+        context({ method: 'PUT', originalUrl: '/api/v1/property' }),
+      ),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
   it('covers import content safety and export formula sanitization', () => {
     const service = new SystemContentSafetyService();
 
-    expect(() => service.inspectImport(Buffer.from(''), 'csv')).toThrow('Import content is empty');
-    expect(() => service.inspectImport(Buffer.from([0]), 'csv')).toThrow('Binary content is not allowed');
-    expect(() => service.inspectImport(Buffer.from('bad\uFFFDtext'), 'json')).toThrow('invalid UTF-8');
-    expect(() => service.inspectImport(Buffer.from('a'.repeat(50_001)), 'csv')).toThrow('CSV row exceeds');
-    expect(() => service.inspectImport(Buffer.from('{"ok":true}'), 'json')).not.toThrow();
-    expect(() => service.inspectImport(Buffer.from('a,b\n1,2'), 'csv')).not.toThrow();
+    expect(() => service.inspectImport(Buffer.from(''), 'csv')).toThrow(
+      'Import content is empty',
+    );
+    expect(() => service.inspectImport(Buffer.from([0]), 'csv')).toThrow(
+      'Binary content is not allowed',
+    );
+    expect(() =>
+      service.inspectImport(Buffer.from('bad\uFFFDtext'), 'json'),
+    ).toThrow('invalid UTF-8');
+    expect(() =>
+      service.inspectImport(Buffer.from('a'.repeat(50_001)), 'csv'),
+    ).toThrow('CSV row exceeds');
+    expect(() =>
+      service.inspectImport(Buffer.from('{"ok":true}'), 'json'),
+    ).not.toThrow();
+    expect(() =>
+      service.inspectImport(Buffer.from('a,b\n1,2'), 'csv'),
+    ).not.toThrow();
     expect(service.sanitizeExportCell(' =SUM(A1)')).toBe("' =SUM(A1)");
     expect(service.sanitizeExportCell('safe')).toBe('safe');
   });
@@ -145,17 +175,42 @@ describe('critical system roadmap coverage', () => {
     });
     expect(result).not.toHaveProperty('nullable');
     expect(service.map({ value: 1 }, {})).toEqual({ value: 1 });
-    expect(() => service.map({}, { value: { from: 'value', transform: 'number' } })).not.toThrow();
-    expect(() => service.map({}, { '__proto__.polluted': 'value' })).toThrow('Invalid integration mapping path');
-    expect(() => service.validate({ providerVersion: '1' }, '2')).toThrow('provider version mismatch');
-    expect(() => service.validate({ value: { transform: 'invalid' } })).toThrow('Unsupported integration mapping transform');
-    expect(() => service.map({ value: 'bad' }, { value: { from: 'value', transform: 'number' } })).toThrow('invalid number');
-    expect(() => service.map({ value: 'maybe' }, { value: { from: 'value', transform: 'boolean' } })).toThrow('invalid boolean');
-    expect(() => service.map({ value: 'bad-date' }, { value: { from: 'value', transform: 'date' } })).toThrow('invalid date');
+    expect(() =>
+      service.map({}, { value: { from: 'value', transform: 'number' } }),
+    ).not.toThrow();
+    expect(() => service.map({}, { '__proto__.polluted': 'value' })).toThrow(
+      'Invalid integration mapping path',
+    );
+    expect(() => service.validate({ providerVersion: '1' }, '2')).toThrow(
+      'provider version mismatch',
+    );
+    expect(() => service.validate({ value: { transform: 'invalid' } })).toThrow(
+      'Unsupported integration mapping transform',
+    );
+    expect(() =>
+      service.map(
+        { value: 'bad' },
+        { value: { from: 'value', transform: 'number' } },
+      ),
+    ).toThrow('invalid number');
+    expect(() =>
+      service.map(
+        { value: 'maybe' },
+        { value: { from: 'value', transform: 'boolean' } },
+      ),
+    ).toThrow('invalid boolean');
+    expect(() =>
+      service.map(
+        { value: 'bad-date' },
+        { value: { from: 'value', transform: 'date' } },
+      ),
+    ).toThrow('invalid date');
   });
 
   it('covers credential refresh, redaction and secure failure paths', async () => {
-    const audit = { record: vi.fn().mockResolvedValue(undefined) } as unknown as SecurityAuditRepository;
+    const audit = {
+      record: vi.fn().mockResolvedValue(undefined),
+    } as unknown as SecurityAuditRepository;
     const credential = {
       uuid,
       status: 'ACTIVE',
@@ -189,24 +244,40 @@ describe('critical system roadmap coverage', () => {
       accessTokenRef: 'vault://***',
       refreshTokenRef: 'vault://***',
     });
-    await expect(service.refresh(uuid, uuid, provider as IntegrationProviderPort)).resolves.toMatchObject({
+    await expect(
+      service.refresh(uuid, uuid, provider as IntegrationProviderPort),
+    ).resolves.toMatchObject({
       uuid: 'rotated',
     });
     expect(roadmap.credential.rotate).toHaveBeenCalledTimes(1);
     expect(audit.record).toHaveBeenCalledTimes(1);
 
     roadmap.credential.get.mockResolvedValueOnce(null);
-    await expect(service.get(uuid)).rejects.toThrow('Integration credential not found');
+    await expect(service.get(uuid)).rejects.toThrow(
+      'Integration credential not found',
+    );
 
-    roadmap.credential.get.mockResolvedValueOnce({ ...credential, status: 'REVOKED' });
-    await expect(service.refresh(uuid, uuid, provider as IntegrationProviderPort)).rejects.toThrow('not active');
-    roadmap.credential.get.mockResolvedValueOnce({ ...credential, refreshTokenRef: null });
-    await expect(service.refresh(uuid, uuid, provider as IntegrationProviderPort)).rejects.toThrow('no refresh token');
+    roadmap.credential.get.mockResolvedValueOnce({
+      ...credential,
+      status: 'REVOKED',
+    });
+    await expect(
+      service.refresh(uuid, uuid, provider as IntegrationProviderPort),
+    ).rejects.toThrow('not active');
+    roadmap.credential.get.mockResolvedValueOnce({
+      ...credential,
+      refreshTokenRef: null,
+    });
+    await expect(
+      service.refresh(uuid, uuid, provider as IntegrationProviderPort),
+    ).rejects.toThrow('no refresh token');
     roadmap.credential.get.mockResolvedValueOnce({
       ...credential,
       accessTokenExpiresAt: new Date(Date.now() + 120_000),
     });
-    await expect(service.refresh(uuid, uuid, provider as IntegrationProviderPort)).resolves.toMatchObject({
+    await expect(
+      service.refresh(uuid, uuid, provider as IntegrationProviderPort),
+    ).resolves.toMatchObject({
       accessTokenRef: 'vault://***',
     });
     roadmap.credential.get.mockResolvedValueOnce(credential);
@@ -217,9 +288,9 @@ describe('critical system roadmap coverage', () => {
       accessTokenReference: 'invalid',
       refreshTokenReference: 'vault://refresh-3',
     });
-    await expect(service.refresh(uuid, uuid, provider as IntegrationProviderPort)).rejects.toThrow(
-      'invalid access token reference',
-    );
+    await expect(
+      service.refresh(uuid, uuid, provider as IntegrationProviderPort),
+    ).rejects.toThrow('invalid access token reference');
   });
 
   it('covers integration logs, limits, filtering and latency calculation', async () => {
@@ -261,16 +332,27 @@ describe('critical system roadmap coverage', () => {
     const service = new SystemIntegrationLogService(prisma);
 
     await expect(
-      service.list({ integrationUuid: uuid, state: 'FAILED', operationKey: 'sync', limit: 1 }),
+      service.list({
+        integrationUuid: uuid,
+        state: 'FAILED',
+        operationKey: 'sync',
+        limit: 1,
+      }),
     ).resolves.toMatchObject([
       { uuid, latencyMs: 1000 },
       { uuid: 'second', latencyMs: null },
     ]);
-    await expect(service.list({ from: new Date('2026-01-02'), to: new Date('2026-01-01') })).rejects.toThrow(
-      'Invalid integration log range',
-    );
     await expect(
-      service.list({ from: new Date('2025-01-01'), to: new Date('2026-01-01') }),
+      service.list({
+        from: new Date('2026-01-02'),
+        to: new Date('2026-01-01'),
+      }),
+    ).rejects.toThrow('Invalid integration log range');
+    await expect(
+      service.list({
+        from: new Date('2025-01-01'),
+        to: new Date('2026-01-01'),
+      }),
     ).rejects.toThrow('cannot exceed 90 days');
   });
 
@@ -283,22 +365,35 @@ describe('critical system roadmap coverage', () => {
     } as unknown as AutomationSystemPort;
     const jobs = new SystemJobOperationsService(automation);
 
-    await expect(jobs.list({ page: 1, limit: 10, state: 'FAILED' }, uuid)).resolves.toEqual({ items: [] });
+    await expect(
+      jobs.list({ page: 1, limit: 10, state: 'FAILED' }, uuid),
+    ).resolves.toEqual({ items: [] });
     await expect(jobs.get(uuid, uuid)).resolves.toEqual({ uuid });
-    await expect(jobs.retry(uuid, uuid)).resolves.toMatchObject({ state: 'RETRYING' });
-    await expect(jobs.cancel(uuid, uuid)).resolves.toMatchObject({ state: 'CANCELLED' });
+    await expect(jobs.retry(uuid, uuid)).resolves.toMatchObject({
+      state: 'RETRYING',
+    });
+    await expect(jobs.cancel(uuid, uuid)).resolves.toMatchObject({
+      state: 'CANCELLED',
+    });
 
     const consume = vi.fn().mockResolvedValue({ allowed: true });
-    const repository = { consume } as unknown as SystemWebhookRateLimitRepository;
+    const repository = {
+      consume,
+    } as unknown as SystemWebhookRateLimitRepository;
     const rateLimit = new SystemWebhookRateLimitService(
       repository,
-      asConfig({ 'system.webhook.rateWindowMs': 500, 'system.webhook.rateLimit': 0 }),
+      asConfig({
+        'system.webhook.rateWindowMs': 500,
+        'system.webhook.rateLimit': 0,
+      }),
     );
     await expect(rateLimit.consume(uuid)).resolves.toBeUndefined();
     expect(consume).toHaveBeenCalledWith(uuid, expect.any(Date), 1);
 
     consume.mockResolvedValueOnce({ allowed: false });
-    await expect(rateLimit.consume(uuid)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(rateLimit.consume(uuid)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   it('covers operational alert threshold, notification, acknowledgement and missing alert', async () => {
@@ -316,8 +411,20 @@ describe('critical system roadmap coverage', () => {
     const roadmap = {
       alertRule: {
         list: vi.fn().mockResolvedValue([
-          { ruleKey: 'QUEUE_DEPTH', signal: 'queue', threshold: 10, severity: 'CRITICAL', metadata: { targetUserUuid: uuid } },
-          { ruleKey: 'CPU', signal: 'cpu', threshold: 90, severity: 'WARNING', metadata: {} },
+          {
+            ruleKey: 'QUEUE_DEPTH',
+            signal: 'queue',
+            threshold: 10,
+            severity: 'CRITICAL',
+            metadata: { targetUserUuid: uuid },
+          },
+          {
+            ruleKey: 'CPU',
+            signal: 'cpu',
+            threshold: 90,
+            severity: 'WARNING',
+            metadata: {},
+          },
         ]),
       },
       alert: {
@@ -328,22 +435,30 @@ describe('critical system roadmap coverage', () => {
     const notifications = {
       createNotification: vi.fn().mockResolvedValue(undefined),
     } as unknown as AutomationNotificationPort;
-    const audit = { record: vi.fn().mockResolvedValue(undefined) } as unknown as SecurityAuditRepository;
+    const audit = {
+      record: vi.fn().mockResolvedValue(undefined),
+    } as unknown as SecurityAuditRepository;
     const service = new SystemOperationalAlertService(
       roadmap as never,
       notifications,
       audit,
     );
 
-    await expect(service.evaluate({ signals: { queue: 20, cpu: 10 } })).resolves.toEqual([alert]);
+    await expect(
+      service.evaluate({ signals: { queue: 20, cpu: 10 } }),
+    ).resolves.toEqual([alert]);
     expect(notifications.createNotification).toHaveBeenCalledWith(
       expect.objectContaining({ userUuid: uuid, priority: 'URGENT' }),
     );
-    await expect(service.acknowledge(uuid, 'alert-1')).resolves.toMatchObject({ status: 'ACKNOWLEDGED' });
+    await expect(service.acknowledge(uuid, 'alert-1')).resolves.toMatchObject({
+      status: 'ACKNOWLEDGED',
+    });
     expect(audit.record).toHaveBeenCalledTimes(1);
 
     roadmap.alert.list.mockResolvedValueOnce([]);
-    await expect(service.acknowledge(uuid, 'missing')).rejects.toThrow('Operational alert not found');
+    await expect(service.acknowledge(uuid, 'missing')).rejects.toThrow(
+      'Operational alert not found',
+    );
   });
 
   it('covers production hardening metrics, health, retry, cleanup and safe defaults', async () => {
@@ -372,8 +487,20 @@ describe('critical system roadmap coverage', () => {
         .mockResolvedValueOnce([]),
       systemIntegrationOperation: {
         findMany: vi.fn().mockResolvedValue([
-          { uuid, state: 'FAILED', attempt: 1, maxAttempts: 3, createdAt: new Date() },
-          { uuid: 'maxed', state: 'FAILED', attempt: 3, maxAttempts: 3, createdAt: new Date() },
+          {
+            uuid,
+            state: 'FAILED',
+            attempt: 1,
+            maxAttempts: 3,
+            createdAt: new Date(),
+          },
+          {
+            uuid: 'maxed',
+            state: 'FAILED',
+            attempt: 3,
+            maxAttempts: 3,
+            createdAt: new Date(),
+          },
         ]),
         update: vi.fn().mockResolvedValue(undefined),
         deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -393,7 +520,9 @@ describe('critical system roadmap coverage', () => {
         .mockResolvedValueOnce({ status: 'UP' })
         .mockResolvedValueOnce({ status: 'DOWN' }),
     } as unknown as SystemIntegrationReliabilityService;
-    const audit = { record: vi.fn().mockResolvedValue(undefined) } as unknown as SecurityAuditRepository;
+    const audit = {
+      record: vi.fn().mockResolvedValue(undefined),
+    } as unknown as SecurityAuditRepository;
     const service = new SystemProductionHardeningService(
       prisma,
       integrations,
@@ -406,18 +535,35 @@ describe('critical system roadmap coverage', () => {
       failures: 1,
       errorRate: 1 / 3,
     });
-    await expect(service.integrationMetrics(new Date('2026-01-01'), new Date('2026-01-02'), 'hour')).resolves.toMatchObject({
+    await expect(
+      service.integrationMetrics(
+        new Date('2026-01-01'),
+        new Date('2026-01-02'),
+        'hour',
+      ),
+    ).resolves.toMatchObject({
       granularity: 'hour',
     });
     prisma.$queryRaw.mockResolvedValueOnce([]);
-    await expect(service.jobMetrics()).resolves.toMatchObject({ total: 0, errorRate: 0 });
+    await expect(service.jobMetrics()).resolves.toMatchObject({
+      total: 0,
+      errorRate: 0,
+    });
 
-    await expect(service.integrationHealth()).resolves.toMatchObject({ status: 'DOWN' });
+    await expect(service.integrationHealth()).resolves.toMatchObject({
+      status: 'DOWN',
+    });
     prisma.$queryRaw.mockResolvedValueOnce([{ ok: 1 }]);
-    await expect(service.externalDependencyHealth()).resolves.toMatchObject({ status: 'DOWN' });
+    await expect(service.externalDependencyHealth()).resolves.toMatchObject({
+      status: 'DOWN',
+    });
 
-    await expect(service.retryFailedOperations({ dryRun: true }, uuid)).resolves.toMatchObject({ dryRun: true, count: 2 });
-    await expect(service.retryFailedOperations({ dryRun: false, limit: 2 }, uuid)).resolves.toMatchObject({
+    await expect(
+      service.retryFailedOperations({ dryRun: true }, uuid),
+    ).resolves.toMatchObject({ dryRun: true, count: 2 });
+    await expect(
+      service.retryFailedOperations({ dryRun: false, limit: 2 }, uuid),
+    ).resolves.toMatchObject({
       dryRun: false,
       count: 1,
       skippedMaxAttempts: 1,
@@ -430,11 +576,15 @@ describe('critical system roadmap coverage', () => {
     prisma.systemIntegrationOperation.findMany.mockResolvedValueOnce([
       { uuid, createdAt: new Date('2025-01-01'), state: 'FAILED' },
     ]);
-    await expect(service.orphanCleanup({ dryRun: true, olderThanHours: 24 }, uuid)).resolves.toMatchObject({ dryRun: true });
+    await expect(
+      service.orphanCleanup({ dryRun: true, olderThanHours: 24 }, uuid),
+    ).resolves.toMatchObject({ dryRun: true });
     prisma.systemIntegrationOperation.findMany.mockResolvedValueOnce([
       { uuid, createdAt: new Date('2025-01-01'), state: 'FAILED' },
     ]);
-    await expect(service.orphanCleanup({ dryRun: false }, uuid)).resolves.toMatchObject({
+    await expect(
+      service.orphanCleanup({ dryRun: false }, uuid),
+    ).resolves.toMatchObject({
       dryRun: false,
       deleted: 1,
     });

@@ -18,7 +18,9 @@ import {
 } from '../../src/modules/seo/domain/seo.policy.js';
 import type { SeoResourceSnapshot } from '../../src/modules/seo/domain/seo.types.js';
 
-const resource = (seo: SeoResourceSnapshot['seo'] = {}): SeoResourceSnapshot => ({
+const resource = (
+  seo: SeoResourceSnapshot['seo'] = {},
+): SeoResourceSnapshot => ({
   resourceType: 'article',
   uuid: '00000000-0000-4000-8000-000000000001',
   slug: 'article',
@@ -70,11 +72,19 @@ describe('sales and SEO roadmap coverage', () => {
     expect(normalizeKeywords('foo, bar, foo')).toEqual(['foo', 'bar']);
     expect(normalizeKeywords({ value: 'ignored' })).toEqual([]);
     expect(normalizeKeywords([' foo ', 1, '', 'bar'])).toEqual(['foo', 'bar']);
-    expect(() => buildCanonicalUrl('https://example.com', 'properties/a')).toThrow();
-    expect(() => buildCanonicalUrl('https://example.com', '//evil.example/a')).toThrow();
+    expect(() =>
+      buildCanonicalUrl('https://example.com', 'properties/a'),
+    ).toThrow();
+    expect(() =>
+      buildCanonicalUrl('https://example.com', '//evil.example/a'),
+    ).toThrow();
 
     const base = resource();
-    const metadata = buildSeoMetadata(base, 'https://example.com', '/articles/article');
+    const metadata = buildSeoMetadata(
+      base,
+      'https://example.com',
+      '/articles/article',
+    );
     expect(metadata.description).toBe('Article Title');
     expect(metadata.openGraph.type).toBe('article');
     expect(metadata.twitter.card).toBe('summary');
@@ -102,7 +112,9 @@ describe('sales and SEO roadmap coverage', () => {
     );
     expect(richMetadata.title).toBe('SEO Title');
     expect(richMetadata.description).toBe('SEO Description');
-    expect(richMetadata.canonicalUrl).toBe('https://example.com/articles/article');
+    expect(richMetadata.canonicalUrl).toBe(
+      'https://example.com/articles/article',
+    );
     expect(richMetadata.robots).toBe('index,nofollow');
     expect(richMetadata.twitter.card).toBe('summary_large_image');
     expect(richMetadata.metadataVersion).toBe('2.0');
@@ -116,12 +128,18 @@ describe('sales and SEO roadmap coverage', () => {
       'https://example.com',
       '/articles/article',
     );
-    expect(normalizedUnsafe.canonicalUrl).toBe('https://example.com/articles/article');
+    expect(normalizedUnsafe.canonicalUrl).toBe(
+      'https://example.com/articles/article',
+    );
     expect(normalizedUnsafe.robots).toBe('index,follow');
 
     expect(isPubliclyIndexable(resource())).toBe(true);
-    expect(isPubliclyIndexable(resource({ robots: 'noindex,follow' }))).toBe(false);
-    expect(isPubliclyIndexable(resource({ robots: 'noindex,nofollow' }))).toBe(false);
+    expect(isPubliclyIndexable(resource({ robots: 'noindex,follow' }))).toBe(
+      false,
+    );
+    expect(isPubliclyIndexable(resource({ robots: 'noindex,nofollow' }))).toBe(
+      false,
+    );
     expect(isPubliclyIndexable(resource({ published: false }))).toBe(false);
   });
 });

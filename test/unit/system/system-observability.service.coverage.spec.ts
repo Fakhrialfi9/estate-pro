@@ -5,7 +5,14 @@ import { SystemObservabilityService } from '../../../src/modules/system/applicat
 import type { PrismaService } from '../../../src/infrastructure/database/prisma/prisma.service.js';
 
 const queryRows = [
-  { bucket: '2026-01-01', count: 2n, rows: 10n, failedRows: 1n, succeeded: 1n, failed: 1n },
+  {
+    bucket: '2026-01-01',
+    count: 2n,
+    rows: 10n,
+    failedRows: 1n,
+    succeeded: 1n,
+    failed: 1n,
+  },
 ];
 
 const prisma = {
@@ -16,10 +23,23 @@ describe('SystemObservabilityService coverage', () => {
   it('covers import/export summary and bucket aggregation', async () => {
     const queryRaw = prisma.$queryRaw as ReturnType<typeof vi.fn>;
     queryRaw
-      .mockResolvedValueOnce([{ count: 2n, rows: 10n, failedRows: 1n, succeeded: 1n, failed: 1n }])
-      .mockResolvedValueOnce([{ count: 1n, rows: 4n, bytes: 50n, succeeded: 1n, failed: 0n }])
+      .mockResolvedValueOnce([
+        { count: 2n, rows: 10n, failedRows: 1n, succeeded: 1n, failed: 1n },
+      ])
+      .mockResolvedValueOnce([
+        { count: 1n, rows: 4n, bytes: 50n, succeeded: 1n, failed: 0n },
+      ])
       .mockResolvedValueOnce(queryRows)
-      .mockResolvedValueOnce([{ bucket: '2026-01-01', count: 1n, rows: 4n, bytes: 50n, succeeded: 1n, failed: 0n }]);
+      .mockResolvedValueOnce([
+        {
+          bucket: '2026-01-01',
+          count: 1n,
+          rows: 4n,
+          bytes: 50n,
+          succeeded: 1n,
+          failed: 0n,
+        },
+      ]);
     const service = new SystemObservabilityService(prisma);
     const result = await service.importExportMetrics(
       new Date('2026-01-01'),
@@ -34,8 +54,22 @@ describe('SystemObservabilityService coverage', () => {
   it('covers delivery filtering, latency aggregation and empty branches', async () => {
     const queryRaw = prisma.$queryRaw as ReturnType<typeof vi.fn>;
     queryRaw.mockResolvedValueOnce([
-      { bucket: '2026-01-01', state: 'SUCCEEDED', count: 2n, retries: 1n, httpFailures: 0n, averageLatencyMs: 12 },
-      { bucket: '2026-01-01', state: null, count: 1n, retries: 0n, httpFailures: 1n, averageLatencyMs: null },
+      {
+        bucket: '2026-01-01',
+        state: 'SUCCEEDED',
+        count: 2n,
+        retries: 1n,
+        httpFailures: 0n,
+        averageLatencyMs: 12,
+      },
+      {
+        bucket: '2026-01-01',
+        state: null,
+        count: 1n,
+        retries: 0n,
+        httpFailures: 1n,
+        averageLatencyMs: null,
+      },
     ]);
     const service = new SystemObservabilityService(prisma);
     await expect(
@@ -65,10 +99,7 @@ describe('SystemObservabilityService coverage', () => {
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
-      service.deliveryMetrics(
-        new Date('2025-01-01'),
-        new Date('2026-01-01'),
-      ),
+      service.deliveryMetrics(new Date('2025-01-01'), new Date('2026-01-01')),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(queryRaw).not.toHaveBeenCalled();
   });
