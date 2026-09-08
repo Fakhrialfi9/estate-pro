@@ -15,7 +15,7 @@ type SecurityRecord = Prisma.AuthenticationUserSecurityGetPayload<{
 type LockedSecurityRecord = {
   id: bigint;
   user_uuid: string;
-  failed_login_attempts: number;
+  failed_login_attempts: bigint;
   locked_until: Date | null;
   last_login_at: Date | null;
   last_login_ip: string | null;
@@ -128,16 +128,23 @@ export class PrismaAuthenticationSecurityRepository
     policy: AuthenticationLockoutPolicy,
   ): { failedLoginAttempts: number; lockedUntil: Date | null } {
     const windowStart = new Date(now.getTime() - policy.windowMs);
+    const currentFailedLoginAttempts = Number(current.failed_login_attempts);
+
+    if (!Number.isSafeInteger(currentFailedLoginAttempts)) {
+      throw new Error('Authentication failed-login counter exceeds safe range');
+    }
 
     if (current.locked_until !== null && current.locked_until > now) {
       return {
-        failedLoginAttempts: current.failed_login_attempts,
+        failedLoginAttempts: currentFailedLoginAttempts,
         lockedUntil: current.locked_until,
       };
     }
 
     const failedLoginAttempts =
-      current.updated_at < windowStart ? 1 : current.failed_login_attempts + 1;
+      current.updated_at < windowStart
+        ? 1
+        : currentFailedLoginAttempts + 1;
 
     const lockedUntil =
       failedLoginAttempts >= policy.threshold
