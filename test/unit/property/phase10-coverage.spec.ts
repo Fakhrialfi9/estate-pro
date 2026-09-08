@@ -12,6 +12,7 @@ import { DeletePropertyTypeUseCase } from '../../../src/modules/property/applica
 import { ListingService } from '../../../src/modules/property/listing/application/listing.service.js';
 import { ListingExpiryWorker } from '../../../src/modules/property/listing/application/listing-expiry.worker.js';
 import { PropertyTypeEntity } from '../../../src/modules/property/domain/entities/property-type.entity.js';
+import { PropertyTypeNotFoundException } from '../../../src/modules/property/domain/errors/property-type.errors.js';
 import {
   MasterConcurrencyError,
   MasterConflictError,
@@ -403,11 +404,11 @@ describe('property phase 10 coverage', () => {
     await deleteType.execute(uuid, actor);
     deleteRepo.findById.mockResolvedValueOnce(null);
     await expect(deleteType.execute(uuid, actor)).rejects.toBeInstanceOf(
-      NotFoundException,
+      PropertyTypeNotFoundException,
     );
     deleteRepo.findById.mockResolvedValue(deletedPropertyType);
     await expect(deleteType.execute(uuid, actor)).rejects.toBeInstanceOf(
-      NotFoundException,
+      PropertyTypeNotFoundException,
     );
   });
 
@@ -486,7 +487,7 @@ describe('property phase 10 coverage', () => {
   it('covers property extras and listing errors', () => {
     expect(hashSensitive('secret')).not.toBe('secret');
     expect(maskSensitive('abcdef')).not.toBe('abcdef');
-    expect(() => validateCertificateInput({})).toThrow();
+    expect(() => validateCertificateInput({ number: ' ' })).toThrow();
     expect(() => validateCertificateDates()).not.toThrow();
     expect(() => validateFinancialInvariants({})).not.toThrow();
     expect(() => validateLegalInvariants({})).not.toThrow();
