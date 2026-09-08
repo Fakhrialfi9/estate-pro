@@ -71,12 +71,12 @@ describe('PropertyCapabilitiesService phase 10 coverage', () => {
     await expect(service.listHistory(uuid, 1, 10, 'BAD' as never)).toThrow(BadRequestException);
 
     repository.createDocument.mockRejectedValueOnce(new PropertyCapabilityValidationError('invalid'));
-    await expect(service.createDocument(uuid, { classification: 'LEGAL', title: 'D', visibility: 'PRIVATE', status: 'ACTIVE', storageKey: 'docs/d.pdf', mimeType: 'application/pdf', checksumSha256: 'C'.repeat(64) }, actor)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.createDocument(uuid, { classification: 'LEGAL', title: 'Doc', visibility: 'PRIVATE', status: 'ACTIVE', storageKey: 'docs/d.pdf', mimeType: 'application/pdf', checksumSha256: 'C'.repeat(64) }, actor)).rejects.toBeInstanceOf(BadRequestException);
     repository.createDocument.mockRejectedValueOnce(new Error('duplicate document'));
-    await expect(service.createDocument(uuid, { classification: 'LEGAL', title: 'D', visibility: 'PRIVATE', status: 'ACTIVE', storageKey: 'docs/d.pdf', mimeType: 'application/pdf', checksumSha256: 'C'.repeat(64) }, actor)).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.createDocument(uuid, { classification: 'LEGAL', title: 'Doc', visibility: 'PRIVATE', status: 'ACTIVE', storageKey: 'docs/d.pdf', mimeType: 'application/pdf', checksumSha256: 'C'.repeat(64) }, actor)).rejects.toBeInstanceOf(ConflictException);
     repository.createDocument.mockRejectedValueOnce(new Error('document not found'));
-    await expect(service.createDocument(uuid, { classification: 'LEGAL', title: 'D', visibility: 'PRIVATE', status: 'ACTIVE', storageKey: 'docs/d.pdf', mimeType: 'application/pdf', checksumSha256: 'C'.repeat(64) }, actor)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.createDocument(uuid, { classification: 'LEGAL', title: 'Doc', visibility: 'PRIVATE', status: 'ACTIVE', storageKey: 'docs/d.pdf', mimeType: 'application/pdf', checksumSha256: 'C'.repeat(64) }, actor)).rejects.toBeInstanceOf(NotFoundException);
     repository.createDocument.mockRejectedValueOnce({ reason: 'unknown' });
-    await expect(service.createDocument(uuid, { classification: 'LEGAL', title: 'D', visibility: 'PRIVATE', status: 'ACTIVE', storageKey: 'docs/d.pdf', mimeType: 'application/pdf', checksumSha256: 'C'.repeat(64) }, actor)).rejects.toThrow('Property capability operation failed');
+    await expect(service.createDocument(uuid, { classification: 'LEGAL', title: 'Doc', visibility: 'PRIVATE', status: 'ACTIVE', storageKey: 'docs/d.pdf', mimeType: 'application/pdf', checksumSha256: 'C'.repeat(64) }, actor)).rejects.toThrow('Property capability operation failed');
   });
 });
