@@ -140,6 +140,6 @@ describe('sales and SEO roadmap coverage', () => {
     expect(isPubliclyIndexable(resource({ robots: 'noindex,nofollow' }))).toBe(
       false,
     );
-    expect(isPubliclyIndexable(resource({ published: false }))).toBe(false);
+    expect(isPubliclyIndexable({ ...resource(), published: false })).toBe(false);
   });
 });
