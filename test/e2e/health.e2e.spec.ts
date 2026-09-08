@@ -7,7 +7,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma/prisma.service.js';
+import { AutomationNotificationScheduler } from '../../src/modules/automation/infrastructure/scheduler/automation-notification.scheduler.js';
 import { AutomationScheduler } from '../../src/modules/automation/infrastructure/scheduler/automation.scheduler.js';
+import { SystemExportScheduler } from '../../src/modules/system/infrastructure/export/system-export.scheduler.js';
 
 describe('application health (e2e)', () => {
   let app: NestExpressApplication | undefined;
@@ -24,6 +26,10 @@ describe('application health (e2e)', () => {
         $disconnect: vi.fn().mockResolvedValue(undefined),
       })
       .overrideProvider(AutomationScheduler)
+      .useValue({})
+      .overrideProvider(AutomationNotificationScheduler)
+      .useValue({})
+      .overrideProvider(SystemExportScheduler)
       .useValue({})
       .compile();
 
