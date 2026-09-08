@@ -102,7 +102,7 @@ describe('PropertyCapabilitiesService phase 10 coverage', () => {
     await service.listAmenities(false);
     await service.updateAmenity(
       uuid,
-      { code: ' new-code ', name: ' New Name ', description: ' Desc ' },
+      { code: ' NEW_CODE ', name: ' New Name ', description: ' Desc ' },
       actor,
     );
     await service.deleteAmenity(uuid, actor);
@@ -117,7 +117,7 @@ describe('PropertyCapabilitiesService phase 10 coverage', () => {
     expect(repository.updateAmenity).toHaveBeenCalledWith(
       uuid,
       expect.objectContaining({
-        code: 'NEW-CODE',
+        code: 'NEW_CODE',
         name: 'New Name',
         description: 'Desc',
       }),
@@ -224,6 +224,7 @@ describe('PropertyCapabilitiesService phase 10 coverage', () => {
           storageKey: 'docs/d.pdf',
           mimeType: 'application/pdf',
           checksumSha256: 'C'.repeat(64),
+          fileSizeBytes: 10,
         },
         actor,
       ),
@@ -242,6 +243,7 @@ describe('PropertyCapabilitiesService phase 10 coverage', () => {
           storageKey: 'docs/d.pdf',
           mimeType: 'application/pdf',
           checksumSha256: 'C'.repeat(64),
+          fileSizeBytes: 10,
         },
         actor,
       ),
@@ -260,6 +262,7 @@ describe('PropertyCapabilitiesService phase 10 coverage', () => {
           storageKey: 'docs/d.pdf',
           mimeType: 'application/pdf',
           checksumSha256: 'C'.repeat(64),
+          fileSizeBytes: 10,
         },
         actor,
       ),
@@ -276,6 +279,7 @@ describe('PropertyCapabilitiesService phase 10 coverage', () => {
           storageKey: 'docs/d.pdf',
           mimeType: 'application/pdf',
           checksumSha256: 'C'.repeat(64),
+          fileSizeBytes: 10,
         },
         actor,
       ),
