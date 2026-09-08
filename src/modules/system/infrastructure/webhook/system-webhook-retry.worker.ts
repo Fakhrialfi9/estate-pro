@@ -18,7 +18,8 @@ const BATCH_SIZE = 25;
 export class SystemWebhookRetryWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SystemWebhookRetryWorker.name);
   private timer?: ReturnType<typeof setInterval>;
-  private running = false;
+  private inFlight: Promise<void> | undefined;
+  private stopping = false;
 
   constructor(
     @Inject(SYSTEM_WEBHOOK_REPOSITORY)
@@ -34,13 +35,24 @@ export class SystemWebhookRetryWorker implements OnModuleInit, OnModuleDestroy {
     void this.poll();
   }
 
-  onModuleDestroy(): void {
+  async onModuleDestroy(): Promise<void> {
+    this.stopping = true;
     if (this.timer) clearInterval(this.timer);
+    this.timer = undefined;
+    await this.inFlight;
   }
 
-  private async poll(): Promise<void> {
-    if (this.running) return;
-    this.running = true;
+  private poll(): Promise<void> {
+    if (this.stopping || this.inFlight) return Promise.resolve();
+
+    const run = this.runPoll();
+    this.inFlight = run.finally(() => {
+      this.inFlight = undefined;
+    });
+    return this.inFlight;
+  }
+
+  private async runPoll(): Promise<void> {
     const startedAt = Date.now();
     try {
       const now = new Date();
@@ -116,8 +128,6 @@ export class SystemWebhookRetryWorker implements OnModuleInit, OnModuleDestroy {
         error instanceof Error ? error.stack : 'Unknown webhook queue error',
         'Webhook retry queue poll failed',
       );
-    } finally {
-      this.running = false;
     }
   }
 }
