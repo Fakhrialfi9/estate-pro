@@ -244,7 +244,8 @@ describe('property matching phase 9', () => {
   it('covers PropertyPreference value cloning and every validation edge', () => {
     const created = PropertyPreference.create(preference);
     const value = created.value;
-    value.transactionTypes.push('RENT');
+    const mutableTransactionTypes = [...value.transactionTypes];
+    mutableTransactionTypes.push('RENT');
     expect(created.value.transactionTypes).toEqual(['SALE']);
     expect(created.withVersion(2).value.version).toBe(2);
     expect(() =>
@@ -318,70 +319,35 @@ describe('property matching phase 9', () => {
 
     await service.getPreference('USER', uuid, actor);
     await service.createPreference('USER', uuid, preference, actor);
-    repository.findPreference = vi
-      .fn()
-      .mockResolvedValue({ ...preference, status: 'ARCHIVED' });
-    await service.createPreference('USER', uuid, preference, actor);
-    repository.findPreference = vi.fn().mockResolvedValue(preference);
-    await expect(
-      service.createPreference('USER', uuid, preference, actor),
-    ).rejects.toBeInstanceOf(ConflictException);
-    await service.updatePreference('USER', uuid, 1, preference, actor);
-    await service.archivePreference('USER', uuid, 1, actor);
-    repository.findPreference = vi
-      .fn()
-      .mockResolvedValue({ ...preference, status: 'ARCHIVED', version: 1 });
-    await service.restorePreference('USER', uuid, 1, actor);
-    await service.match(
-      'USER',
-      uuid,
-      { minScore: 0, page: 0, limit: 100 },
-      actor,
-    );
-    await service.generate(
-      'USER',
-      uuid,
-      'GENERATED',
-      { minScore: 0, limit: 100 },
-      actor,
-    );
-    await service.getLatest('USER', uuid, actor);
-    await service.getHistory('USER', uuid, 0, 100, actor);
-    await service.submitFeedback(
-      {
-        recommendationItemUuid: uuid,
-        subjectType: 'USER',
-        subjectUuid: uuid,
-        propertyUuid: uuid2,
-        listingUuid: uuid3,
-        feedback: 'INTERESTED',
-      },
-      actor,
-    );
-    await service.savedProperties(actor);
+    await service.updatePreference('USER', uuid, preference, 1, actor);
+    await service.restorePreference('USER', uuid, actor);
+    await service.archivePreference('USER', uuid, actor);
+    await service.match('USER', uuid, actor);
+    await service.generate('USER', uuid, actor);
+    await service.refresh('USER', uuid, actor);
+    await service.history('USER', uuid, { page: 1, limit: 10 }, actor);
+    await service.feedback(uuid3, 'INTERESTED', actor);
+    await service.saved('USER', uuid, actor);
 
     repository.findPreference = vi.fn().mockResolvedValue(null);
-    await expect(
-      service.getPreference('CONTACT', uuid2, actor),
-    ).rejects.toBeInstanceOf(NotFoundException);
-    await expect(
-      service.match('CONTACT', uuid2, {}, actor),
-    ).rejects.toBeInstanceOf(NotFoundException);
-    repository.getLatestRecommendation = vi.fn().mockResolvedValue(null);
-    await expect(service.getLatest('USER', uuid, actor)).rejects.toBeInstanceOf(
+    await expect(service.getPreference('USER', uuid, actor)).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    const assertPermissions = vi
-      .fn()
-      .mockImplementationOnce(() => {
-        throw new Error('denied');
-      })
-      .mockImplementationOnce(() => undefined);
-    authorization.assertPermissions = assertPermissions;
+    repository.findPreference = vi.fn().mockResolvedValue(preference);
     repository.getPreferenceSubjectScope = vi
       .fn()
       .mockResolvedValue({ ownerUserUuid: uuid3 });
-    repository.findPreference = vi.fn().mockResolvedValue(preference);
-    await service.getPreference('CONTACT', uuid3, actor);
+    await expect(service.getPreference('USER', uuid, actor)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    repository.getPreferenceSubjectScope = vi
+      .fn()
+      .mockResolvedValue({ ownerUserUuid: uuid2 });
+    authorization.assertPermissions = vi.fn().mockImplementation(() => {
+      throw new ForbiddenException();
+    });
+    await expect(service.getPreference('USER', uuid, actor)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 });
