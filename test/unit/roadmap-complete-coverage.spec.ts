@@ -470,6 +470,7 @@ describe('roadmap complete coverage', () => {
       id: '1',
       userUuid: uuid,
       sessionId: null,
+      sessionIdHash: 'a'.repeat(64),
       secretHash: null,
       createdAt: now,
       lastUsedAt: null,
@@ -884,7 +885,15 @@ describe('roadmap complete coverage', () => {
       ),
     ).resolves.toBeDefined();
     await expect(
-      service.createSlaPolicy(uuid, { durationMinutes: 0 }, uuid),
+      service.createSlaPolicy(
+        uuid,
+        {
+          durationMinutes: 0,
+          targetEntityType: 'LEAD',
+          startEventType: 'CREATED',
+        },
+        uuid,
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
       service.listNotifications({
