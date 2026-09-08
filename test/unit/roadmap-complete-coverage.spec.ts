@@ -899,17 +899,17 @@ describe('roadmap complete coverage', () => {
         uuid,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
-    await expect(
+    expect(() =>
       service.listNotifications({
         userUuid: '',
         page: 1,
         limit: 10,
         unreadOnly: false,
       }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-    await expect(
-      service.markNotificationRead('notification-1', ''),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).toThrow(BadRequestException);
+    expect(() => service.markNotificationRead('notification-1', '')).toThrow(
+      BadRequestException,
+    );
     await service.retryExecution('execution-1', uuid);
     await expect(
       service.cancelExecution('execution-1', uuid),
