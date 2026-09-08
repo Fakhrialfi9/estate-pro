@@ -98,7 +98,7 @@ describe('phase 8 permissions and roles', () => {
       ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     authorization.getAuthorizationSnapshot.mockResolvedValue({
-      permissionCodes: ['permissions:read'],
+      permissionCodes: ['permissions.read'],
     });
     const readRequest = { user: { sub: userUuid } };
     await expect(
@@ -106,9 +106,9 @@ describe('phase 8 permissions and roles', () => {
         httpContext(readRequest),
       ),
     ).resolves.toBe(true);
-    expect(readRequest.user.permissions).toEqual(['permissions:read']);
+    expect(readRequest.user.permissions).toEqual(['permissions.read']);
     authorization.getAuthorizationSnapshot.mockResolvedValue({
-      permissionCodes: ['permissions:manage'],
+      permissionCodes: ['permissions.manage'],
     });
     await expect(
       new PermissionReadAccessGuard(authorization).canActivate(
@@ -309,7 +309,7 @@ describe('phase 8 permissions and roles', () => {
     assignments.exists.mockResolvedValueOnce(true);
     await expect(
       rpService.assign(actor, roleUuid, permissionUuid, context),
-    ).rejects.toThrow('already exists');
+    ).rejects.toThrow('already assigned');
     assignments.exists.mockResolvedValueOnce(false);
     permissions.findByUuid.mockResolvedValueOnce(null);
     await expect(
@@ -412,7 +412,7 @@ describe('phase 8 permissions and roles', () => {
     userRoles.findByUserAndRole.mockResolvedValueOnce(userRole());
     await expect(
       service.assign(actor, userUuid, roleUuid, context),
-    ).rejects.toThrow('already exists');
+    ).rejects.toThrow('already has this role');
     userRoles.findByUserAndRole.mockResolvedValueOnce(userRole());
     await expect(
       service.remove(actor, userUuid, roleUuid, context),
