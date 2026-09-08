@@ -241,7 +241,7 @@ describe('property matching phase 9', () => {
         new Map(),
         DEFAULT_MATCHING_RULE,
       ),
-    ).toEqual([]);
+    ).toHaveLength(1);
   });
 
   it('covers PropertyPreference value cloning and every validation edge', () => {
@@ -328,8 +328,19 @@ describe('property matching phase 9', () => {
     } satisfies Pick<MatchingRuleService, 'active'>;
     const assertPermissions = vi
       .fn<AuthorizationService['assertPermissions']>()
-      .mockImplementation(() => {
+      .mockImplementation((snapshot, required) => {
         if (denyPermissions) throw new ForbiddenException();
+        const granted = new Set(snapshot.permissionCodes);
+        const allowed = required.some((permission) => {
+          const normalized = permission.replace(/:/g, '.');
+          if (granted.has(normalized)) return true;
+          const separator = normalized.indexOf('.');
+          return (
+            separator > 0 &&
+            granted.has(`${normalized.slice(0, separator)}.manage`)
+          );
+        });
+        if (!allowed) throw new ForbiddenException();
       });
     const authorization = {
       resolve: vi
