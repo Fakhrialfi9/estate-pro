@@ -433,7 +433,10 @@ describe('critical system roadmap coverage', () => {
         ]),
       },
       alert: {
-        upsert: vi.fn().mockResolvedValue(alert),
+        upsert: vi
+          .fn()
+          .mockResolvedValueOnce(alert)
+          .mockResolvedValue({ ...alert, status: 'ACKNOWLEDGED' }),
         list: vi.fn().mockResolvedValue([alert]),
       },
     };
@@ -548,11 +551,11 @@ describe('critical system roadmap coverage', () => {
       errorRate: 1 / 3,
     });
     await expect(
-      service.integrationMetrics(
-        new Date('2026-01-01'),
-        new Date('2026-01-02'),
-        'hour',
-      ),
+      service.integrationMetrics({
+        from: new Date('2026-01-01'),
+        to: new Date('2026-01-02'),
+        granularity: 'hour',
+      }),
     ).resolves.toMatchObject({
       granularity: 'hour',
     });
