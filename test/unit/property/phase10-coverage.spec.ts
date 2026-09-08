@@ -58,6 +58,12 @@ const actor: ActorContext = {
   userAgent: 'vitest',
 };
 
+const namedMasterError = (name: string, message = name): Error => {
+  const error = new Error(message);
+  error.name = name;
+  return error;
+};
+
 const detailRepository = () =>
   ({
     getSpecifications: vi.fn().mockResolvedValue({ bedrooms: 3 }),
@@ -268,15 +274,16 @@ describe('property phase 10 coverage', () => {
     await service.restoreProperty(uuid, actor);
     await service.duplicateProperty(uuid, actor);
 
-    for (const ErrorType of [
-      MasterNotFoundError,
-      MasterConflictError,
-      MasterHierarchyError,
-      MasterInUseError,
-      MasterConcurrencyError,
-      MasterStateError,
-    ]) {
-      repository.getProperty.mockRejectedValueOnce(new ErrorType());
+    const masterErrors: readonly Error[] = [
+      namedMasterError('MasterNotFoundError', 'Resource not found'),
+      new MasterConflictError(),
+      new MasterHierarchyError(),
+      new MasterInUseError(),
+      new MasterConcurrencyError(),
+      new MasterStateError(),
+    ];
+    for (const error of masterErrors) {
+      repository.getProperty.mockRejectedValueOnce(error);
       await expect(service.getProperty(uuid)).rejects.toBeInstanceOf(Error);
     }
   });
@@ -299,7 +306,9 @@ describe('property phase 10 coverage', () => {
     await expect(lifecycle.publish(uuid, 2, actor)).rejects.toBeInstanceOf(
       BadRequestException,
     );
-    lifecycleRepo.verify = vi.fn().mockRejectedValue(new MasterNotFoundError());
+    lifecycleRepo.verify = vi.fn().mockRejectedValue(
+      namedMasterError('MasterNotFoundError', 'Resource not found'),
+    );
     await expect(lifecycle.verify(uuid, 1, actor)).rejects.toBeInstanceOf(
       NotFoundException,
     );
