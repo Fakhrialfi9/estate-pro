@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,12 +31,14 @@ jobs:
       - name: Format repository TypeScript
         run: npx prettier --write "src/**/*.ts" "src/modules/users/credentials" "test/**/*.ts" --no-error-on-unmatched-pattern
 
-      - name: Upload formatted tree
-        uses: actions/upload-artifact@v4
-        with:
-          name: prettier-main-format
-          path: |
-            src
-            test
-          include-hidden-files: true
-          retention-days: 1
+      - name: Commit formatted files
+        run: |
+          if git diff --quiet; then
+            echo "Formatting already clean."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src test
+          git commit -m "chore: format TypeScript sources and tests"
+          git push origin HEAD:main
