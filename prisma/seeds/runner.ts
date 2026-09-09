@@ -22,6 +22,7 @@ import { seedSystem } from './system/seed.ts';
 import { expandSeedDataset, verifyExpandedSeedState } from './expansion.ts';
 import { seedSemanticCoverage } from './semantic-expansion.ts';
 import { verifySeedState } from './verification.ts';
+import { sanitizeSemanticCoverage } from './semantic-sanity.ts';
 import { verifySemanticSeedCoverage } from './semantic-verification.ts';
 
 export async function seedDatabase(): Promise<void> {
@@ -60,11 +61,13 @@ export async function seedDatabase(): Promise<void> {
       await seedContent(tx);
       await seedSystem(tx);
 
-      // The existing expansion remains the first fallback over the original
-      // bounded-context registry. Semantic coverage then fills newly surfaced
-      // persistent feature tables and higher dashboard targets relationally.
+      // Existing bounded-context fixtures remain the first source of truth.
+      // The legacy expansion is the first fallback, followed by the
+      // relationship-aware expansion for tables missed by the original
+      // registry or requiring higher dashboard-oriented targets.
       await expandSeedDataset(prisma, tx);
       await seedSemanticCoverage(tx);
+      await sanitizeSemanticCoverage(tx);
     });
 
     await verifySeedState(prisma);
