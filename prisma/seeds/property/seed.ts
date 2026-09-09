@@ -170,7 +170,6 @@ async function seedPropertyAggregate(
       verifiedAt: SEED_REFERENCE_DATE,
       createdBy: '00000000-0000-5000-8000-000000000001',
       updatedBy: '00000000-0000-5000-8000-000000000001',
-      verifiedBy: '00000000-0000-5000-8000-000000000001',
     },
   });
 
@@ -313,7 +312,7 @@ async function seedPropertyAggregate(
   await tx.propertyListingAnalytics.upsert({
     where: { listingId: listing.id },
     update: { viewCount: 125, inquiryCount: 8, shareCount: 12, saveCount: 21 },
-    create: { listingId: listing.id, viewCount: 125, viewCount: 125, inquiryCount: 8, shareCount: 12, saveCount: 21 },
+    create: { listingId: listing.id, viewCount: 125, inquiryCount: 8, shareCount: 12, saveCount: 21 },
   });
 
   await tx.propertyAgentAssignment.upsert({
