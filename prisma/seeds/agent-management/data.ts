@@ -7,8 +7,8 @@ const AGENT_SPECS = [
   ['00000000-0000-5000-8000-000000000007', 'Intan Permata', 'Apartment leasing advisor focused on corporate tenants.', 'ACTIVE', 15, '2024-08-12', ['LEASING', 'COMMERCIAL'], 'JKS', 'Jakarta Selatan'],
   ['00000000-0000-5000-8000-000000000008', 'Dimas Ardian', 'Family home advisor with a focus on first-time buyers.', 'ACTIVE', 10, '2025-04-21', ['RESIDENTIAL'], 'BDG', 'Kota Bandung'],
   ['00000000-0000-5000-8000-000000000009', 'Putri Ananda', 'Investment property advisor covering mixed-use opportunities.', 'ACTIVE', 9, '2024-10-28', ['COMMERCIAL', 'LUXURY'], 'JKS', 'Jakarta Selatan'],
-  ['00000000-0000-5000-8000-00000000000a', 'Yoga Kurniawan', 'Residential advisor specializing in townhouses and clusters.', 'ON_LEAVE', 8, '2025-01-27', ['RESIDENTIAL'], 'BDG', 'Kota Bandung'],
-  ['00000000-0000-5000-8000-00000000000b', 'Maya Safitri', 'Property leasing and land advisor for local investors.', 'INACTIVE', 6, '2024-06-10', ['LEASING', 'LAND'], 'JKS', 'Jakarta Selatan'],
+  ['00000000-0000-5000-8000-00000000000a', 'Yoga Kurniawan', 'Residential advisor specializing in townhouses and clusters.', 'INACTIVE', 8, '2025-01-27', ['RESIDENTIAL'], 'BDG', 'Kota Bandung'],
+  ['00000000-0000-5000-8000-00000000000b', 'Maya Safitri', 'Property leasing and land advisor for local investors.', 'SUSPENDED', 6, '2024-06-10', ['LEASING', 'LAND'], 'JKS', 'Jakarta Selatan'],
 ] as const;
 
 export const AGENT_FIXTURES = AGENT_SPECS.map(([
