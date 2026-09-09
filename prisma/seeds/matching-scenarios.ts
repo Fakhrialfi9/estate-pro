@@ -97,10 +97,14 @@ export async function seedMatchingScenarios(tx: SeedTransaction): Promise<void> 
 
     const propertyUuid = listing.property.uuid;
     const score = (68 + index * 2.5).toFixed(2);
+    const matchScoreUuid = seedUuid(
+      'match-score-business',
+      `${contact.uuid}:${listing.uuid}:${rule.version}`,
+    );
     await tx.matchScore.upsert({
       where: { subjectType_subjectUuid_listingUuid_algorithmVersion: { subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, listingUuid: listing.uuid, algorithmVersion: rule.version } },
       update: { propertyUuid, score, calculatedAt: new Date(SEED_REFERENCE_DATE.getTime() + index * 86_400_000) },
-      create: { uuid: seedUuid('match-score-business', String(index + 1)), subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, propertyUuid, listingUuid: listing.uuid, score, algorithmVersion: rule.version, calculatedAt: new Date(SEED_REFERENCE_DATE.getTime() + index * 86_400_000) },
+      create: { uuid: matchScoreUuid, subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, propertyUuid, listingUuid: listing.uuid, score, algorithmVersion: rule.version, calculatedAt: new Date(SEED_REFERENCE_DATE.getTime() + index * 86_400_000) },
     });
 
     const recommendationUuid = seedUuid('recommendation-business', String(index + 1));
