@@ -51,7 +51,7 @@ function looksGenerated(value: string): boolean {
 
 export async function sanitizeSemanticCoverage(tx: SeedTransaction): Promise<void> {
   const columns = await tx.$queryRawUnsafe<ColumnRow[]>(
-    `SELECT TABLE_NAME AS tableName, COLUMN_NAME AS columnName, DATA_TYPE AS dataType, COLUMN_TYPE AS columnType FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE()`,
+    `SELECT TABLE_NAME AS tableName, COLUMN_NAME AS columnName, DATA_TYPE AS dataType, COLUMN_TYPE AS columnType FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, ORDINAL_POSITION`,
   );
 
   for (const column of columns.filter(({ tableName }) => included(tableName))) {
@@ -87,7 +87,7 @@ export async function sanitizeSemanticCoverage(tx: SeedTransaction): Promise<voi
     if (!['status', 'state', 'channel', 'direction', 'priority', 'type'].includes(column.columnName)) continue;
 
     const values = await tx.$queryRawUnsafe<ValueRow[]>(
-      `SELECT DISTINCT ${field} AS value FROM ${table} WHERE ${field} IS NOT NULL`,
+      `SELECT DISTINCT ${field} AS value FROM ${table} WHERE ${field} IS NOT NULL ORDER BY ${field}`,
     );
     const validValues = values
       .map(({ value }) => value)
