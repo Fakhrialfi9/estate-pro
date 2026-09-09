@@ -58,8 +58,8 @@ export async function seedDatabase(): Promise<void> {
       await seedProperty(tx);
       await seedAudit(tx);
       await seedCrm(tx);
-      await seedBusinessScenarios(tx);
       await seedSales(tx);
+      await seedBusinessScenarios(tx);
       await seedSalesCompletionSafe(tx);
       await seedPropertyMatching(tx);
       await seedMatchingScenarios(tx);
