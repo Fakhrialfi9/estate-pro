@@ -22,6 +22,7 @@ import { seedSystem } from './system/seed.ts';
 import { expandSeedDataset, verifyExpandedSeedState } from './expansion.ts';
 import { seedSemanticCoverage } from './semantic-expansion.ts';
 import { verifySeedState } from './verification.ts';
+import { verifySemanticSeedCoverage } from './semantic-verification.ts';
 
 export async function seedDatabase(): Promise<void> {
   const prisma = createDatabaseClient();
@@ -49,7 +50,6 @@ export async function seedDatabase(): Promise<void> {
       await assignAdminRole(tx, adminUserId, adminRoleId);
       await seedDevelopmentUsers(tx, preparedUsers);
 
-      // Dependency order: identity/RBAC -> agents -> property -> audit -> CRM -> sales -> matching -> automation/content/system.
       await seedAgentManagement(tx, adminUserId);
       await seedProperty(tx);
       await seedAudit(tx);
@@ -60,15 +60,16 @@ export async function seedDatabase(): Promise<void> {
       await seedContent(tx);
       await seedSystem(tx);
 
-      // First expand the existing bounded-context fixtures, then apply the
-      // relationship-aware fallback for target tables not covered by the
-      // original registry or requiring a larger dashboard dataset.
+      // The existing expansion remains the first fallback over the original
+      // bounded-context registry. Semantic coverage then fills newly surfaced
+      // persistent feature tables and higher dashboard targets relationally.
       await expandSeedDataset(prisma, tx);
       await seedSemanticCoverage(tx);
     });
 
     await verifySeedState(prisma);
     await verifyExpandedSeedState(prisma);
+    await verifySemanticSeedCoverage(prisma);
   } finally {
     await prisma.$disconnect();
   }
