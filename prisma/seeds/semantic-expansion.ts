@@ -20,6 +20,22 @@ type ForeignKeyMeta = {
   referencedColumnName: string;
 };
 
+type MetadataNumber = bigint | number;
+type MetadataBoolean = bigint | number | boolean;
+
+type RawColumnMeta = Omit<ColumnMeta, 'characterMaxLength' | 'isNullable'> & {
+  characterMaxLength: MetadataNumber | null;
+  isNullable: MetadataBoolean;
+};
+
+type RawIndexMeta = {
+  tableName: string;
+  indexName: string;
+  columnName: string;
+  sequence: MetadataNumber;
+  nonUnique: MetadataNumber;
+};
+
 type IndexMeta = {
   tableName: string;
   indexName: string;
@@ -155,7 +171,7 @@ function uuidValue(tableName: string, columnName: string, variant: number): stri
 
 function parseEnumValues(columnType: string): string[] {
   if (!columnType.startsWith('enum(')) return [];
-  return [...columnType.matchAll(/'((?:''|[^'])*)'/g)].map(([_, value]) =>
+  return [...columnType.matchAll(/'((?:''|[^'])*)'/g)].map(([, value]) =>
     (value ?? '').replaceAll("''", "'"),
   );
 }
@@ -259,15 +275,27 @@ function scalarValue(column: ColumnMeta, source: unknown, variant: number, table
 }
 
 async function loadMetadata(tx: SeedTransaction): Promise<Map<string, TableMeta>> {
-  const columns = await tx.$queryRawUnsafe<ColumnMeta[]>(
+  const rawColumns = await tx.$queryRawUnsafe<RawColumnMeta[]>(
     `SELECT TABLE_NAME AS tableName, COLUMN_NAME AS columnName, DATA_TYPE AS dataType, COLUMN_TYPE AS columnType, CHARACTER_MAXIMUM_LENGTH AS characterMaxLength, IS_NULLABLE = 'YES' AS isNullable, COLUMN_DEFAULT AS columnDefault, EXTRA AS extra FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE()`,
   );
-  const indexes = await tx.$queryRawUnsafe<IndexMeta[]>(
+  const rawIndexes = await tx.$queryRawUnsafe<RawIndexMeta[]>(
     `SELECT TABLE_NAME AS tableName, INDEX_NAME AS indexName, COLUMN_NAME AS columnName, SEQ_IN_INDEX AS sequence, NON_UNIQUE AS nonUnique FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX`,
   );
   const foreignKeys = await tx.$queryRawUnsafe<ForeignKeyMeta[]>(
     `SELECT TABLE_NAME AS tableName, COLUMN_NAME AS columnName, REFERENCED_TABLE_NAME AS referencedTableName, REFERENCED_COLUMN_NAME AS referencedColumnName FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL`,
   );
+
+  const columns: ColumnMeta[] = rawColumns.map((column) => ({
+    ...column,
+    characterMaxLength:
+      column.characterMaxLength === null ? null : Number(column.characterMaxLength),
+    isNullable: Boolean(Number(column.isNullable)),
+  }));
+  const indexes: IndexMeta[] = rawIndexes.map((index) => ({
+    ...index,
+    sequence: Number(index.sequence),
+    nonUnique: Number(index.nonUnique),
+  }));
 
   const tableNames = [...new Set(columns.map((column) => column.tableName).filter(tableIncluded))];
   const result = new Map<string, TableMeta>();
