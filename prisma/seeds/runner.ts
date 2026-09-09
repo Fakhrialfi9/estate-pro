@@ -1,7 +1,14 @@
 import { PERMISSIONS } from './permissions/data.ts';
 import { seedPermissions } from './permissions/seed.ts';
 import { seedRoles, seedRolePermissions } from './roles/seed.ts';
-import { ADMIN_USER, SEED_USERS, assignAdminRole, prepareUserSeed, seedAdminUser, seedDevelopmentUsers } from './users/seed.ts';
+import {
+  ADMIN_USER,
+  SEED_USERS,
+  assignAdminRole,
+  prepareUserSeed,
+  seedAdminUser,
+  seedDevelopmentUsers,
+} from './users/seed.ts';
 import { createDatabaseClient } from './database.ts';
 import { seedAudit } from './audit/seed.ts';
 import { seedCrm } from './crm/seed.ts';
@@ -13,21 +20,32 @@ import { seedAutomation } from './automation/seed.ts';
 import { seedContent } from './content/seed.ts';
 import { seedSystem } from './system/seed.ts';
 import { expandSeedDataset, verifyExpandedSeedState } from './expansion.ts';
+import { seedSemanticCoverage } from './semantic-expansion.ts';
 import { verifySeedState } from './verification.ts';
 
 export async function seedDatabase(): Promise<void> {
   const prisma = createDatabaseClient();
-  const [preparedAdmin, ...preparedUsers] = await Promise.all([prepareUserSeed(ADMIN_USER), ...SEED_USERS.map(prepareUserSeed)]);
+  const [preparedAdmin, ...preparedUsers] = await Promise.all([
+    prepareUserSeed(ADMIN_USER),
+    ...SEED_USERS.map(prepareUserSeed),
+  ]);
 
   try {
     await prisma.$transaction(async (tx) => {
       const permissionIds = await seedPermissions(tx, PERMISSIONS);
       const roleIds = await seedRoles(tx);
-      await seedRolePermissions(tx, roleIds, permissionIds, PERMISSIONS.map(({ code }) => code));
+      await seedRolePermissions(
+        tx,
+        roleIds,
+        permissionIds,
+        PERMISSIONS.map(({ code }) => code),
+      );
 
       const adminUserId = await seedAdminUser(tx, preparedAdmin);
       const adminRoleId = roleIds.get('ADMIN');
-      if (adminRoleId === undefined) throw new Error('Missing seeded ADMIN role');
+      if (adminRoleId === undefined) {
+        throw new Error('Missing seeded ADMIN role');
+      }
       await assignAdminRole(tx, adminUserId, adminRoleId);
       await seedDevelopmentUsers(tx, preparedUsers);
 
@@ -41,7 +59,12 @@ export async function seedDatabase(): Promise<void> {
       await seedAutomation(tx);
       await seedContent(tx);
       await seedSystem(tx);
+
+      // First expand the existing bounded-context fixtures, then apply the
+      // relationship-aware fallback for target tables not covered by the
+      // original registry or requiring a larger dashboard dataset.
       await expandSeedDataset(prisma, tx);
+      await seedSemanticCoverage(tx);
     });
 
     await verifySeedState(prisma);
