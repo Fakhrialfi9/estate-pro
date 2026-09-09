@@ -22,6 +22,8 @@ const stagePlan = [
   'OPEN',
 ] as const;
 
+const SEED_LEAD_CODES = Array.from({ length: 20 }, (_, index) => `LEAD-SEED-${String(index + 1).padStart(3, '0')}`);
+
 function dateOffset(days: number, hours = 10): Date {
   const value = new Date(SEED_REFERENCE_DATE.getTime());
   value.setUTCDate(value.getUTCDate() + days);
@@ -37,9 +39,9 @@ export async function seedSalesCompletionSafe(tx: SeedTransaction): Promise<void
   });
   const stageByCode = new Map(stages.map((stage) => [stage.code, stage]));
   const leads = await tx.crmLead.findMany({
-    where: { code: { startsWith: 'LEAD-SEED-1' } },
-    orderBy: { id: 'asc' },
-    take: 20,
+    where: { code: { in: SEED_LEAD_CODES } },
+    orderBy: { code: 'asc' },
+    take: SEED_LEAD_CODES.length,
     select: { uuid: true },
   });
   const contacts = await tx.crmContact.findMany({ orderBy: { id: 'asc' }, take: 20, select: { uuid: true } });
