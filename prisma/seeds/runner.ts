@@ -19,6 +19,7 @@ import { seedPropertyMatching } from './property-matching/seed.ts';
 import { seedAutomation } from './automation/seed.ts';
 import { seedContent } from './content/seed.ts';
 import { seedSystem } from './system/seed.ts';
+import { seedBusinessScenarios } from './business-scenarios.ts';
 import { expandSeedDataset, verifyExpandedSeedState } from './expansion.ts';
 import { seedSemanticCoverage } from './semantic-expansion.ts';
 import { verifySeedState } from './verification.ts';
@@ -55,6 +56,7 @@ export async function seedDatabase(): Promise<void> {
       await seedProperty(tx);
       await seedAudit(tx);
       await seedCrm(tx);
+      await seedBusinessScenarios(tx);
       await seedSales(tx);
       await seedPropertyMatching(tx);
       await seedAutomation(tx);
@@ -62,9 +64,10 @@ export async function seedDatabase(): Promise<void> {
       await seedSystem(tx);
 
       // Existing bounded-context fixtures remain the first source of truth.
-      // The legacy expansion is the first fallback, followed by the
-      // relationship-aware expansion for tables missed by the original
-      // registry or requiring higher dashboard-oriented targets.
+      // Business scenarios establish real cross-domain graphs before the
+      // legacy expansion fills lower-volume collections. Semantic coverage
+      // is the final fallback for feature tables outside the original seed
+      // registry, while sensitive runtime credentials remain excluded.
       await expandSeedDataset(prisma, tx);
       await seedSemanticCoverage(tx);
       await sanitizeSemanticCoverage(tx);
