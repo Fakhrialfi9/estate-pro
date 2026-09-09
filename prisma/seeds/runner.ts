@@ -13,7 +13,7 @@ import { createDatabaseClient } from './database.ts';
 import { seedAudit } from './audit/seed.ts';
 import { seedCrm } from './crm/seed.ts';
 import { seedSales } from './sales/seed.ts';
-import { seedSalesCompletion } from './sales-completion.ts';
+import { seedSalesCompletionSafe } from './sales-completion-safe.ts';
 import { seedAgentManagement } from './agent-management/seed.ts';
 import { seedProperty } from './property/seed.ts';
 import { seedPropertyMatching } from './property-matching/seed.ts';
@@ -60,7 +60,7 @@ export async function seedDatabase(): Promise<void> {
       await seedCrm(tx);
       await seedBusinessScenarios(tx);
       await seedSales(tx);
-      await seedSalesCompletion(tx);
+      await seedSalesCompletionSafe(tx);
       await seedPropertyMatching(tx);
       await seedMatchingScenarios(tx);
       await seedAutomation(tx);
