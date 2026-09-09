@@ -170,6 +170,7 @@ async function seedPropertyAggregate(
       verifiedAt: SEED_REFERENCE_DATE,
       createdBy: '00000000-0000-5000-8000-000000000001',
       updatedBy: '00000000-0000-5000-8000-000000000001',
+      verifiedBy: '00000000-0000-5000-8000-000000000001',
     },
   });
 
