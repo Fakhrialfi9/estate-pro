@@ -119,10 +119,11 @@ export async function seedMatchingScenarios(tx: SeedTransaction): Promise<void> 
       update: { recommendationId: recommendation.id, subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, source: recommendation.source, preferenceVersion: version, algorithmVersion: rule.version, candidateCount: recommendation.candidateCount, generatedAt: recommendation.generatedAt },
       create: { uuid: seedUuid('recommendation-history-business', String(index + 1)), recommendationId: recommendation.id, subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, source: recommendation.source, preferenceVersion: version, algorithmVersion: rule.version, candidateCount: recommendation.candidateCount, generatedAt: recommendation.generatedAt },
     });
+    const feedback = index % 3 === 0 ? 'INTERESTED' : index % 3 === 1 ? 'NOT_RELEVANT' : 'HIDDEN';
     await tx.matchFeedback.upsert({
       where: { recommendationItemId_subjectType_subjectUuid: { recommendationItemId: item.id, subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid } },
-      update: { propertyUuid, listingUuid: listing.uuid, feedback: index % 3 === 0 ? 'INTERESTED' : index % 3 === 1 ? 'DISMISSED' : 'VIEWED' },
-      create: { uuid: seedUuid('match-feedback-business', String(index + 1)), recommendationItemId: item.id, subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, propertyUuid, listingUuid: listing.uuid, feedback: index % 3 === 0 ? 'INTERESTED' : index % 3 === 1 ? 'DISMISSED' : 'VIEWED' },
+      update: { propertyUuid, listingUuid: listing.uuid, feedback },
+      create: { uuid: seedUuid('match-feedback-business', String(index + 1)), recommendationItemId: item.id, subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, propertyUuid, listingUuid: listing.uuid, feedback },
     });
   }
 }
