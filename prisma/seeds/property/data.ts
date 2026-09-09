@@ -77,7 +77,7 @@ const PROPERTY_SEEDS = [
   ['bandung-villa', 'VILLA', 'LUXURY_VILLA', 1, 'Dago Highland Villa', 'dago-highland-villa', 6300000000, 4, 4, 360, 280, 2, 3, 2021, 9],
   ['setiabudi-house', 'HOUSE', 'CLUSTER_HOUSE', 1, 'Setiabudi Family Residence', 'setiabudi-family-residence', 4100000000, 3, 2, 160, 145, 2, 2, 2019, 10],
   ['cidadap-house', 'HOUSE', 'TOWNHOUSE', 1, 'Cidadap Hills Townhouse', 'cidadap-hills-townhouse', 3850000000, 3, 3, 140, 175, 2, 2, 2022, 2],
-  ['braga-retail', 'RETAIL', 'SHOPHOUSE', 1, 'Braga Heritage Shophouse', 'braga-heritage-shophouse', 5300000000, 0, 2, 96, 190, 3, 2, 2016, 3],
+  ['braga-retail', 'RETAIL', 'SHOPHOUSE', 1, 'Braga Heritage Shophouse', 'braga-heritage-shophouse', 5300000000, 0, 2, 240, 190, 3, 2, 2016, 3],
   ['buahbatu-office', 'OFFICE', 'OFFICE_BUILDING', 1, 'Buahbatu Startup Office', 'buahbatu-startup-office', 3250000000, 0, 2, null, 220, 6, 4, 2020, 4],
   ['rancaekek-land', 'DEVELOPMENT_LAND', 'RESIDENTIAL_LAND', 1, 'Rancaekek Residential Land', 'rancaekek-residential-land', 2950000000, 0, 0, 1500, null, 1, 0, 2023, 5],
   ['cileunyi-land', 'DEVELOPMENT_LAND', 'RESIDENTIAL_LAND', 1, 'Cileunyi Housing Development Land', 'cileunyi-housing-development-land', 4100000000, 0, 0, 2400, null, 1, 0, 2022, 6],
@@ -86,7 +86,7 @@ const PROPERTY_SEEDS = [
   ['cempaka-house', 'HOUSE', 'CLUSTER_HOUSE', 0, 'Cempaka Putih Family House', 'cempaka-putih-family-house', 5050000000, 4, 3, 210, 190, 2, 2, 2018, 9],
   ['tebet-townhouse', 'HOUSE', 'TOWNHOUSE', 0, 'Tebet Garden Townhouse', 'tebet-garden-townhouse', 4750000000, 3, 3, 150, 180, 3, 2, 2020, 10],
   ['menteng-villa', 'VILLA', 'LUXURY_VILLA', 0, 'Menteng Heritage Villa', 'menteng-heritage-villa', 12800000000, 6, 5, 500, 420, 3, 4, 2017, 2],
-  ['fatmawati-retail', 'RETAIL', 'SHOPHOUSE', 0, 'Fatmawati Trade Shophouse', 'fatmawati-trade-shophouse', 6100000000, 0, 3, 130, 260, 3, 4, 2019, 3],
+  ['fatmawati-retail', 'RETAIL', 'SHOPHOUSE', 0, 'Fatmawati Trade Shophouse', 'fatmawati-trade-shophouse', 6100000000, 0, 3, 300, 260, 3, 4, 2019, 3],
 ] as const;
 
 export const PROPERTY_FIXTURES = PROPERTY_SEEDS.map(([
