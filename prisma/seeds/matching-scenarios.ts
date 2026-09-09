@@ -7,7 +7,11 @@ const CONTACT_COUNT = 20;
 export async function seedMatchingScenarios(tx: SeedTransaction): Promise<void> {
   const contacts = await tx.crmContact.findMany({ orderBy: { id: 'asc' }, take: CONTACT_COUNT, select: { uuid: true } });
   const properties = await tx.property.findMany({ orderBy: { id: 'asc' }, take: CONTACT_COUNT, select: { uuid: true } });
-  const listings = await tx.propertyListing.findMany({ orderBy: { id: 'asc' }, take: CONTACT_COUNT, select: { uuid: true, propertyUuid: true } });
+  const listings = await tx.propertyListing.findMany({
+    orderBy: { id: 'asc' },
+    take: CONTACT_COUNT,
+    select: { uuid: true, property: { select: { uuid: true } } },
+  });
   const rule = await tx.matchingRule.findFirstOrThrow({ where: { isActive: true }, orderBy: { version: 'desc' } });
   if (contacts.length < 10 || properties.length < 10 || listings.length < 10) {
     throw new Error('Matching business fixtures require at least 10 contacts, properties and listings');
@@ -91,11 +95,12 @@ export async function seedMatchingScenarios(tx: SeedTransaction): Promise<void> 
       },
     });
 
+    const propertyUuid = listing.property.uuid;
     const score = (68 + index * 2.5).toFixed(2);
     await tx.matchScore.upsert({
       where: { subjectType_subjectUuid_listingUuid_algorithmVersion: { subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, listingUuid: listing.uuid, algorithmVersion: rule.version } },
-      update: { propertyUuid: listing.propertyUuid ?? property.uuid, score, calculatedAt: new Date(SEED_REFERENCE_DATE.getTime() + index * 86_400_000) },
-      create: { uuid: seedUuid('match-score-business', String(index + 1)), subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, propertyUuid: listing.propertyUuid ?? property.uuid, listingUuid: listing.uuid, score, algorithmVersion: rule.version, calculatedAt: new Date(SEED_REFERENCE_DATE.getTime() + index * 86_400_000) },
+      update: { propertyUuid, score, calculatedAt: new Date(SEED_REFERENCE_DATE.getTime() + index * 86_400_000) },
+      create: { uuid: seedUuid('match-score-business', String(index + 1)), subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, propertyUuid, listingUuid: listing.uuid, score, algorithmVersion: rule.version, calculatedAt: new Date(SEED_REFERENCE_DATE.getTime() + index * 86_400_000) },
     });
 
     const recommendationUuid = seedUuid('recommendation-business', String(index + 1));
@@ -106,8 +111,8 @@ export async function seedMatchingScenarios(tx: SeedTransaction): Promise<void> 
     });
     const item = await tx.recommendationItem.upsert({
       where: { recommendationId_listingUuid: { recommendationId: recommendation.id, listingUuid: listing.uuid } },
-      update: { propertyUuid: listing.propertyUuid ?? property.uuid, rank: 1, score, explanation: { budget: 'within range', location: 'preferred city', property: 'available' } },
-      create: { uuid: seedUuid('recommendation-item-business', String(index + 1)), recommendationId: recommendation.id, propertyUuid: listing.propertyUuid ?? property.uuid, listingUuid: listing.uuid, rank: 1, score, explanation: { budget: 'within range', location: 'preferred city', property: 'available' } },
+      update: { propertyUuid, rank: 1, score, explanation: { budget: 'within range', location: 'preferred city', property: 'available' } },
+      create: { uuid: seedUuid('recommendation-item-business', String(index + 1)), recommendationId: recommendation.id, propertyUuid, listingUuid: listing.uuid, rank: 1, score, explanation: { budget: 'within range', location: 'preferred city', property: 'available' } },
     });
     await tx.recommendationHistory.upsert({
       where: { uuid: seedUuid('recommendation-history-business', String(index + 1)) },
@@ -116,8 +121,8 @@ export async function seedMatchingScenarios(tx: SeedTransaction): Promise<void> 
     });
     await tx.matchFeedback.upsert({
       where: { recommendationItemId_subjectType_subjectUuid: { recommendationItemId: item.id, subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid } },
-      update: { propertyUuid: listing.propertyUuid ?? property.uuid, listingUuid: listing.uuid, feedback: index % 3 === 0 ? 'INTERESTED' : index % 3 === 1 ? 'DISMISSED' : 'VIEWED' },
-      create: { uuid: seedUuid('match-feedback-business', String(index + 1)), recommendationItemId: item.id, subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, propertyUuid: listing.propertyUuid ?? property.uuid, listingUuid: listing.uuid, feedback: index % 3 === 0 ? 'INTERESTED' : index % 3 === 1 ? 'DISMISSED' : 'VIEWED' },
+      update: { propertyUuid, listingUuid: listing.uuid, feedback: index % 3 === 0 ? 'INTERESTED' : index % 3 === 1 ? 'DISMISSED' : 'VIEWED' },
+      create: { uuid: seedUuid('match-feedback-business', String(index + 1)), recommendationItemId: item.id, subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid, propertyUuid, listingUuid: listing.uuid, feedback: index % 3 === 0 ? 'INTERESTED' : index % 3 === 1 ? 'DISMISSED' : 'VIEWED' },
     });
   }
 }
