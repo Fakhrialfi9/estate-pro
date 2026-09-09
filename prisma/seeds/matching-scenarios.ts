@@ -29,7 +29,7 @@ export async function seedMatchingScenarios(tx: SeedTransaction): Promise<void> 
       where: { subjectType_subjectUuid: { subjectType: SUBJECT_TYPE, subjectUuid: contact.uuid } },
       update: {
         version,
-        status: index % 5 === 0 ? 'PAUSED' : 'ACTIVE',
+        status: 'ACTIVE',
         transactionTypes: [index % 3 === 0 ? 'RENT' : 'SALE'],
         propertyTypeUuids: [seedUuid('property-type', index % 2 === 0 ? 'RESIDENTIAL' : 'COMMERCIAL')],
         propertyCategoryUuids: [seedUuid('property-category', index % 3 === 0 ? 'HOUSE' : index % 3 === 1 ? 'APARTMENT' : 'OFFICE')],
