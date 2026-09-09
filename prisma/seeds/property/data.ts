@@ -114,18 +114,29 @@ export const PROPERTY_FIXTURES = PROPERTY_SEEDS.map(([
     : categoryCode === 'DEVELOPMENT_LAND'
       ? 'LAND'
       : 'RESIDENTIAL';
+  const isLegacyFixture = key === 'senayan-residence' || key === 'dago-apartment';
+  const businessCode = key === 'senayan-residence'
+    ? 'PROP-SNY-001'
+    : key === 'dago-apartment'
+      ? 'PROP-DGO-001'
+      : `PROP-${String(key).toUpperCase().replaceAll('-', '-')}`;
+  const referenceNumber = key === 'senayan-residence'
+    ? 'EST-SNY-001'
+    : key === 'dago-apartment'
+      ? 'EST-DGO-001'
+      : `EST-${String(key).toUpperCase()}`;
 
   return {
     key,
-    businessCode: `PROP-${String(key).toUpperCase().replaceAll('-', '-')}`,
-    referenceNumber: `EST-${String(key).toUpperCase()}`,
+    businessCode,
+    referenceNumber,
     typeCode,
     categoryCode,
     subcategoryCode,
     locationIndex,
     title,
     slug,
-    shortDescription: `${title} prepared for development and testing workflows.`,
+    shortDescription: isLegacyFixture ? `${title} prepared for development and testing workflows.` : `${title} prepared for development and testing workflows.`,
     description: `${title} is a deterministic Estate Pro fixture with realistic pricing, location, specification, sales and matching relationships.`,
     askingPrice: String(askingPrice),
     bedrooms,
