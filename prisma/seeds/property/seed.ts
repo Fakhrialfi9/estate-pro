@@ -219,33 +219,9 @@ async function seedPropertyAggregate(
   });
   await tx.propertyLegal.upsert({
     where: { propertyId: property.id },
-    update: { ownershipType: 'INDIVIDUAL', ownershipStatus: 'VERIFIED', verificationStatus: 'VERIFIED', verifiedAt: SEED_REFERENCE_DATE, verifiedBy: '00000000-0000-5000-8000-000000000001', verificationSource: 'SEED_FIXTURE', zoningZone: 'RESIDENTIAL', allowedUse: 'Residential use' },
-    create: { uuid: seedUuid('property-legal', fixture.key), propertyId: property.id, ownershipType: 'INDIVIDUAL', ownershipStatus: 'VERIFIED', verificationStatus: 'VERIFIED', verifiedAt: SEED_REFERENCE_DATE, verifiedBy: '00000000-0000-5000-8000-000000000001', verificationSource: 'SEED_FIXTURE', zoningZone: 'RESIDENTIAL', allowedUse: 'Residential use' },
+    update: { ownershipType: 'INDIVIDUAL', ownershipStatus: 'VERIFIED', verificationStatus: 'VERIFIED', verifiedAt: SEED_REFERENCE_DATE, verifiedBy: '00000000-0000-0000-0000-000000000001' },
+    create: { uuid: seedUuid('property-legal', fixture.key), propertyId: property.id, ownershipType: 'INDIVIDUAL', ownershipStatus: 'VERIFIED', verificationStatus: 'VERIFIED', verifiedAt: SEED_REFERENCE_DATE, verifiedBy: '00000000-0000-0000-0000-000000000001' },
   });
-  await tx.propertyOwner.upsert({
-    where: { propertyId: property.id },
-    update: { ownerType: 'INDIVIDUAL', displayNameMasked: fixture.key === 'senayan-residence' ? 'A*** F******' : 'S*** O*****', referenceHash: checksum(`owner:${fixture.key}`) },
-    create: { uuid: seedUuid('property-owner', fixture.key), propertyId: property.id, ownerType: 'INDIVIDUAL', displayNameMasked: fixture.key === 'senayan-residence' ? 'A*** F******' : 'S*** O*****', referenceHash: checksum(`owner:${fixture.key}`) },
-  });
-  await tx.propertySeo.upsert({
-    where: { propertyId: property.id },
-    update: { title: fixture.title, description: fixture.shortDescription, keywords: ['property', fixture.categoryCode.toLowerCase(), 'estate-pro'], canonicalUrl: `https://estate-pro.example.test/properties/${fixture.slug}`, ogImageUrl: `https://images.example.test/properties/${fixture.slug}.jpg`, robots: 'INDEX_FOLLOW', metadataVersion: '1.0', schemaType: 'Residence', source: 'SEED' },
-    create: { uuid: seedUuid('property-seo', fixture.key), propertyId: property.id, title: fixture.title, description: fixture.shortDescription, keywords: ['property', fixture.categoryCode.toLowerCase(), 'estate-pro'], canonicalUrl: `https://estate-pro.example.test/properties/${fixture.slug}`, ogImageUrl: `https://images.example.test/properties/${fixture.slug}.jpg`, robots: 'INDEX_FOLLOW', metadataVersion: '1.0', schemaType: 'Residence', source: 'SEED' },
-  });
-
-  const rooms = [
-    ['MASTER_BEDROOM', 'Master Bedroom', 2, '28.00'],
-    ['BEDROOM', 'Bedroom 2', 2, '18.00'],
-    ['LIVING_ROOM', 'Living Room', 1, '35.00'],
-  ] as const;
-
-  for (const [index, [roomType, name, floor, area]] of rooms.entries()) {
-    await tx.propertyRoom.upsert({
-      where: { uuid: seedUuid('property-room', `${fixture.key}:${index}`) },
-      update: { propertyId: property.id, roomType, name, floor, area, areaUnit: 'SQM', hasBathroom: roomType === 'MASTER_BEDROOM', hasWalkInCloset: roomType === 'MASTER_BEDROOM', hasBalcony: fixture.key === 'dago-apartment' && roomType === 'MASTER_BEDROOM', hasAirConditioning: true, sortOrder: index },
-      create: { uuid: seedUuid('property-room', `${fixture.key}:${index}`), propertyId: property.id, roomType, name, floor, area, areaUnit: 'SQM', hasBathroom: roomType === 'MASTER_BEDROOM', hasWalkInCloset: roomType === 'MASTER_BEDROOM', hasBalcony: fixture.key === 'dago-apartment' && roomType === 'MASTER_BEDROOM', hasAirConditioning: true, sortOrder: index },
-    });
-  }
 
   const facilityCodes = fixture.key === 'senayan-residence' ? ['CCTV', 'SECURITY_GUARD', 'GATED_ACCESS', 'COVERED_PARKING', 'GENERATOR', 'FIBER_INTERNET', 'SWIMMING_POOL'] : ['CCTV', 'SECURITY_GUARD', 'COVERED_PARKING', 'FIBER_INTERNET', 'SWIMMING_POOL', 'ELEVATOR'];
   for (const code of facilityCodes) {
@@ -320,6 +296,11 @@ async function seedPropertyAggregate(
     where: { propertyId_agentUserUuid: { propertyId: property.id, agentUserUuid: fixture.agentUserUuid } },
     update: { agentDisplayName: fixture.agentDisplayName, isPrimary: true, assignedAt: SEED_REFERENCE_DATE, unassignedAt: null, createdBy: '00000000-0000-5000-8000-000000000001', updatedBy: '00000000-0000-5000-8000-000000000001' },
     create: { uuid: seedUuid('property-agent-assignment', fixture.key), propertyId: property.id, agentUserUuid: fixture.agentUserUuid, agentDisplayName: fixture.agentDisplayName, isPrimary: true, assignedAt: SEED_REFERENCE_DATE, createdBy: '00000000-0000-5000-8000-000000000001', updatedBy: '00000000-0000-5000-8000-000000000001' },
+  });
+  await tx.propertyAgentAssignmentHistory.upsert({
+    where: { uuid: seedUuid('property-agent-assignment-history', `${fixture.key}:assign`) },
+    update: { propertyId: property.id, propertyUuid: property.uuid, agentUserUuid: fixture.agentUserUuid, actorUserUuid: '00000000-0000-5000-8000-000000000001', action: 'ASSIGN', occurredAt: SEED_REFERENCE_DATE, reason: 'Seeded initial property-agent assignment.' },
+    create: { uuid: seedUuid('property-agent-assignment-history', `${fixture.key}:assign`), propertyId: property.id, propertyUuid: property.uuid, agentUserUuid: fixture.agentUserUuid, actorUserUuid: '00000000-0000-5000-8000-000000000001', action: 'ASSIGN', occurredAt: SEED_REFERENCE_DATE, reason: 'Seeded initial property-agent assignment.' },
   });
   await tx.propertyHistory.upsert({
     where: { uuid: seedUuid('property-history', `${fixture.key}:created`) },
